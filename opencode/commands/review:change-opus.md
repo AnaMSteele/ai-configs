@@ -3,7 +3,7 @@ description: Run a change review using Claude Opus4.6
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 agent: build
 subtask: true
-model: github-copilot/claude-opus-4.6
+model: google/antigravity-claude-opus-4-6-thinking
 ---
 
 Your reviewer name is CLAUDE 
