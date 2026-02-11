@@ -2,7 +2,7 @@
 name: reviewer-opus
 description: Opus document reviewer - adds critical review tags
 mode: subagent
-model: local-proxy/antigravity/claude-opus-4-5-thinking
+model: google/antigravity-claude-opus-4-6-thinking
 reasoningEffort: high
 ---
 
