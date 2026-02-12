@@ -34,7 +34,13 @@ This directory contains a comprehensive set of commands that support a complete 
 13. **`cmd:commit-push.md`** - Commit all changes and push to GitHub
 14. **`cmd:create-pr.md`** - Create a pull request
 15. **`cmd:start-linear-issue.md`** - Start work on a Linear issue with branch management
-16. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
+16. **`cmd:start-linear-issue-branch.md`** - Start a Linear issue on a new branch (no worktree) and draft a first-pass plan
+17. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
+
+### Autopilot Loop Commands
+18. **`ralph:run.md`** - Execute a plan with a phase-level quality gate loop
+19. **`ralph:review-gpt5.2.md`** - Run `/review` in a loop (GPT-5.2), apply quick fixes, stop when no straightforward fixes remain
+20. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
 
 ## Command Workflows
 
@@ -211,7 +217,11 @@ commands/
 ├── cmd:commit-push.md
 ├── cmd:create-pr.md
 ├── cmd:start-linear-issue.md
+├── cmd:start-linear-issue-branch.md
 ├── cmd:review-pr-comments.md
+├── ralph:run.md
+├── ralph:review-gpt5.2.md
+├── ralph:review-opus.md
 └── _lib/ (helper scripts)
 ```
 
