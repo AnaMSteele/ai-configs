@@ -22,15 +22,27 @@ This directory contains a comprehensive set of commands that support a complete 
 7. **`doc:fetch-batch.md`** - Batch fetch documentation from markdown lists
 8. **`doc:update.md`** - Post-implementation documentation generation
 
+### Test Orchestration Commands
+9. **`test:run-playwright.md`** - Run Playwright in PTY, stream failures, and spawn live fixer subagents
+10. **`test:run-playwright:all.md`** - Run full Playwright suite (`test:e2e:all`) in PTY with live fixer orchestration
+
 ### Simplification Commands
-9. **`simplify:1:create-plan.md`** - Generate code simplification plans
-10. **`simplify:2:process-plan.md`** - Execute approved simplification plans
+11. **`simplify:1:create-plan.md`** - Generate code simplification plans
+12. **`simplify:2:process-plan.md`** - Execute approved simplification plans
 
 ### Git Utility Commands
-11. **`cmd:commit-push.md`** - Commit all changes and push to GitHub
-12. **`cmd:create-pr.md`** - Create a pull request
-13. **`cmd:start-linear-issue.md`** - Start work on a Linear issue with branch management
-14. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
+13. **`cmd:commit-push.md`** - Commit all changes and push to GitHub
+14. **`cmd:create-pr.md`** - Create a pull request
+15. **`cmd:start-linear-issue.md`** - Start work on a Linear issue with branch/worktree management
+16. **`cmd:start-linear-issue-branch.md`** - Start a Linear issue on a new branch (no worktree) and draft a first-pass plan
+17. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
+
+### Autopilot Loop Commands
+18. **`ralph:run.md`** - Execute a plan with a phase-level quality gate loop
+
+### Codex Compatibility Notes
+- Codex prompts intentionally include only OpenAI-compatible model commands.
+- Non-OpenAI model prompts (for example Gemini/Opus variants) are not synced here.
 
 ## Command Workflows
 
@@ -142,6 +154,12 @@ All commands use consistent:
 - Generated after feature completion
 - Uses technical-writer agent
 
+**`/test:run-playwright`** & **`/test:run-playwright:all`**:
+- Run live Playwright PTY orchestration
+- Detect failures incrementally while tests are still running
+- Spawn `developer` fixer subagents with scoped failure context
+- Perform targeted reruns after live fixes
+
 **`/simplify:1:create-plan`** & `/simplify:2:process-plan`**:
 - Code complexity reduction
 - Technical debt management
@@ -163,6 +181,16 @@ All commands use consistent:
 - Creates dedicated branch and worktree for isolated development
 - Copies local config and MCP servers
 - Uses Linear CLI for issue metadata
+
+**`/cmd:start-linear-issue-branch`**:
+- Bootstrap work on a Linear issue with branch-only setup
+- Creates/switches branch from a chosen base without creating a worktree
+- Fetches issue metadata and drafts a first-pass plan under `thoughts/plans/`
+
+**`/ralph:run`**:
+- Execute plan phases continuously with a quality gate loop
+- Alternate implementation and quality review until zero issues remain per phase
+- Update `## Progress` and decisions/deviations logs as phases complete
 
 ## Fidelity-Preserving Agents
 
@@ -193,6 +221,8 @@ All commands are flat at the root level:
 ```
 commands/
 ├── 3:process-tasks.md (unified processor)
+├── test:run-playwright:all.md
+├── test:run-playwright.md
 ├── prd:1:create-prd.md
 ├── prd:2:gen-tasks.md
 ├── spec:1:create-spec.md
@@ -205,7 +235,9 @@ commands/
 ├── cmd:commit-push.md
 ├── cmd:create-pr.md
 ├── cmd:start-linear-issue.md
+├── cmd:start-linear-issue-branch.md
 ├── cmd:review-pr-comments.md
+├── ralph:run.md
 └── _lib/ (helper scripts)
 ```
 
@@ -244,8 +276,10 @@ Commands use colon-delimited namespacing:
 - `prd:[phase]:` - PRD workflow commands (e.g., `prd:1:create-prd`)
 - `spec:[phase]:` - Specification workflow commands (e.g., `spec:1:create-spec`)
 - `doc:` - Documentation commands
+- `test:` - Test orchestration commands
 - `simplify:[phase]:` - Code simplification commands (e.g., `simplify:1:create-plan`)
 - `cmd:` - Git and utility commands (e.g., `cmd:commit-push`, `cmd:start-linear-issue`)
+- `ralph:` - Autopilot quality-gated execution commands
 - `[number]:` - Cross-workflow phase commands (e.g., `3:process-tasks`)
 
 This flat structure ensures compatibility with all AI coding agents that don't traverse subdirectories.
