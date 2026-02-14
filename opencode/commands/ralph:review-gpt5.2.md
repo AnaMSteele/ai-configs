@@ -1,70 +1,142 @@
 ---
-description: Iterative code review loop (GPT-5.2) — run /review, apply quick fixes, stop when no straightforward fixes remain
-argument-hint: "[BASE_REF]"
+description: Iterative branch code review loop (GPT-5.2 subagent) - review branch changes, apply quick fixes, stop when no straightforward fixes remain
+argument-hint: ""
 agent: build
 subtask: true
 model: openai/gpt-5.2
 ---
 
-# Review Loop (Auto-Fix)
+# Branch Review Loop (Auto-Fix)
 
-Run OpenCode's `/review` command in a loop. Apply quick / straightforward fixes surfaced by the review, then re-run. Stop when there are no more quick fixes to apply (or after 3 iterations) and report remaining issues.
+Run a GPT-5.2 review loop by delegating each review pass to the `reviewer-gpt5.2` subagent. Do not shell out to `opencode /review`.
 
-## Inputs
+This command reviews branch changes only.
 
-`$ARGUMENTS` may be:
+## Scope Rules
 
-- `BASE_REF` (optional) - e.g. `origin/main`, `origin/develop`
+In-scope changes are:
 
-If omitted, default to `origin/develop`.
+- Commits on the current branch since the branch diverged from the default remote branch.
+- Local uncommitted changes (staged + unstaged + untracked files).
+
+Out of scope:
+
+- Any review scope that is only `origin/main...HEAD` (or another fixed branch) without first resolving the branch merge-base.
+- Any changes outside the current branch and working tree.
 
 ## Process
 
 ### 0) Autopilot Rules
 
 - Execute continuously; do not pause between iterations.
-- Do not stop after a status update (e.g., "reviewing" or "fixing issues").
-- Every response must either (a) take the next concrete action by invoking a tool (read/search/edit/run), or (b) ask for user input due to an unresolvable decision. Narration alone is not an action.
+- Do not stop after a status update (for example, "reviewing" or "fixing issues").
+- Every response must either (a) take the next concrete action by invoking a tool, or (b) ask for user input due to an unresolvable decision.
 - Use `question` only when a decision between viable options materially changes behavior and cannot be resolved from the repo.
 
-### 1) Resolve Review Base
+### 1) Resolve Branch Baseline
 
-Resolve `base_ref`:
-
-1. If `$ARGUMENTS` is non-empty, treat it as `base_ref`.
-2. Otherwise use `origin/develop`.
-
-### 2) Establish Context (Git)
-
-Collect the state that the reviewer should consider:
+Determine the review base from the current branch's divergence point.
 
 ```bash
-git status
-git diff --stat "${base_ref}...HEAD"
-git diff "${base_ref}...HEAD"
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+default_ref=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || true)
+
+if [ -z "$default_ref" ]; then
+  for candidate in origin/main origin/master origin/develop; do
+    if git show-ref --verify --quiet "refs/remotes/$candidate"; then
+      default_ref="$candidate"
+      break
+    fi
+  done
+fi
+
+if [ -z "$default_ref" ]; then
+  echo "Unable to resolve default remote branch" >&2
+  exit 1
+fi
+
+merge_base=$(git merge-base HEAD "$default_ref")
 ```
 
-If there are uncommitted changes, they are in-scope for review.
+Review range for committed branch changes is always:
 
-### 3) Review / Fix Loop
+```bash
+git diff "${merge_base}...HEAD"
+```
 
-Repeat until termination (max 3 iterations):
+### 2) Collect Review Context (Each Iteration)
 
-1. Run OpenCode's `/review` on the current working tree and diff against `base_ref`.
-2. From the review output, split issues into:
-   - **Quick / straightforward fixes**: small, local, high-confidence changes (formatting, obvious bug fix, missing null-check, incorrect import, broken command snippet, etc.).
-   - **Not quick**: anything that requires broader refactor, unclear intent, architectural redesign, product decision, or investigation beyond a short tight loop.
-3. If there are one or more quick fixes, apply them all:
-   - Make the smallest change that resolves the issue.
-   - Do not introduce new features or refactors unless required to fix the issue.
-   - If a fix requires a choice that materially changes behavior and cannot be resolved from the repo, stop and ask exactly one targeted `question`.
-4. If there are zero quick fixes to apply, STOP and report remaining issues (including why they are not quick).
-5. If you have completed 3 iterations total, STOP and report remaining issues (even if more quick fixes may exist).
-6. Otherwise loop back to step 1.
+At the start of every loop iteration, gather:
 
-### 4) Completion
+```bash
+git status --short
+git diff --stat "${merge_base}...HEAD"
+git diff "${merge_base}...HEAD"
+git diff --cached
+git diff
+```
 
-When the loop terminates:
+### 3) Spawn Reviewer Subagent
 
-- Provide a brief summary of fixes made.
-- List any remaining issues that were not quick/straightforward.
+Use Task with `subagent_type="reviewer-gpt5.2"` for every iteration.
+
+Pass this review brief to the subagent, filling in the current values of `merge_base` and `default_ref`:
+
+```text
+You are a code reviewer. Your job is to review code changes and provide actionable feedback.
+
+Review scope (branch-only):
+- committed branch diff: git diff <merge_base>...HEAD
+- staged diff: git diff --cached
+- unstaged diff: git diff
+- untracked files from git status --short
+
+Important scope guardrails:
+- Review only the changes listed above.
+- Do not switch to a separate base diff such as origin/main...HEAD unless that exact ref came from the resolved merge-base scope above.
+
+Required method:
+1. Use diffs to identify changed files.
+2. Read full file contents for every changed file and untracked file before flagging issues.
+3. Focus on bugs first, then structural problems, then obvious performance issues.
+4. Only flag issues in changed code.
+5. If uncertain, say what is uncertain instead of asserting.
+
+Classify findings into:
+- Quick fixes: small, local, high-confidence changes.
+- Not quick: broader refactor, unclear intent, architecture/product decisions, or deeper investigation.
+- Needs clarification: behavior-changing choice that cannot be inferred from repository context.
+
+Return exactly this format:
+Quick fixes:
+- [Q1] <severity> <file[:line]> - <issue> - <smallest safe fix>
+
+Not quick:
+- [N1] <severity> <file[:line]> - <issue> - <why not quick>
+
+Needs clarification:
+- [C1] <question> - <why repository context is insufficient>
+```
+
+### 4) Apply Quick Fixes
+
+From subagent output:
+
+1. Apply all quick fixes that are small, local, and high confidence.
+2. Keep edits minimal; do not introduce features or broad refactors.
+3. If any fix requires a material behavior choice and the repo does not disambiguate it, ask exactly one targeted `question` and stop.
+
+### 5) Loop Termination
+
+Maximum 3 iterations.
+
+- If zero quick fixes are found, stop and report remaining issues.
+- If 3 iterations are completed, stop and report remaining issues even if more quick fixes may exist.
+- Otherwise, repeat from Step 2.
+
+### 6) Completion
+
+When terminating, report:
+
+- Brief summary of fixes applied.
+- Remaining `Not quick` and `Needs clarification` issues.
