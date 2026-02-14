@@ -16,6 +16,7 @@ permission:
     "$HOME/Library/Application Support/opencode/plans/*.md": allow
     "*\\opencode\\plans\\*.md": allow 
     "thoughts/plans/*": allow
+tools:
   webfetch: true
   exa_web_search_exa: true
   exa_get_code_context_exa: true
