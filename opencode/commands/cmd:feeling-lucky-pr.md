@@ -1,0 +1,224 @@
+---
+description: End-to-end autopilot from a FeelingLucky Linear issue to a pushed PR
+argument-hint: '[ISSUE_KEY] [BASE_REF]'
+---
+
+# FeelingLucky Linear -> Branch -> Plan -> Review -> Implement -> Validate -> PR
+
+End-to-end autonomous flow:
+
+1) Find a "FeelingLucky" issue in DocThingy that is "Ready to pull" (unless ISSUE_KEY provided)
+2) Create a feature branch off a fresh `origin/develop` (or provided base)
+3) Create a single-file plan
+4) Multi-review + integrate the plan
+5) Execute the plan
+6) Validate implementation vs plan
+7) Code-review, then commit+push and open a PR
+
+## Inputs
+
+`$ARGUMENTS` may be:
+
+- `ISSUE_KEY` (optional) - e.g. `NOD-123`.
+- `BASE_REF` (optional) - defaults to `origin/develop`.
+
+## Process
+
+### 0) Preconditions
+
+```bash
+git status --porcelain=v1
+```
+
+If dirty, STOP: "Working tree is dirty. Please commit or stash changes first."
+
+```bash
+gh auth status
+ltui auth test
+
+git fetch --prune --tags
+```
+
+Resolve base:
+
+- `base_ref`: `$BASE_REF` if provided, else `origin/develop`
+
+```bash
+git rev-parse --verify "${base_ref}^{commit}"
+```
+
+### 1) Select ISSUE_KEY (FeelingLucky)
+
+If `ISSUE_KEY` is provided, skip selection.
+
+Otherwise:
+
+1) Resolve the DocThingy project ref (prefer id):
+
+```bash
+ltui --format json --fields id,name,key projects list > /tmp/ltui-projects.json
+
+PROJECT_REF="$(python3 - <<'PY'
+import json
+
+projects = json.load(open('/tmp/ltui-projects.json'))
+
+def norm(s: str) -> str:
+    return (s or '').strip().lower()
+
+target = 'docthingy'
+
+matches = [p for p in projects if norm(p.get('name')) == target or norm(p.get('key')) == target]
+
+if len(matches) == 1:
+    p = matches[0]
+    print(p.get('id') or p.get('key') or p.get('name') or '')
+else:
+    print('')
+PY
+)"
+```
+
+If `PROJECT_REF` is empty, ask the user to provide the project id/key (list projects to help them choose).
+
+2) List issues:
+
+```bash
+ltui --format json --fields key,title,url,updatedAt \
+  issues list --project "$PROJECT_REF" --state "Ready to pull" --label "FeelingLucky" --limit 50 \
+  > /tmp/ltui-feeling-lucky-issues.json
+
+python3 - <<'PY'
+import json, random
+
+issues = json.load(open('/tmp/ltui-feeling-lucky-issues.json'))
+if not issues:
+    print('NO_MATCHES')
+    raise SystemExit(2)
+
+random.seed()  # FeelingLucky: non-deterministic is intentional
+pick = random.choice(issues)
+
+print('PICK_KEY=' + (pick.get('key') or ''))
+print('PICK_TITLE=' + (pick.get('title') or ''))
+print('PICK_URL=' + (pick.get('url') or ''))
+PY
+```
+
+Set:
+
+- `ISSUE_KEY = PICK_KEY`
+
+### 2) Create / Switch Branch (Follow commands/cmd:start-linear-issue-branch.md)
+
+Fetch issue metadata in machine format:
+
+```bash
+ltui --format json --fields key,title,url,project,state issues view "${ISSUE_KEY}" > /tmp/ltui-issue.json
+
+ISSUE_TITLE="$(python3 -c 'import json; print(json.load(open("/tmp/ltui-issue.json")).get("title", ""))')"
+ISSUE_URL="$(python3 -c 'import json; print(json.load(open("/tmp/ltui-issue.json")).get("url", ""))')"
+```
+
+Compute:
+
+- `ISSUE_LOWER`: lowercased issue key
+- `TITLE_SLUG`: slug of the title (lowercase, non `[a-z0-9]` -> `-`, collapse repeats, trim, max ~40)
+- `branch_name`: `${ISSUE_LOWER}-${TITLE_SLUG}` (or `${ISSUE_LOWER}` if slug empty)
+- `plan_slug`: same as `branch_name`
+- `plan_path`: `thoughts/plans/${plan_slug}.md`
+
+```bash
+ISSUE_LOWER="$(python3 -c 'import sys; print(sys.argv[1].lower())' "$ISSUE_KEY")"
+TITLE_SLUG="$(python3 - <<'PY'
+import re, sys
+
+title = sys.stdin.read().strip()
+slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+slug = re.sub(r'-+', '-', slug)
+slug = slug[:40].strip('-')
+print(slug)
+PY
+<<<"$ISSUE_TITLE")"
+
+if [ -n "$TITLE_SLUG" ]; then
+  branch_name="${ISSUE_LOWER}-${TITLE_SLUG}"
+else
+  branch_name="${ISSUE_LOWER}"
+fi
+
+plan_slug="$branch_name"
+plan_path="thoughts/plans/${plan_slug}.md"
+
+mkdir -p thoughts/plans
+
+if git show-ref --verify --quiet "refs/heads/${branch_name}"; then
+  git checkout "${branch_name}"
+elif git show-ref --verify --quiet "refs/remotes/origin/${branch_name}"; then
+  git checkout --track -b "${branch_name}" "origin/${branch_name}"
+else
+  git checkout -b "${branch_name}" "${base_ref}"
+fi
+```
+
+### 3) Create Plan (commands/dev:plan.md)
+
+Run `/dev:plan` with slug `plan_slug` and ensure the plan includes:
+
+- Linear issue key + URL (`ISSUE_KEY`, `ISSUE_URL`)
+- Branch name (`branch_name`)
+
+```text
+/dev:plan ${plan_slug}
+```
+
+### 4) Plan Review + Integrate
+
+```text
+/review:change-gpt5.2 ${plan_slug}
+/review:change-k2.5 ${plan_slug}
+/review:change-integrate ${plan_slug}
+```
+
+### 5) Implement + Validate
+
+```text
+/ralph:run ${plan_slug}
+/dev:validate ${plan_slug}
+```
+
+### 6) Final Code Review
+
+Run `/review` against `base_ref...HEAD`, apply fixes, re-run until clean.
+
+### 7) Commit, Push, PR, Link
+
+```text
+/cmd:commit-push
+/cmd:create-pr ${base_ref}
+```
+
+Link PR back to Linear:
+
+```bash
+PR_URL="$(gh pr view --json url -q .url)"
+PR_TITLE="$(gh pr view --json title -q .title)"
+HEAD_SHA="$(git rev-parse HEAD)"
+
+ltui issues link "${ISSUE_KEY}" \
+  --url "$PR_URL" \
+  --title "$PR_TITLE" \
+  --branch "${branch_name}" \
+  --commit "$HEAD_SHA"
+
+ltui issues update "${ISSUE_KEY}" --state "In Review" || true
+```
+
+## Output
+
+Report:
+
+- Issue: `ISSUE_KEY` + `ISSUE_URL`
+- Branch: `branch_name`
+- Plan: `plan_path`
+- PR URL
