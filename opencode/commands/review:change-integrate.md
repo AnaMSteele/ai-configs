@@ -76,6 +76,12 @@ Use the Task tool with `subagent_type=Explore`.
 - `## Progress` still corresponds to the phase headers.
 - Each acceptance criterion has at least one verification step.
 
+### 6) Overall Plan State
+
+- Identify any open questions or decisions that need input from the user.
+- Provide the user with any low-confidence suggestions or decisions that are being made which they might want to change.
+- If you have specific issues you know, with high confidence that you need input from the user on, then ask those using the question tool. 
+- If you've asked questions with the question tool, incorporate those answers into the final plan and re-assess whether there are more open questions.
 ---
 
 ## Next Step
