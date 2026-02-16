@@ -1,9 +1,9 @@
 ---
 description: Run a change review using Kimi K2.5
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
-agent: build
+agent: reviewer-kimi
 subtask: true
-model: synthetic/hf:moonshotai/Kimi-K2.5
+model: fireworks-ai/accounts/fireworks/models/kimi-k2p5
 ---
 
 Your reviewer name is Kimi Reviewer

@@ -1,9 +1,9 @@
 ---
-name: developer
+name: developer-mm
 description: Implements your specifications with tests - delegate for writing code
 color: "#3498db"
-model: opencode/minimax-m2.5-free
-reasoning: medium
+model: fireworks-ai/accounts/fireworks/models/minimax-m2p5
+reasoningEffort: high
 mode: subagent
 ---
 

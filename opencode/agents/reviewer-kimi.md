@@ -2,7 +2,7 @@
 name: reviewer-kimi
 description: Kimi K2.5 thinking-powered document reviewer - adds critical review tags
 mode: subagent
-model: synthetic/hf:moonshotai/Kimi-K2.5
+model: fireworks-ai/accounts/fireworks/models/kimi-k2p5
 reasoningEffort: high
 ---
 
