@@ -1,7 +1,13 @@
 ---
 description: End-to-end autopilot from a FeelingLucky Linear issue to a pushed PR
 argument-hint: '[ISSUE_KEY] [BASE_REF]'
+model: openai/gpt-5.2
 ---
+
+## Critial Requirement
+These instruction refer to slash commands such as /dev:plan - these are for you to execute directly. Under NO CIRCUMSTANCES are you to look at files outside this repository - that will trigger a permission prompt and will interrupt this flow. If that happens this entire process is terminated and we have failed. 
+
+DO NOT access files outside this repository.
 
 # FeelingLucky Linear -> Branch -> Plan -> Review -> Implement -> Validate -> PR
 
@@ -14,6 +20,13 @@ End-to-end autonomous flow:
 5) Execute the plan
 6) Validate implementation vs plan
 7) Code-review, then commit+push and open a PR
+
+## Requirements
+
+- The developer agent MUST be used for any code changes and repository management
+- The quality-reviewer agent must be used for any code reviews
+- the plan-gpt5.2 agent must be used for any plan creation or editing
+- Always prefer a sub-agent when making changes, the orchestrator should not make code changes
 
 ## Inputs
 
@@ -46,6 +59,19 @@ Resolve base:
 ```bash
 git rev-parse --verify "${base_ref}^{commit}"
 ```
+
+ Critical: Orchestrator Role Boundaries
+**YOU ARE THE ORCHESTRATOR. YOU MUST NOT MAKE CODE CHANGES.**
+Your responsibilities:
+- Run read-only commands to gather information (git status, ltui queries, file reads)
+- Delegate ALL implementation to subagents via the `task` tool
+- Review subagent results and decide next steps
+- Coordinate the flow between phases
+**When a subagent task returns empty or appears incomplete:**
+- DO NOT take over and start making edits yourself
+- Re-delegate to the same or a different subagent with more specific instructions
+- Ask the user if you're unsure how to proceed
+**NEVER use `edit`, `write`, or `bash` commands that modify files** (except for read-only operations like `git status`, `git log`, etc.)
 
 ### 1) Select ISSUE_KEY (FeelingLucky)
 
@@ -163,7 +189,7 @@ fi
 
 ### 3) Create Plan (commands/dev:plan.md)
 
-Run `/dev:plan` with slug `plan_slug` and ensure the plan includes:
+Use the plan-gpt5.2 subagent to create a plann with slug `plan_slug` and ensure the plan includes:
 
 - Linear issue key + URL (`ISSUE_KEY`, `ISSUE_URL`)
 - Branch name (`branch_name`)

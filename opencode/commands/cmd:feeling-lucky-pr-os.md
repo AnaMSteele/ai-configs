@@ -4,6 +4,11 @@ argument-hint: '[ISSUE_KEY] [BASE_REF]'
 model: fireworks-ai/accounts/fireworks/models/kimi-k2p5
 ---
 
+## Critial Requirement
+These instruction refer to slash commands such as /dev:plan - these are for you to execute directly. Under NO CIRCUMSTANCES are you to look at files outside this repository - that will trigger a permission prompt and will interrupt this flow. If that happens this entire process is terminated and we have failed. 
+
+DO NOT access files outside this repository.
+
 # FeelingLucky Linear -> Branch -> Plan -> Review -> Implement -> Validate -> PR
 
 End-to-end autonomous flow:
