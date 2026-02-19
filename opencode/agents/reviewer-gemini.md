@@ -2,7 +2,7 @@
 name: reviewer-gemini
 description: Gemini document reviewer - adds critical review tags
 mode: subagent
-model: google/antigravity-gemini-3-pro
+model: opencode/gemini-3.1-pro
 reasoningEffort: high
 ---
 
