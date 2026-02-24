@@ -11,6 +11,8 @@ permission:
     "*": deny
     "thoughts/plans/*.md": allow
     "thoughts/plans/**.md": allow
+  pty_write: deny
+  pty_read: deny
 tools:
   webfetch: true
   edit: true
