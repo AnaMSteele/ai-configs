@@ -61,6 +61,43 @@ function expectOutput(result: SpawnSyncReturns<string>, text: string): void {
   assert.ok(result.stdout.includes(text), `expected output to include '${text}' but got\n${result.stdout}`);
 }
 
+function expectPureJsonOutput(result: SpawnSyncReturns<string>, commandLabel: string): unknown {
+  assertOk(result, commandLabel);
+  assert.equal(result.stderr.trim(), '', `${commandLabel}: expected no stderr but got\n${result.stderr}`);
+  const trimmed = result.stdout.trim();
+  assert.notEqual(trimmed.length, 0, `${commandLabel}: expected JSON stdout`);
+  const first = trimmed[0];
+  assert.ok(first === '{' || first === '[', `${commandLabel}: stdout must start with JSON token`);
+  return JSON.parse(trimmed);
+}
+
+test('json mode emits pure JSON suitable for jq parsing', () => {
+  const ctx = createContext();
+  ensureLtuiDefaults(ctx);
+  try {
+    let result = runCli(ctx, ['--format', 'json', 'issues', 'view', 'ENG-1']);
+    const issue = expectPureJsonOutput(result, 'issues view json') as Record<string, unknown>;
+    assert.equal(issue.identifier, 'ENG-1');
+    assert.ok(!result.stdout.includes('ISSUE_DETAIL'));
+
+    result = runCli(ctx, ['--format', 'json', 'teams', 'view', 'ENG']);
+    const team = expectPureJsonOutput(result, 'teams view json') as Record<string, unknown>;
+    assert.equal(team.key, 'ENG');
+    assert.ok(Array.isArray(team.states));
+    assert.ok(!result.stdout.includes('TEAM_DETAIL'));
+
+    result = runCli(ctx, ['--format', 'json', 'auth', 'list']);
+    const profiles = expectPureJsonOutput(result, 'auth list json') as {
+      meta: { count: number };
+      rows: unknown[];
+    };
+    assert.ok(Array.isArray(profiles.rows));
+    assert.ok(profiles.meta.count >= 0);
+  } finally {
+    cleanupContext(ctx);
+  }
+});
+
 test('auth commands operate end-to-end', () => {
   const ctx = createContext();
   try {
@@ -91,6 +128,28 @@ test('issues commands including relationships succeed', () => {
     result = runCli(ctx, ['issues', 'view', 'ENG-1', '--include-comments', '--include-history']);
     assertOk(result, 'issues view');
     expectOutput(result, 'ISSUE_DETAIL');
+
+    result = runCli(ctx, ['--format', 'json', 'issues', 'view', 'ENG-1']);
+    assertOk(result, 'issues view json');
+    const issueViewJson = JSON.parse(result.stdout.trim());
+    assert.equal(issueViewJson.identifier, 'ENG-1');
+    assert.equal(issueViewJson.state, 'Todo');
+    assert.equal(issueViewJson.url, 'https://linear.app/issue/ENG-1');
+    assert.ok(!result.stdout.includes('ISSUE_DETAIL'));
+
+    result = runCli(ctx, [
+      '--format',
+      'json',
+      '--fields',
+      'identifier,url,state',
+      'issues',
+      'view',
+      'ENG-1',
+    ]);
+    assertOk(result, 'issues view json selected fields');
+    const issueFieldsJson = JSON.parse(result.stdout.trim());
+    assert.deepEqual(Object.keys(issueFieldsJson).sort(), ['identifier', 'state', 'url']);
+    assert.equal(issueFieldsJson.identifier, 'ENG-1');
 
     result = runCli(ctx, ['issues', 'attachments', 'ENG-1', '--only-images']);
     assertOk(result, 'issues attachments');
@@ -240,6 +299,14 @@ test('team and project commands run', () => {
     result = runCli(ctx, ['teams', 'view', 'ENG']);
     assertOk(result, 'teams view');
     expectOutput(result, 'TEAM_DETAIL');
+
+    result = runCli(ctx, ['--format', 'json', 'teams', 'view', 'ENG']);
+    assertOk(result, 'teams view json');
+    const teamViewJson = JSON.parse(result.stdout.trim());
+    assert.equal(teamViewJson.key, 'ENG');
+    assert.ok(Array.isArray(teamViewJson.states));
+    assert.ok(teamViewJson.states.length > 0);
+    assert.ok(!result.stdout.includes('TEAM_DETAIL'));
 
     result = runCli(ctx, ['projects', 'list', '--team', 'ENG']);
     assertOk(result, 'projects list');

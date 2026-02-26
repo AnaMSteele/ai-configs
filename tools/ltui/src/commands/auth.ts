@@ -6,7 +6,19 @@ import {
   saveProfilesFile,
   resolveConfig,
 } from '../config.js';
-import { emitDetailBlock, emitError } from '../format.js';
+import {
+  ColumnDefinition,
+  emitError,
+  renderDetailOrJsonRecord,
+  renderPaginatedList,
+} from '../format.js';
+import { getGlobalOptions } from '../options.js';
+
+interface ProfileRow {
+  id: string;
+  workspace: string;
+  hasKey: string;
+}
 
 export function runAuthCommands(program: Command): void {
   const auth = program.command('auth').description('Authentication and profile management');
@@ -15,16 +27,27 @@ export function runAuthCommands(program: Command): void {
     .command('list')
     .description('List configured profiles')
     .action(() => {
+      const globalOpts = getGlobalOptions(program);
       const config = loadGlobalConfig();
       const profiles = loadProfilesFile();
-      const lines: string[] = [];
-      lines.push('id\tworkspace\thasKey');
+      const rows: ProfileRow[] = [];
       const entries = config.profiles ?? {};
       for (const [name, profile] of Object.entries(entries)) {
         const hasKey = profiles[name]?.apiKey ? 'true' : 'false';
-        lines.push(`${name}\t${profile.workspace}\t${hasKey}`);
+        rows.push({ id: name, workspace: profile.workspace, hasKey });
       }
-      process.stdout.write(lines.join('\n') + '\n');
+      const columns: ColumnDefinition<ProfileRow>[] = [
+        { key: 'id', header: 'id', value: row => row.id },
+        { key: 'workspace', header: 'workspace', value: row => row.workspace },
+        { key: 'hasKey', header: 'hasKey', value: row => row.hasKey },
+      ];
+      const out = renderPaginatedList(
+        rows,
+        columns,
+        { next: null, prev: null, count: rows.length },
+        { format: globalOpts.format, fields: globalOpts.fields }
+      );
+      process.stdout.write(out + '\n');
     });
 
   auth
@@ -34,6 +57,7 @@ export function runAuthCommands(program: Command): void {
     .option('--workspace <slug>', 'Workspace slug')
     .option('--api-key <key>', 'API key (optional, or use LINEAR_API_KEY)')
     .action(options => {
+      const globalOpts = getGlobalOptions(program);
       const { profile, workspace, apiKey } = options as {
         profile: string;
         workspace?: string;
@@ -59,11 +83,21 @@ export function runAuthCommands(program: Command): void {
         saveProfilesFile(profiles);
       }
 
-      const block = emitDetailBlock('PROFILE_SAVED', {
+      const detailFields = {
         PROFILE: profile,
         WORKSPACE: updated.workspace,
         KEY_STORED: key ? 'true' : 'false',
-      });
+      };
+      const block = renderDetailOrJsonRecord(
+        'PROFILE_SAVED',
+        detailFields,
+        {
+          profile,
+          workspace: updated.workspace,
+          keyStored: !!key,
+        },
+        { format: globalOpts.format, fields: globalOpts.fields }
+      );
       process.stdout.write(block + '\n');
     });
 
@@ -72,6 +106,7 @@ export function runAuthCommands(program: Command): void {
     .description('Remove a profile')
     .requiredOption('--profile <name>', 'Profile name')
     .action(options => {
+      const globalOpts = getGlobalOptions(program);
       const { profile } = options as { profile: string };
       const config = loadGlobalConfig();
       if (config.profiles && config.profiles[profile]) {
@@ -83,9 +118,15 @@ export function runAuthCommands(program: Command): void {
         delete profiles[profile];
         saveProfilesFile(profiles);
       }
-      const block = emitDetailBlock('PROFILE_REMOVED', {
+      const detailFields = {
         PROFILE: profile,
-      });
+      };
+      const block = renderDetailOrJsonRecord(
+        'PROFILE_REMOVED',
+        detailFields,
+        { profile },
+        { format: globalOpts.format, fields: globalOpts.fields }
+      );
       process.stdout.write(block + '\n');
     });
 
@@ -95,10 +136,17 @@ export function runAuthCommands(program: Command): void {
     .option('--profile <name>', 'Profile name')
     .action(options => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(options.profile as string | undefined);
-        const block = emitDetailBlock('AUTH_OK', {
+        const detailFields = {
           PROFILE: resolved.profileName || '',
-        });
+        };
+        const block = renderDetailOrJsonRecord(
+          'AUTH_OK',
+          detailFields,
+          { profile: resolved.profileName || '' },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
         process.stdout.write(block + '\n');
       } catch (error) {
         const err = error as Error;
@@ -109,4 +157,3 @@ export function runAuthCommands(program: Command): void {
       }
     });
 }
-

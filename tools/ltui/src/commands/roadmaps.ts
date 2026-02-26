@@ -3,8 +3,8 @@ import { resolveConfig } from '../config.js';
 import { createLinearClient } from '../client.js';
 import {
   ColumnDefinition,
-  emitDetailBlock,
   emitError,
+  renderDetailOrJsonRecord,
   renderPaginatedList,
   sanitizeSingleLine,
 } from '../format.js';
@@ -83,6 +83,7 @@ export function runRoadmapsCommands(program: Command): void {
     .argument('<id>', 'Roadmap id')
     .action(async (id: string) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const roadmap = await client.roadmap(id);
@@ -100,11 +101,38 @@ export function runRoadmapsCommands(program: Command): void {
           UPDATED_AT: roadmap.updatedAt?.toISOString?.() ?? '',
           URL: roadmap.url ?? '',
         };
-        let output = emitDetailBlock('ROADMAP_DETAIL', fields);
-
         const projectsConnection = await roadmap.projects({ first: 20 });
+        const projects = projectsConnection.nodes.map((project: any) => ({
+          id: project.id ?? '',
+          name: project.name ?? '',
+          state: project.state ?? '',
+        }));
+
+        const jsonPayload: Record<string, unknown> = {
+          id: roadmap.id ?? '',
+          name: roadmap.name ?? '',
+          owner: owner?.name ?? '',
+          updatedAt: roadmap.updatedAt?.toISOString?.() ?? '',
+          url: roadmap.url ?? '',
+          projects,
+        };
+
+        if (globalOpts.format === 'json') {
+          const output = renderDetailOrJsonRecord('ROADMAP_DETAIL', fields, jsonPayload, {
+            format: globalOpts.format,
+            fields: globalOpts.fields,
+          });
+          process.stdout.write(output + '\n');
+          return;
+        }
+
+        let output = renderDetailOrJsonRecord('ROADMAP_DETAIL', fields, jsonPayload, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
+
         const lines: string[] = ['PROJECTS_START'];
-        for (const project of projectsConnection.nodes) {
+        for (const project of projects) {
           lines.push(
             `${project.id}\t${sanitizeSingleLine(project.name ?? '')}\t${project.state ?? ''}`
           );

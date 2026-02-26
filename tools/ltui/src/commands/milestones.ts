@@ -3,8 +3,8 @@ import { resolveConfig } from '../config.js';
 import { createLinearClient } from '../client.js';
 import {
   ColumnDefinition,
-  emitDetailBlock,
   emitError,
+  renderDetailOrJsonRecord,
   renderPaginatedList,
   sanitizeSingleLine,
 } from '../format.js';
@@ -88,6 +88,7 @@ export function runMilestonesCommands(program: Command): void {
     .argument('<id>', 'Milestone id')
     .action(async (id: string) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const milestone = await client.projectMilestone(id);
@@ -105,7 +106,18 @@ export function runMilestonesCommands(program: Command): void {
           STATUS: milestone.archivedAt ? 'archived' : 'active',
           TARGET_DATE: milestone.targetDate ?? '',
         };
-        const output = emitDetailBlock('MILESTONE_DETAIL', fields);
+        const jsonPayload: Record<string, unknown> = {
+          id: milestone.id ?? '',
+          name: milestone.name ?? '',
+          project: project?.name ?? '',
+          status: milestone.archivedAt ? 'archived' : 'active',
+          targetDate: milestone.targetDate ?? '',
+        };
+
+        const output = renderDetailOrJsonRecord('MILESTONE_DETAIL', fields, jsonPayload, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
         process.stdout.write(output + '\n');
       } catch (error) {
         const parsed = parseLinearError(error);

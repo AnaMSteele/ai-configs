@@ -3,8 +3,8 @@ import { resolveConfig } from '../config.js';
 import { createLinearClient } from '../client.js';
 import {
   ColumnDefinition,
-  emitDetailBlock,
   emitError,
+  renderDetailOrJsonRecord,
   renderPaginatedList,
   sanitizeSingleLine,
 } from '../format.js';
@@ -70,6 +70,7 @@ export function runTeamsCommands(program: Command): void {
     .argument('<key-or-id>', 'Team key or id')
     .action(async (ref: string) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const team = await findTeamByKeyOrId(client, ref);
@@ -86,13 +87,56 @@ export function runTeamsCommands(program: Command): void {
           DESCRIPTION: sanitizeSingleLine(team.description ?? ''),
           ACTIVE: team.archivedAt ? 'false' : 'true',
         };
-        let output = emitDetailBlock('TEAM_DETAIL', fields);
 
-        const statesConnection =
-          typeof team.states === 'function' ? await team.states({ first: 50 }) : { nodes: [] };
+        const statesFromTeam =
+          typeof team.states === 'function'
+            ? await team.states({ first: 50 })
+            : { nodes: Array.isArray(team.states?.nodes) ? team.states.nodes : [] };
+        let states = statesFromTeam.nodes.map((state: any) => ({
+          id: state.id ?? '',
+          name: state.name ?? '',
+          type: state.type ?? '',
+        }));
+
+        if (states.length === 0 && team.id && typeof client.workflowStates === 'function') {
+          const fallbackStatesConnection = await client.workflowStates({
+            first: 50,
+            filter: {
+              team: { id: { eq: team.id } },
+            },
+          });
+          states = fallbackStatesConnection.nodes.map((state: any) => ({
+            id: state.id ?? '',
+            name: state.name ?? '',
+            type: state.type ?? '',
+          }));
+        }
+
+        const jsonPayload: Record<string, unknown> = {
+          id: team.id ?? '',
+          key: team.key ?? '',
+          name: team.name ?? '',
+          description: team.description ?? '',
+          active: !team.archivedAt,
+          states,
+        };
+
+        if (globalOpts.format === 'json') {
+          const output = renderDetailOrJsonRecord('TEAM_DETAIL', fields, jsonPayload, {
+            format: globalOpts.format,
+            fields: globalOpts.fields,
+          });
+          process.stdout.write(output + '\n');
+          return;
+        }
+
+        let output = renderDetailOrJsonRecord('TEAM_DETAIL', fields, jsonPayload, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
 
         const stateLines: string[] = ['STATES_START'];
-        for (const state of statesConnection.nodes) {
+        for (const state of states) {
           stateLines.push(`${state.id}\t${state.name}\t${state.type}`);
         }
         stateLines.push('STATES_END');

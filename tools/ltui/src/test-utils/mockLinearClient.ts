@@ -47,6 +47,7 @@ interface UserData {
 interface IssueData {
   id: string;
   identifier: string;
+  url: string;
   title: string;
   number: number;
   teamId: string;
@@ -189,6 +190,7 @@ function buildData() {
     {
       id: 'issue-1',
       identifier: 'ENG-1',
+      url: 'https://linear.app/issue/ENG-1',
       title: 'Fix bug',
       number: 1,
       teamId: 'team-1',
@@ -224,6 +226,7 @@ function buildData() {
     {
       id: 'issue-2',
       identifier: 'ENG-2',
+      url: 'https://linear.app/issue/ENG-2',
       title: 'Follow-up',
       number: 2,
       teamId: 'team-1',
@@ -313,6 +316,7 @@ class MockLinearClient {
     const created = this.decorateIssue({
       id: 'issue-created',
       identifier: 'ENG-999',
+      url: 'https://linear.app/issue/ENG-999',
       title: String(input.title ?? 'Generated issue'),
       number: 999,
       teamId: 'team-1',
@@ -517,6 +521,7 @@ class MockLinearClient {
     return {
       id: issue.id,
       identifier: issue.identifier,
+      url: issue.url,
       number: issue.number,
       title: issue.title,
       state,

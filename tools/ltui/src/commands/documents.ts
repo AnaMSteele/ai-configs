@@ -3,8 +3,8 @@ import { resolveConfig } from '../config.js';
 import { createLinearClient } from '../client.js';
 import {
   ColumnDefinition,
-  emitDetailBlock,
   emitError,
+  renderDetailOrJsonRecord,
   renderPaginatedList,
   sanitizeSingleLine,
   truncateMultiline,
@@ -99,6 +99,7 @@ export function runDocumentsCommands(program: Command): void {
     .option('--max-content-chars <n>', 'Maximum content characters', parseCount, 4000)
     .action(async (id: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const document = await client.document(id);
@@ -123,8 +124,33 @@ export function runDocumentsCommands(program: Command): void {
           URL: document.url ?? '',
         };
 
-        let output = emitDetailBlock('DOCUMENT_DETAIL', fields);
         const contentInfo = truncateMultiline(document.content ?? '', options.maxContentChars);
+        const jsonPayload: Record<string, unknown> = {
+          id: document.id ?? '',
+          title: document.title ?? '',
+          project: project?.name ?? '',
+          updatedAt: document.updatedAt?.toISOString?.() ?? '',
+          author: creator?.name ?? '',
+          url: document.url ?? '',
+          content: {
+            text: contentInfo.text,
+            truncated: contentInfo.truncated,
+          },
+        };
+
+        if (globalOpts.format === 'json') {
+          const output = renderDetailOrJsonRecord('DOCUMENT_DETAIL', fields, jsonPayload, {
+            format: globalOpts.format,
+            fields: globalOpts.fields,
+          });
+          process.stdout.write(output + '\n');
+          return;
+        }
+
+        let output = renderDetailOrJsonRecord('DOCUMENT_DETAIL', fields, jsonPayload, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
         output += `\nCONTENT_START\n${contentInfo.text}\nCONTENT_END\n`;
         if (contentInfo.truncated) {
           output += 'CONTENT_TRUNCATED: true\n';

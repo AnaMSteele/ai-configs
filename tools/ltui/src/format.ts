@@ -77,6 +77,21 @@ export function emitDetailBlock(header: string, fields: Record<string, string>):
   return `${header}\n${lines.join('\n')}`;
 }
 
+export function renderDetailOrJsonRecord(
+  header: string,
+  detailFields: Record<string, string>,
+  jsonRecord: Record<string, unknown>,
+  options: AgentOutputOptions
+): string {
+  if (options.format === 'json') {
+    return JSON.stringify(selectObjectFields(jsonRecord, options.fields));
+  }
+  if (options.format === 'tsv' || options.format === 'table' || options.format === 'detail') {
+    return emitDetailBlock(header, detailFields);
+  }
+  throw new Error(`validation_error Format '${options.format}' not supported for this command`);
+}
+
 export function renderList<T>(
   rows: T[],
   columns: ColumnDefinition<T>[],
@@ -129,6 +144,28 @@ function selectColumns<T>(
     const missing = fields.filter(field => !selected.find(column => column.key === field));
     throw new Error(`validation_error Unknown field(s): ${missing.join(', ')}`);
   }
+  return selected;
+}
+
+export function selectObjectFields(
+  record: Record<string, unknown>,
+  fields?: string[]
+): Record<string, unknown> {
+  if (!fields || fields.length === 0) {
+    return record;
+  }
+
+  const fieldSet = new Set(fields);
+  const selected: Record<string, unknown> = {};
+  const available = new Set(Object.keys(record));
+
+  for (const field of fieldSet) {
+    if (!available.has(field)) {
+      throw new Error(`validation_error Unknown field(s): ${field}`);
+    }
+    selected[field] = record[field];
+  }
+
   return selected;
 }
 

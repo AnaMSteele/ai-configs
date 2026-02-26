@@ -10,6 +10,7 @@ import {
   ColumnDefinition,
   emitDetailBlock,
   emitError,
+  renderDetailOrJsonRecord,
   renderPaginatedList,
   sanitizeSingleLine,
   truncateMultiline,
@@ -255,6 +256,7 @@ export function runIssuesCommands(program: Command): void {
     .option('--max-comment-chars <n>', 'Max comment chars', parseNumber, 500)
     .action(async (ref: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const issue = await resolveIssueByIdOrKey(client, ref);
@@ -278,6 +280,7 @@ export function runIssuesCommands(program: Command): void {
         const fields: Record<string, string> = {
           ISSUE: `${issue.identifier ?? ''} (${issue.id ?? ''})`,
           TITLE: issue.title ?? '',
+          URL: issue.url ?? '',
           STATE: state?.name ?? '',
           PRIORITY: issue.priority?.toString() ?? '',
           TEAM: team?.key ?? '',
@@ -297,7 +300,78 @@ export function runIssuesCommands(program: Command): void {
           fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD = `ltui issues attachments ${issueRef} --only-images --download-dir ./.ltui-attachments/${issueRef}`;
         }
 
-        let output = emitDetailBlock('ISSUE_DETAIL', fields);
+        const jsonPayload: Record<string, unknown> = {
+          id: issue.id ?? '',
+          key: team?.key ?? '',
+          identifier: issue.identifier ?? '',
+          title: issue.title ?? '',
+          url: issue.url ?? '',
+          state: state?.name ?? '',
+          priority: issue.priority?.toString() ?? '',
+          team: team?.key ?? '',
+          project: project?.name ?? '',
+          assignee: assignee?.name ?? '',
+          labels: extractLabelNames(issue),
+          createdAt: issue.createdAt?.toISOString?.() ?? '',
+          updatedAt: issue.updatedAt?.toISOString?.() ?? '',
+          attachmentsPresent: probe.attachmentsPresent,
+          imageAttachmentsPresent: probe.imageAttachmentsPresent,
+          imageAttachmentsFetchCmd: probe.imageAttachmentsPresent
+            ? fields.IMAGE_ATTACHMENTS_FETCH_CMD
+            : '',
+          imageAttachmentsDownloadCmd: probe.imageAttachmentsPresent
+            ? fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD
+            : '',
+          description: {
+            text: descriptionInfo.text,
+            truncated: descriptionInfo.truncated,
+          },
+        };
+
+        if (options.includeComments) {
+          const comments = await issue.comments({ first: 50 });
+          jsonPayload.comments = comments.nodes.map((comment: any) => {
+            const truncated = truncateMultiline(comment.body ?? '', options.maxCommentChars);
+            return {
+              id: comment.id ?? '',
+              author: comment.user?.name ?? '',
+              createdAt: comment.createdAt?.toISOString?.() ?? '',
+              body: truncated.text,
+              truncated: truncated.truncated,
+            };
+          });
+        }
+
+        if (options.includeHistory) {
+          const historyConnection = await issue.history({
+            first: 50,
+            sort: { createdAt: { order: 'Ascending' } },
+          });
+          jsonPayload.history = historyConnection.nodes.map((entry: any) => {
+            const actor = entry.actor?.name ?? entry.actorId ?? '';
+            return {
+              createdAt: entry.createdAt?.toISOString?.() ?? '',
+              actor: sanitizeSingleLine(actor),
+              type: determineHistoryType(entry),
+              from: sanitizeSingleLine(historyFromValue(entry)),
+              to: sanitizeSingleLine(historyToValue(entry)),
+            };
+          });
+        }
+
+        if (globalOpts.format === 'json') {
+          const output = renderDetailOrJsonRecord('ISSUE_DETAIL', fields, jsonPayload, {
+            format: globalOpts.format,
+            fields: globalOpts.fields,
+          });
+          process.stdout.write(output + '\n');
+          return;
+        }
+
+        let output = renderDetailOrJsonRecord('ISSUE_DETAIL', fields, jsonPayload, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
         output += `\nDESCRIPTION_START\n${descriptionInfo.text}\nDESCRIPTION_END\n`;
         if (descriptionInfo.truncated) {
           output += 'DESCRIPTION_TRUNCATED: true\n';
@@ -366,6 +440,7 @@ export function runIssuesCommands(program: Command): void {
     .option('--priority <0-4>', 'Priority', parseNumber)
     .action(async options => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
 
@@ -456,7 +531,10 @@ export function runIssuesCommands(program: Command): void {
           process.exitCode = 1;
           return;
         }
-        const block = await formatIssueSummaryBlock('ISSUE_CREATED', issue);
+        const block = await formatIssueSummaryBlock('ISSUE_CREATED', issue, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
         process.stdout.write(block + '\n');
       } catch (error) {
         writeError(error);
@@ -481,6 +559,7 @@ export function runIssuesCommands(program: Command): void {
     .option('--due <iso>', 'Due date ISO string')
     .action(async (ref: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const issue = await resolveIssueByIdOrKey(client, ref);
@@ -633,7 +712,10 @@ export function runIssuesCommands(program: Command): void {
 
         await client.updateIssue(issue.id, input as any);
         const updatedIssue = await client.issue(issue.id);
-        const block = await formatIssueSummaryBlock('ISSUE_UPDATED', updatedIssue);
+        const block = await formatIssueSummaryBlock('ISSUE_UPDATED', updatedIssue, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
         process.stdout.write(block + '\n');
       } catch (error) {
         writeError(error);
@@ -647,6 +729,7 @@ export function runIssuesCommands(program: Command): void {
     .requiredOption('--body <text-or-@path>', 'Comment body or @path')
     .action(async (ref: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const issue = await resolveIssueByIdOrKey(client, ref);
@@ -661,12 +744,23 @@ export function runIssuesCommands(program: Command): void {
         const payload = await client.createComment({ issueId: issue.id, body });
         const comment = payload.comment ? await payload.comment : undefined;
         const author = comment?.user ? await comment.user : undefined;
-        const block = emitDetailBlock('COMMENT_CREATED', {
+        const detailFields = {
           COMMENT: `${comment?.id ?? ''}`,
           AUTHOR: author?.name ?? '',
           CREATED_AT: comment?.createdAt?.toISOString?.() ?? '',
           ISSUE: issue.identifier ?? issue.id,
-        });
+        };
+        const block = renderDetailOrJsonRecord(
+          'COMMENT_CREATED',
+          detailFields,
+          {
+            comment: comment?.id ?? '',
+            author: author?.name ?? '',
+            createdAt: comment?.createdAt?.toISOString?.() ?? '',
+            issue: issue.identifier ?? issue.id ?? '',
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
         process.stdout.write(block + '\n');
       } catch (error) {
         writeError(error);
@@ -683,6 +777,7 @@ export function runIssuesCommands(program: Command): void {
     .option('--commit <sha>', 'Commit SHA metadata')
     .action(async (ref: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const issue = await resolveIssueByIdOrKey(client, ref);
@@ -711,14 +806,27 @@ export function runIssuesCommands(program: Command): void {
 
         const payload = await client.createAttachment(attachmentInput as any);
         const attachment = payload.attachment ? await payload.attachment : undefined;
-        const block = emitDetailBlock('LINK_ATTACHED', {
+        const detailFields = {
           ATTACHMENT: `${attachment?.id ?? ''}`,
           TITLE: attachment?.title ?? '',
           URL: attachment?.url ?? '',
           ISSUE: issue.identifier ?? issue.id,
           BRANCH: options.branch ?? '',
           COMMIT: options.commit ?? '',
-        });
+        };
+        const block = renderDetailOrJsonRecord(
+          'LINK_ATTACHED',
+          detailFields,
+          {
+            attachment: attachment?.id ?? '',
+            title: attachment?.title ?? '',
+            url: attachment?.url ?? '',
+            issue: issue.identifier ?? issue.id ?? '',
+            branch: options.branch ?? '',
+            commit: options.commit ?? '',
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
         process.stdout.write(block + '\n');
       } catch (error) {
         writeError(error);
@@ -732,6 +840,7 @@ export function runIssuesCommands(program: Command): void {
     .requiredOption('--parent <parent-id-or-key>', 'Parent issue id or key')
     .action(async (childRef: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const child = await resolveIssueByIdOrKey(client, childRef);
@@ -744,11 +853,21 @@ export function runIssuesCommands(program: Command): void {
         }
 
         await client.updateIssue(child.id, { parentId: parent.id });
-        const block = emitDetailBlock('RELATIONSHIP_UPDATED', {
+        const detailFields = {
           CHILD: `${child.identifier ?? child.id}`,
           PARENT: `${parent.identifier ?? parent.id}`,
           RELATION: 'parent-child',
-        });
+        };
+        const block = renderDetailOrJsonRecord(
+          'RELATIONSHIP_UPDATED',
+          detailFields,
+          {
+            child: child.identifier ?? child.id ?? '',
+            parent: parent.identifier ?? parent.id ?? '',
+            relation: 'parent-child',
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
         process.stdout.write(block + '\n');
       } catch (error) {
         writeError(error);
@@ -762,6 +881,7 @@ export function runIssuesCommands(program: Command): void {
     .requiredOption('--blocked-by <other-id-or-key>', 'Issue causing the block')
     .action(async (issueRef: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const issue = await resolveIssueByIdOrKey(client, issueRef);
@@ -779,11 +899,21 @@ export function runIssuesCommands(program: Command): void {
           type: 'blocks' as any,
         });
 
-        const block = emitDetailBlock('RELATIONSHIP_UPDATED', {
+        const detailFields = {
           ISSUE: `${issue.identifier ?? issue.id}`,
           BLOCKED_BY: `${blocker.identifier ?? blocker.id}`,
           RELATION: 'blocks',
-        });
+        };
+        const block = renderDetailOrJsonRecord(
+          'RELATIONSHIP_UPDATED',
+          detailFields,
+          {
+            issue: issue.identifier ?? issue.id ?? '',
+            blockedBy: blocker.identifier ?? blocker.id ?? '',
+            relation: 'blocks',
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
         process.stdout.write(block + '\n');
       } catch (error) {
         writeError(error);
@@ -835,6 +965,7 @@ export function runIssuesCommands(program: Command): void {
     .option('--updated-since <iso>', 'Updated since ISO timestamp')
     .option('--created-since <iso>', 'Created since ISO timestamp')
     .action(options => {
+      const globalOpts = getGlobalOptions(program);
       const definition: SavedQueryDefinition = {
         name: options.name,
         search: options.search,
@@ -847,13 +978,25 @@ export function runIssuesCommands(program: Command): void {
         createdSince: options.createdSince,
       };
       saveQuery(definition);
-      const block = emitDetailBlock('SAVED_QUERY_ADDED', {
+      const detailFields = {
         NAME: definition.name,
         TEAM: definition.team ?? '',
         PROJECT: definition.project ?? '',
         STATE: definition.state ?? '',
         LABELS: (definition.labels ?? []).join(','),
-      });
+      };
+      const block = renderDetailOrJsonRecord(
+        'SAVED_QUERY_ADDED',
+        detailFields,
+        {
+          name: definition.name,
+          team: definition.team ?? '',
+          project: definition.project ?? '',
+          state: definition.state ?? '',
+          labels: definition.labels ?? [],
+        },
+        { format: globalOpts.format, fields: globalOpts.fields }
+      );
       process.stdout.write(block + '\n');
     });
 
@@ -862,10 +1005,17 @@ export function runIssuesCommands(program: Command): void {
     .description('Remove a saved query')
     .requiredOption('--name <name>', 'Query name')
     .action(options => {
+      const globalOpts = getGlobalOptions(program);
       removeQuery(options.name);
-      const block = emitDetailBlock('SAVED_QUERY_REMOVED', {
+      const detailFields = {
         NAME: options.name,
-      });
+      };
+      const block = renderDetailOrJsonRecord(
+        'SAVED_QUERY_REMOVED',
+        detailFields,
+        { name: options.name },
+        { format: globalOpts.format, fields: globalOpts.fields }
+      );
       process.stdout.write(block + '\n');
     });
 }
@@ -1062,7 +1212,11 @@ function historyToValue(entry: any): string {
   return '';
 }
 
-async function formatIssueSummaryBlock(header: string, issue: any): Promise<string> {
+async function formatIssueSummaryBlock(
+  header: string,
+  issue: any,
+  outputOptions: { format: 'tsv' | 'table' | 'detail' | 'json'; fields?: string[] }
+): Promise<string> {
   const [state, team, project, assignee, labelsConnection] = await Promise.all([
     issue.state ? issue.state : undefined,
     issue.team ? issue.team : undefined,
@@ -1077,6 +1231,7 @@ async function formatIssueSummaryBlock(header: string, issue: any): Promise<stri
   const fields: Record<string, string> = {
     ISSUE: `${issue.identifier ?? ''} (${issue.id ?? ''})`,
     TITLE: issue.title ?? '',
+    URL: issue.url ?? '',
     STATE: state?.name ?? '',
     PRIORITY: issue.priority?.toString() ?? '',
     TEAM: team?.key ?? '',
@@ -1085,7 +1240,21 @@ async function formatIssueSummaryBlock(header: string, issue: any): Promise<stri
     LABELS: labelNames.join(','),
   };
 
-  return emitDetailBlock(header, fields);
+  const jsonPayload: Record<string, unknown> = {
+    id: issue.id ?? '',
+    key: team?.key ?? '',
+    identifier: issue.identifier ?? '',
+    title: issue.title ?? '',
+    url: issue.url ?? '',
+    state: state?.name ?? '',
+    priority: issue.priority?.toString() ?? '',
+    team: team?.key ?? '',
+    project: project?.name ?? '',
+    assignee: assignee?.name ?? '',
+    labels: labelNames,
+  };
+
+  return renderDetailOrJsonRecord(header, fields, jsonPayload, outputOptions);
 }
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30_000;

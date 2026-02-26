@@ -5,6 +5,7 @@ import {
   ColumnDefinition,
   emitDetailBlock,
   emitError,
+  renderDetailOrJsonRecord,
   renderPaginatedList,
   sanitizeSingleLine,
 } from '../format.js';
@@ -102,6 +103,7 @@ export function runProjectsCommands(program: Command): void {
     .argument('<id-or-key>', 'Project id or slug')
     .action(async (ref: string) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const project = await findProjectByKeyOrId(client, ref);
@@ -123,12 +125,51 @@ export function runProjectsCommands(program: Command): void {
           URL: project.url ?? '',
           HEALTH: project.health ?? '',
         };
-
-        let output = emitDetailBlock('PROJECT_DETAIL', fields);
+        const milestonesConnection =
+          typeof project.projectMilestones === 'function'
+            ? await project.projectMilestones({ first: 20 })
+            : { nodes: [] };
+        const milestones = milestonesConnection.nodes.map((milestone: any) => ({
+          id: milestone.id ?? '',
+          name: milestone.name ?? '',
+          targetDate: milestone.targetDate ?? '',
+        }));
 
         const totalIssues = lastValue(project.issueCountHistory);
         const completedIssues = lastValue(project.completedIssueCountHistory);
         const openIssues = Math.max(0, totalIssues - completedIssues);
+        const summary = {
+          total: totalIssues,
+          completed: completedIssues,
+          open: openIssues,
+          progress: Number((project.progress ?? 0).toFixed(2)),
+        };
+
+        const jsonPayload: Record<string, unknown> = {
+          id: project.id ?? '',
+          name: project.name ?? '',
+          status: status?.name ?? '',
+          state: project.state ?? '',
+          targetDate: project.targetDate ?? '',
+          url: project.url ?? '',
+          health: project.health ?? '',
+          summary,
+          milestones,
+        };
+
+        if (globalOpts.format === 'json') {
+          const output = renderDetailOrJsonRecord('PROJECT_DETAIL', fields, jsonPayload, {
+            format: globalOpts.format,
+            fields: globalOpts.fields,
+          });
+          process.stdout.write(output + '\n');
+          return;
+        }
+
+        let output = renderDetailOrJsonRecord('PROJECT_DETAIL', fields, jsonPayload, {
+          format: globalOpts.format,
+          fields: globalOpts.fields,
+        });
         const summaryLines = [
           'ISSUES_SUMMARY_START',
           `TOTAL: ${totalIssues}`,
@@ -138,13 +179,8 @@ export function runProjectsCommands(program: Command): void {
           'ISSUES_SUMMARY_END',
         ];
         output += `\n${summaryLines.join('\n')}\n`;
-
-        const milestonesConnection =
-          typeof project.projectMilestones === 'function'
-            ? await project.projectMilestones({ first: 20 })
-            : { nodes: [] };
         const milestoneLines = ['MILESTONES_START'];
-        for (const milestone of milestonesConnection.nodes) {
+        for (const milestone of milestones) {
           milestoneLines.push(
             `${milestone.id}\t${sanitizeSingleLine(milestone.name ?? '')}\t${milestone.targetDate ?? ''}`
           );
@@ -169,6 +205,7 @@ export function runProjectsCommands(program: Command): void {
     .option('--assignee <me|email|id>', 'Default assignee reference')
     .action(async (ref: string, options) => {
       try {
+        const globalOpts = getGlobalOptions(program);
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
         const project = await findProjectByKeyOrId(client, ref);
@@ -214,14 +251,27 @@ export function runProjectsCommands(program: Command): void {
 
         saveProjectConfig(newConfig, process.cwd());
 
-        const block = emitDetailBlock('PROJECT_ALIGNED', {
+        const detailFields = {
           PROFILE: newConfig.profile ?? '',
           TEAM: newConfig.teamKey ?? '',
           PROJECT_ID: newConfig.projectId ?? '',
           DEFAULT_STATE: newConfig.defaultIssueState ?? '',
           DEFAULT_LABELS: (newConfig.defaultLabels ?? []).join(','),
           DEFAULT_ASSIGNEE: newConfig.defaultAssignee ?? '',
-        });
+        };
+        const block = renderDetailOrJsonRecord(
+          'PROJECT_ALIGNED',
+          detailFields,
+          {
+            profile: newConfig.profile ?? '',
+            team: newConfig.teamKey ?? '',
+            projectId: newConfig.projectId ?? '',
+            defaultState: newConfig.defaultIssueState ?? '',
+            defaultLabels: newConfig.defaultLabels ?? [],
+            defaultAssignee: newConfig.defaultAssignee ?? '',
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
         process.stdout.write(block + '\n');
       } catch (error) {
         writeProjectsError(error);

@@ -30,6 +30,13 @@ const TEAM_LOOKUP_QUERY = `
         key
         name
         description
+        states(first: 50) {
+          nodes {
+            id
+            name
+            type
+          }
+        }
       }
     }
   }
