@@ -1,11 +1,15 @@
 ---
 description: Synthesize completed artifacts into permanent documentation with codebase verification
-argument-hint: [feature name or spec/plan path]
+argument-hint: "[feature name or spec/plan path]"
 ---
 
 # Graduate Feature (with Verification)
 
 Graduate completed feature artifacts to permanent documentation. This command VERIFIES that specs/research match actual implementation before documenting, ensuring permanent docs reflect what was actually built.
+
+## Input
+
+Feature name or spec/plan path: $ARGUMENTS
 
 Feature or path: $ARGUMENTS
 
@@ -225,7 +229,7 @@ For Added:
 
 ## Collaborative Divergence Resolution
 
-When divergences are found, use **AskUserQuestion** proactively to determine the right approach.
+When divergences are found, use **`question`** proactively to determine the right approach.
 
 ### Initial Triage Question
 

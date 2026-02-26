@@ -7,6 +7,5 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #4289 | 8:47 PM | 🟣 | Created Claude-Compatible OpenSpec Review Command | ~354 |
-| #4287 | 8:46 PM | 🔵 | Located Existing Claude Code Review Command | ~150 |
+| #4284 | 8:46 PM | 🔵 | Located OpenSpec Review Command Files | ~167 |
 </claude-mem-context>

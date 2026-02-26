@@ -22,14 +22,25 @@ This directory contains a comprehensive set of commands that support a complete 
 7. **`doc:fetch-batch.md`** - Batch fetch documentation from markdown lists
 8. **`doc:update.md`** - Post-implementation documentation generation
 
+### Test Orchestration Commands
+9. **`test:run-playwright.md`** - Run Playwright in PTY, stream failures, and spawn live fixer subagents
+10. **`test:run-playwright:all.md`** - Run full Playwright suite (`test:e2e:all`) in PTY with live fixer orchestration
+
 ### Simplification Commands
-9. **`simplify:1:create-plan.md`** - Generate code simplification plans
-10. **`simplify:2:process-plan.md`** - Execute approved simplification plans
+11. **`simplify:1:create-plan.md`** - Generate code simplification plans
+12. **`simplify:2:process-plan.md`** - Execute approved simplification plans
 
 ### Git Utility Commands
-11. **`cmd:commit-push.md`** - Commit all changes and push to GitHub
-12. **`cmd:create-pr.md`** - Create a pull request
-13. **`cmd:start-linear-issue.md`** - Start work on a Linear issue with branch management
+13. **`cmd:commit-push.md`** - Commit all changes and push to GitHub
+14. **`cmd:create-pr.md`** - Create a pull request
+15. **`cmd:start-linear-issue.md`** - Start work on a Linear issue with branch management
+16. **`cmd:start-linear-issue-branch.md`** - Start a Linear issue on a new branch (no worktree) and draft a first-pass plan
+17. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
+
+### Autopilot Loop Commands
+18. **`ralph:run.md`** - Execute a plan with a phase-level quality gate loop
+19. **`ralph:review-gpt5.2.md`** - Run `/review` in a loop (GPT-5.2), apply quick fixes, stop when no straightforward fixes remain
+20. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
 
 ## Command Workflows
 
@@ -73,7 +84,7 @@ This directory contains a comprehensive set of commands that support a complete 
 ### Unified Task Processing
 The **`/3:process-tasks`** command works for both PRD and spec workflows:
 - **Auto-detects** source type (PRD vs specification) from YAML front-matter
-- Uses fidelity-preserving agents (developer-fidelity, quality-reviewer-fidelity)
+- Uses fidelity-preserving agents (developer, quality-reviewer)
 - Supports complexity levels (simple/standard/comprehensive) for specs
 - Supports both "Relevant Files" (PRD) and "Implementation Files" (spec) sections
 - Validates based on source document requirements
@@ -82,7 +93,7 @@ The **`/3:process-tasks`** command works for both PRD and spec workflows:
 All workflow commands follow strict fidelity preservation:
 - **Exact Scope Implementation**: Build only what's specified in source documents
 - **No Scope Creep**: Zero additions beyond explicit requirements
-- **Fidelity Agents**: Always use developer-fidelity and quality-reviewer-fidelity
+- **Fidelity Agents**: Always use developer and quality-reviewer
 - **Question Ambiguity**: Ask for clarification rather than making assumptions
 - **Source Reference**: Constantly reference source document to prevent drift
 
@@ -165,13 +176,13 @@ All commands use consistent:
 
 ## Fidelity-Preserving Agents
 
-### developer-fidelity
+### developer
 - Implements EXACTLY what's specified in source documents
 - Adds NO tests, security, or features beyond specification requirements
 - Questions ambiguity rather than making assumptions
 - Used by all task processing workflows
 
-### quality-reviewer-fidelity
+### quality-reviewer
 - Reviews implementation against specification requirements ONLY
 - Does NOT require additional security, testing, or compliance beyond specification
 - Validates fidelity preservation and prevents scope creep
@@ -192,6 +203,8 @@ All commands are flat at the root level:
 ```
 commands/
 ├── 3:process-tasks.md (unified processor)
+├── test:run-playwright:all.md
+├── test:run-playwright.md
 ├── prd:1:create-prd.md
 ├── prd:2:gen-tasks.md
 ├── spec:1:create-spec.md
@@ -204,6 +217,11 @@ commands/
 ├── cmd:commit-push.md
 ├── cmd:create-pr.md
 ├── cmd:start-linear-issue.md
+├── cmd:start-linear-issue-branch.md
+├── cmd:review-pr-comments.md
+├── ralph:run.md
+├── ralph:review-gpt5.2.md
+├── ralph:review-opus.md
 └── _lib/ (helper scripts)
 ```
 
@@ -242,6 +260,7 @@ Commands use colon-delimited namespacing:
 - `prd:[phase]:` - PRD workflow commands (e.g., `prd:1:create-prd`)
 - `spec:[phase]:` - Specification workflow commands (e.g., `spec:1:create-spec`)
 - `doc:` - Documentation commands
+- `test:` - Test orchestration commands
 - `simplify:[phase]:` - Code simplification commands (e.g., `simplify:1:create-plan`)
 - `cmd:` - Git and utility commands (e.g., `cmd:commit-push`, `cmd:start-linear-issue`)
 - `[number]:` - Cross-workflow phase commands (e.g., `3:process-tasks`)

@@ -1,11 +1,11 @@
 ---
 description: Process tasks in a task list with fidelity-preserving agent selection
-argument-hint: [Files]
+argument-hint: "[Files]"
 ---
 
 # Instructions
 
-Process the task list using the fidelity-preserving approach to maintain exact scope as specified in the source document. This command uses developer-fidelity and quality-reviewer-fidelity agents to implement only what's explicitly specified, without additions or scope expansions.
+Process the task list using the fidelity-preserving approach to maintain exact scope as specified in the source document. This command uses developer and quality-reviewer agents to implement only what's explicitly specified, without additions or scope expansions.
 $ARGUMENTS. Think harder.
 
 ## CRITICAL: Orchestrator-Only Mode
@@ -18,6 +18,14 @@ $ARGUMENTS. Think harder.
 
 Your job is to coordinate, track progress, run validations, and manage git—NOT to write code.
 
+## Autopilot Rules
+
+- Execute the task list continuously; do not pause between subtasks.
+- Stop only when a decision between viable options requires user input due to insufficient evidence.
+- If unsure, investigate, retry, and delegate until evidence supports a decision; do not ask the user just for uncertainty.
+- Use `question` for required decisions; otherwise proceed automatically.
+- Run quality review after each phase (parent task), not after each subtask.
+
 ## Fidelity Preservation Process
 
 Before starting task implementation:
@@ -28,8 +36,8 @@ Before starting task implementation:
    - Complete all Phase 0 subtasks (version checks, smoke tests, documentation)
    - Only proceed to Phase 1+ after Phase 0 is fully validated and committed
 3. **Use Fidelity Agents:** Always use fidelity-preserving agents for implementation:
-   - Developer agent: `@developer-fidelity`
-   - Quality reviewer: `@quality-reviewer-fidelity`
+   - Developer agent: `@developer`
+   - Quality reviewer: `@quality-reviewer`
 4. **Apply Only Specified Validation:** Include only the testing and validation explicitly specified in the source document:
    - Review source document for testing requirements
    - Implement only specified security measures
@@ -41,7 +49,7 @@ When processing tasks, use the Task tool to spawn specialized sub-agents for imp
 
 ### For Implementation Tasks
 
-Delegate actual code implementation to the **developer-fidelity** agent using the Task tool:
+Delegate actual code implementation to the **developer** agent using the Task tool:
 
 **Task prompt template:**
 ```
@@ -59,7 +67,7 @@ IMPORTANT: Implement ONLY what's specified above. No additional features, tests,
 
 ### For Quality Reviews
 
-When all subtasks under a parent are complete, spawn a **quality-reviewer-fidelity** agent via Task tool:
+When all subtasks under a parent are complete, spawn a **quality-reviewer** agent via Task tool:
 
 **Task prompt template:**
 ```
@@ -73,12 +81,16 @@ Modified files:
 Verify: Implementation matches spec exactly, no scope creep, no unauthorized additions.
 ```
 
+**Quality Review Outcomes:**
+- If issues are found, spawn a **developer** agent to fix them and re-run the quality review; repeat until clean.
+- Stop and use `question` only when the reviewer identifies multiple viable interpretations or a decision is required.
+
 ### Orchestrator Responsibilities (Do NOT Delegate)
 
 The parent agent (you) handles coordination tasks directly:
 - Git branch creation and management
 - Task list updates (`[ ]` → `[x]`) in markdown files
-- User confirmation prompts
+- User input prompts when required
 - Phase transitions and commits
 - Validation command execution (lint, build, tests)
 - Reading files for context gathering
@@ -87,18 +99,15 @@ The parent agent (you) handles coordination tasks directly:
 ### What You MUST Delegate (NEVER Do Directly)
 
 **All code changes go to sub-agents.** This includes:
-- Creating new files (use developer-fidelity agent)
-- Editing existing code (use developer-fidelity agent)
-- Writing tests (use developer-fidelity agent)
-- Refactoring (use developer-fidelity agent)
-- Code review (use quality-reviewer-fidelity agent)
+- Creating new files (use developer agent)
+- Editing existing code (use developer agent)
+- Writing tests (use developer agent)
+- Refactoring (use developer agent)
+- Code review (use quality-reviewer agent)
 
 If you find yourself about to use Edit/Write/MultiEdit on a code file, STOP and spawn a sub-agent instead.
 
 
-<skip_subtask_confirmation>
-If $ARGUMENTS contains NOSUBCONF then ignore subtask confirmation in task implementation below
-</skip_subtask_confirmation>
 
 # Task List Management
 
@@ -108,48 +117,27 @@ Guidelines for managing task lists in markdown files to track progress on comple
 
 ## Critical Task Update Protocol
 
-**MANDATORY CHECKPOINT SYSTEM:** After a sub-agent completes ANY subtask, you (the orchestrator) MUST follow this exact sequence:
+After a sub-agent completes ANY subtask:
 
-1. **Declare completion with mandatory update statement:**
-   "✅ Subtask [X.Y] [task name] completed by sub-agent.
-   🔄 UPDATING MARKDOWN FILE NOW..."
+1. Declare completion.
+2. Update the markdown task list (`[ ]` → `[x]`) and show the edit.
+3. Verify the updated section and continue immediately.
 
-2. **Immediately perform the markdown update:**
-
-- Use Edit tool to change `- [ ] X.Y [task name]` to `- [x] X.Y [task name]`
-- Show the actual edit operation in the response
-
-3. **Confirm update completion:**
-   "✅ Markdown file updated: [ ] → [x] for subtask X.Y
-   📋 Task list is now current."
-
-4. **Request permission to proceed (unless NOSUBCONF specified):**
-   "Ready to proceed to next subtask. May I continue? (y/n)"
-
-**FAILURE TO FOLLOW THIS PROTOCOL IS A CRITICAL ERROR.** If a subtask completes without you immediately updating the markdown file, you MUST:
-
-- Stop all work immediately
-- State: "❌ CRITICAL ERROR: I failed to update the task list. Stopping work."
-- Wait for user intervention before proceeding
-
-**VERIFICATION REQUIREMENT:** After each task list edit, show the updated section of the markdown file to confirm the change was made correctly.
-
-- Do not proceed with tasks unless you are on a git branch other than main
-- If needed, create a branch for the phase of work you are implementing
-  - Parent agent (you) are responsible for git branch creation, not subagents
-- **One sub-task at a time:** Spawn a **developer-fidelity** sub-agent via Task tool for each subtask. Do **NOT** start the next sub‑task until you ask the user for permission and they say "yes" or "y" UNLESS NOSUBCONF is specified by the user
+If the update was delayed, self-correct immediately, verify, and proceed without pausing.
+- Check current branch: `git branch --show-current`
+- If on `main`, create a new branch for this phase of work
+- If already on a non-main branch, **DO NOT create a new branch** - proceed with current branch
+- Parent agent (you) are responsible for git branch creation, not subagents
+- **One sub-task at a time:** Spawn a **developer** sub-agent via Task tool for each subtask. Proceed immediately to the next subtask; pause only for user decisions per Autopilot Rules.
 - **Completion protocol:**
 
-  1. When a **sub-agent completes** a subtask, immediately mark it as completed by changing `[ ]` to `[x]`.
-
-  - **MANDATORY TASK UPDATE:** Before doing anything else after sub-agent completion, immediately update the markdown file `[ ]` → `[x]` and confirm the update was successful
+  1. When a **sub-agent completes** a subtask, immediately update the markdown file `[ ]` → `[x]` and confirm the update was successful.
 
   2. If **all** subtasks underneath a parent task are now `[x]`, follow this sequence:
 
-  - **First**: Run standard validation checks:
-    - Always: lint, build, secrets scan, unit tests
-  - **Only if all validations pass**: Stage changes (`git add .`)
-  - **Quality Review**: Spawn a **quality-reviewer-fidelity** sub-agent via Task tool with the source specification and list of modified files for fidelity validation
+  - **First**: Run standard validation checks (lint, build, secrets scan, unit tests). If any fail, delegate fixes and re-run until they pass.
+  - **Stage changes** (`git add .`) once validations pass.
+  - **Quality Review**: Spawn a **quality-reviewer** sub-agent via Task tool with the source specification and list of modified files for fidelity validation. If issues are found, delegate fixes and re-run the review until clean; stop only for a required user decision.
   - **Clean up**: Remove any temporary files and temporary code before committing
   - **Commit**: Use a descriptive commit message that:
 
@@ -165,9 +153,7 @@ Guidelines for managing task lists in markdown files to track progress on comple
 
   3. Once all the subtasks are marked completed and changes have been committed, mark the **parent task** as completed.
 
-- Stop after each sub‑task and wait for the user's go‑ahead UNLESS NOSUBCONF is specified by the user
-
-- Always stop after parent tasks complete, run test suite, and commit changes
+- After parent tasks complete, run validations, quality review, and commit changes, then continue.
 
 ## Task List Maintenance
 
@@ -189,30 +175,13 @@ Guidelines for managing task lists in markdown files to track progress on comple
 
 ## Handling Discoveries During Implementation
 
-**When you discover something that invalidates or significantly changes the plan:**
+If a discovery creates multiple viable options or requires scope interpretation, stop and use `question` to ask the user. Otherwise, resolve autonomously, document any deviation, and continue.
 
-1. **Stop** - Do not continue implementing based on outdated assumptions
-2. **Report** - Explain what you discovered and how you found it
-3. **Assess Impact** - Identify which phases/tasks are affected
-4. **Ask** - Present options and ask me how to proceed before continuing
-5. **Log the Deviation** - After user decision, append to the Deviations Log (see below)
+Use `question` when you need a decision between viable paths due to insufficient evidence. When no decision is required, keep investigating, retrying, and delegating until evidence supports a clear choice.
 
-Examples of discoveries requiring this protocol:
-- A dependency doesn't work as documented
-- An existing implementation already covers part of the plan
-- A technical constraint makes a phase impossible or unnecessary
-- New information suggests a different approach would be better
-- The plan conflicts with existing code patterns
-- **Phase 0 infrastructure verification fails** (version mismatch, connectivity issues)
-- **Paired dependencies are incompatible** (client/server version conflict)
+### Question Templates
 
-**Do not** silently adjust the plan or continue with an approach you know is suboptimal. The plan is a guide, not a contract—but changes require explicit approval.
-
-### Proactive User Engagement for Discoveries
-
-Use **AskUserQuestion** to engage the user when discoveries warrant input.
-
-**Validation Question (confirm impact assessment):**
+**Validation Question:**
 ```
 Question: "I discovered [X] during implementation. This affects [phases/tasks]. Is my assessment correct?"
 Header: "Impact"
@@ -223,7 +192,7 @@ Options:
 - Need more information before deciding
 ```
 
-**Trade-off Question (present alternatives):**
+**Trade-off Question:**
 ```
 Question: "I found an issue with the planned approach. Which direction should we take?"
 Header: "Approach"
@@ -233,7 +202,7 @@ Options:
 - Pause implementation while I investigate further
 ```
 
-**Scope Question (adjust plan boundaries):**
+**Scope Question:**
 ```
 Question: "This discovery means [feature] would require [significantly more work/different approach]. How should we adjust?"
 Header: "Scope"
@@ -243,34 +212,6 @@ Options:
 - Simplify the approach (describe what changes)
 - Let's discuss before deciding
 ```
-
-### When to Surface vs Proceed Autonomously
-
-**Always Surface (user engagement required):**
-- Plan assumptions are invalidated (blocker discovered)
-- Multiple viable paths with different trade-offs
-- Scope would change (expand or contract)
-- Risk level increases beyond original assessment
-- Decisions affect future phases
-- Implementation would diverge from spec intent
-
-**Proceed Autonomously (log in Deviations, don't block):**
-- Minor technical choices within spec boundaries
-- Implementation details that don't affect behavior
-- Choosing between equivalent approaches
-- Obvious error corrections in the plan
-- Well-established patterns in the codebase
-
-**Threshold Guidance:** When in doubt, err toward engaging the user. The cost of a brief pause is lower than implementing the wrong thing.
-
-### User Engagement During Sub-Agent Work
-
-If a sub-agent reports an issue during implementation:
-
-1. **Sub-agent reports issue** - Agent describes what they found
-2. **You (orchestrator) evaluate** - Is this a blocker or solvable within scope?
-3. **If blocker or scope question**: Use AskUserQuestion before spawning more agents
-4. **If solvable within spec**: Guide the sub-agent, log decision if it deviates from plan
 
 ## Deviations Log Protocol
 
@@ -335,10 +276,10 @@ As the orchestrator, you must:
    - Mark the **parent task** `[x]` once **all** its subtasks are `[x]`
 4. **Manage git** - Handle branching, staging, and commits directly
 5. **Run validations** - Execute lint, build, and test commands directly via Bash
-6. **Coordinate quality reviews** - Spawn quality-reviewer-fidelity after phases complete
+6. **Coordinate quality reviews** - Spawn quality-reviewer after phases complete
 7. **Maintain context** - Keep "Relevant Files" section accurate based on sub-agent reports
-8. **Gate progress** - Pause for user approval unless NOSUBCONF is specified
-9. **CRITICAL CHECKPOINT:** After each subtask, immediately declare completion, update markdown, confirm the update, and request permission to continue
+8. **Gate progress** - Pause only when user input is required; always use `question` for decisions, clarifications, or trade-offs
+9. **CRITICAL CHECKPOINT:** After each subtask, immediately declare completion, update markdown, confirm the update, and continue unless user input is required
 
 **Remember: You orchestrate, sub-agents implement. Never write code directly.**
 
