@@ -4,8 +4,7 @@ import { createLinearClient } from '../client.js';
 import {
   ColumnDefinition,
   emitError,
-  emitPaginationMeta,
-  renderList,
+  renderPaginatedList,
 } from '../format.js';
 import { getGlobalOptions } from '../options.js';
 import { parseLinearError } from '../linear.js';
@@ -53,13 +52,17 @@ export function runNotificationsCommands(program: Command): void {
           { key: 'createdAt', header: 'createdAt', value: row => row.createdAt },
         ];
 
-        const meta = emitPaginationMeta(
-          data.pageInfo?.endCursor ?? null,
-          data.pageInfo?.startCursor ?? null,
-          rows.length
+        const out = renderPaginatedList(
+          rows,
+          columns,
+          {
+            next: data.pageInfo?.endCursor ?? null,
+            prev: data.pageInfo?.startCursor ?? null,
+            count: rows.length,
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
         );
-        const body = renderList(rows, columns, { format: globalOpts.format, fields: globalOpts.fields });
-        process.stdout.write(`${meta}\n${body}\n`);
+        process.stdout.write(out + '\n');
       } catch (error) {
         const parsed = parseLinearError(error);
         const out = emitError(parsed.code, parsed.message);

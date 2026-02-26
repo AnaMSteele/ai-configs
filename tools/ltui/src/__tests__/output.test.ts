@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   renderList,
+  renderPaginatedList,
   emitDetailBlock,
   emitPaginationMeta,
   truncateMultiline,
@@ -170,4 +171,12 @@ test('pagination metadata is emitted ahead of list outputs', () => {
   const meta = emitPaginationMeta('after', 'before', 2);
   const lines = meta.split('\n');
   assert.deepEqual(lines, ['CURSOR_NEXT: after', 'CURSOR_PREV: before', 'COUNT: 2']);
+});
+
+test('paginated JSON output is JSON-only envelope', () => {
+  const columns = [{ key: 'id', header: 'id', value: (row: any) => row.id }];
+  const rows = [{ id: '123' }];
+  const out = renderPaginatedList(rows, columns, { next: 'after', prev: 'before', count: 1 }, { format: 'json' });
+  assert.equal(out, '{"meta":{"cursorNext":"after","cursorPrev":"before","count":1},"rows":[{"id":"123"}]}');
+  assert.ok(!out.includes('CURSOR_NEXT'));
 });

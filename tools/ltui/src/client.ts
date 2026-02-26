@@ -21,6 +21,17 @@ export function createLinearClient(resolved: ResolvedConfig): LinearClient {
   if (!resolved.apiKey) {
     throw new Error('auth_missing No API key available for Linear client');
   }
-  cachedClient = new LinearClient({ apiKey: resolved.apiKey });
+
+  const rawExpireIn = process.env.LTUI_PUBLIC_FILE_URLS_EXPIRE_IN;
+  const parsedExpireIn = rawExpireIn ? parseInt(rawExpireIn, 10) : NaN;
+  const expireIn = Number.isFinite(parsedExpireIn) && parsedExpireIn > 0 ? parsedExpireIn : 60 * 60;
+
+  // Request signed uploads.linear.app URLs so tools without custom headers can fetch files.
+  cachedClient = new LinearClient({
+    apiKey: resolved.apiKey,
+    headers: {
+      'public-file-urls-expire-in': String(expireIn),
+    },
+  });
   return cachedClient;
 }

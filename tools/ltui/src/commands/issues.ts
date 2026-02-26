@@ -1,12 +1,16 @@
 import type { Command } from 'commander';
+import { createWriteStream } from 'node:fs';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { resolveConfig } from '../config.js';
 import { createLinearClient } from '../client.js';
 import {
   ColumnDefinition,
   emitDetailBlock,
   emitError,
-  emitPaginationMeta,
-  renderList,
+  renderPaginatedList,
   sanitizeSingleLine,
   truncateMultiline,
 } from '../format.js';
@@ -35,6 +39,20 @@ interface IssueListRow {
   labels: string;
   project: string;
   updatedAt: string;
+}
+
+interface IssueAssetRow {
+  id: string;
+  title: string;
+  url: string;
+  sourceType: string;
+  subtitle: string;
+  contentType: string;
+  isImage: string;
+  createdAt: string;
+  downloadPath: string;
+  downloadStatus: string;
+  downloadError: string;
 }
 
 interface IssueListCommandOptions {
@@ -103,16 +121,125 @@ export function runIssuesCommands(program: Command): void {
           { key: 'updatedAt', header: 'updatedAt', value: row => row.updatedAt },
         ];
 
-        const meta = emitPaginationMeta(
-          data.pageInfo?.endCursor ?? null,
-          data.pageInfo?.startCursor ?? null,
-          rows.length
+        const out = renderPaginatedList(
+          rows,
+          columns,
+          {
+            next: data.pageInfo?.endCursor ?? null,
+            prev: data.pageInfo?.startCursor ?? null,
+            count: rows.length,
+          },
+          {
+            format: globalOpts.format,
+            fields: globalOpts.fields,
+          }
         );
-        const body = renderList(rows, columns, {
-          format: globalOpts.format,
-          fields: globalOpts.fields,
+        process.stdout.write(out + '\n');
+      } catch (error) {
+        writeError(error);
+      }
+    });
+
+  issues
+    .command('attachments')
+    .description('List issue attachments and uploaded file URLs')
+    .argument('<id>', 'Issue id or key')
+    .option('--only-images', 'Only include image-like entries')
+    .option('--download-dir <dir>', 'Download matching entries to this directory')
+    .option('--overwrite', 'Overwrite existing files')
+    .option('--no-linear-attachments', 'Exclude Linear attachments (issue.attachments)')
+    .option('--no-upload-urls', 'Exclude uploads.linear.app URLs extracted from markdown')
+    .option('--no-scan-comments', 'Do not scan comments for uploads.linear.app URLs')
+    .action(async (ref: string, options) => {
+      try {
+        const globalOpts = getGlobalOptions(program);
+        const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
+        const client = createLinearClient(resolved);
+        const issue = await resolveIssueByIdOrKey(client, ref);
+        if (!issue) {
+          const out = emitError('not_found', `Issue '${ref}' not found`);
+          process.stderr.write(out + '\n');
+          process.exitCode = 1;
+          return;
+        }
+
+        const downloadDir = options.downloadDir ? String(options.downloadDir) : null;
+        if (downloadDir && !resolved.apiKey) {
+          const out = emitError('auth_missing', 'No API key available for downloads');
+          process.stderr.write(out + '\n');
+          process.exitCode = 1;
+          return;
+        }
+
+        const rows = await buildIssueAssetRows(issue, {
+          includeLinearAttachments: options.linearAttachments !== false,
+          includeUploadUrls: options.uploadUrls !== false,
+          scanComments: options.scanComments !== false,
         });
-        process.stdout.write(`${meta}\n${body}\n`);
+
+        const filtered = options.onlyImages
+          ? rows.filter(row => row.isImage === 'true')
+          : rows;
+
+        filtered.sort((a, b) => {
+          const timeA = a.createdAt;
+          const timeB = b.createdAt;
+          if (timeA !== timeB) return timeA > timeB ? -1 : 1;
+          return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+        });
+
+        const paginated = paginateLocalRows(filtered, {
+          limit: globalOpts.limit,
+          cursor: globalOpts.cursor,
+        });
+
+        let downloadFailed = false;
+        if (downloadDir) {
+          await ensureSafeDownloadDir(downloadDir);
+          for (const row of paginated.rows) {
+            const result = await downloadToDir(row.url, downloadDir, {
+              overwrite: !!options.overwrite,
+              apiKey: resolved.apiKey ?? '',
+              suggestedBaseName: row.title || issue.identifier || 'asset',
+              validateImage: row.isImage === 'true',
+            });
+            row.downloadPath = result.downloadPath;
+            row.downloadStatus = result.downloadStatus;
+            row.downloadError = result.downloadError;
+            if (result.downloadStatus === 'failed') {
+              downloadFailed = true;
+            }
+          }
+        }
+
+        const columns: ColumnDefinition<IssueAssetRow>[] = [
+          { key: 'id', header: 'id', value: row => row.id },
+          { key: 'title', header: 'title', value: row => row.title },
+          { key: 'url', header: 'url', value: row => row.url },
+          { key: 'sourceType', header: 'sourceType', value: row => row.sourceType },
+          { key: 'subtitle', header: 'subtitle', value: row => row.subtitle },
+          { key: 'contentType', header: 'contentType', value: row => row.contentType },
+          { key: 'isImage', header: 'isImage', value: row => row.isImage },
+          { key: 'createdAt', header: 'createdAt', value: row => row.createdAt },
+          { key: 'downloadPath', header: 'downloadPath', value: row => row.downloadPath },
+          { key: 'downloadStatus', header: 'downloadStatus', value: row => row.downloadStatus },
+          { key: 'downloadError', header: 'downloadError', value: row => row.downloadError },
+        ];
+
+        const out = renderPaginatedList(
+          paginated.rows,
+          columns,
+          {
+            next: paginated.next,
+            prev: paginated.prev,
+            count: paginated.rows.length,
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
+        process.stdout.write(out + '\n');
+        if (downloadFailed) {
+          process.exitCode = 1;
+        }
       } catch (error) {
         writeError(error);
       }
@@ -160,6 +287,15 @@ export function runIssuesCommands(program: Command): void {
           CREATED_AT: issue.createdAt?.toISOString?.() ?? '',
           UPDATED_AT: issue.updatedAt?.toISOString?.() ?? '',
         };
+
+        const probe = await probeIssueAssets(issue);
+        fields.ATTACHMENTS_PRESENT = probe.attachmentsPresent ? 'true' : 'false';
+        fields.IMAGE_ATTACHMENTS_PRESENT = probe.imageAttachmentsPresent ? 'true' : 'false';
+        if (probe.imageAttachmentsPresent) {
+          const issueRef = issue.identifier ?? ref;
+          fields.IMAGE_ATTACHMENTS_FETCH_CMD = `ltui issues attachments ${issueRef} --only-images --format json`;
+          fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD = `ltui issues attachments ${issueRef} --only-images --download-dir ./.ltui-attachments/${issueRef}`;
+        }
 
         let output = emitDetailBlock('ISSUE_DETAIL', fields);
         output += `\nDESCRIPTION_START\n${descriptionInfo.text}\nDESCRIPTION_END\n`;
@@ -674,13 +810,17 @@ export function runIssuesCommands(program: Command): void {
           value: row => (row.labels ?? []).join(','),
         },
       ];
-      const meta = emitPaginationMeta(null, null, savedQueries.length);
-      const body = renderList(savedQueries, columns, {
-        format: globalOpts.format,
-        fields: globalOpts.fields,
-      });
-      process.stdout.write(`${meta}\n${body}\n`);
-    });
+       const out = renderPaginatedList(
+         savedQueries,
+         columns,
+         { next: null, prev: null, count: savedQueries.length },
+         {
+           format: globalOpts.format,
+           fields: globalOpts.fields,
+         }
+       );
+       process.stdout.write(out + '\n');
+     });
 
   saved
     .command('add')
@@ -863,6 +1003,38 @@ function extractLabelNames(issue: any): string[] {
   return [];
 }
 
+function paginateLocalRows<T>(
+  rows: T[],
+  options: { limit: number; cursor: string | null }
+): { rows: T[]; next: string | null; prev: string | null } {
+  const first =
+    typeof options.limit === 'number' && Number.isFinite(options.limit) && options.limit > 0
+      ? Math.trunc(options.limit)
+      : rows.length;
+  const afterIndex = parseLocalCursor(options.cursor);
+  const startIndex = afterIndex !== null ? afterIndex + 1 : 0;
+  const pageRows = rows.slice(startIndex, startIndex + first);
+  const endIndex = pageRows.length > 0 ? startIndex + pageRows.length - 1 : -1;
+  const startCursor = pageRows.length > 0 ? `cursor:${startIndex}` : null;
+  const endCursor = pageRows.length > 0 ? `cursor:${endIndex}` : null;
+  const hasNextPage = endIndex >= 0 ? endIndex < rows.length - 1 : false;
+  const hasPreviousPage = startIndex > 0;
+
+  return {
+    rows: pageRows,
+    next: hasNextPage ? endCursor : null,
+    prev: hasPreviousPage ? startCursor : null,
+  };
+}
+
+function parseLocalCursor(cursor: string | null): number | null {
+  if (!cursor) return null;
+  const match = /^cursor:(\d+)$/.exec(cursor);
+  if (!match) return null;
+  const parsed = parseInt(match[1] ?? '', 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
 function determineHistoryType(entry: any): string {
   if (entry.toState || entry.fromState) return 'state';
   if (entry.toAssignee || entry.fromAssignee) return 'assignee';
@@ -914,6 +1086,554 @@ async function formatIssueSummaryBlock(header: string, issue: any): Promise<stri
   };
 
   return emitDetailBlock(header, fields);
+}
+
+const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30_000;
+const DEFAULT_MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
+const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
+
+type ImageKind = 'png' | 'jpeg' | 'gif' | 'webp' | 'svg' | 'unknown';
+
+async function buildIssueAssetRows(
+  issue: any,
+  options: { includeLinearAttachments: boolean; includeUploadUrls: boolean; scanComments: boolean }
+): Promise<IssueAssetRow[]> {
+  const rowsById = new Map<string, IssueAssetRow>();
+
+  if (options.includeLinearAttachments) {
+    const attachments = await fetchAllIssueAttachments(issue);
+    for (const attachment of attachments) {
+      const id = attachment.id ?? '';
+      if (!id) continue;
+      const createdAt = attachment.createdAt?.toISOString?.() ?? '';
+      const url = attachment.url ?? '';
+      const sourceType = attachment.sourceType ?? '';
+      const subtitle = attachment.subtitle ?? '';
+      const contentType = String((attachment.metadata as any)?.contentType ?? '');
+      const isImage = isImageLike({ url, contentType });
+      const row: IssueAssetRow = {
+        id,
+        title: sanitizeSingleLine(attachment.title ?? ''),
+        url,
+        sourceType,
+        subtitle,
+        contentType,
+        isImage: isImage ? 'true' : 'false',
+        createdAt,
+        downloadPath: '',
+        downloadStatus: '',
+        downloadError: '',
+      };
+      rowsById.set(id, row);
+    }
+  }
+
+  if (options.includeUploadUrls) {
+    const issueCreatedAt = issue.createdAt?.toISOString?.() ?? '';
+    for (const ref of extractUploadRefs(issue.description ?? '')) {
+      upsertUploadRow(rowsById, ref.url, issueCreatedAt, 'description', ref.isImage);
+    }
+
+    if (options.scanComments) {
+      const comments = await fetchAllIssueComments(issue);
+      for (const comment of comments) {
+        const createdAt = comment.createdAt?.toISOString?.() ?? '';
+        const subtitle = `comment:${comment.id ?? ''}`;
+        for (const ref of extractUploadRefs(comment.body ?? '')) {
+          upsertUploadRow(rowsById, ref.url, createdAt, subtitle, ref.isImage);
+        }
+      }
+    }
+  }
+
+  return [...rowsById.values()];
+}
+
+function upsertUploadRow(
+  rowsById: Map<string, IssueAssetRow>,
+  url: string,
+  createdAt: string,
+  subtitle: string,
+  isImage: boolean
+): void {
+  const id = url;
+  const existing = rowsById.get(id);
+  const row: IssueAssetRow = {
+    id,
+    title: '',
+    url,
+    sourceType: 'linear_upload',
+    subtitle,
+    contentType: '',
+    isImage: isImage ? 'true' : 'false',
+    createdAt,
+    downloadPath: '',
+    downloadStatus: '',
+    downloadError: '',
+  };
+
+  if (!existing) {
+    rowsById.set(id, row);
+    return;
+  }
+
+  // Prefer the most recent timestamp, and keep any non-empty title/subtitle details.
+  const keepCreatedAt = existing.createdAt && existing.createdAt >= createdAt ? existing.createdAt : createdAt;
+  rowsById.set(id, {
+    ...existing,
+    createdAt: keepCreatedAt,
+    subtitle: existing.subtitle || subtitle,
+  });
+}
+
+async function fetchAllIssueAttachments(issue: any): Promise<any[]> {
+  const nodes: any[] = [];
+  let after: string | undefined;
+  for (;;) {
+    const connection = await issue.attachments({ first: 50, after });
+    nodes.push(...(connection.nodes ?? []));
+    if (!connection.pageInfo?.hasNextPage) break;
+    after = connection.pageInfo?.endCursor;
+    if (!after) break;
+  }
+  return nodes;
+}
+
+async function fetchAllIssueComments(issue: any): Promise<any[]> {
+  const nodes: any[] = [];
+  let after: string | undefined;
+  for (;;) {
+    const connection = await issue.comments({ first: 50, after });
+    nodes.push(...(connection.nodes ?? []));
+    if (!connection.pageInfo?.hasNextPage) break;
+    after = connection.pageInfo?.endCursor;
+    if (!after) break;
+  }
+  return nodes;
+}
+
+async function probeIssueAssets(issue: any): Promise<{
+  attachmentsPresent: boolean;
+  imageAttachmentsPresent: boolean;
+}> {
+  let attachmentsPresent = false;
+  let imageAttachmentsPresent = false;
+
+  const descriptionRefs = extractUploadRefs(issue.description ?? '');
+  if (descriptionRefs.length > 0) {
+    attachmentsPresent = true;
+  }
+  if (descriptionRefs.some(ref => ref.isImage)) {
+    imageAttachmentsPresent = true;
+  }
+
+  // Probe Linear attachments.
+  let afterAttachment: string | undefined;
+  for (;;) {
+    const connection = await issue.attachments({ first: 50, after: afterAttachment });
+    const nodes = connection.nodes ?? [];
+    if (nodes.length > 0) {
+      attachmentsPresent = true;
+    }
+    for (const attachment of nodes) {
+      const url = attachment.url ?? '';
+      const contentType = String((attachment.metadata as any)?.contentType ?? '');
+      if (isImageLike({ url, contentType })) {
+        imageAttachmentsPresent = true;
+        break;
+      }
+    }
+    if (imageAttachmentsPresent) break;
+    if (!connection.pageInfo?.hasNextPage) break;
+    afterAttachment = connection.pageInfo?.endCursor;
+    if (!afterAttachment) break;
+  }
+
+  // Probe uploads in comments. Early-exit once images are found.
+  if (!imageAttachmentsPresent) {
+    let afterComment: string | undefined;
+    for (;;) {
+      const connection = await issue.comments({ first: 50, after: afterComment });
+      const nodes = connection.nodes ?? [];
+      for (const comment of nodes) {
+        const refs = extractUploadRefs(comment.body ?? '');
+        if (refs.length > 0) {
+          attachmentsPresent = true;
+        }
+        if (refs.some(ref => ref.isImage)) {
+          imageAttachmentsPresent = true;
+          break;
+        }
+      }
+      if (imageAttachmentsPresent) break;
+      if (!connection.pageInfo?.hasNextPage) break;
+      afterComment = connection.pageInfo?.endCursor;
+      if (!afterComment) break;
+    }
+  }
+
+  return { attachmentsPresent, imageAttachmentsPresent };
+}
+
+function extractUploadUrls(text: string): string[] {
+  return extractUploadRefs(text).map(ref => ref.url);
+}
+
+function extractUploadRefs(text: string): Array<{ url: string; isImage: boolean }> {
+  const all = new Set<string>();
+  const image = new Set<string>();
+
+  const clean = (raw: string): string => raw.replace(/[),.\]]+$/g, '');
+
+  // Markdown image embeds: ![alt](url) / ![alt](<url>)
+  for (const match of text.matchAll(
+    /!\[[^\]]*\]\(\s*<?(https:\/\/uploads\.linear\.app\/[^\s)>\"]+)>?\s*\)/g
+  )) {
+    const url = clean(match[1] ?? '');
+    if (url) image.add(url);
+  }
+
+  // Linear also accepts: ![alt]<url>
+  for (const match of text.matchAll(
+    /!\[[^\]]*\]\s*<\s*(https:\/\/uploads\.linear\.app\/[^\s>\"]+)\s*>/g
+  )) {
+    const url = clean(match[1] ?? '');
+    if (url) image.add(url);
+  }
+
+  // Any uploads.linear.app URL reference.
+  for (const match of text.matchAll(/https:\/\/uploads\.linear\.app\/[^\s)\]>\"]+/g)) {
+    const url = clean(match[0] ?? '');
+    if (url) all.add(url);
+  }
+
+  const results: Array<{ url: string; isImage: boolean }> = [];
+  for (const url of all) {
+    let isImageByExt = false;
+    try {
+      const parsed = new URL(url);
+      const ext = path.extname(parsed.pathname).toLowerCase();
+      isImageByExt = IMAGE_EXTENSIONS.has(ext);
+    } catch {
+      // ignore
+    }
+    results.push({ url, isImage: image.has(url) || isImageByExt });
+  }
+  return results;
+}
+
+function isImageLike(input: { url: string; contentType: string }): boolean {
+  const url = input.url ?? '';
+  const ct = normalizeContentType(input.contentType ?? '');
+  if (ct.startsWith('image/')) return true;
+  try {
+    const parsed = new URL(url);
+    const ext = path.extname(parsed.pathname).toLowerCase();
+    return IMAGE_EXTENSIONS.has(ext);
+  } catch {
+    return false;
+  }
+}
+
+function normalizeContentType(contentType: string): string {
+  return (contentType ?? '').toLowerCase().split(';')[0]?.trim() ?? '';
+}
+
+async function ensureSafeDownloadDir(dir: string): Promise<void> {
+  const resolved = path.resolve(dir);
+  try {
+    const st = await fs.lstat(resolved);
+    if (st.isSymbolicLink()) {
+      throw new Error('validation_error Download directory must not be a symlink');
+    }
+    if (!st.isDirectory()) {
+      throw new Error('validation_error Download path is not a directory');
+    }
+    return;
+  } catch (error: any) {
+    if (error?.code !== 'ENOENT') throw error;
+  }
+
+  await fs.mkdir(resolved, { recursive: true });
+  const st = await fs.lstat(resolved);
+  if (st.isSymbolicLink()) {
+    throw new Error('validation_error Download directory must not be a symlink');
+  }
+  if (!st.isDirectory()) {
+    throw new Error('validation_error Download path is not a directory');
+  }
+}
+
+async function downloadToDir(
+  url: string,
+  downloadDir: string,
+  options: { overwrite: boolean; apiKey: string; suggestedBaseName: string; validateImage: boolean }
+): Promise<{ downloadPath: string; downloadStatus: string; downloadError: string }> {
+  if (!url) {
+    return { downloadPath: '', downloadStatus: 'failed', downloadError: 'missing_url' };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { downloadPath: '', downloadStatus: 'failed', downloadError: 'invalid_url' };
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return { downloadPath: '', downloadStatus: 'failed', downloadError: 'unsupported_url_scheme' };
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), DEFAULT_DOWNLOAD_TIMEOUT_MS);
+  try {
+    const headers: Record<string, string> = {};
+    if (parsed.hostname === 'uploads.linear.app' && options.apiKey) {
+      headers['Authorization'] = options.apiKey.startsWith('Bearer ')
+        ? options.apiKey
+        : `Bearer ${options.apiKey}`;
+    }
+
+    const response = await fetch(parsed.toString(), { signal: controller.signal, headers });
+    if (!response.ok) {
+      return {
+        downloadPath: '',
+        downloadStatus: 'failed',
+        downloadError: `http_${response.status}`,
+      };
+    }
+
+    const contentType = response.headers.get('content-type') ?? '';
+    const ext = inferExtension(parsed, contentType);
+    const base = sanitizeFileBaseName(options.suggestedBaseName || 'asset');
+    const target = await chooseDownloadPath(downloadDir, base, ext, options.overwrite);
+    if (target.status === 'exists') {
+      return { downloadPath: target.path, downloadStatus: 'exists', downloadError: '' };
+    }
+
+    // Refuse to write through symlinks.
+    const existing = await safeLstat(target.path);
+    if (existing && existing.isSymbolicLink()) {
+      return { downloadPath: '', downloadStatus: 'failed', downloadError: 'refuse_symlink' };
+    }
+
+    if (!response.body) {
+      return { downloadPath: '', downloadStatus: 'failed', downloadError: 'empty_body' };
+    }
+
+    const tempPath = `${target.path}.part-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const source = Readable.fromWeb(response.body as any);
+    const limiter = new ByteLimitTransform(DEFAULT_MAX_DOWNLOAD_BYTES);
+    const sink = createWriteStream(tempPath, { flags: 'wx' });
+    try {
+      await pipeline(source, limiter, sink);
+      await fs.rename(tempPath, target.path);
+    } catch (error) {
+      await fs.unlink(tempPath).catch(() => undefined);
+      throw error;
+    }
+
+    if (options.validateImage) {
+      const imageError = await validateDownloadedImage(target.path, contentType);
+      if (imageError) {
+        await fs.unlink(target.path).catch(() => undefined);
+        return { downloadPath: '', downloadStatus: 'failed', downloadError: imageError };
+      }
+    }
+
+    return { downloadPath: target.path, downloadStatus: 'downloaded', downloadError: '' };
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      return { downloadPath: '', downloadStatus: 'failed', downloadError: 'timeout' };
+    }
+    return { downloadPath: '', downloadStatus: 'failed', downloadError: sanitizeSingleLine(String(error?.message ?? error)) };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+class ByteLimitTransform extends Transform {
+  private seen = 0;
+  private limit: number;
+  constructor(limit: number) {
+    super();
+    this.limit = limit;
+  }
+  _transform(chunk: any, _enc: BufferEncoding, cb: (error?: Error | null) => void) {
+    const size = chunk?.length ?? 0;
+    this.seen += size;
+    if (this.seen > this.limit) {
+      cb(new Error('max_size_exceeded'));
+      return;
+    }
+    this.push(chunk);
+    cb();
+  }
+}
+
+async function safeLstat(p: string): Promise<import('node:fs').Stats | null> {
+  try {
+    return await fs.lstat(p);
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') return null;
+    throw error;
+  }
+}
+
+async function chooseDownloadPath(
+  downloadDir: string,
+  base: string,
+  ext: string,
+  overwrite: boolean
+): Promise<{ status: 'download' | 'exists'; path: string }> {
+  const root = path.resolve(downloadDir);
+  if (overwrite) {
+    const candidate = path.resolve(root, `${base}${ext}`);
+    return { status: 'download', path: candidate };
+  }
+
+  for (let i = 0; i < 10_000; i++) {
+    const name = i === 0 ? `${base}${ext}` : `${base}-${i}${ext}`;
+    const candidate = path.resolve(root, name);
+    if (!candidate.startsWith(root + path.sep)) {
+      throw new Error('validation_error Invalid download path');
+    }
+    const st = await safeLstat(candidate);
+    if (!st) {
+      return { status: 'download', path: candidate };
+    }
+    if (st.isSymbolicLink()) {
+      throw new Error('validation_error Refusing to overwrite symlink');
+    }
+  }
+  throw new Error('validation_error Too many filename collisions');
+}
+
+function inferExtension(url: URL, contentType: string): string {
+  const ext = path.extname(url.pathname).toLowerCase();
+  if (IMAGE_EXTENSIONS.has(ext)) return ext;
+
+  const ct = normalizeContentType(contentType);
+  switch (ct) {
+    case 'image/png':
+      return '.png';
+    case 'image/jpeg':
+      return '.jpg';
+    case 'image/gif':
+      return '.gif';
+    case 'image/webp':
+      return '.webp';
+    case 'image/svg+xml':
+      return '.svg';
+    default:
+      return '';
+  }
+}
+
+function contentTypeToImageKind(contentType: string): ImageKind {
+  switch (normalizeContentType(contentType)) {
+    case 'image/png':
+      return 'png';
+    case 'image/jpeg':
+      return 'jpeg';
+    case 'image/gif':
+      return 'gif';
+    case 'image/webp':
+      return 'webp';
+    case 'image/svg+xml':
+      return 'svg';
+    default:
+      return 'unknown';
+  }
+}
+
+function sniffImageKind(head: Buffer): ImageKind {
+  if (head.length >= 8
+    && head[0] === 0x89
+    && head[1] === 0x50
+    && head[2] === 0x4e
+    && head[3] === 0x47
+    && head[4] === 0x0d
+    && head[5] === 0x0a
+    && head[6] === 0x1a
+    && head[7] === 0x0a) {
+    return 'png';
+  }
+
+  if (head.length >= 3 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) {
+    return 'jpeg';
+  }
+
+  if (head.length >= 6) {
+    const gifHeader = head.subarray(0, 6).toString('ascii');
+    if (gifHeader === 'GIF87a' || gifHeader === 'GIF89a') {
+      return 'gif';
+    }
+  }
+
+  if (head.length >= 12) {
+    const riff = head.subarray(0, 4).toString('ascii');
+    const webp = head.subarray(8, 12).toString('ascii');
+    if (riff === 'RIFF' && webp === 'WEBP') {
+      return 'webp';
+    }
+  }
+
+  if (head.length > 0) {
+    const asText = head.toString('utf8').replace(/^\uFEFF/, '').trimStart().toLowerCase();
+    if (asText.startsWith('<svg') || (asText.startsWith('<?xml') && asText.includes('<svg'))) {
+      return 'svg';
+    }
+  }
+
+  return 'unknown';
+}
+
+async function validateDownloadedImage(filePath: string, contentType: string): Promise<string | null> {
+  const stat = await fs.stat(filePath);
+  if (stat.size <= 0) {
+    return 'invalid_image_empty_file';
+  }
+
+  const file = await fs.open(filePath, 'r');
+  try {
+    const headLength = Math.min(512, stat.size);
+    const head = Buffer.alloc(headLength);
+    await file.read(head, 0, headLength, 0);
+
+    const tailLength = Math.min(16, stat.size);
+    const tail = Buffer.alloc(tailLength);
+    await file.read(tail, 0, tailLength, stat.size - tailLength);
+
+    const normalizedContentType = normalizeContentType(contentType);
+    const sniffed = sniffImageKind(head);
+    if (sniffed === 'unknown' && !normalizedContentType.startsWith('image/')) {
+      return 'invalid_image_signature';
+    }
+
+    const expected = contentTypeToImageKind(normalizedContentType);
+    if (expected !== 'unknown' && expected !== sniffed) {
+      return `invalid_image_mismatch_${expected}_vs_${sniffed}`;
+    }
+
+    if (sniffed === 'jpeg' && (tailLength < 2 || tail[tailLength - 2] !== 0xff || tail[tailLength - 1] !== 0xd9)) {
+      return 'invalid_image_jpeg_missing_eoi';
+    }
+
+    return null;
+  } finally {
+    await file.close();
+  }
+}
+
+function sanitizeFileBaseName(input: string): string {
+  const raw = String(input ?? '');
+  const cleaned = raw
+    .replace(/https?:\/\//g, '')
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const base = cleaned || 'asset';
+  return base.length > 80 ? base.slice(0, 80) : base;
 }
 
 function parseNumber(value: string): number {

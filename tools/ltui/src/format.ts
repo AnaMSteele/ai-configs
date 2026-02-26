@@ -5,6 +5,12 @@ export interface AgentOutputOptions {
   fields?: string[];
 }
 
+export interface PaginationMeta {
+  cursorNext: string;
+  cursorPrev: string;
+  count: number;
+}
+
 export interface ColumnDefinition<T> {
   key: string;
   header: string;
@@ -25,6 +31,42 @@ export function emitPaginationMeta(next: string | null, prev: string | null, cou
     `CURSOR_PREV: ${prev ?? ''}`,
     `COUNT: ${count}`,
   ].join('\n');
+}
+
+export function renderPaginatedList<T>(
+  rows: T[],
+  columns: ColumnDefinition<T>[],
+  meta: { next: string | null; prev: string | null; count: number },
+  options: AgentOutputOptions & { allowedFormats?: OutputFormat[] }
+): string {
+  const allowedFormats = options.allowedFormats ?? ['tsv', 'table', 'json'];
+  if (!allowedFormats.includes(options.format)) {
+    throw new Error(`validation_error Format '${options.format}' not supported for this command`);
+  }
+
+  if (options.format === 'json') {
+    const selectedColumns = selectColumns(columns, options.fields);
+    const jsonRows = rows.map(row => {
+      const entry: Record<string, string> = {};
+      for (const column of selectedColumns) {
+        entry[column.key] = column.value(row);
+      }
+      return entry;
+    });
+    const envelope: { meta: PaginationMeta; rows: Record<string, string>[] } = {
+      meta: {
+        cursorNext: meta.next ?? '',
+        cursorPrev: meta.prev ?? '',
+        count: meta.count,
+      },
+      rows: jsonRows,
+    };
+    return JSON.stringify(envelope);
+  }
+
+  const header = emitPaginationMeta(meta.next, meta.prev, meta.count);
+  const body = renderList(rows, columns, options);
+  return `${header}\n${body}`;
 }
 
 export function emitDetailBlock(header: string, fields: Record<string, string>): string {

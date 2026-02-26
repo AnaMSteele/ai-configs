@@ -5,8 +5,7 @@ import {
   ColumnDefinition,
   emitDetailBlock,
   emitError,
-  emitPaginationMeta,
-  renderList,
+  renderPaginatedList,
   sanitizeSingleLine,
 } from '../format.js';
 import { getGlobalOptions } from '../options.js';
@@ -81,13 +80,17 @@ export function runProjectsCommands(program: Command): void {
           { key: 'targetDate', header: 'target_date', value: row => row.targetDate },
         ];
 
-        const meta = emitPaginationMeta(
-          data.pageInfo?.endCursor ?? null,
-          data.pageInfo?.startCursor ?? null,
-          rows.length
+        const out = renderPaginatedList(
+          rows,
+          columns,
+          {
+            next: data.pageInfo?.endCursor ?? null,
+            prev: data.pageInfo?.startCursor ?? null,
+            count: rows.length,
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
         );
-        const body = renderList(rows, columns, { format: globalOpts.format, fields: globalOpts.fields });
-        process.stdout.write(`${meta}\n${body}\n`);
+        process.stdout.write(out + '\n');
       } catch (error) {
         writeProjectsError(error);
       }

@@ -5,8 +5,7 @@ import {
   ColumnDefinition,
   emitDetailBlock,
   emitError,
-  emitPaginationMeta,
-  renderList,
+  renderPaginatedList,
   sanitizeSingleLine,
   truncateMultiline,
 } from '../format.js';
@@ -53,13 +52,17 @@ export function runDocumentsCommands(program: Command): void {
           });
           const rows = payload.nodes.map((doc: any) => mapDocumentRow(doc));
           const columns = documentColumns();
-          const meta = emitPaginationMeta(
-            payload.pageInfo?.endCursor ?? null,
-            payload.pageInfo?.startCursor ?? null,
-            rows.length
+          const out = renderPaginatedList(
+            rows,
+            columns,
+            {
+              next: payload.pageInfo?.endCursor ?? null,
+              prev: payload.pageInfo?.startCursor ?? null,
+              count: rows.length,
+            },
+            { format: globalOpts.format, fields: globalOpts.fields }
           );
-          const body = renderList(rows, columns, { format: globalOpts.format, fields: globalOpts.fields });
-          process.stdout.write(`${meta}\n${body}\n`);
+          process.stdout.write(out + '\n');
           return;
         }
 
@@ -70,13 +73,17 @@ export function runDocumentsCommands(program: Command): void {
         });
         const rows = data.nodes.map((doc: any) => mapDocumentRow(doc));
         const columns = documentColumns();
-        const meta = emitPaginationMeta(
-          data.pageInfo?.endCursor ?? null,
-          data.pageInfo?.startCursor ?? null,
-          rows.length
+        const out = renderPaginatedList(
+          rows,
+          columns,
+          {
+            next: data.pageInfo?.endCursor ?? null,
+            prev: data.pageInfo?.startCursor ?? null,
+            count: rows.length,
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
         );
-        const body = renderList(rows, columns, { format: globalOpts.format, fields: globalOpts.fields });
-        process.stdout.write(`${meta}\n${body}\n`);
+        process.stdout.write(out + '\n');
       } catch (error) {
         const parsed = parseLinearError(error);
         const out = emitError(parsed.code, parsed.message);

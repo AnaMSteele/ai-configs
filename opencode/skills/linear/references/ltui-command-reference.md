@@ -64,6 +64,39 @@ ltui issues list --limit 50
 ltui issues list --limit 50 --cursor xyz789
 ```
 
+### `ltui issues attachments`
+
+List issue attachments and uploaded file URLs.
+
+This command is optimized for agents that need to reliably discover screenshots/images associated with an issue. It combines:
+- Linear link attachments (`issue.attachments`)
+- `https://uploads.linear.app/...` URLs extracted from the issue description and comments
+
+**Options:**
+```bash
+ltui issues attachments <identifier> [options]
+
+Arguments:
+  <identifier>              Issue identifier (e.g., ENG-42) or ID
+
+Options:
+  --only-images             Only include image-like entries
+  --download-dir <dir>      Download matching entries to this directory
+  --overwrite               Overwrite existing files
+  --no-linear-attachments   Exclude Linear attachments (issue.attachments)
+  --no-upload-urls          Exclude uploads.linear.app URLs extracted from markdown
+  --no-scan-comments        Do not scan comments for uploads.linear.app URLs
+```
+
+**Examples:**
+```bash
+# Fetch image-like entries as JSON
+ltui issues attachments ENG-42 --only-images --format json
+
+# Download images
+ltui issues attachments ENG-42 --only-images --download-dir ./.ltui-attachments/ENG-42
+```
+
 ### `ltui issues view`
 
 View detailed information about a specific issue.
@@ -76,8 +109,10 @@ Arguments:
   <identifier>         Issue identifier (e.g., ENG-42) or ID
 
 Options:
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
+  --include-comments         Include comments
+  --include-history          Include history
+  --max-description-chars <n> Max description chars (default: 4000)
+  --max-comment-chars <n>     Max comment chars (default: 500)
 ```
 
 **Examples:**
@@ -89,7 +124,7 @@ ltui issues view ENG-42
 ltui issues view abc123-def-456
 
 # Use detail format to see description and comments
-ltui issues view ENG-42 --format detail
+ltui issues view ENG-42 --include-comments --include-history
 ```
 
 ### `ltui issues create`
@@ -831,9 +866,9 @@ COMMENTS_END
 
 ### JSON Format
 ```json
-[{"id":"abc123","key":"ENG-42","title":"Fix bug","state":"In Progress"}]
+{"meta":{"cursorNext":"","cursorPrev":"","count":1},"rows":[{"id":"abc123","key":"ENG","identifier":"ENG-42"}]}
 ```
-- Compact JSON array (no whitespace)
+- JSON is emitted as a single envelope object for list commands: `{ meta, rows }`
 - Standard JSON parsing
 
 ## Configuration File Formats

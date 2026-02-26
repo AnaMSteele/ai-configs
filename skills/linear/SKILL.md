@@ -68,9 +68,15 @@ Output includes:
 - Fields as `key: value` pairs
 
 ### JSON (compact)
-Compact JSON array without whitespace.
+Compact JSON envelope without whitespace.
 ```bash
 ltui issues list --format json
+```
+
+For list commands, JSON is a single envelope object:
+
+```json
+{"meta":{"cursorNext":"","cursorPrev":"","count":1},"rows":[{"id":"..."}]}
 ```
 
 ## Essential Commands
@@ -90,7 +96,19 @@ ltui issues list --fields id,key,title,state  # Specific fields only
 **View issue:**
 ```bash
 ltui issues view ENG-42                  # By identifier
-ltui issues view ENG-42 --format detail  # With full context
+ltui issues view ENG-42 --include-comments --include-history
+```
+
+`issues view` also emits guidance fields when images are present:
+- `ATTACHMENTS_PRESENT: true|false`
+- `IMAGE_ATTACHMENTS_PRESENT: true|false`
+- `IMAGE_ATTACHMENTS_FETCH_CMD: ...` (when images exist)
+- `IMAGE_ATTACHMENTS_DOWNLOAD_CMD: ...` (when images exist)
+
+**Fetch screenshots/images:**
+```bash
+ltui issues attachments ENG-42 --only-images --format json
+ltui issues attachments ENG-42 --only-images --download-dir ./.ltui-attachments/ENG-42
 ```
 
 **Create issue:**
@@ -209,7 +227,9 @@ ltui issues relate ENG-43 --parent ENG-42
 For large result sets:
 ```bash
 ltui issues list --limit 50
-# Output includes: CURSOR_NEXT: xyz789
+# TSV/table output includes: CURSOR_NEXT: xyz789
+
+# JSON output includes: {"meta":{"cursorNext":"xyz789", ...},"rows":[...]}
 
 ltui issues list --limit 50 --cursor xyz789  # Next page
 ```

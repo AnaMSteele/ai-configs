@@ -58,6 +58,17 @@ interface IssueData {
   description: string;
   updatedAt: string;
   createdAt: string;
+  attachments?: AttachmentData[];
+}
+
+interface AttachmentData {
+  id: string;
+  title: string;
+  url: string;
+  createdAt: string;
+  sourceType?: string;
+  subtitle?: string;
+  metadata?: Record<string, unknown>;
 }
 
 interface DocumentData {
@@ -91,10 +102,45 @@ interface NotificationData {
   createdAt: string;
 }
 
-const pageInfo = { endCursor: null, startCursor: null };
+type PageInfo = {
+  endCursor: string | null;
+  startCursor: string | null;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+};
 
-function connection<T>(nodes: T[]): { nodes: T[]; pageInfo: typeof pageInfo } {
-  return { nodes, pageInfo };
+function parseCursor(cursor: string): number | null {
+  const match = /^cursor:(\d+)$/.exec(cursor);
+  if (!match) return null;
+  const parsed = parseInt(match[1] ?? '', 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function connection<T>(
+  allNodes: T[],
+  variables?: { first?: number; after?: string; last?: number; before?: string }
+): { nodes: T[]; pageInfo: PageInfo } {
+  const first =
+    typeof variables?.first === 'number' && !Number.isNaN(variables.first)
+      ? variables.first
+      : allNodes.length;
+  const afterIndex = variables?.after ? parseCursor(variables.after) : null;
+  const startIndex = afterIndex !== null ? afterIndex + 1 : 0;
+  const nodes = allNodes.slice(startIndex, startIndex + first);
+  const endIndex = nodes.length > 0 ? startIndex + nodes.length - 1 : -1;
+  const startCursor = nodes.length > 0 ? `cursor:${startIndex}` : null;
+  const endCursor = nodes.length > 0 ? `cursor:${endIndex}` : null;
+  const hasNextPage = endIndex >= 0 ? endIndex < allNodes.length - 1 : false;
+  const hasPreviousPage = startIndex > 0;
+  return {
+    nodes,
+    pageInfo: {
+      startCursor,
+      endCursor,
+      hasNextPage,
+      hasPreviousPage,
+    },
+  };
 }
 
 export function createMockLinearClient(_resolved: ResolvedConfig): any {
@@ -151,9 +197,29 @@ function buildData() {
       priority: 2,
       assigneeId: 'user-1',
       labelIds: ['label-1'],
-      description: 'Issue description',
+      description:
+        'Issue description\n\nScreenshot: https://uploads.linear.app/6db02bb9-fba2-473b-8f9d-f38188e84813/d20adbea-186d-4643-ad07-004bda7d099d',
       updatedAt: '2024-01-02T00:00:00Z',
       createdAt: '2024-01-01T00:00:00Z',
+      attachments: [
+        {
+          id: 'attachment-1',
+          title: 'Screenshot',
+          subtitle: 'From Linear upload',
+          url: 'https://uploads.linear.app/6db02bb9-fba2-473b-8f9d-f38188e84813/d20adbea-186d-4643-ad07-004bda7d099d',
+          createdAt: '2024-01-01T12:00:00Z',
+          sourceType: 'linear_upload',
+          metadata: { contentType: 'image/png' },
+        },
+        {
+          id: 'attachment-2',
+          title: 'Example',
+          url: 'https://example.com',
+          createdAt: '2024-01-01T13:00:00Z',
+          sourceType: 'link',
+          metadata: { contentType: 'text/html' },
+        },
+      ],
     },
     {
       id: 'issue-2',
@@ -213,8 +279,8 @@ class MockLinearClient {
     this.viewer = this.decorateUser(data.users[0]);
   }
 
-  async teams(): Promise<any> {
-    return connection(this.data.teams.map(team => this.decorateTeam(team)));
+  async teams(variables?: any): Promise<any> {
+    return connection(this.data.teams.map(team => this.decorateTeam(team)), variables);
   }
 
   async team(id: string): Promise<any> {
@@ -222,20 +288,20 @@ class MockLinearClient {
     return match ? this.decorateTeam(match) : null;
   }
 
-  async workflowStates(): Promise<any> {
-    return connection(this.data.states.map(state => ({ ...state })));
+  async workflowStates(variables?: any): Promise<any> {
+    return connection(this.data.states.map(state => ({ ...state })), variables);
   }
 
   async workflowState(id: string): Promise<any> {
     return this.decorateState(id);
   }
 
-  async issues(): Promise<any> {
-    return connection(this.data.issues.map(issue => this.decorateIssue(issue)));
+  async issues(variables?: any): Promise<any> {
+    return connection(this.data.issues.map(issue => this.decorateIssue(issue)), variables);
   }
 
-  async searchIssues(): Promise<any> {
-    return connection(this.data.issues.map(issue => ({ id: issue.id })));
+  async searchIssues(_term?: string, variables?: any): Promise<any> {
+    return connection(this.data.issues.map(issue => ({ id: issue.id })), variables);
   }
 
   async issue(ref: string): Promise<any> {
@@ -291,8 +357,8 @@ class MockLinearClient {
     return {};
   }
 
-  async projects(): Promise<any> {
-    return connection(this.data.projects.map(project => this.decorateProject(project)));
+  async projects(variables?: any): Promise<any> {
+    return connection(this.data.projects.map(project => this.decorateProject(project)), variables);
   }
 
   async project(id: string): Promise<any> {
@@ -300,8 +366,9 @@ class MockLinearClient {
     return match ? this.decorateProject(match) : null;
   }
 
-  async cycles(): Promise<any> {
-    return connection([
+  async cycles(variables?: any): Promise<any> {
+    return connection(
+      [
       {
         id: 'cycle-1',
         number: 1,
@@ -310,31 +377,51 @@ class MockLinearClient {
         endsAt: '2024-01-14',
         status: 'current',
       },
-    ]);
-  }
-
-  async issueLabels(): Promise<any> {
-    return connection(
-      this.data.labels.map(label => ({
-        ...label,
-        parent: label.parentName ? { name: label.parentName } : undefined,
-      }))
+      ],
+      variables
     );
   }
 
-  async users(): Promise<any> {
-    return connection(this.data.users.map(user => this.decorateUser(user)));
+  async issueLabels(variables?: any): Promise<any> {
+    let working = this.data.labels;
+    const filter = variables?.filter;
+    const andFilters: any[] = Array.isArray(filter?.and) ? filter.and : [];
+    for (const clause of andFilters) {
+      if (clause?.team?.id?.eq) {
+        working = working.filter(label => label.teamId === clause.team.id.eq);
+      }
+      if (clause?.team?.null === true) {
+        working = working.filter(label => !label.teamId);
+      }
+      if (Array.isArray(clause?.name?.in)) {
+        const set = new Set(clause.name.in);
+        working = working.filter(label => set.has(label.name));
+      }
+    }
+    if (Array.isArray(filter?.name?.in)) {
+      const set = new Set(filter.name.in);
+      working = working.filter(label => set.has(label.name));
+    }
+
+    return connection(
+      working.map(label => ({
+        ...label,
+        parent: label.parentName ? { name: label.parentName } : undefined,
+      })),
+      variables
+    );
   }
 
-  async documents(): Promise<any> {
-    return connection(this.data.documents.map(doc => this.decorateDocument(doc)));
+  async users(variables?: any): Promise<any> {
+    return connection(this.data.users.map(user => this.decorateUser(user)), variables);
+  }
+
+  async documents(variables?: any): Promise<any> {
+    return connection(this.data.documents.map(doc => this.decorateDocument(doc)), variables);
   }
 
   async searchDocuments(): Promise<any> {
-    return {
-      nodes: this.data.documents.map(doc => this.decorateDocument(doc)),
-      pageInfo,
-    };
+    return connection(this.data.documents.map(doc => this.decorateDocument(doc)));
   }
 
   async document(id: string): Promise<any> {
@@ -342,8 +429,8 @@ class MockLinearClient {
     return match ? this.decorateDocument(match) : null;
   }
 
-  async roadmaps(): Promise<any> {
-    return connection(this.data.roadmaps.map(roadmap => this.decorateRoadmap(roadmap)));
+  async roadmaps(variables?: any): Promise<any> {
+    return connection(this.data.roadmaps.map(roadmap => this.decorateRoadmap(roadmap)), variables);
   }
 
   async roadmap(id: string): Promise<any> {
@@ -351,8 +438,8 @@ class MockLinearClient {
     return match ? this.decorateRoadmap(match) : null;
   }
 
-  async projectMilestones(): Promise<any> {
-    return connection(this.data.milestones.map(m => this.decorateMilestone(m)));
+  async projectMilestones(variables?: any): Promise<any> {
+    return connection(this.data.milestones.map(m => this.decorateMilestone(m)), variables);
   }
 
   async projectMilestone(id: string): Promise<any> {
@@ -360,12 +447,13 @@ class MockLinearClient {
     return match ? this.decorateMilestone(match) : null;
   }
 
-  async notifications(): Promise<any> {
+  async notifications(variables?: any): Promise<any> {
     return connection(
       this.data.notifications.map(n => ({
         ...n,
         createdAt: new Date(n.createdAt),
-      }))
+      })),
+      variables
     );
   }
 
@@ -401,6 +489,31 @@ class MockLinearClient {
     const project = this.data.projects.find(p => p.id === issue.projectId)!;
     const state = this.data.states.find(s => s.id === issue.stateId)!;
     const assignee = this.data.users.find(u => u.id === issue.assigneeId)!;
+
+    const attachmentNodes = (issue.attachments ?? []).map(item => ({
+      id: item.id,
+      title: item.title,
+      subtitle: item.subtitle ?? null,
+      url: item.url,
+      sourceType: item.sourceType ?? null,
+      metadata: item.metadata ?? {},
+      groupBySource: false,
+      source: null,
+      bodyData: null,
+      archivedAt: null,
+      createdAt: new Date(item.createdAt),
+      updatedAt: new Date(item.createdAt),
+    }));
+
+    const commentNodes = [
+      {
+        id: 'comment-1',
+        user: this.decorateUser(this.data.users[1]),
+        createdAt: new Date('2024-01-06T00:00:00Z'),
+        body:
+          'Looks good. Another screenshot: https://uploads.linear.app/6db02bb9-fba2-473b-8f9d-f38188e84813/d20adbea-186d-4643-ad07-004bda7d099d',
+      },
+    ];
     return {
       id: issue.id,
       identifier: issue.identifier,
@@ -415,15 +528,8 @@ class MockLinearClient {
       description: issue.description,
       createdAt: new Date(issue.createdAt),
       updatedAt: new Date(issue.updatedAt),
-      comments: async () =>
-        connection([
-          {
-            id: 'comment-1',
-            user: this.decorateUser(this.data.users[1]),
-            createdAt: new Date('2024-01-06T00:00:00Z'),
-            body: 'Looks good',
-          },
-        ]),
+      attachments: async (variables?: any) => connection(attachmentNodes, variables),
+      comments: async (variables?: any) => connection(commentNodes, variables),
       history: async () =>
         connection([
           {

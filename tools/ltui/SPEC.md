@@ -379,7 +379,9 @@ Error codes (initial set):
 
 ### 6.3 Pagination
 
-List commands that support pagination include cursor metadata in agent mode:
+List commands that support pagination include cursor metadata.
+
+For `--format tsv|table`, pagination metadata is emitted as a 3-line plaintext header:
 
 ```text
 CURSOR_NEXT: <cursor-or-empty>
@@ -389,9 +391,15 @@ COUNT: <n-returned>
 
 These lines appear **before** the header row.
 
+For `--format json`, output is a single JSON object envelope on `stdout` (no plaintext header):
+
+```json
+{"meta":{"cursorNext":"<cursor-or-empty>","cursorPrev":"<cursor-or-empty>","count":2},"rows":[{"id":"..."}]}
+```
+
 ### 6.4 Field Selection
 
-- `--fields` applies to `table` and `tsv` formats.
+- `--fields` applies to `table`, `tsv`, and `json` list formats.
 - Values outside the supported set are rejected with `validation_error`.
 - Each command defines its own allowed field names (documented in `--help`).
 

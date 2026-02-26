@@ -92,6 +92,54 @@ test('issues commands including relationships succeed', () => {
     assertOk(result, 'issues view');
     expectOutput(result, 'ISSUE_DETAIL');
 
+    result = runCli(ctx, ['issues', 'attachments', 'ENG-1', '--only-images']);
+    assertOk(result, 'issues attachments');
+    expectOutput(result, 'sourceType');
+
+    result = runCli(ctx, ['--format', 'json', '--limit', '1', 'issues', 'attachments', 'ENG-1']);
+    assertOk(result, 'issues attachments paginated first page');
+    const pageOne = JSON.parse(result.stdout.trim());
+    assert.equal(pageOne.meta.count, 1);
+    assert.equal(pageOne.rows.length, 1);
+    assert.equal(pageOne.meta.cursorNext, 'cursor:0');
+    assert.equal(pageOne.meta.cursorPrev, '');
+
+    result = runCli(ctx, [
+      '--format',
+      'json',
+      '--limit',
+      '1',
+      '--cursor',
+      'cursor:0',
+      'issues',
+      'attachments',
+      'ENG-1',
+    ]);
+    assertOk(result, 'issues attachments paginated second page');
+    const pageTwo = JSON.parse(result.stdout.trim());
+    assert.equal(pageTwo.meta.count, 1);
+    assert.equal(pageTwo.rows.length, 1);
+    assert.equal(pageTwo.meta.cursorNext, 'cursor:1');
+    assert.equal(pageTwo.meta.cursorPrev, 'cursor:1');
+
+    result = runCli(ctx, [
+      '--format',
+      'json',
+      '--limit',
+      '1',
+      '--cursor',
+      'cursor:1',
+      'issues',
+      'attachments',
+      'ENG-1',
+    ]);
+    assertOk(result, 'issues attachments paginated third page');
+    const pageThree = JSON.parse(result.stdout.trim());
+    assert.equal(pageThree.meta.count, 1);
+    assert.equal(pageThree.rows.length, 1);
+    assert.equal(pageThree.meta.cursorNext, '');
+    assert.equal(pageThree.meta.cursorPrev, 'cursor:2');
+
     result = runCli(ctx, [
       'issues',
       'create',
