@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Installation script for Claude Code, Codex, Gemini, and optional OpenCode
-# Usage: ./install.sh [--claude|--codex|--gemini|--opencode|--tools|--skills|--all] [--append-agents] [target-directory]
+# Installation script for Claude Code, Codex, Gemini, Oh My Pi, and optional OpenCode
 
 set -e
 
@@ -23,34 +22,37 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 print_usage() {
-    echo "Usage: $0 [--claude|--codex|--gemini|--opencode|--tools|--skills|--all] [--append-agents] [target-directory]"
+    echo "Usage: $0 [--claude|--codex|--gemini|--omp|--opencode|--tools|--skills|--all] [--append-agents] [target-directory]"
     echo ""
     echo "Options:"
     echo "  --claude    Install Claude Code configuration only"
     echo "  --codex     Install Codex configuration only"
     echo "  --gemini    Install Gemini CLI configuration only"
     echo "  --opencode  Install OpenCode configuration only"
+    echo "  --omp       Install Oh My Pi configuration only (to ~/.omp/agent)"
     echo "  --tools     Install CLI tools only (e.g., ltui)"
     echo "  --skills    Install Claude skills only (to ~/.claude/skills/)"
-    echo "  --all       Install everything: Claude, Codex, Gemini, OpenCode, tools, and skills"
+    echo "  --all       Install everything: Claude, Codex, Gemini, Oh My Pi, OpenCode, tools, and skills"
     echo "  --append-agents"
     echo "             Ensure GEMINI.md exists and contains required Personas."
     echo "             If GEMINI.md exists but is missing the Personas section, append it from the template."
     echo ""
     echo "Default behavior (no args):"
-    echo "  Installs Claude, Codex, and Gemini only (no OpenCode, no tools, no global skills)."
+    echo "  Installs Claude, Codex, Gemini, Oh My Pi, and OpenCode only (no tools, no global skills)."
     echo ""
     echo "Notes:"
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
+    echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
-    echo "  $0                               # Default: install Claude + Codex + Gemini"
+    echo "  $0                               # Default: install Claude + Codex + Gemini + OMP + OpenCode"
     echo "  $0 --claude                      # Install Claude to current directory"
     echo "  $0 --codex ~/my-project          # Install Codex to ~/my-project"
     echo "  $0 --gemini ~/my-project         # Install Gemini to ~/my-project"
     echo "  $0 --opencode ~/my-project       # Install OpenCode to ~/my-project"
+    echo "  $0 --omp ~/my-project            # Install Oh My Pi config to ~/.omp/agent"
     echo "  $0 --tools                       # Install CLI tools globally"
     echo "  $0 --skills                      # Install Claude skills globally"
     echo "  $0 --all --append-agents         # Install everything and ensure GEMINI.md Personas"
@@ -776,6 +778,59 @@ install_codex() {
 }
 
 
+install_omp() {
+    local is_update=false
+    local omp_root_dir="$HOME/.omp"
+    local omp_agent_dir="$omp_root_dir/agent"
+    local omp_commands_dir="$omp_agent_dir/commands"
+    local omp_agents_dir="$omp_agent_dir/agents"
+
+    # This is a home-directory install only. Do not write into the repo.
+    # Do not write OMP artifacts into the repository itself.
+
+    if [ ! -d "$REPO_ROOT/.omp" ]; then
+        echo -e "${YELLOW}No .omp directory found in repository, skipping OMP install...${NC}"
+        return
+    fi
+
+    if [ -d "$omp_agent_dir" ]; then
+        is_update=true
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo -e "${GREEN}  Updating Oh My Pi Configuration${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${GREEN}Updating Oh My Pi configuration at $omp_agent_dir${NC}"
+    else
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo -e "${GREEN}  Installing Oh My Pi Configuration${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${GREEN}Installing Oh My Pi configuration to $omp_agent_dir${NC}"
+        mkdir -p "$omp_agent_dir"
+    fi
+
+    echo "  - Installing OMP commands..."
+    rm -rf "$omp_commands_dir"
+    mkdir -p "$omp_commands_dir"
+    if [ -d "$REPO_ROOT/.omp/commands" ]; then
+        cp -r "$REPO_ROOT/.omp/commands/." "$omp_commands_dir/"
+    fi
+
+    echo "  - Installing OMP agents..."
+    rm -rf "$omp_agents_dir"
+    mkdir -p "$omp_agents_dir"
+    if [ -d "$REPO_ROOT/.omp/agents" ]; then
+        cp -r "$REPO_ROOT/.omp/agents/." "$omp_agents_dir/"
+    fi
+
+    if [ "$is_update" = true ]; then
+        echo -e "${GREEN}✓ Oh My Pi update complete${NC}"
+    else
+        echo -e "${GREEN}✓ Oh My Pi installation complete${NC}"
+    fi
+    echo ""
+    echo "Note: OMP commands and agents are installed to $HOME/.omp/agent"
+}
 install_opencode() {
     local target_root="$1"
     local is_update=false
@@ -936,7 +991,7 @@ install_gemini() {
 # Argument parsing
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --claude|--codex|--gemini|--opencode|--tools|--skills|--all|--default)
+        --claude|--codex|--gemini|--omp|--opencode|--tools|--skills|--all|--default)
             INSTALL_MODE="$1"
             shift
             ;;
@@ -970,6 +1025,8 @@ case "$INSTALL_MODE" in
         echo ""
         install_gemini "$TARGET_DIR"
         echo ""
+        install_omp "$TARGET_DIR"
+        echo ""
         install_opencode "$TARGET_DIR"
         ;;
     --claude)
@@ -980,6 +1037,9 @@ case "$INSTALL_MODE" in
         ;;
     --gemini)
         install_gemini "$TARGET_DIR"
+        ;;
+    --omp)
+        install_omp "$TARGET_DIR"
         ;;
     --opencode)
         install_opencode "$TARGET_DIR"
@@ -996,6 +1056,8 @@ case "$INSTALL_MODE" in
         install_codex "$TARGET_DIR"
         echo ""
         install_gemini "$TARGET_DIR"
+        echo ""
+        install_omp "$TARGET_DIR"
         echo ""
         install_opencode "$TARGET_DIR"
         echo ""

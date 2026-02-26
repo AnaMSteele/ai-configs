@@ -1,6 +1,6 @@
 # Quick Setup Guide
 
-This guide provides quick installation instructions for the Claude Code, Codex, and Gemini CLI configuration system.
+This guide provides quick installation instructions for the Claude Code, Codex, Gemini CLI, Oh My Pi (OMP), and OpenCode configuration system.
 
 ## Installation
 
@@ -19,23 +19,25 @@ pip3 install -r requirements.txt
 # Navigate to your project
 cd /path/to/your/project
 
-# Install All Tools (Claude, Gemini, Codex)
+# Install All Tools (Claude, Gemini, Codex, OMP, OpenCode)
 bash ~/adn-claude-configs/install.sh --all
 
 # Or install individually:
 # bash ~/adn-claude-configs/install.sh --claude
 # bash ~/adn-claude-configs/install.sh --gemini
 # bash ~/adn-claude-configs/install.sh --codex
+# bash ~/adn-claude-configs/install.sh --omp
+# bash ~/adn-claude-configs/install.sh --opencode
 ```
 
-This creates `.claude/`, `.gemini/`, and `.codex/` directories in your project with all agents, commands/prompts, and configurations.
+This creates `.claude/`, `.gemini/`, and `.codex/` directories in your project, plus installs OMP config to `~/.omp/agent` and OpenCode config to `~/.config/opencode`.
 
 ### Option 2: Global Installation
 
 Install to your home directory for use across all projects:
 
 ```bash
-# Install to ~/.claude, ~/.gemini, and ~/.codex
+# Install to ~/.claude, ~/.gemini, ~/.codex, ~/.omp/agent, and ~/.config/opencode
 bash ~/adn-claude-configs/install.sh --all ~
 ```
 
@@ -63,7 +65,7 @@ bash ~/adn-claude-configs/install.sh --all
 ```
 
 The script will:
-- Update agents, commands/prompts, and scripts
+- Update agents, commands/prompts, and scripts (including OMP commands and agents)
 - Clean up legacy directory structures
 - Preserve your local settings files
 

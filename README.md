@@ -1,12 +1,12 @@
-# Claude Code, Codex, Gemini CLI & OpenCode Configuration
+# Claude Code, Codex, Gemini CLI, Oh My Pi & OpenCode Configuration
 
-A comprehensive configuration system for Claude Code, Codex, Gemini CLI, and OpenCode that provides specialized agents, custom commands, and complete development workflows for building software with AI assistance.
+A comprehensive configuration system for Claude Code, Codex, Gemini CLI, Oh My Pi (OMP), and OpenCode that provides specialized agents, custom commands, and complete development workflows for building software with AI assistance.
 
 ## 🚀 Quick Start
 
 ### Installation
 
-This repository supports installation for **Claude Code**, **Codex**, **Gemini CLI**, and **OpenCode**.
+This repository supports installation for **Claude Code**, **Codex**, **Gemini CLI**, **Oh My Pi (OMP)**, and **OpenCode**.
 
 #### Option 1: Install to a Project
 
@@ -30,17 +30,20 @@ bash /path/to/adn-claude-configs/install.sh --gemini
 # Install Codex only
 bash /path/to/adn-claude-configs/install.sh --codex
 
+# Install Oh My Pi (OMP) only
+bash /path/to/adn-claude-configs/install.sh --omp
+
 # Install OpenCode only
 bash /path/to/adn-claude-configs/install.sh --opencode
 
-# Install everything (Claude, Gemini, Codex, OpenCode, tools, skills)
+# Install everything (Claude, Gemini, Codex, OMP, OpenCode, tools, skills)
 bash /path/to/adn-claude-configs/install.sh --all
 ```
 
 #### Option 2: Install Globally (to Home Directory)
 
 ```bash
-# Install to ~/.claude, ~/.gemini, ~/.codex, and ~/.config/opencode for global access
+# Install to ~/.claude, ~/.gemini, ~/.codex, ~/.omp/agent, and ~/.config/opencode for global access
 bash /path/to/adn-claude-configs/install.sh --all ~
 ```
 
@@ -54,7 +57,7 @@ bash /path/to/adn-claude-configs/install.sh --all
 ```
 
 The install script auto-detects existing installations and:
-- Updates agents, commands/prompts, and scripts
+- Updates agents, commands/prompts, and scripts (including OMP commands and agents)
 - Cleans up legacy directory structures
 - Preserves your local settings and configuration files
 - Mirrors Codex prompts to `~/.codex/prompts` for global CLI access
@@ -93,6 +96,9 @@ adn-claude-configs/
 │   ├── prompts/             # Codex prompts
 │   ├── config.toml          # Codex configuration template
 │   └── mcp-servers.toml     # MCP server definitions
+├── .omp/                     # Oh My Pi native configuration
+│   ├── agents/              # OMP task agents
+│   └── commands/            # OMP slash commands
 ├── opencode/                 # OpenCode configuration
 │   ├── agents/              # OpenCode agents
 │   ├── commands/            # OpenCode slash commands
@@ -109,7 +115,7 @@ adn-claude-configs/
 **Key Directories:**
 
 - **claude/agents/** - Source of truth for all agents
-- **claude/**, **gemini/**, **codex/**, **opencode/** - Installable configurations for each tool
+- **claude/**, **gemini/**, **codex/**, **.omp/**, **opencode/** - Installable configurations for each tool
 - **tools/** - Distributable CLI tools (installed globally via `--tools`)
 - **install.sh** - Single script for installation and updates
 
