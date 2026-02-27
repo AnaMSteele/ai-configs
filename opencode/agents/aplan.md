@@ -1,6 +1,7 @@
 ---
 description: Plan mode.
 mode: primary
+disable: true
 permission:
   question: allow
   edit:
