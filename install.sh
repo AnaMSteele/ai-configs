@@ -784,12 +784,13 @@ install_omp() {
     local omp_agent_dir="$omp_root_dir/agent"
     local omp_commands_dir="$omp_agent_dir/commands"
     local omp_agents_dir="$omp_agent_dir/agents"
+    local omp_source_dir="$REPO_ROOT/_omp"
 
     # This is a home-directory install only. Do not write into the repo.
     # Do not write OMP artifacts into the repository itself.
 
-    if [ ! -d "$REPO_ROOT/.omp" ]; then
-        echo -e "${YELLOW}No .omp directory found in repository, skipping OMP install...${NC}"
+    if [ ! -d "$omp_source_dir" ]; then
+        echo -e "${YELLOW}No _omp directory found in repository, skipping OMP install...${NC}"
         return
     fi
 
@@ -812,15 +813,15 @@ install_omp() {
     echo "  - Installing OMP commands..."
     rm -rf "$omp_commands_dir"
     mkdir -p "$omp_commands_dir"
-    if [ -d "$REPO_ROOT/.omp/commands" ]; then
-        cp -r "$REPO_ROOT/.omp/commands/." "$omp_commands_dir/"
+    if [ -d "$omp_source_dir/commands" ]; then
+        cp -r "$omp_source_dir/commands/." "$omp_commands_dir/"
     fi
 
     echo "  - Installing OMP agents..."
     rm -rf "$omp_agents_dir"
     mkdir -p "$omp_agents_dir"
-    if [ -d "$REPO_ROOT/.omp/agents" ]; then
-        cp -r "$REPO_ROOT/.omp/agents/." "$omp_agents_dir/"
+    if [ -d "$omp_source_dir/agents" ]; then
+        cp -r "$omp_source_dir/agents/." "$omp_agents_dir/"
     fi
 
     if [ "$is_update" = true ]; then
