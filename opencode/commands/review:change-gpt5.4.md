@@ -1,21 +1,21 @@
 ---
-description: Run a change review using GPT5.2
+description: Run a change review using GPT5.4
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
-agent: reviewer-gpt5.2
+agent: reviewer-gpt5.4
 subtask: true
-model: openai/gpt-5.2
+model: openai/gpt-5.4
 ---
 
-Your reviewer name is GPT5.2 
+Your reviewer name is GPT5.4 
 
 Use this comment format:
 ```
-[REVIEW:GPT5.2] Your critical feedback here [/REVIEW]
+[REVIEW:GPT5.4] Your critical feedback here [/REVIEW]
 ```
 
 To respond to other reviewers:
 ```
-[REVIEW:GPT5.2] RE: [OtherReviewer] - Your response [/REVIEW]
+[REVIEW:GPT5.4] RE: [OtherReviewer] - Your response [/REVIEW]
 ```
 
 # Change Review (Single Plan File)
