@@ -1,11 +1,11 @@
 ---
-description: Execute a plan with quality-gated phases — each phase loops until the quality reviewer finds zero issues
+description: Execute a plan with quality-gated phases — each phase gets 1 implementation pass and up to 3 review/fix passes
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 ---
 
 # Run Plan (Quality-Gated Loop)
 
-Execute a plan document phase-by-phase, where each phase is quality-gated: implementation is followed by iterative quality review until the reviewer finds zero issues before moving to the next phase.
+Execute a plan document phase-by-phase, where each phase is quality-gated: do 1 implementation pass, then run up to 3 review/fix passes, stopping early if the reviewer finds zero issues.
 
 ## Inputs
 
@@ -47,7 +47,7 @@ Identify the first unchecked item in `## Progress` and begin execution immediate
 
 ### 3) Execute Phase-by-Phase with Quality Gate
 
-For each phase (tracked by `## Progress`), run the following loop:
+For each phase (tracked by `## Progress`), run 1 implementation pass followed by up to 3 review/fix passes:
 
 #### Iteration 1: Implement
 
@@ -59,9 +59,9 @@ Delegate to the `developer` agent with this prompt:
 >
 > After implementation, run the phase's `### Verify` steps if they exist.
 
-After the developer agent completes, proceed immediately to the review iteration — do not pause.
+After the developer agent completes, proceed immediately to the first review pass — do not pause.
 
-#### Iteration 2+: Review and Fix
+#### Review Passes 1-3: Review and Fix
 
 Delegate to the `quality-reviewer` agent with this prompt:
 
@@ -82,10 +82,11 @@ Delegate to the `quality-reviewer` agent with this prompt:
 >
 > At the end, output a summary. If you found and fixed issues, list them. If you found zero issues, state clearly: "No issues found."
 
-**Loop termination:** After the quality-reviewer completes, check its output:
+**Loop termination:** After each quality-reviewer pass, check its output:
 
-- If it found and fixed issues → run another review iteration (back to Iteration 2+)
 - If it found zero issues → the phase quality gate is passed
+- If it found and fixed issues and fewer than 3 review passes have run → run another review pass
+- If it found and fixed issues on review pass 3 → stop the run and report that the phase hit the review-pass limit without reaching "No issues found."
 
 #### Phase Completion
 
