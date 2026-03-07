@@ -1,7 +1,7 @@
 ---
 description: Run a change review using GPT5.4 Codex
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
-agent: build
+agent: reviewer-codex
 subtask: true
 model: openai/gpt-5.4-codex
 ---

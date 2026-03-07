@@ -39,7 +39,7 @@ This directory contains a comprehensive set of commands that support a complete 
 
 ### Autopilot Loop Commands
 18. **`ralph:run.md`** - Execute a plan with a phase-level quality gate loop
-19. **`ralph:review-gpt5.2.md`** - Run `/review` in a loop (GPT-5.2), apply quick fixes, stop when no straightforward fixes remain
+19. **`ralph:review-gpt5.4.md`** - Run `/review` in a loop (GPT-5.4), apply quick fixes, stop when no straightforward fixes remain
 20. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
 
 ## Command Workflows
@@ -220,7 +220,7 @@ commands/
 ├── cmd:start-linear-issue-branch.md
 ├── cmd:review-pr-comments.md
 ├── ralph:run.md
-├── ralph:review-gpt5.2.md
+├── ralph:review-gpt5.4.md
 ├── ralph:review-opus.md
 └── _lib/ (helper scripts)
 ```

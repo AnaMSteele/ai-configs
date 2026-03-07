@@ -58,3 +58,4 @@ tools/*/dist/
 tools/*/node_modules/
 tools/*/*.zip
 tools/*/.bun/
+.osgrep

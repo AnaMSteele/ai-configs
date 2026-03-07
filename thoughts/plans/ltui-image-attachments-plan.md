@@ -57,9 +57,9 @@ Notes:
 - `downloadStatus` is one of: `downloaded`, `exists`, `failed`, ``.
 - `downloadError` is an empty string unless `downloadStatus=failed`.
 
-[REVIEW:GPT5.2] INCORRECT/AMBIGUITY: In the current `ltui` codebase, list commands print pagination metadata (`CURSOR_NEXT`, `CURSOR_PREV`, `COUNT`) to `stdout` *before* the list body even when `--format json`, which means the overall output stream is not valid JSON. This plan both (a) requires “pagination metadata + list body” and (b) later asks for “parseable JSON rows” checks. Pick and document the contract for attachments: meta+json (agent parses 3-line meta header then JSON) vs json-only output (would be a deliberate convention change). [/REVIEW]
+[REVIEW:GPT5.4] INCORRECT/AMBIGUITY: In the current `ltui` codebase, list commands print pagination metadata (`CURSOR_NEXT`, `CURSOR_PREV`, `COUNT`) to `stdout` *before* the list body even when `--format json`, which means the overall output stream is not valid JSON. This plan both (a) requires “pagination metadata + list body” and (b) later asks for “parseable JSON rows” checks. Pick and document the contract for attachments: meta+json (agent parses 3-line meta header then JSON) vs json-only output (would be a deliberate convention change). [/REVIEW]
 
-[REVIEW:GPT5.2] AMBIGUITY: `downloadStatus` includes an empty backticked value (``) as a state. Spell this out as “empty string” and tie it to a condition (e.g., when `--download-dir` is omitted) so implementers don’t emit `null`/omit the key and accidentally break the deterministic schema. [/REVIEW]
+[REVIEW:GPT5.4] AMBIGUITY: `downloadStatus` includes an empty backticked value (``) as a state. Spell this out as “empty string” and tie it to a condition (e.g., when `--download-dir` is omitted) so implementers don’t emit `null`/omit the key and accidentally break the deterministic schema. [/REVIEW]
 
 ## Proposed CLI Contract
 
@@ -124,7 +124,7 @@ Detection requirements:
   - Page through all attachments until an image is found (early-exit) OR the connection is exhausted (`pageInfo.hasNextPage=false`).
   - If the probe completes without finding an image, it is safe to emit `IMAGE_ATTACHMENTS_PRESENT: false`.
 
-[REVIEW:GPT5.2] RISK: “bounded paging” inherently permits false negatives if images exist after the bound, which contradicts the stated requirement. If the SDK cannot filter/count, the only way to guarantee “no false negatives” is to page until an image is found OR the connection is exhausted (i.e., if you return `false`, you must have checked all pages). If you keep a bound for performance, adjust the requirement and consider emitting an explicit “probe incomplete/unknown” signal. [/REVIEW]
+[REVIEW:GPT5.4] RISK: “bounded paging” inherently permits false negatives if images exist after the bound, which contradicts the stated requirement. If the SDK cannot filter/count, the only way to guarantee “no false negatives” is to page until an image is found OR the connection is exhausted (i.e., if you return `false`, you must have checked all pages). If you keep a bound for performance, adjust the requirement and consider emitting an explicit “probe incomplete/unknown” signal. [/REVIEW]
 
 Example emitted guidance:
 - `IMAGE_ATTACHMENTS_FETCH_CMD: ltui issues attachments ENG-42 --only-images --format json`
@@ -134,7 +134,7 @@ Example emitted guidance:
 
 [REVIEW:Kimi Reviewer] GAP (execution readiness): Add an explicit pre-implementation “SDK/schema verification” step (either a Phase 0 or a Work item in Phase 1) to confirm the Linear SDK attachment API shape, supported filters (count/exists), and what fields are reliably present (`contentType`, `subtitle`, etc.). Several later phases depend on these unknowns; without a concrete contract, implementation will thrash. [/REVIEW]
 
-[REVIEW:GPT5.2] GAP (execution readiness): The plan’s phases are `### Phase N:` headers, but the review rubric/other agents often expect `## Phase N:`. Also `### End State/Work/Verify` are currently the same heading level as the phase header, which can confuse tooling/readers. If you rely on automation around phases/progress mapping, align heading levels (or explicitly note that this repo’s plan parser tolerates `###`). [/REVIEW]
+[REVIEW:GPT5.4] GAP (execution readiness): The plan’s phases are `### Phase N:` headers, but the review rubric/other agents often expect `## Phase N:`. Also `### End State/Work/Verify` are currently the same heading level as the phase header, which can confuse tooling/readers. If you rely on automation around phases/progress mapping, align heading levels (or explicitly note that this repo’s plan parser tolerates `###`). [/REVIEW]
 
 ### Phase 1: Attachment Retrieval + Deterministic Metadata
 
@@ -158,12 +158,12 @@ Example emitted guidance:
 Also MISSING: The image classification needs to handle case-insensitive extension matching (`.PNG`, `.Jpg`). Need to specify `toLowerCase()` normalization. [/REVIEW]
 
 ### Verify
-[REVIEW:GPT5.2] WRONG REFERENCE: `tools/ltui/package.json` defines `test` as `bun run build && node --test dist/**/*.test.js`; `bun run test -- issues` is not a documented/supported scoped invocation. Replace with an exact command that actually works in this repo (e.g., `bun run test`) and, if you want phase-scoped runs, document the `node --test dist/<pattern>` invocation explicitly. [/REVIEW]
+[REVIEW:GPT5.4] WRONG REFERENCE: `tools/ltui/package.json` defines `test` as `bun run build && node --test dist/**/*.test.js`; `bun run test -- issues` is not a documented/supported scoped invocation. Replace with an exact command that actually works in this repo (e.g., `bun run test`) and, if you want phase-scoped runs, document the `node --test dist/<pattern>` invocation explicitly. [/REVIEW]
 
 - `bun run test -- issues` (or closest scoped test target) passes for attachments command behavior.
 - Manual check: `ltui issues attachments <ISSUE_KEY> --format json` emits parseable JSON rows and no logs on `stdout`.
 
-[REVIEW:GPT5.2] INCORRECT: As written, “parseable JSON rows” will fail if you keep the existing convention of prefixing list output with pagination meta on `stdout`. Reword the check to match the chosen contract (e.g., “JSON body is parseable after stripping the 3-line meta header”). [/REVIEW]
+[REVIEW:GPT5.4] INCORRECT: As written, “parseable JSON rows” will fail if you keep the existing convention of prefixing list output with pagination meta on `stdout`. Reword the check to match the chosen contract (e.g., “JSON body is parseable after stripping the 3-line meta header”). [/REVIEW]
 - Manual check: output order is stable across repeated runs with identical fixture data.
 
 ### Phase 2: Download Safety + Failure Semantics
@@ -178,7 +178,7 @@ Also MISSING: The image classification needs to handle case-insensitive extensio
 
 Also missing: retry logic for transient network failures. At minimum, should have 1-2 retries with exponential backoff. [/REVIEW]
 
-[REVIEW:GPT5.2] RE: [Kimi Reviewer] - SCOPE DRIFT: retries/backoff are not part of the stated Requested Outcomes/Acceptance Criteria. If you add retries, treat it as an explicit scope addition (documented decision + tests), otherwise keep to the specified timeout/max-size + error surfacing semantics. [/REVIEW]
+[REVIEW:GPT5.4] RE: [Kimi Reviewer] - SCOPE DRIFT: retries/backoff are not part of the stated Requested Outcomes/Acceptance Criteria. If you add retries, treat it as an explicit scope addition (documented decision + tests), otherwise keep to the specified timeout/max-size + error surfacing semantics. [/REVIEW]
 
 ### Work
 - Add download helpers in `tools/ltui/src/commands/issues.ts`:
@@ -199,7 +199,7 @@ Also missing: retry logic for transient network failures. At minimum, should hav
 - Tests assert exit code and `downloadStatus`/`downloadError` semantics.
 - Manual check: `ltui issues attachments <ISSUE_KEY> --only-images --download-dir ./.ltui-attachments/<ISSUE_KEY>` downloads files safely.
 
-[REVIEW:GPT5.2] GAP (testability): Phase 2/4 require asserting timeout/max-size and partial download failures. The plan doesn’t specify how downloads are mocked in `node --test` (compiled JS) tests. Call out an intended approach (e.g., spin up an in-test local HTTP server serving fixture bytes and slow responses; or inject a downloader/fetch implementation for stubbing) so the test work is executable and deterministic. [/REVIEW]
+[REVIEW:GPT5.4] GAP (testability): Phase 2/4 require asserting timeout/max-size and partial download failures. The plan doesn’t specify how downloads are mocked in `node --test` (compiled JS) tests. Call out an intended approach (e.g., spin up an in-test local HTTP server serving fixture bytes and slow responses; or inject a downloader/fetch implementation for stubbing) so the test work is executable and deterministic. [/REVIEW]
 
 ### Phase 3: Reliable View Guidance Signals
 
@@ -224,7 +224,7 @@ Also MISSING: The actual GraphQL query/filter to use for attachment presence det
 ### Verify
 - Test fixture where image exists beyond first page still yields `IMAGE_ATTACHMENTS_PRESENT: true`.
 
-[REVIEW:GPT5.2] GAP: This verification implies the mock + command implementation must support real pagination semantics (honor `first`, `after`, and return meaningful `pageInfo.endCursor`). Today the mock client’s `connection()` always returns `endCursor: null` / `startCursor: null`, so paging-based tests will be hard to implement unless Phase 4 explicitly adds cursor behavior for attachments. [/REVIEW]
+[REVIEW:GPT5.4] GAP: This verification implies the mock + command implementation must support real pagination semantics (honor `first`, `after`, and return meaningful `pageInfo.endCursor`). Today the mock client’s `connection()` always returns `endCursor: null` / `startCursor: null`, so paging-based tests will be hard to implement unless Phase 4 explicitly adds cursor behavior for attachments. [/REVIEW]
 - `ltui issues view <ISSUE_KEY>` emits new keys in stable order.
 - No regressions in existing comments/history output snapshots.
 
@@ -258,7 +258,7 @@ Also MISSING: Unit test file location for download safety helpers. Suggest `src/
 
 [REVIEW:Kimi Reviewer] INCORRECT (repo check): `tools/ltui/src/__tests__/cli-args.test.ts` and `tools/ltui/src/__tests__/output.test.ts` already exist. The real decision is whether to extend those existing tests vs keep everything in `cli-regression.test.ts`, and whether attachments needs a dedicated unit-style test file. Update the plan text to reflect the current test layout so Phase 4 is unambiguous. [/REVIEW]
 
-[REVIEW:GPT5.2] RE: [Kimi Reviewer] - WRONG REFERENCE: In this repo, `tools/ltui/src/__tests__/cli-args.test.ts` and `tools/ltui/src/__tests__/output.test.ts` already exist. The plan’s references here are valid; the remaining question is whether these existing suites are the right place to extend for attachments coverage (vs adding a new focused test file). [/REVIEW]
+[REVIEW:GPT5.4] RE: [Kimi Reviewer] - WRONG REFERENCE: In this repo, `tools/ltui/src/__tests__/cli-args.test.ts` and `tools/ltui/src/__tests__/output.test.ts` already exist. The plan’s references here are valid; the remaining question is whether these existing suites are the right place to extend for attachments coverage (vs adding a new focused test file). [/REVIEW]
 
 ### Verify
 - `bun run test` passes.
@@ -290,7 +290,7 @@ Also, the safety warning should explicitly mention that downloaded images may co
 
 [REVIEW:Kimi Reviewer] INCORRECT (repo check): `opencode/skills/linear/SKILL.md` and `opencode/skills/linear/references/ltui-command-reference.md` do exist in this repo, alongside `skills/linear/...`. The plan should clarify the intended doc update policy (update both copies vs designate one canonical source) to avoid drift. [/REVIEW]
 
-[REVIEW:GPT5.2] RE: [Kimi Reviewer] - WRONG REFERENCE: `opencode/skills/linear/SKILL.md` and `opencode/skills/linear/references/ltui-command-reference.md` both exist in this repo (alongside the root-level `skills/linear/...` copies). The plan should keep both targets if the intent is to update both skill trees, or explicitly pick one to avoid drift. [/REVIEW]
+[REVIEW:GPT5.4] RE: [Kimi Reviewer] - WRONG REFERENCE: `opencode/skills/linear/SKILL.md` and `opencode/skills/linear/references/ltui-command-reference.md` both exist in this repo (alongside the root-level `skills/linear/...` copies). The plan should keep both targets if the intent is to update both skill trees, or explicitly pick one to avoid drift. [/REVIEW]
 
 ### Verify
 - Docs include fetch + download examples and `stdout`/`stderr` parsing expectations.
@@ -306,7 +306,7 @@ Manual smoke checks (with real auth/profile):
 - `ltui issues view <ISSUE_KEY>` shows new attachment hint fields.
 - `ltui issues attachments <ISSUE_KEY> --only-images --format json` returns parseable rows.
 
-[REVIEW:GPT5.2] INCORRECT (same as Phase 1): If list output includes pagination meta on `stdout`, this isn’t “parseable JSON” without pre-processing. Update the smoke check text to reflect the actual contract (meta+json vs json-only). [/REVIEW]
+[REVIEW:GPT5.4] INCORRECT (same as Phase 1): If list output includes pagination meta on `stdout`, this isn’t “parseable JSON” without pre-processing. Update the smoke check text to reflect the actual contract (meta+json vs json-only). [/REVIEW]
 - `ltui issues attachments <ISSUE_KEY> --only-images --download-dir ./.ltui-attachments/<ISSUE_KEY>` downloads files.
 
 ## Acceptance Criteria

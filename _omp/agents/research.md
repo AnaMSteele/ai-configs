@@ -2,7 +2,7 @@
 name: research
 description: Read-only research + project thinking partner (ChatGPT-style); may delegate research; never edits files
 mode: all
-model: openai-codex/gpt-5.2
+model: openai-codex/gpt-5.4
 color: "#00FF00"
 reasoningEffort: high
 tools:

@@ -1,6 +1,6 @@
 ---
 name: plan-gpt5.4
-description: Planning agent using GPT 5.2
+description: Planning agent using GPT 5.4
 mode: subagent
 model: openai/gpt-5.4
 reasoningEffort: high

@@ -1,9 +1,9 @@
 ---
-description: Run a change review using GPT5.2 Codex
+description: Run a change review using GPT5.4 Codex
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 agent: reviewer-codex
 subtask: true
-model: openai-codex/gpt-5.2-codex
+model: openai-codex/gpt-5.4-codex
 ---
 
 ## Execution Mode
