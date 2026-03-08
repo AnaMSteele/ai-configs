@@ -5,7 +5,7 @@ mode: all
 model: openai/gpt-5.4
 color: "#00FF00"
 reasoningEffort: high
-permission:
+permissions:
   external_directory:
     "~/code/*": allow
     "~/Documents/Obsidian/*": allow
