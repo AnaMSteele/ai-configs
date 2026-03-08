@@ -6,22 +6,20 @@ model: openai/gpt-5.4
 color: "#00FF00"
 reasoningEffort: high
 permission:
+  external_directory:
+    "~/code/*": allow
+    "~/Documents/Obsidian/*": allow
   bash: true
   read: true
-    "~/code/*": "allow",
-    "~/Documents/Obsidian/*": "allow"
   glob: true
-    "~/code/*": "allow",
-    "~/Documents/Obsidian/*": "allow"
   grep: true
-    "~/code/*": "allow",
-    "~/Documents/Obsidian/*": "allow"
   webfetch: true
   exa_web_search_exa: true
   exa_get_code_context_exa: true
   exa-code_get_code_context_exa: true
   exa_company_research_exa: true
   task: true
+  skill: true
   write: false
   edit: false
   list: true
