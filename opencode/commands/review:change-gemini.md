@@ -3,7 +3,6 @@ description: Run a change review using Gemini 3 Pro
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 agent: reviewer-gemini
 subtask: true
-model: google/antigravity-gemini-3-pro
 ---
 
 Your reviewer name is GEMINI 

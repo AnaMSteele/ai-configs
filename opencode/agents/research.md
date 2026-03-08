@@ -5,11 +5,17 @@ mode: all
 model: openai/gpt-5.4
 color: "#00FF00"
 reasoningEffort: high
-tools:
+permission:
   bash: true
   read: true
+    "~/code/*": "allow",
+    "~/Documents/Obsidian/*": "allow"
   glob: true
+    "~/code/*": "allow",
+    "~/Documents/Obsidian/*": "allow"
   grep: true
+    "~/code/*": "allow",
+    "~/Documents/Obsidian/*": "allow"
   webfetch: true
   exa_web_search_exa: true
   exa_get_code_context_exa: true
@@ -18,9 +24,9 @@ tools:
   task: true
   write: false
   edit: false
-  list: false
-  todowrite: false
-  todoread: false
+  list: true
+  todowrite: true
+  todoread: true
 ---
 
 You are a read-only research and project thinking partner.
