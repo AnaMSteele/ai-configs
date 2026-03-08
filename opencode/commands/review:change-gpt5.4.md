@@ -64,6 +64,7 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Existing patterns and conventions
 - Feasibility and integration constraints
 - Correct file paths, APIs, and data structures referenced by the plan
+- Alignment with any available `PRODUCT_INTENT.md` or equivalent product-intent documents in the repository
 
 Use the Task tool with `subagent_type=Explore` to efficiently gather context.
 
@@ -91,12 +92,22 @@ Verify the plan is runnable and resumable:
 - Phases are present (`## Phase N: ...`) and ordered.
 - Each phase has:
   - `### End State` (observable outcomes)
+  - `### Tests first` (behavioral tests in plain terms; if TDD is not practical, the phase explains why)
   - `### Work` (high-level guidance)
   - `### Verify` (explicit commands and/or manual checks)
 - `## Progress` exists, is coarse (phase-level), and uses stable IDs.
 - `## Progress` items correspond to phase headers.
 - Only `## Progress` contains checkboxes.
 - `Resume Instructions (Agent)` avoids stop points and enables continuous execution.
+- `## Decisions / Deviations Log` exists.
+- The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
+- The plan reflects the expectation that important questions are answered before the plan is considered ready.
+
+Also review whether the `### Tests first` sections:
+
+- describe what a user, operator, or agent will be able to do after the phase,
+- align with the intended product behavior,
+- are strong enough to catch partial or misleading implementation.
 
 ### 4) Cross-Verification
 
@@ -105,6 +116,7 @@ Ensure internal consistency:
 - Acceptance criteria have corresponding verification steps.
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
+- The plan aligns with the repository's long-range product intent when such intent is documented.
 
 ## Comment Guidelines
 

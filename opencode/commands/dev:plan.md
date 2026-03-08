@@ -77,10 +77,12 @@ Write (or update) `plan_path` with:
 - Goal / Non-goals
 - Current State (Validated)
 - Proposed Approach
+- Locked Decisions
 - Phases (`## Phase 1: ...`, `## Phase 2: ...`, ...)
   - Prose-first; do not create per-step checklists inside phases.
   - Each phase MUST include:
     - `### End State` (observable outcomes)
+    - `### Tests first` (behavioral tests in plain terms; if TDD is not practical, explain why)
     - `### Work` (high-level guidance)
     - `### Verify` (explicit commands and/or manual checks)
 - Acceptance Criteria (observable outcomes)
@@ -98,10 +100,18 @@ Write (or update) `plan_path` with:
   - Stable IDs (`P1`, `P2`, ...) that correspond to phase headers.
   - Checkboxes MUST appear only in `## Progress`.
 - Decisions / Deviations Log (append-only)
-- Open Questions / Decision Points
 - Plan Changelog (append-only; add a new entry when regenerating)
 
 Keep scope flexible: there are no special restrictions beyond the repository's existing guardrails and the user's stated intent.
+
+Before considering the plan complete:
+
+- Review any available `PRODUCT_INTENT.md` or equivalent long-range product intent documents in the repository.
+- Resolve every important question before finalizing the plan.
+- If the codebase or docs answer a question with high confidence, answer it directly in the plan.
+- If confidence is not high enough, ask the user and incorporate the answer into the plan.
+- Do not leave an `Open Questions` section in a ready plan.
+- Use the `tdd-test-writer` skill when available to improve the `### Tests first` sections.
 
 ### 5) Consistency Pass
 
@@ -110,6 +120,9 @@ Before finishing:
 - Every acceptance criterion has at least one phase `### Verify` item that provides evidence.
 - Every progress checkbox corresponds to a phase header.
 - Phase ordering and naming is consistent across phases, progress, and acceptance criteria.
+- Every phase has a `### Tests first` section.
+- The `### Tests first` sections describe user-visible behavioral outcomes, not only implementation mechanics.
+- There are no unresolved decision points left in the plan.
 
 ## Next Steps
 

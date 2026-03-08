@@ -43,6 +43,15 @@ Resolve to `plan_path`:
 
 Read `plan_path` fully.
 
+Before execution, confirm the plan is actually executable:
+
+- `## Progress` exists and has at least one unchecked item or all items are already complete.
+- `Resume Instructions (Agent)` exists.
+- Each active phase includes `### End State`, `### Tests first`, `### Work`, and `### Verify`.
+- The plan does not contain unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
+
+If important questions remain unresolved, do not start implementation. Ask the user for the missing decision or direct them to update the plan first.
+
 Identify the first unchecked item in `## Progress` and begin execution immediately — do not pause to recap the plan.
 
 ### 3) Execute Phase-by-Phase with Quality Gate
@@ -55,7 +64,13 @@ Delegate to the `developer-mm` agent with this prompt:
 
 > Implement phase N of this plan: `<plan_path>`
 >
-> Read the plan file fully. Find phase N and implement everything described in its `### Work` section. Follow the plan precisely — implement what is specified, nothing more. When you encounter ambiguity, resolve it by examining existing code patterns. Only ask the user if the decision is truly unresolvable.
+> Read the plan file fully. Find phase N and implement everything described in its `### Tests first` and `### Work` sections.
+>
+> Follow the plan precisely — implement what is specified, nothing more. Start from the behavioral tests described in `### Tests first`. If those tests do not yet exist, write them first unless the plan explicitly explains why TDD is not practical for this phase.
+>
+> Confirm that the tests represent the intended user-visible behavior before changing production code. Then make the smallest real code changes needed to make those tests pass.
+>
+> When you encounter ambiguity, resolve it by examining existing code patterns and the source documents referenced by the plan. Only ask the user if the decision is truly unresolvable.
 >
 > After implementation, run the phase's `### Verify` steps if they exist.
 
@@ -72,6 +87,7 @@ Delegate to the `quality-reviewer-k2.5` agent with this prompt:
 > 1. Gaps — anything described in the plan that was not implemented or was implemented incorrectly
 > 2. Quality issues — bugs, logic errors, missing error handling, broken integrations
 > 3. Problems — regressions, inconsistencies with the rest of the codebase, violations of existing patterns
+> 4. TDD/plan fidelity issues — cases where the implementation skipped the planned tests-first approach without justification, or where the passing tests do not actually prove the intended behavior
 >
 > Do NOT flag:
 > - Style preferences or subjective improvements
@@ -98,7 +114,7 @@ Once the quality gate passes (zero issues found):
 
 ### 4) Tests Policy
 
-- You MAY add/update tests when behavior changes.
+- You SHOULD write or update the planned behavioral tests first when behavior changes, unless the plan explicitly explains why TDD is not practical for that phase.
 - You MAY refactor for testability.
 - You MUST NOT change product code merely to satisfy a failing test if acceptance criteria + observed behavior indicate the code is correct.
   - In that case, fix the test or update the test assumptions (and log the decision).

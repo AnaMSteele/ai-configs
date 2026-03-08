@@ -65,8 +65,11 @@ Use the Task tool with `subagent_type=Explore`.
 - Apply edits directly to the plan.
 - Remove each resolved inline review comment.
 - If feedback implies adding or changing requirements, update:
+  - Locked Decisions
   - Goal/Non-goals / Acceptance Criteria
+  - `## Progress` if phase structure changes
   - The impacted phase(s) `### End State` / `### Work` / `### Verify`
+  - `### Tests first` sections so they still describe the intended user-visible behavior
   - `Resume Instructions (Agent)` if needed
 - Append a new entry to `## Plan Changelog` describing what changed.
 
@@ -75,13 +78,17 @@ Use the Task tool with `subagent_type=Explore`.
 - No `[REVIEW:...]` comments remain.
 - `## Progress` still corresponds to the phase headers.
 - Each acceptance criterion has at least one verification step.
+- Each phase has `### End State`, `### Tests first`, `### Work`, and `### Verify`.
+- The plan has `Resume Instructions (Agent)` and `## Decisions / Deviations Log`.
+- The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 
 ### 6) Overall Plan State
 
-- Identify any open questions or decisions that need input from the user.
-- Provide the user with any low-confidence suggestions or decisions that are being made which they might want to change.
-- If you have specific issues you know, with high confidence that you need input from the user on, then ask those using the question tool. 
-- If you've asked questions with the question tool, incorporate those answers into the final plan and re-assess whether there are more open questions.
+- Resolve every important question before considering integration complete.
+- If the codebase, existing specs, product-intent docs, or plan context answer a question with high confidence, answer it directly in the plan.
+- If a question cannot be answered with high confidence, ask the user with the `question` tool.
+- Incorporate the user's answer into the plan and re-check the whole document for any downstream phase updates needed.
+- Do not leave an `Open Questions` section or any unresolved-decision placeholder in the final plan.
 ---
 
 ## Next Step

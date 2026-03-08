@@ -97,6 +97,15 @@ All workflow commands follow strict fidelity preservation:
 - **Question Ambiguity**: Ask for clarification rather than making assumptions
 - **Source Reference**: Constantly reference source document to prevent drift
 
+### TDD-Oriented Planning
+Plans and specifications should describe behavioral tests in plain terms around what a user, operator, or agent will be able to do after the work is complete that they could not do before.
+
+- Use TDD where practical: describe tests first, then implement code to make those tests pass.
+- If TDD is not appropriate for a phase, the plan should say why.
+- A plan is not complete if important questions remain unresolved.
+- Resolve questions with evidence when possible; ask the user when confidence is not high enough.
+- Execution commands should treat planned tests as part of the intended behavior, not optional follow-up work.
+
 ### Standardized Format
 All commands use consistent:
 - **Phase Structure**: `Phase N: [Name] (Timeframe)` (optional)
@@ -131,6 +140,7 @@ All commands use consistent:
 - Direct conversion with 100% fidelity preservation
 - Supports complexity levels (simple/standard/comprehensive)
 - Preserves all technical context and rationale
+- Should preserve any tests-first / TDD expectations already present in the source document
 
 **`/3:process-tasks`**:
 - Process any task list (PRD or spec-based)
@@ -139,6 +149,7 @@ All commands use consistent:
 - Requires git branch (not main)
 - Supports `NOSUBCONF` flag for autonomous processing
 - Implements only what's specified in source documents
+- Should implement behavioral tests and TDD steps when they are specified in source documents
 
 **`/doc:fetch` & `/doc:fetch-batch`**:
 - Fetch library/framework documentation
@@ -179,6 +190,7 @@ All commands use consistent:
 ### developer
 - Implements EXACTLY what's specified in source documents
 - Adds NO tests, security, or features beyond specification requirements
+- When source documents specify tests-first or TDD behavior, those tests are part of the required implementation scope
 - Questions ambiguity rather than making assumptions
 - Used by all task processing workflows
 
