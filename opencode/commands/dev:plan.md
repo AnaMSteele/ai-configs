@@ -83,6 +83,7 @@ Write (or update) `plan_path` with:
   - Each phase MUST include:
     - `### End State` (observable outcomes)
     - `### Tests first` (behavioral tests in plain terms; if TDD is not practical, explain why)
+    - `### Expected files` (likely files/surfaces touched; include parity inventory when behavior spans multiple interfaces)
     - `### Work` (high-level guidance)
     - `### Verify` (explicit commands and/or manual checks)
 - Acceptance Criteria (observable outcomes)
@@ -112,6 +113,8 @@ Before considering the plan complete:
 - If confidence is not high enough, ask the user and incorporate the answer into the plan.
 - Do not leave an `Open Questions` section in a ready plan.
 - Use the `tdd-test-writer` skill when available to improve the `### Tests first` sections.
+- Make the `### Tests first` sections strong enough to catch partial or misleading implementations by covering happy path, guardrail/failure behavior, counterexamples or ambiguity cases, and boundary/scale or parity cases when applicable.
+- Lock canonical contracts, payloads, schemas, or evidence sources in the plan before phases that depend on them.
 
 ### 5) Consistency Pass
 
@@ -122,6 +125,8 @@ Before finishing:
 - Phase ordering and naming is consistent across phases, progress, and acceptance criteria.
 - Every phase has a `### Tests first` section.
 - The `### Tests first` sections describe user-visible behavioral outcomes, not only implementation mechanics.
+- Multi-surface phases make parity expectations explicit in `### Tests first`, `### Work`, or `### Expected files`.
+- `### Verify` commands are copy/paste ready and match current repo/package/target names.
 - There are no unresolved decision points left in the plan.
 
 ## Next Steps

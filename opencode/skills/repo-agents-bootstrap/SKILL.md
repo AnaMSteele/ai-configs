@@ -29,12 +29,16 @@ For mature repos (like doct/ccore), start in `audit_only` and present a delta pl
 Capture these behaviors as defaults:
 
 - Plan-first execution with phase checkpoints (`Implement phase N` -> `Review/Re-review` until zero critical issues).
+- Phase advancement only when the latest review reports `No issues found.` or only explicitly logged low-risk deferred items remain.
 - Resumability: `Progress` with stable IDs, explicit `Resume Instructions`, and append-only decision/deviation logs.
 - Evidence-first validation: lint, unit, build, e2e (and contract tests if applicable) before claiming done.
 - Review loops as gates: do not advance to next phase while reviewer still reports unresolved critical issues.
 - Commit and push discipline with rationale, not just code diffs.
 - Test-first posture: define behavior before implementation wherever practical.
 - Product-intent anchored planning: every active plan must trace back to `thoughts/specs/product_intent.md`.
+- Validate `### Verify` commands against real repo/package/target names before execution.
+- Make multi-surface parity expectations explicit when phases span HTTP/CLI/MCP/UI or similar interfaces.
+- Update stale fixtures/tests when locked contracts, payloads, schemas, or evidence sources change.
 
 ## TDD + BDD Rules
 
@@ -42,9 +46,10 @@ For every phase in a plan:
 
 1. Define acceptance criteria in user outcomes, not implementation terms.
 2. Add BDD scenarios (`Given/When/Then`) for happy path, edge path, and failure path.
-3. Write failing tests first (RED) where practical.
-4. Implement the smallest real slice to pass tests (GREEN).
-5. Refactor safely while preserving behavioral coverage (REFACTOR).
+3. Add counterexample/ambiguity, boundary/scale, and cross-surface parity scenarios whenever the phase can fail in those ways.
+4. Write failing tests first (RED) where practical.
+5. Implement the smallest real slice to pass tests (GREEN).
+6. Refactor safely while preserving behavioral coverage (REFACTOR).
 
 If strict TDD is skipped, require an explicit reason in the phase and add compensating checks.
 

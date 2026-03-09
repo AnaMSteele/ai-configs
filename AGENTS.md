@@ -71,6 +71,10 @@ Many of the Codex prompts in this repo assume that application repositories defi
 
 - Prefer working on a branch for larger or riskier changes, but committing directly to `main` is acceptable for small, low-risk updates in this repo.
 - Run the repository’s primary test command(s) before committing any change that touches behavior, plus any additional checks (lint, build, etc.) defined in the project’s AGENTS.md or TESTING.md.
+- For BDD/TDD phase plans, keep the review/fix loop running until the latest review reports `No issues found.` or only explicitly logged low-risk deferred items remain. Do not advance phases with unresolved substantive issues.
+- Validate planned verification commands against real repo/package/target names before execution; correct obvious drift in the plan immediately instead of carrying stale commands forward.
+- When a phase spans multiple required surfaces (HTTP/CLI/MCP/UI/etc.), make parity expectations explicit and treat missing registry/dispatcher/wrapper wiring as implementation work, not optional cleanup.
+- When locked schemas, payloads, response shapes, or evidence sources change, update stale fixtures/tests in the touched scope during the same run rather than leaving contract drift for a later phase.
 - When working from task lists or simplification plans:
   - After completing a listed sub-task or step, immediately change its checkbox from `[ ]` to `[x]` in the same file.
   - Verify that the change is reflected in the file (do not batch updates at the end).
@@ -109,6 +113,11 @@ These rules apply to fidelity-oriented workflows (PRDs/specs → tasks → imple
     - After completing a listed sub-task or step, immediately change its checkbox from `[ ]` to `[x]` in the same file.
     - Verify that the change is present in the file (avoid batching updates at the end).
     - Keep any “Relevant Files” / “Changed Files” sections accurate as files are created or modified.
+  - For BDD/TDD execution plans:
+    - Keep review/fix loops running until the latest review finds no substantive issues; only explicitly logged low-risk deferred items may remain when advancing.
+    - Validate `### Verify` commands against actual repo/package/target names before execution.
+    - Make multi-surface parity expectations explicit when behavior must match across HTTP/CLI/MCP/UI or similar interfaces.
+    - Update stale fixtures/tests when locked contracts, payloads, schemas, or evidence sources change.
 
 ## Security & Data Handling  <!-- PROJECT-SPECIFIC -->
 
@@ -122,6 +131,7 @@ These rules apply to fidelity-oriented workflows (PRDs/specs → tasks → imple
 - **Preferred test types:** TODO (unit vs integration vs e2e)
 - **Coverage expectations:** TODO (e.g., “no new code without tests near 80%+ coverage in this module”)
 - **Flaky / slow tests:** TODO (list known problematic suites, how to handle them)
+- **BDD/TDD quality bar:** Behavioral tests should be strong enough to catch partial or misleading implementations by covering happy path, guardrail/failure behavior, counterexamples/ambiguity, and boundary/scale or cross-surface parity where applicable. Use `tdd-test-writer` when available to pressure-test the RED-phase contract.
 
 ## Git & Review Workflow  <!-- PROJECT-SPECIFIC -->
 

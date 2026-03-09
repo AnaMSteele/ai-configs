@@ -96,7 +96,11 @@ Also review whether the `### Tests first` sections:
 
 - describe what a user, operator, or agent will be able to do after the phase,
 - align with the intended product behavior,
-- are strong enough to catch partial or misleading implementation.
+- are strong enough to catch partial or misleading implementation,
+- cover guardrail/failure behavior and counterexample or ambiguity cases when applicable,
+- cover boundary/scale behavior when query shape, aggregation, or fan-out could change correctness,
+- make required cross-surface parity explicit when the behavior spans multiple interfaces,
+- account for contract, fixture, payload, or evidence-source drift when later phases depend on those contracts.
 
 ### 4) Cross-Verification
 
@@ -106,6 +110,7 @@ Ensure internal consistency:
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
 - The plan aligns with the repository's long-range product intent when such intent is documented.
+- `### Verify` commands look current for actual repo/package/target names rather than stale guesses.
 
 ## Comment Guidelines
 

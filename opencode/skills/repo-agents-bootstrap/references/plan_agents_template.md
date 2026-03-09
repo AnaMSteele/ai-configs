@@ -62,8 +62,11 @@ And <important invariant>
 Include:
 
 - happy path
-- at least one edge case
+- at least one edge or boundary case
 - at least one failure/guardrail case
+- at least one counterexample or ambiguity case when matching, parsing, identity, refs, policy, or routing could produce misleading passes
+- at least one scale or fan-out case when query shape, aggregation, or volume could change correctness or viability
+- cross-surface parity scenarios when the same behavior must hold across multiple interfaces (for example HTTP/CLI/MCP/UI)
 
 Add IDs so scenarios can be referenced from tests (for example `BDD-AC3-1`).
 
@@ -79,6 +82,8 @@ What is true when this phase is complete.
 
 - List failing tests to write first.
 - Map each test to acceptance criteria and BDD scenarios.
+- Include counterexample, boundary/scale, parity, and contract-drift checks whenever the phase can fail in those ways.
+- Use the `tdd-test-writer` skill when available to pressure-test the RED-phase contract before implementation.
 - If TDD is skipped, explain why and define compensating verification.
 
 ### Work
@@ -89,22 +94,39 @@ What is true when this phase is complete.
 ### Expected files
 
 - Likely files/modules touched to improve resumability.
+- If the phase spans multiple required surfaces, include the parity inventory (for example route/handler, CLI entrypoint, MCP tool wrapper, registry/dispatcher, docs/tests).
+- Treat this list as guidance for resumability, not as an exhaustive constraint on necessary edits.
 
 ### Verify
 
 - Exact commands and/or manual checks proving completion.
-- Prefer targeted checks first, then broader quality gates.
+- Commands must be copy/paste ready and validated against current repo/package/target names.
+- Prefer targeted automated checks first, then broader quality gates; manual checks are supplemental rather than the sole proof when automation is practical.
 
 ## Execution loop
 
 For each phase:
 
-1. Write/refine tests first (RED).
+1. Write/refine tests first (RED) and harden them against misleading partial passes.
 2. Run targeted tests and confirm expected failure.
 3. Implement minimal behavior slice (GREEN).
-4. Run reviewer loop; close critical issues before proceeding.
+4. Run reviewer loop until it reports `No issues found.` or only explicitly logged low-risk deferred items remain.
 5. Run required quality gates.
 6. Update progress and decision/deviation log.
+
+## Low-risk deferral bar
+
+A phase may advance with deferred items only if every remaining item is low risk.
+
+Not low risk:
+
+- acceptance criteria gaps or incorrect behavior,
+- correctness, data integrity, security, concurrency, observability, or performance viability issues,
+- missing required-surface parity,
+- stale or invalid `### Verify` guidance,
+- schema, fixture, payload, response-contract, or evidence-source drift that would mislead later phases.
+
+Every low-risk deferred item must be logged with evidence, rationale, and a recommended follow-up.
 
 ## Ready/Done bars
 
@@ -112,8 +134,10 @@ For each phase:
 
 - No unresolved critical decisions.
 - Acceptance criteria and BDD scenarios are concrete.
-- Phase verify steps are executable.
+- Phase verify steps are executable and current for real repo targets.
 - Progress and resume instructions are present.
+- Multi-surface phases make parity expectations explicit.
+- Canonical contracts or evidence sources are locked when later phases depend on them.
 - If `Status: ready`, no `Open Questions` remain.
 
 ### Definition of done
@@ -121,4 +145,5 @@ For each phase:
 - Behavioral tests pass and represent genuine user-visible correctness.
 - Quality gates pass for the scoped change.
 - Deviations are logged with rationale.
+- Any remaining deferred items are explicitly low risk and logged.
 - Downstream phases reviewed if decisions changed.
