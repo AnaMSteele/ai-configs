@@ -28,6 +28,7 @@ thoughts/specs/spec-[feature].md       - Technical specification
 thoughts/plans/prd-[feature].md        - PRD (if exists)
 thoughts/plans/tasks-*-[feature].md    - Task list
 thoughts/research/[date]-[feature].md  - Research documents
+thoughts/discoveries/[feature-or-plan].md - Deferred discoveries and follow-up opportunities
 thoughts/handoffs/[feature]/           - Handoff documents
 thoughts/validation/[date]-[feature].md - Validation reports
 thoughts/debug/[date]-[feature].md     - Debug reports
@@ -38,9 +39,10 @@ thoughts/debug/[date]-[feature].md     - Debug reports
 | Category | Files | Action |
 |----------|-------|--------|
 | **Verifiable** | specs, research | Extract claims → verify against codebase → document actual |
+| **Discovery Ledgers** | discovery files | Triage unresolved findings, decide what persists after graduation |
 | **Removable** | tasks, PRDs, handoffs, validation, debug | Remove without review |
 
-Read all **verifiable** artifacts completely. Note **removable** artifacts for cleanup.
+Read all **verifiable** and **discovery ledger** artifacts completely. Note **removable** artifacts for cleanup.
 
 ## Phase 2: Extract Spec Claims
 
@@ -76,6 +78,24 @@ Output a list of **verifiable claims** with source references:
 ### Decisions (from research-[feature].md)
 1. [Decision] because [rationale] (line 23)
 ```
+
+## Phase 2.5: Triage Discovery Ledgers
+
+If discovery ledgers exist, review each unresolved entry and classify it before updating permanent docs.
+
+### For Each Discovery, Decide:
+
+- **Absorbed** - Final implementation already covered it; mark it resolved in the ledger or note that it no longer needs follow-up
+- **Documented Divergence** - It explains a real implementation constraint or known gap that should appear in permanent docs
+- **Persist as Follow-up** - It remains outside the shipped scope and should stay in `thoughts/discoveries/` for later pickup
+- **Rejected / No Longer Relevant** - It was exploratory noise, invalidated, or intentionally declined
+
+### Discovery Triage Rules
+
+- Preserve evidence and IDs from the original ledger
+- Keep unresolved follow-up items in `thoughts/discoveries/`; do not delete them during graduation
+- If a discovery materially affects the documented architecture, constraints, or changelog, reflect that in the permanent docs
+- Include discovery triage outcomes in the graduation report so the user can decide what to pick up next
 
 ## Phase 3: Locate Codebase Files
 
@@ -211,6 +231,11 @@ For Missing:
 For Added:
   → Document in permanent docs (recommended)
   → Omit as implementation detail
+
+Discovery Ledger Triage:
+  Open follow-ups: [N]
+  Resolved during graduation: [M]
+  Discovery ledger: thoughts/discoveries/[feature-or-plan].md
 
 ================================================================================
 ```
@@ -439,6 +464,10 @@ rm thoughts/plans/tasks-*-[feature].md
 rm -rf thoughts/handoffs/[feature]/
 rm thoughts/validation/*-[feature].md
 rm thoughts/debug/*-[feature].md
+
+# Discovery ledgers
+# Keep thoughts/discoveries/[feature-or-plan].md if unresolved follow-up items remain.
+# Delete it only when all discovery entries were absorbed, documented elsewhere, rejected, or otherwise resolved.
 ```
 
 ## Phase 8: Commit Changes
@@ -486,6 +515,7 @@ Verification Summary:
   Divergences Found:   [Z] (documented as actual)
   Decisions Verified:  [A]/[B] reflected in code
   Added to Docs:       [C] undocumented features
+  Discovery Follow-ups:[D] still open in thoughts/discoveries/[feature-or-plan].md
 
 Permanent Documentation Updated:
   [x] spec/architecture/[feature-slug].md - Feature architecture doc (new)
@@ -498,6 +528,10 @@ Artifacts Cleaned Up:
   - thoughts/plans/tasks-*-[feature].md
   - thoughts/research/*-[feature].md
   - [other removed files]
+
+Discovery Tracking:
+  - Open follow-ups remain in thoughts/discoveries/[feature-or-plan].md if further work is needed
+  - Resolved discoveries were either documented in permanent docs or closed during graduation triage
 
 Git History:
   All original artifacts preserved in git history.
@@ -513,6 +547,7 @@ Git History:
 Preview without making changes:
 - Show artifacts found
 - Show extracted claims
+- Show discovery ledger triage
 - Show verification results
 - Show what would be added to permanent docs
 - Show files that would be deleted
@@ -565,6 +600,7 @@ Searched:
 - thoughts/specs/spec-[feature].md
 - thoughts/plans/*-[feature].md
 - thoughts/research/*-[feature].md
+- thoughts/discoveries/*[feature]*.md
 
 Did you mean one of these?
 - [similar-feature-1]

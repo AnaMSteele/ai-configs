@@ -246,6 +246,7 @@ All working artifacts are stored in the `thoughts/` directory:
 - **Task Lists**: `thoughts/plans/tasks-[source-name].md`
 - **Simplification Plans**: `thoughts/plans/simplify-plan-[target].md`
 - **Research Documents**: `thoughts/research/YYYY-MM-DD-[description].md`
+- **Discovery Ledgers**: `thoughts/discoveries/[plan-or-feature].md`
 - **Handoffs**: `thoughts/handoffs/[TICKET]/YYYY-MM-DD_HH-MM-SS_description.md`
 - **Validation Reports**: `thoughts/validation/YYYY-MM-DD-[description].md`
 - **Debug Investigations**: `thoughts/debug/YYYY-MM-DD-[description].md`
