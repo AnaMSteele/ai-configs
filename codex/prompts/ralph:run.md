@@ -1,11 +1,11 @@
 ---
-description: Execute a plan with quality-gated phases — each phase gets 1 implementation pass and up to 3 review/fix passes
+description: Execute a plan with capped review passes — each phase gets 1 implementation pass and up to 3 review/fix passes
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 ---
 
 # Run Plan (Quality-Gated Loop)
 
-Execute a plan document phase-by-phase, where each phase is quality-gated: do 1 implementation pass, then run up to 3 review/fix passes, stopping early if the reviewer finds zero issues.
+Execute a plan document phase-by-phase: do 1 implementation pass, then run up to 3 review/fix passes, stopping early if the reviewer finds zero issues. If issues still remain after review pass 3, treat the phase as good enough and continue to the next phase without pausing.
 
 ## Inputs
 
@@ -45,7 +45,7 @@ Read `plan_path` fully.
 
 Identify the first unchecked item in `## Progress` and begin execution immediately — do not pause to recap the plan.
 
-### 3) Execute Phase-by-Phase with Quality Gate
+### 3) Execute Phase-by-Phase with Capped Review
 
 For each phase (tracked by `## Progress`), run 1 implementation pass followed by up to 3 review/fix passes:
 
@@ -86,11 +86,11 @@ Delegate to the `quality-reviewer` agent with this prompt:
 
 - If it found zero issues → the phase quality gate is passed
 - If it found and fixed issues and fewer than 3 review passes have run → run another review pass
-- If it found and fixed issues on review pass 3 → stop the run and report that the phase hit the review-pass limit without reaching "No issues found."
+- If it found and fixed issues on review pass 3 → accept the phase as good enough and proceed immediately to phase completion without pausing
 
 #### Phase Completion
 
-Once the quality gate passes (zero issues found):
+Once review is complete (either zero issues found or 3 review passes have run):
 
 1. Flip the phase's checkbox from `- [ ]` to `- [x]` in `## Progress`.
 2. If implementation required a decision or revealed a constraint, append a structured entry to `## Decisions / Deviations Log` in the plan file.

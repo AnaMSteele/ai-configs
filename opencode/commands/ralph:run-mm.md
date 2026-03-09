@@ -1,11 +1,11 @@
 ---
-description: Execute a plan with quality-gated phases — each phase gets 1 implementation pass and up to 3 review/fix passes
+description: Execute a plan with quality-gated phases — each phase gets 1 implementation pass and up to 3 review/fix passes before advancing
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 ---
 
 # Run Plan (Quality-Gated Loop)
 
-Execute a plan document phase-by-phase, where each phase is quality-gated: do 1 implementation pass, then run up to 3 review/fix passes, stopping early if the reviewer finds zero issues.
+Execute a plan document phase-by-phase, where each phase is quality-gated: do 1 implementation pass, then run up to 3 review/fix passes, stopping early if the reviewer finds zero issues. If pass 3 still finds issues, treat the review budget as exhausted, record that outcome, and continue to the next phase without pausing.
 
 ## Inputs
 
@@ -102,14 +102,14 @@ Delegate to the `quality-reviewer-k2.5` agent with this prompt:
 
 - If it found zero issues → the phase quality gate is passed
 - If it found and fixed issues and fewer than 3 review passes have run → run another review pass
-- If it found and fixed issues on review pass 3 → stop the run and report that the phase hit the review-pass limit without reaching "No issues found."
+- If it found and fixed issues on review pass 3 → accept that the phase hit the review-pass limit, record that outcome in the plan's `## Decisions / Deviations Log`, and proceed immediately to phase completion without asking the user for permission or pausing the run
 
 #### Phase Completion
 
-Once the quality gate passes (zero issues found):
+Once the phase is ready to advance (either zero issues found, or review pass 3 completed with remaining issues):
 
 1. Flip the phase's checkbox from `- [ ]` to `- [x]` in `## Progress`.
-2. If implementation required a decision or revealed a constraint, append a structured entry to `## Decisions / Deviations Log` in the plan file.
+2. If implementation required a decision, revealed a constraint, or exhausted the 3-pass review budget without reaching "No issues found.", append a structured entry to `## Decisions / Deviations Log` in the plan file.
 3. Proceed immediately to the next phase — do not pause.
 
 ### 4) Tests Policy
