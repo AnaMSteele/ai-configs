@@ -128,7 +128,7 @@ Ensure the directory exists:
 mkdir -p thoughts/plans
 ```
 
-Spawn a planning subagent that drafts the initial single-file plan (mimic `dev:plan`).
+Spawn a planning subagent that drafts the initial single-file plan using the same boundaries as `dev:plan`.
 
 ```text
 Task(
@@ -151,18 +151,23 @@ Output contract:
 - Do not modify any other files
 
 Guidance:
-- Mimic the format and intent of opencode/commands/dev:plan.md (spec + phases + progress + resumability).
+- Use the shared planning workflow and the repo's AGENTS guidance.
+- Treat this as plan materialization, not implementation.
 - This is a first draft: it's OK to include a dedicated Research phase and to mark things as unvalidated.
 - You MUST do lightweight validation by inspecting the codebase (Glob/Grep/Read) so the plan references real files, patterns, and constraints.
 - You MUST NOT change application code.
-- Keep phases coarse (phase-level only) with `### End State`, `### Work`, and `### Verify` per phase.
+- You MUST NOT modify any non-plan file.
+- Load the shared `planning-workflow` skill if available, plus any clearly relevant domain skills.
+- Keep phases coarse (phase-level only) with `### End State`, `### Tests first`, `### Work`, `### Expected files`, and `### Verify` per phase.
 - `## Progress` must be phase-level, include stable IDs (P1, P2, ...), and contain the ONLY checkboxes in the document.
 
 Plan content requirements (from dev:plan):
-- Include: Goal / Non-goals / Current State (Validated) / Proposed Approach
-- Include: Acceptance Criteria (observable) and Verification Strategy
+- Include the canonical planning-workflow sections unless repo-local overrides say otherwise.
+- Include: Goal / Non-goals / Current implementation reality / Product intent alignment
+- Include: Acceptance criteria (observable), BDD scenarios, and Verification strategy
 - Include: Resume Instructions (Agent)
-- Include: Decisions / Deviations Log (append-only), Open Questions / Decision Points, Plan Changelog (append-only)
+- Include: Decisions / Deviations Log (append-only) and Plan Changelog (append-only)
+- If the plan is execution-ready, do not leave unresolved Open Questions / Decision Points.
 
 Stop after writing the plan."""
 )

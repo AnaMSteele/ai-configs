@@ -36,6 +36,16 @@ Include one canonical command if available (for example `pnpm quality:gates`).
 
 ## 5) Plan execution mode
 
+Codify the planning and execution boundaries:
+
+- `plan mode` is for read-only discovery and research.
+- `dev:plan` is the plan-materialization step and may write the plan artifact only.
+- `ralph:run` (or repo equivalent) executes the plan with the repo's real quality gates.
+
+Tell agents to load the shared `planning-workflow` skill for plan creation and regeneration.
+
+If the repo needs additional planning rules beyond the shared skill, reference the optional local overrides file (for example `thoughts/plans/AGENTS.md`). Keep that file additive rather than duplicating the full planning doctrine.
+
 Codify the quality-gated loop:
 
 - implement one phase
@@ -45,14 +55,14 @@ Codify the quality-gated loop:
 
 Require phase-level progress updates and resumable handoff notes.
 
-Reference where plan standards live (for example `thoughts/plans/AGENTS.md`) and make that file authoritative for plan structure.
-
 Require a product-intent source-of-truth file at `thoughts/specs/product_intent.md`.
 
 - If missing, create it before plan execution.
 - Treat plan updates that conflict with product intent as blocking until resolved.
 
 Require tests-first behavior for plan phases where practical and call out expected RED->GREEN evidence in handoffs.
+
+List repo-specific skill-routing hints for common work surfaces (for example frontend, React/Next, Rust, MCP, browser automation, data tooling).
 
 ## 6) Commit and handoff rules
 

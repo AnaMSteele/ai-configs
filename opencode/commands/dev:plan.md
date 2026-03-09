@@ -1,11 +1,13 @@
 ---
-description: Create or update a single-file execution plan (spec + phases + progress) from validated codebase research
+description: Materialize or update the actual single-file execution plan after discovery, using shared planning doctrine plus repo-specific guidance
 argument-hint: '<slug | "short description" | thoughts/plans/<slug>.md>'
 ---
 
-# Plan (Single File)
+# Materialize Plan
 
-Turn the validated research from this conversation into a single resumable plan document that contains both the specification and the execution guidance.
+You are no longer in plan mode. This command is the plan-writing step: synthesize validated research into the actual execution plan file.
+
+Treat this command as planning-only work even though normal file writes are available. You may inspect the repo and write the plan artifact, but you must not change product code, tests, app config, docs, generated files, or environment files.
 
 This command produces (or updates):
 
@@ -25,7 +27,7 @@ Write exactly one file:
 
 - `thoughts/plans/<slug>.md`
 
-Do not create `spec.md`, `tasks.md`, or per-plan directories unless the user explicitly asks.
+Do not create `spec.md`, `tasks.md`, per-plan directories, or any non-plan file unless the user explicitly asks.
 
 Legacy bundles:
 
@@ -43,7 +45,21 @@ Legacy bundles:
 3. Set `plan_path` to `thoughts/plans/<slug>.md`.
 4. Ensure `thoughts/plans/` exists (create it if missing).
 
-### 2) Read Existing Plan (If Present)
+### 2) Re-establish Planning Context
+
+Before writing the plan:
+
+1. Read the repo root `AGENTS.md`.
+2. Read `thoughts/specs/product_intent.md` if the repo uses it.
+3. Read `thoughts/plans/AGENTS.md` only if it exists and the repo uses it for local planning overrides.
+4. Load the shared `planning-workflow` skill.
+5. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
+   - Use `tdd-test-writer` when the phases will depend on tests-first delivery.
+   - Use frontend, React/Next, Rust, MCP, browser, or other domain skills when the work clearly spans those domains.
+
+If required planning guidance is missing and the repo cannot be planned confidently without it, ask the user instead of guessing.
+
+### 3) Read Existing Plan (If Present)
 
 If `plan_path` exists, read it fully.
 
@@ -60,78 +76,62 @@ Legacy migration support (read-only; do not delete legacy files):
 - If legacy tasks contain completed items, convert that state into coarse phase completion in `## Progress`.
   - Do not copy long checklists into the new plan.
 
-### 3) Deep Research and Validation
+### 4) Validate Repo Reality
 
 Validate key claims from the conversation by directly inspecting the codebase:
 
 - Locate the relevant files and existing patterns
 - Confirm APIs, data shapes, configuration, and constraints
 - Identify integration points and risks
+- Verify actual commands, targets, package names, and paths that the plan will reference
 
 Use `Glob`, `Grep`, and `Read` for targeted research. Use `Task(subagent_type="explore")` only for broad searches.
 
-### 4) Write `plan_path`
+Do not run side-effecting commands while doing this validation.
 
-Write (or update) `plan_path` with:
+### 5) Write `plan_path`
 
-- Goal / Non-goals
-- Current State (Validated)
-- Proposed Approach
-- Locked Decisions
-- Phases (`## Phase 1: ...`, `## Phase 2: ...`, ...)
-  - Prose-first; do not create per-step checklists inside phases.
-  - Each phase MUST include:
-    - `### End State` (observable outcomes)
-    - `### Tests first` (behavioral tests in plain terms; if TDD is not practical, explain why)
-    - `### Expected files` (likely files/surfaces touched; include parity inventory when behavior spans multiple interfaces)
-    - `### Work` (high-level guidance)
-    - `### Verify` (explicit commands and/or manual checks)
-- Acceptance Criteria (observable outcomes)
-- Verification Strategy
-  - Tests are supporting evidence, not the definition of correctness.
-  - Do not change product code merely to satisfy a failing test when acceptance criteria + observed behavior indicate correctness.
-- Resume Instructions (Agent)
-  - Read this document fully.
-  - Identify the first unchecked item in `## Progress`.
-  - Proceed autonomously phase-by-phase.
-  - Update `## Progress` only when a phase is complete; do not stop after updating progress.
-  - Ask the user only for an unresolvable decision.
-- Progress
-  - A small checkbox list (4-10 items max).
-  - Stable IDs (`P1`, `P2`, ...) that correspond to phase headers.
-  - Checkboxes MUST appear only in `## Progress`.
-- Decisions / Deviations Log (append-only)
-- Plan Changelog (append-only; add a new entry when regenerating)
+Write (or update) `plan_path` by following the shared `planning-workflow` skill, the repo's `AGENTS.md`, and any explicit repo-local planning overrides.
 
-Keep scope flexible: there are no special restrictions beyond the repository's existing guardrails and the user's stated intent.
+Non-negotiable compatibility requirements:
+
+- Write exactly one plan file at `plan_path`.
+- Preserve prior progress and append-only logs when regenerating.
+- `## Progress` contains the only checkboxes and uses stable IDs (`P1`, `P2`, ...).
+- Each phase includes `### End State`, `### Tests first`, `### Expected files`, `### Work`, and `### Verify`.
+- Ready plans do not leave unresolved `Open Questions` or equivalent unresolved-decision sections.
+- `### Verify` steps are copy/paste ready and match actual repo reality.
+- The plan is resumable by another agent without inventing missing semantics.
 
 Before considering the plan complete:
 
-- Review any available `PRODUCT_INTENT.md` or equivalent long-range product intent documents in the repository.
+- Use product intent if the repo requires it, and make the alignment explicit in the plan.
 - Resolve every important question before finalizing the plan.
 - If the codebase or docs answer a question with high confidence, answer it directly in the plan.
 - If confidence is not high enough, ask the user and incorporate the answer into the plan.
-- Do not leave an `Open Questions` section in a ready plan.
-- Use the `tdd-test-writer` skill when available to improve the `### Tests first` sections.
-- Make the `### Tests first` sections strong enough to catch partial or misleading implementations by covering happy path, guardrail/failure behavior, counterexamples or ambiguity cases, and boundary/scale or parity cases when applicable.
+- Use `tdd-test-writer` when available to improve the `### Tests first` sections.
+- Make `### Tests first` strong enough to catch partial or misleading implementations by covering happy path, guardrail/failure behavior, counterexamples or ambiguity cases, and boundary/scale or parity cases when applicable.
 - Lock canonical contracts, payloads, schemas, or evidence sources in the plan before phases that depend on them.
 
-### 5) Consistency Pass
+### 6) Consistency Pass
 
 Before finishing:
 
+- The plan structure follows the shared planning workflow and any repo-local planning overrides.
 - Every acceptance criterion has at least one phase `### Verify` item that provides evidence.
 - Every progress checkbox corresponds to a phase header.
 - Phase ordering and naming is consistent across phases, progress, and acceptance criteria.
 - Every phase has a `### Tests first` section.
 - The `### Tests first` sections describe user-visible behavioral outcomes, not only implementation mechanics.
+- BDD scenarios or equivalent `Given/When/Then` coverage are explicit when required by repo guidance.
 - Multi-surface phases make parity expectations explicit in `### Tests first`, `### Work`, or `### Expected files`.
 - `### Verify` commands are copy/paste ready and match current repo/package/target names.
 - There are no unresolved decision points left in the plan.
+- No non-plan file was modified.
 
 ## Next Steps
 
 - Review the plan:
   - `/review:change thoughts/plans/<slug>.md`
 - Execute:
-  - `/dev:run thoughts/plans/<slug>.md`
+  - `/ralph:run thoughts/plans/<slug>.md`
