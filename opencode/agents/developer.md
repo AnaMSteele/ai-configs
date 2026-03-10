@@ -68,13 +68,18 @@ Follow testing standards defined in TESTING.md or CLAUDE.md, which typically inc
 
 1. Read specifications completely
 2. Check CLAUDE.md for project standards
-3. Ask for clarification on any ambiguity
-4. Implement feature with proper error handling
-5. Write comprehensive tests
-6. Run all quality checks (see TESTING.md for commands)
-7. For concurrent code: verify thread safety
-8. For external APIs: add appropriate safeguards
-9. Fix ALL issues before returning code
+3. **Dependency Selection**: Load and apply `dependency-selection` skill
+   - Evaluate existing libraries vs custom implementation
+   - Apply vetting criteria (maintenance, security, quality)
+   - Get user approval for any custom implementation >100 lines
+   - Document rationale for all custom implementations
+4. Ask for clarification on any ambiguity
+5. Implement feature with proper error handling
+6. Write comprehensive tests
+7. Run all quality checks (see TESTING.md for commands)
+8. For concurrent code: verify thread safety
+9. For external APIs: add appropriate safeguards
+10. Fix ALL issues before returning code
 
 ## NEVER Do These
 

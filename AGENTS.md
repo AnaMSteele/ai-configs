@@ -144,7 +144,23 @@ These rules apply to fidelity-oriented workflows (PRDs/specs → tasks → imple
 
 - **Key docs:** TODO (e.g., `README.md`, `TESTING.md`, `ARCHITECTURE.md`, any API docs)
 - **Task / PRD locations:** TODO (e.g., `/tasks/prd-*.md`, `/tasks/tasks-*.md`)
-- **Doc update expectations:** TODO (e.g., “update README and API docs whenever public behavior changes”)
+- **Doc update expectations:** TODO (e.g., "update README and API docs whenever public behavior changes")
+
+## Dependency Selection & Reuse Policy  <!-- PROJECT-SPECIFIC -->
+
+**Bias strongly toward reusing well-maintained third-party libraries over custom implementations.**
+
+- **Default position**: Search for and use existing libraries
+- **Vetting required**: All dependencies must meet quality criteria (maintenance, security, reputation)
+- **Approval required for custom implementations**:
+  - Any custom code >100 lines requires user approval
+  - Document rationale: why no library was suitable
+  - Include evaluation of at least 3 candidates
+- **Trusted sources** (crates.io / npm):
+  - Tier 1: `serde`, `tokio`, `axum`, `sqlx`, `reqwest`, `chrono`, `uuid`, `tracing`, `clap`, `thiserror`, `ed25519-dalek`, `argon2` (and ecosystem equivalents)
+  - Prefer mature, well-documented, actively maintained packages
+- **Forbidden**: Custom cryptographic primitives, custom JSON parsers, custom async runtimes, custom HTTP stacks
+- **Load skill**: Use `dependency-selection` skill for vetting criteria and approval workflow
 
 ---
 
