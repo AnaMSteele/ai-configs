@@ -158,6 +158,7 @@ Guidance:
 - You MUST NOT change application code.
 - You MUST NOT modify any non-plan file.
 - Load the shared `planning-workflow` skill if available, plus any clearly relevant domain skills.
+- Load `dependency-selection` when the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, such as protocol handling, parsing, transport, wrappers, infrastructure, or integrations.
 - Keep phases coarse (phase-level only) with `### End State`, `### Tests first`, `### Work`, `### Expected files`, and `### Verify` per phase.
 - `## Progress` must be phase-level, include stable IDs (P1, P2, ...), and contain the ONLY checkboxes in the document.
 
@@ -167,6 +168,9 @@ Plan content requirements (from dev:plan):
 - Include: Acceptance criteria (observable), BDD scenarios, and Verification strategy
 - Include: Resume Instructions (Agent)
 - Include: Decisions / Deviations Log (append-only) and Plan Changelog (append-only)
+- If the plan introduces or replaces non-trivial functionality, include a dedicated dependency/library evaluation section or equivalent explicit checkpoint that names the official SDKs and well-maintained libraries considered, documents the chosen option and why it is acceptable, or explains why custom implementation is justified.
+- If no dependency/library scan is needed, include a brief statement explaining why the change is trivial or purely local wiring.
+- If a required dependency/library evaluation is missing, the plan is still draft and not execution-ready.
 - If the plan is execution-ready, do not leave unresolved Open Questions / Decision Points.
 
 Stop after writing the plan."""

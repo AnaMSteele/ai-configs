@@ -108,6 +108,10 @@ Also review whether the `### Tests first` sections:
 - align with the intended product behavior,
 - are strong enough to catch partial or misleading implementation.
 
+- When a plan includes a non-trivial build-vs-buy choice (for example protocol handling, parsing, transport, wrappers, infrastructure, or integrations), verify that it includes a dependency/library evaluation checkpoint or equivalent documented decision point.
+- If that evidence is missing, or the plan proposes custom implementation without showing that official SDKs and well-maintained libraries were evaluated, add a blocking review comment.
+- Do not force extra ceremony when the plan already documents the decision clearly or the work is trivial/local wiring.
+
 ### 4) Cross-Verification
 
 Ensure internal consistency:

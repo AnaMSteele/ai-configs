@@ -71,6 +71,8 @@ Use the Task tool with `subagent_type=Explore`.
   - The impacted phase(s) `### End State` / `### Work` / `### Verify`
   - `### Tests first` sections so they still describe the intended user-visible behavior
   - `Resume Instructions (Agent)` if needed
+- If review feedback establishes that a dependency/library evaluation checkpoint was missing or under-specified, preserve or add that decision explicitly in the cleaned plan.
+- If a review comment shows that custom implementation was proposed without adequate library research, integrate the requirement to evaluate official SDKs / well-maintained libraries instead of silently resolving or deleting the issue.
 - Append a new entry to `## Plan Changelog` describing what changed.
 
 ### 5) Final Validation
@@ -80,6 +82,7 @@ Use the Task tool with `subagent_type=Explore`.
 - Each acceptance criterion has at least one verification step.
 - Each phase has `### End State`, `### Tests first`, `### Work`, and `### Verify`.
 - The plan has `Resume Instructions (Agent)` and `## Decisions / Deviations Log`.
+- Required dependency/library evaluation decisions established during review remain present in the final clean plan.
 - The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 
 ### 6) Overall Plan State
@@ -89,6 +92,7 @@ Use the Task tool with `subagent_type=Explore`.
 - If a question cannot be answered with high confidence, ask the user with the `question` tool.
 - Incorporate the user's answer into the plan and re-check the whole document for any downstream phase updates needed.
 - Do not leave an `Open Questions` section or any unresolved-decision placeholder in the final plan.
+- If review established that non-trivial build-vs-buy work needs a dependency/library evaluation checkpoint, the final plan is not complete until that decision is documented.
 ---
 
 ## Next Step

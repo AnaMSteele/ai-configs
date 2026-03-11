@@ -91,6 +91,7 @@ Verify the plan is runnable and resumable:
 - `## Decisions / Deviations Log` exists.
 - The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 - The plan reflects the expectation that important questions are answered before the plan is considered ready.
+- When the plan includes non-trivial build-vs-buy choices (for example protocol handling, parsing, transport, wrappers, infrastructure, or integrations), verify it includes an explicit dependency/library evaluation checkpoint unless the plan already documents the decision clearly or the work is trivial/local wiring.
 
 Also review whether the `### Tests first` sections:
 
@@ -111,6 +112,7 @@ Ensure internal consistency:
 - Non-goals are not accidentally reintroduced.
 - The plan aligns with the repository's long-range product intent when such intent is documented.
 - `### Verify` commands look current for actual repo/package/target names rather than stale guesses.
+- If that checkpoint or decision evidence is missing, or the plan proposes custom implementation without evidence that official SDKs / well-maintained libraries were evaluated, treat it as a blocker and add a blocking review comment. Do not force extra ceremony when the decision is already justified or no dependency scan is warranted.
 
 ## Comment Guidelines
 

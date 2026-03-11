@@ -55,6 +55,7 @@ Before writing the plan:
 4. Load the shared `planning-workflow` skill.
 5. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
    - Use `tdd-test-writer` when the phases will depend on tests-first delivery.
+   - Use `dependency-selection` when the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, such as protocol handling, parsing, transport, wrappers, infrastructure, or integrations.
    - Use frontend, React/Next, Rust, MCP, browser, or other domain skills when the work clearly spans those domains.
 
 If required planning guidance is missing and the repo cannot be planned confidently without it, ask the user instead of guessing.
@@ -102,6 +103,8 @@ Non-negotiable compatibility requirements:
 - Ready plans do not leave unresolved `Open Questions` or equivalent unresolved-decision sections.
 - `### Verify` steps are copy/paste ready and match actual repo reality.
 - The plan is resumable by another agent without inventing missing semantics.
+- When the change introduces or replaces non-trivial functionality, the plan includes a dedicated dependency/library evaluation section or equivalent explicit checkpoint that names the official SDKs and well-maintained libraries considered, records the chosen option and why it is acceptable, or explains why custom implementation is justified.
+- When no dependency/library scan is needed, the plan still includes a brief statement explaining why the work is trivial or purely local wiring.
 
 Before considering the plan complete:
 
@@ -112,6 +115,7 @@ Before considering the plan complete:
 - Use `tdd-test-writer` when available to improve the `### Tests first` sections.
 - Make `### Tests first` strong enough to catch partial or misleading implementations by covering happy path, guardrail/failure behavior, counterexamples or ambiguity cases, and boundary/scale or parity cases when applicable.
 - Lock canonical contracts, payloads, schemas, or evidence sources in the plan before phases that depend on them.
+- Plans that require dependency/library evaluation are not ready until that checkpoint is documented; a missing official-SDK/library decision keeps the plan in draft.
 
 ### 6) Consistency Pass
 
@@ -127,6 +131,7 @@ Before finishing:
 - Multi-surface phases make parity expectations explicit in `### Tests first`, `### Work`, or `### Expected files`.
 - `### Verify` commands are copy/paste ready and match current repo/package/target names.
 - There are no unresolved decision points left in the plan.
+- If non-trivial build-vs-buy choices are in scope, the dependency/library evaluation checkpoint is present; otherwise the plan briefly states why no scan was needed.
 - No non-plan file was modified.
 
 ## Next Steps
