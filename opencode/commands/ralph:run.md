@@ -183,17 +183,31 @@ Delegate to the `quality-reviewer` agent with this prompt:
 >
 > If you find an item that is truly low risk under the phase gate rules and should not be fixed in the current phase, record it in `<discovery_path>` as a Deferred Discovery instead of expanding scope. Mention each deferred item in your summary.
 >
-> At the end, output one of these exact lead sentences:
-> - `No issues found.`
-> - `Only low-risk items remain.`
+> At the very top of your final response, output exactly one of these lines:
+> - `VERDICT: PASS_NO_ISSUES`
+> - `VERDICT: PASS_LOW_RISK_ONLY`
+> - `VERDICT: RE_REVIEW_REQUIRED`
+> - `VERDICT: BLOCKED`
 >
-> If you found and fixed substantive issues, summarize them clearly after the lead sentence. If only low-risk items remain, list the deferred items and why they are low risk.
+> Verdict rules:
+> - Use `VERDICT: PASS_NO_ISSUES` only if you found no issues and made no code or plan changes.
+> - Use `VERDICT: PASS_LOW_RISK_ONLY` only if no substantive issues remain and every deferred item is low risk under the phase-gate rules.
+> - Use `VERDICT: RE_REVIEW_REQUIRED` if you found and fixed any substantive issue during this pass. Do not use a pass verdict in the same response.
+> - Use `VERDICT: BLOCKED` only if progress now depends on a true Blocking Decision that cannot be resolved from the codebase, plan, or source documents.
+>
+> After the verdict line, include:
+> - A short `Status:` line.
+> - If you used `VERDICT: RE_REVIEW_REQUIRED`, a `Fixed substantive issues:` section listing each fix clearly.
+> - If you used `VERDICT: PASS_LOW_RISK_ONLY`, a `Deferred low-risk items:` section listing each deferred item and why it is low risk.
+> - If you used `VERDICT: BLOCKED`, a `Blocking decision:` section with the exact question that must be answered.
 
-**Loop termination:** After each quality-reviewer pass, check its output:
+**Loop termination:** After each quality-reviewer pass, check the first verdict line in its output:
 
-- If it found zero issues -> the phase quality gate is passed
-- If it explicitly says only low-risk items remain -> the phase quality gate is passed only after each low-risk item is recorded in `discovery_path` and referenced in the plan's `## Decisions / Deviations Log`
-- If it found and fixed any substantive issue -> run another review pass
+- `VERDICT: PASS_NO_ISSUES` -> the phase quality gate is passed
+- `VERDICT: PASS_LOW_RISK_ONLY` -> the phase quality gate is passed only after each low-risk item is recorded in `discovery_path` and referenced in the plan's `## Decisions / Deviations Log`
+- `VERDICT: RE_REVIEW_REQUIRED` -> run another review pass
+- `VERDICT: BLOCKED` -> stop and ask the user the blocking decision question
+- Any missing, malformed, or contradictory verdict -> treat as `VERDICT: RE_REVIEW_REQUIRED` and run another review pass with an instruction to follow the verdict format exactly
 - There is no fixed review-pass limit. Keep iterating until the gate passes or a true Blocking Decision is reached.
 
 If the loop stops converging because the same substantive issue keeps reappearing and the conflict cannot be resolved from the codebase or plan, treat that as a Blocking Decision and ask the user.
