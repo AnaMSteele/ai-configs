@@ -5,9 +5,11 @@ argument-hint: '<slug | "short description" | thoughts/plans/<slug>.md>'
 
 # Materialize Plan
 
-You are no longer in plan mode. This command is the plan-writing step: synthesize validated research into the actual execution plan file.
+You are leaving read-only discovery mode and entering plan-materialization mode. This is still non-execution work: synthesize validated research into the actual execution plan file.
 
 Treat this command as planning-only work even though normal file writes are available. You may inspect the repo and write the plan artifact, but you must not change product code, tests, app config, docs, generated files, or environment files.
+
+Your job ends after writing or updating the single plan file and reporting the result. Do not create execution todos, do not begin implementation, and do not run execution-oriented verification once the plan file is complete.
 
 This command produces (or updates):
 
@@ -28,6 +30,21 @@ Write exactly one file:
 - `thoughts/plans/<slug>.md`
 
 Do not create `spec.md`, `tasks.md`, per-plan directories, or any non-plan file unless the user explicitly asks.
+
+Completion condition for this command:
+
+- Exactly one plan file at `plan_path` is written or updated.
+- No non-plan file is modified.
+- The final response reports the plan path and suggests follow-up commands without running them.
+- Then stop and wait for a new user instruction.
+
+Forbidden transitions for this command:
+
+- Do not create a new execution todo list after the plan is complete.
+- Do not switch into build, run, or implementation mode.
+- Do not edit any file except `plan_path` unless the user explicitly broadens scope.
+- Do not run lint, tests, build, e2e, migrations, or other execution-oriented verification.
+- Do not invoke `/review:change`, `/ralph:run`, or any other follow-up command from this command; only suggest them.
 
 Legacy bundles:
 
@@ -94,6 +111,8 @@ Do not run side-effecting commands while doing this validation.
 
 Write (or update) `plan_path` by following the shared `planning-workflow` skill, the repo's `AGENTS.md`, and any explicit repo-local planning overrides.
 
+Before any write or side-effecting action, verify it only updates `plan_path`. If it would touch any other file or begin execution, do not do it under `dev:plan`.
+
 Non-negotiable compatibility requirements:
 
 - Write exactly one plan file at `plan_path`.
@@ -134,7 +153,9 @@ Before finishing:
 - If non-trivial build-vs-buy choices are in scope, the dependency/library evaluation checkpoint is present; otherwise the plan briefly states why no scan was needed.
 - No non-plan file was modified.
 
-## Next Steps
+## Next Steps For The User
+
+These are suggestions for the user to run after this command finishes. Do not run them as part of `dev:plan`.
 
 - Review the plan:
   - `/review:change thoughts/plans/<slug>.md`
