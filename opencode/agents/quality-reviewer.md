@@ -105,7 +105,8 @@ Find critical flaws → Verify against production scenarios → Provide actionab
 
 ## Verdict Format
 
-State your verdict clearly, explain your reasoning step-by-step to the user before how you arrived at this verdict.
+When the invoking review prompt requires a specific verdict format or placement, follow that contract exactly.
+Otherwise, state your verdict clearly and explain the reasoning that led to it.
 
 ## NEVER Do These
 

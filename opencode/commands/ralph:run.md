@@ -146,6 +146,10 @@ Delegate to the `developer` agent with this prompt:
 >
 > Confirm that the tests represent the intended user-visible behavior before changing production code. Strengthen them when needed so they cover the planned happy path, failure/guardrail behavior, counterexample or ambiguity cases, boundary/scale behavior when applicable, and required cross-surface parity or contract-drift checks.
 >
+> If implementation evidence or later review findings show the original test scope in this phase was too narrow, revisit the planned tests, widen coverage, and update the phase work instead of stopping at a narrow patch.
+>
+> If you widen tests or phase work because implementation evidence shows the original test scope or original plan was too narrow, treat that as a reassessment, update `## Decisions / Deviations Log` in the plan immediately with what changed, and keep that entry current before the next review pass.
+>
 > If the phase spans multiple required surfaces (for example HTTP/CLI/MCP/UI), treat parity work and missing registry/dispatcher/wrapper wiring as in-scope Bucket A work unless the plan explicitly says otherwise.
 >
 > If locked schemas, payloads, response shapes, or evidence sources have changed since earlier phases, update stale fixtures/tests in the touched scope during this phase and log the adjustment.
@@ -160,11 +164,17 @@ After the developer agent completes, proceed immediately to the first review pas
 
 #### Review Passes: Review and Fix
 
+Before each review pass after the first, summarize the immediately prior review pass into `<prior_review_memory>` with the substantive issue class, affected surface(s), and whether test scope or plan scope was widened. For the first review pass, set `<prior_review_memory>` to `none`.
+
 Delegate to the `quality-reviewer` agent with this prompt:
 
 > Review the implementation of phase N of this plan: `<plan_path>`
 >
 > Read the plan file fully. Find phase N and its `### Tests first`, `### Work`, `### End State`, and `### Verify` sections. Review the implementation for:
+>
+> Prior review memory for this phase: `<prior_review_memory>`
+>
+> Use `<prior_review_memory>` as the authoritative summary of the immediately prior review pass when comparing current findings against prior findings. Do not rely on unstated conversation memory.
 >
 > 1. Gaps - anything described in the plan that was not implemented or was implemented incorrectly
 > 2. Quality issues - bugs, logic errors, missing error handling, broken integrations
@@ -172,6 +182,7 @@ Delegate to the `quality-reviewer` agent with this prompt:
 > 4. TDD/plan fidelity issues - cases where the implementation skipped the planned tests-first approach without justification, or where the passing tests do not actually prove the intended behavior
 > 5. Test-strength issues - missing counterexamples, ambiguity checks, boundary checks, parity checks, or contract-drift coverage that the phase clearly needs to prevent misleading passes
 > 6. Phase-gate issues - stale verify commands, missing required-surface parity, stale fixtures/contracts, or unresolved evidence-source mismatches that would make the phase unsafe to advance
+> 7. Feedback-loop issues - whether a substantive miss shows the original test scope or original plan was too narrow, including same-class reappearing findings or cross-surface recurrences compared with the prior review pass in this phase
 >
 > Do NOT flag:
 > - Style preferences or subjective improvements
@@ -182,6 +193,16 @@ Delegate to the `quality-reviewer` agent with this prompt:
 > Fix every non-low-risk issue directly. Do not just report issues - fix them.
 >
 > If you find an item that is truly low risk under the phase gate rules and should not be fixed in the current phase, record it in `<discovery_path>` as a Deferred Discovery instead of expanding scope. Mention each deferred item in your summary.
+>
+> For every substantive miss you fix, explicitly reassess the original test scope and the original plan assumptions for this phase.
+>
+> If that reassessment widens test scope or plan scope during review, update `## Decisions / Deviations Log` in the plan immediately so a mid-phase resume preserves the widened scope.
+>
+> Compare each current substantive finding against the immediately prior review-pass findings for this phase.
+>
+> If the same class of substantive issue is reappearing, or a related miss recurs on another required surface compared with the prior review pass in this phase, treat that as evidence that the original tests or original plan were too narrow.
+>
+> Escalate those repeated or cross-surface misses beyond a local patch: broaden coverage, update the plan when the phase assumptions were incomplete, and record the reassessment in `## Decisions / Deviations Log` immediately rather than waiting for phase completion.
 >
 > At the very top of your final response, output exactly one of these lines:
 > - `VERDICT: PASS_NO_ISSUES`
@@ -200,6 +221,7 @@ Delegate to the `quality-reviewer` agent with this prompt:
 > - If you used `VERDICT: RE_REVIEW_REQUIRED`, a `Fixed substantive issues:` section listing each fix clearly.
 > - If you used `VERDICT: PASS_LOW_RISK_ONLY`, a `Deferred low-risk items:` section listing each deferred item and why it is low risk.
 > - If you used `VERDICT: BLOCKED`, a `Blocking decision:` section with the exact question that must be answered.
+> - If you widened tests or plan scope, a `Reassessment:` section stating how the original test scope or original plan changed and whether it was logged in `## Decisions / Deviations Log`.
 
 **Loop termination:** After each quality-reviewer pass, check the first verdict line in its output:
 
@@ -210,6 +232,12 @@ Delegate to the `quality-reviewer` agent with this prompt:
 - Any missing, malformed, or contradictory verdict -> treat as `VERDICT: RE_REVIEW_REQUIRED` and run another review pass with an instruction to follow the verdict format exactly
 - There is no fixed review-pass limit. Keep iterating until the gate passes or a true Blocking Decision is reached.
 
+Within a phase, use the immediately prior review pass as loop memory for substantive findings.
+
+If the same class of substantive miss is reappearing or a related miss recurs on another required surface, do not treat it as an isolated fix; first widen the original test scope and update the original plan/deviation log as needed.
+
+Only after that reassessment still fails to converge should the loop treat the issue as potentially blocked.
+
 If the loop stops converging because the same substantive issue keeps reappearing and the conflict cannot be resolved from the codebase or plan, treat that as a Blocking Decision and ask the user.
 
 #### Phase Completion
@@ -217,13 +245,15 @@ If the loop stops converging because the same substantive issue keeps reappearin
 Once the phase is ready to advance (either zero issues found, or only low-risk deferred items remain):
 
 1. Flip the phase's checkbox from `- [ ]` to `- [x]` in `## Progress`.
-2. If implementation required a decision, revealed a constraint, created a Deferred Discovery, corrected stale verify guidance, or required contract/evidence-source drift cleanup, append a structured entry to `## Decisions / Deviations Log` in the plan file.
+2. If implementation required a decision, revealed a constraint, created a Deferred Discovery, corrected stale verify guidance, required contract/evidence-source drift cleanup, or triggered any test-scope or plan-scope reassessment during implementation or review, ensure `## Decisions / Deviations Log` already contains a structured entry recorded when the event happened; if it does not, append one now, including any test-scope or plan-scope reassessment triggered during implementation or review.
 3. Proceed immediately to the next phase - do not pause.
 
 ### 4) Tests Policy
 
 - You SHOULD write or update the planned behavioral tests first when behavior changes, unless the plan explicitly explains why TDD is not practical for that phase.
 - You SHOULD harden tests enough to catch partial, misleading, or parity-incomplete implementations for the scoped behavior.
+- Substantive review findings must trigger explicit reassessment of the original test scope and, when needed, the original plan for the current phase.
+- If a miss is reappearing or recurs across required surfaces compared with the prior review pass, treat it as evidence to widen tests or plan scope rather than only patching locally.
 - You MAY refactor for testability.
 - You MUST NOT change product code merely to satisfy a failing test if acceptance criteria + observed behavior indicate the code is correct.
   - In that case, fix the test or update the test assumptions (and log the decision).

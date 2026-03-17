@@ -7,6 +7,7 @@ Do not restate the full shared planning doctrine here. This file is for repo-loc
 ## Objective
 
 - State which planning behaviors differ from or add to the shared `planning-workflow` skill.
+- Keep repo-local overrides additive to the shared `planning-workflow` doctrine for `execution-ready` versus `research-ready` readiness, `low-confidence` decision handling, the default `test coverage matrix`, and the `ralph:run` review-to-`original test scope` feedback loop.
 - Keep overrides concrete, repo-specific, and minimal.
 
 ## Required local inputs
@@ -26,6 +27,7 @@ Do not restate the full shared planning doctrine here. This file is for repo-loc
 - Additional scenario types required in this repo.
 - Contract, fixture, parity, or evidence-source expectations unique to this repo.
 - Cases where strict TDD is commonly impractical and what compensating verification is required.
+- Only document repo-local additions here; shared `ralph:run` reassessment of the `original test scope` and shared `test coverage matrix` expectations already come from the global doctrine.
 
 ## Skill routing hints
 
@@ -45,6 +47,7 @@ Do not restate the full shared planning doctrine here. This file is for repo-loc
 ## Local ready bar additions
 
 - Any repo-specific conditions that must be true before a plan is considered ready.
+- Only add repo-specific conditions beyond the shared `execution-ready` / `research-ready` ready bar; do not relax low-confidence decision closure or convert a shared `research-ready` case into local execution.
 - Keep this additive to the shared ready bar.
 
 ## Notes

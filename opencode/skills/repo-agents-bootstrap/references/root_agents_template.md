@@ -42,6 +42,12 @@ Codify the planning and execution boundaries:
 - `dev:plan` is the plan-materialization step and may write the plan artifact only.
 - `ralph:run` (or repo equivalent) executes the plan with the repo's real quality gates.
 
+Add the shared fail-closed ready bar:
+
+- only `execution-ready` plans can hand off to execution
+- unresolved `low-confidence` foundational decisions stay in read-only discovery or move into a single non-ready `research-ready` plan artifact with the exact next research action
+- only `execution-ready` plans should continue into review/execution commands; `research-ready` artifacts should send the agent to the recorded next research action and then back through `dev:plan`
+
 Tell agents to load the shared `planning-workflow` skill for plan creation and regeneration.
 
 If the repo needs additional planning rules beyond the shared skill, reference the optional local overrides file (for example `thoughts/plans/AGENTS.md`). Keep that file additive rather than duplicating the full planning doctrine.
@@ -50,8 +56,14 @@ Codify the quality-gated loop:
 
 - implement one phase
 - review
-- re-review until critical issues are closed
+- re-review until the latest verdict is `VERDICT: PASS_NO_ISSUES` or `VERDICT: PASS_LOW_RISK_ONLY` with every deferred low-risk item logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`
 - only then move to the next phase
+
+Require the repo guidance to name the canonical discovery-ledger destination explicitly so deferred low-risk findings always have a durable home.
+
+Require non-trivial ready plans to include a `test coverage matrix` that maps acceptance criteria and scenarios to intended tests and verify commands.
+
+Codify the `ralph:run` feedback loop: substantive review misses must reassess the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage or plan scope before the phase can advance.
 
 Require phase-level progress updates and resumable handoff notes.
 

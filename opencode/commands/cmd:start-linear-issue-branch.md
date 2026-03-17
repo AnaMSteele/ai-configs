@@ -158,7 +158,7 @@ Guidance:
 - You MUST NOT change application code.
 - You MUST NOT modify any non-plan file.
 - Load the shared `planning-workflow` skill if available, plus any clearly relevant domain skills.
-- Load `dependency-selection` when the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, such as protocol handling, parsing, transport, wrappers, infrastructure, or integrations.
+- Evaluate library/dependency choices inline when introducing non-trivial functionality; document the evaluation in the plan itself rather than loading a separate skill.
 - Keep phases coarse (phase-level only) with `### End State`, `### Tests first`, `### Work`, `### Expected files`, and `### Verify` per phase.
 - `## Progress` must be phase-level, include stable IDs (P1, P2, ...), and contain the ONLY checkboxes in the document.
 

@@ -1,19 +1,19 @@
 ---
-description: Materialize or update the actual single-file execution plan after discovery, using shared planning doctrine plus repo-specific guidance
-argument-hint: '<slug | "short description" | thoughts/plans/<slug>.md>'
+description: Materialize or update the actual single-file plan artifact after discovery, using shared planning doctrine plus repo-specific guidance
+argument-hint: '<slug | "short description" | existing-plan.md>'
 ---
 
 # Materialize Plan
 
-You are leaving read-only discovery mode and entering plan-materialization mode. This is still non-execution work: synthesize validated research into the actual execution plan file.
+You are leaving read-only discovery mode and entering plan-materialization mode. This is still non-execution work: synthesize validated research into the actual plan artifact.
 
 Treat this command as planning-only work even though normal file writes are available. You may inspect the repo and write the plan artifact, but you must not change product code, tests, app config, docs, generated files, or environment files.
 
-Your job ends after writing or updating the single plan file and reporting the result. Do not create execution todos, do not begin implementation, and do not run execution-oriented verification once the plan file is complete.
+Your job ends after writing or updating the single plan file and reporting the result. If safe plan materialization is blocked on new user intent, ask one targeted question and stop without writing the plan. Do not create execution todos, do not begin implementation, and do not run execution-oriented verification once the plan file is complete.
 
 This command produces (or updates):
 
-- `thoughts/plans/<slug>.md`
+- `plan_path` (normally `thoughts/plans/<slug>.md` when `$ARGUMENTS` is not an existing plan path)
 
 ## Inputs
 
@@ -25,18 +25,27 @@ Argument (`$ARGUMENTS`) is either:
 
 ## Output Contract
 
-Write exactly one file:
+When plan materialization is safe in this invocation, write exactly one file:
 
-- `thoughts/plans/<slug>.md`
+- `plan_path` (normally `thoughts/plans/<slug>.md` when `$ARGUMENTS` is not an existing plan path)
+- If unresolved foundational decisions remain, still preserve the single-file contract by writing exactly one non-ready `research-ready` plan artifact at `plan_path` instead of pretending the work is `execution-ready`.
+- The written non-ready artifact must set `Status:` to `research-ready`, explicitly list the unresolved decisions, the exact next research action, and the condition for later promotion to `execution-ready`.
+- If a foundational decision needs new user intent before any safe plan can be written, ask exactly one targeted question and stop without writing `plan_path`.
 
 Do not create `spec.md`, `tasks.md`, per-plan directories, or any non-plan file unless the user explicitly asks.
 
-Completion condition for this command:
+Completion condition for this command when a plan artifact can be written safely:
 
 - Exactly one plan file at `plan_path` is written or updated.
 - No non-plan file is modified.
-- The final response reports the plan path and suggests follow-up commands without running them.
+- The final response reports the plan path and readiness state, then suggests follow-up work that matches that state without running anything.
+- Only suggest `/ralph:run <plan_path>` when the written plan is `execution-ready`.
+- For a written `research-ready` artifact, point the user to the exact next research action captured in the plan instead of suggesting execution.
 - Then stop and wait for a new user instruction.
+
+Blocking question behavior:
+
+- If a foundational decision needs new user intent, ask exactly one targeted question, explain why the plan is not yet safe to materialize, and do not write or partially rewrite `plan_path`.
 
 Forbidden transitions for this command:
 
@@ -58,9 +67,9 @@ Legacy bundles:
 1. If `$ARGUMENTS` looks like a path to an existing `.md` file, treat it as `plan_path`.
 2. Otherwise derive `slug` from `$ARGUMENTS`.
    - Use lowercase, digits, and hyphens only.
-   - If multiple plausible slugs exist, ask once with `question` and use the user's choice.
+   - If multiple plausible slugs exist, ask the user exactly one targeted question, explain the slug ambiguity, and stop; use the answer on the next invocation.
 3. Set `plan_path` to `thoughts/plans/<slug>.md`.
-4. Ensure `thoughts/plans/` exists (create it if missing).
+4. Ensure the parent directory for `plan_path` exists (create it if missing).
 
 ### 2) Re-establish Planning Context
 
@@ -72,7 +81,7 @@ Before writing the plan:
 4. Load the shared `planning-workflow` skill.
 5. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
    - Use `tdd-test-writer` when the phases will depend on tests-first delivery.
-   - Use `dependency-selection` when the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, such as protocol handling, parsing, transport, wrappers, infrastructure, or integrations.
+   - When the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, perform an explicit dependency/library evaluation during planning by naming the official SDKs and well-maintained libraries considered, even if no dedicated repo skill covers that check.
    - Use frontend, React/Next, Rust, MCP, browser, or other domain skills when the work clearly spans those domains.
 
 If required planning guidance is missing and the repo cannot be planned confidently without it, ask the user instead of guessing.
@@ -103,15 +112,33 @@ Validate key claims from the conversation by directly inspecting the codebase:
 - Identify integration points and risks
 - Verify actual commands, targets, package names, and paths that the plan will reference
 
-Use `Glob`, `Grep`, and `Read` for targeted research. Use `Task(subagent_type="explore")` only for broad searches.
+Use `Glob`, `Grep`, and `Read` for targeted research. If broad discovery is still needed, continue with additional targeted passes yourself or delegate read-only planning research only through helpers that actually exist in the current runtime.
 
 Do not run side-effecting commands while doing this validation.
 
-### 5) Write `plan_path`
+### 5) Choose readiness state before writing
+
+Before writing `plan_path`, explicitly choose the correct readiness state.
+
+- Treat unresolved contracts, migrations, rollout semantics, compatibility behavior, safety constraints, and other materially outcome-shaping unknowns as `low-confidence` foundational decisions.
+- Fail closed: do not mark the plan `execution-ready` while any foundational decision remains unresolved.
+- If repo evidence is insufficient and the decision needs user intent, ask the user before finalizing the plan and do not write or update `plan_path` until that decision is resolved.
+- If the gap is researchable without new user intent, continue with targeted planning research yourself or delegate read-only planning research only if it can still resolve the decision in this invocation before writing.
+- If research still remains the next handoff after that validation, write a non-ready `research-ready` plan artifact whose next handoff is that research.
+- Do not end `dev:plan` by delegating or suggesting follow-up research without writing `plan_path` when research is still the next handoff.
+- Never bury a low-confidence decision inside a later execution phase just to keep the plan moving.
+
+### 6) Write `plan_path`
 
 Write (or update) `plan_path` by following the shared `planning-workflow` skill, the repo's `AGENTS.md`, and any explicit repo-local planning overrides.
 
-Before any write or side-effecting action, verify it only updates `plan_path`. If it would touch any other file or begin execution, do not do it under `dev:plan`.
+Before any write or side-effecting action, verify it only updates `plan_path` or creates the missing parent directory needed for `plan_path`. If it would touch any other file or begin execution, do not do it under `dev:plan`.
+
+Complexity and completeness rules:
+
+- Keep simple local wiring or narrow refactor work `lightweight`; do not force heavyweight schema, protocol, or rollout sections when they do not improve confidence.
+- Require complete contracts and a `test coverage matrix` only for non-trivial, migration-heavy, compatibility-sensitive, or multi-surface work before calling the plan `execution-ready`.
+- For non-trivial ready plans, map acceptance criteria and BDD scenarios to intended test layers, planned suites or files, and `### Verify` commands strong enough to catch partial implementations.
 
 Non-negotiable compatibility requirements:
 
@@ -128,18 +155,20 @@ Non-negotiable compatibility requirements:
 Before considering the plan complete:
 
 - Use product intent if the repo requires it, and make the alignment explicit in the plan.
-- Resolve every important question before finalizing the plan.
+- Resolve every important question before finalizing an `execution-ready` plan.
 - If the codebase or docs answer a question with high confidence, answer it directly in the plan.
-- If confidence is not high enough, ask the user and incorporate the answer into the plan.
+- If confidence is not high enough, ask the user when intent is required; otherwise either close the gap with additional targeted planning research in this invocation, delegate read-only planning research that can still close it now, or produce a non-ready `research-ready` artifact instead of forcing an `execution-ready` handoff.
 - Use `tdd-test-writer` when available to improve the `### Tests first` sections.
 - Make `### Tests first` strong enough to catch partial or misleading implementations by covering happy path, guardrail/failure behavior, counterexamples or ambiguity cases, and boundary/scale or parity cases when applicable.
 - Lock canonical contracts, payloads, schemas, or evidence sources in the plan before phases that depend on them.
-- Plans that require dependency/library evaluation are not ready until that checkpoint is documented; a missing official-SDK/library decision keeps the plan in draft.
+- Plans that require dependency/library evaluation are not ready until that checkpoint is documented; a missing official-SDK/library decision keeps the work in a non-ready state rather than silently treating it as `execution-ready`.
 
-### 6) Consistency Pass
+### 7) Consistency Pass
 
 Before finishing:
 
+- The chosen readiness state is explicit and internally consistent.
+- A research-first handoff uses `Status: research-ready` so the written artifact cannot be mistaken for an `execution-ready` plan.
 - The plan structure follows the shared planning workflow and any repo-local planning overrides.
 - Every acceptance criterion has at least one phase `### Verify` item that provides evidence.
 - Every progress checkbox corresponds to a phase header.
@@ -149,7 +178,8 @@ Before finishing:
 - BDD scenarios or equivalent `Given/When/Then` coverage are explicit when required by repo guidance.
 - Multi-surface phases make parity expectations explicit in `### Tests first`, `### Work`, or `### Expected files`.
 - `### Verify` commands are copy/paste ready and match current repo/package/target names.
-- There are no unresolved decision points left in the plan.
+- There are no unresolved foundational decisions hiding inside later execution phases.
+- There are no unresolved decision points left in an `execution-ready` plan; a `research-ready` artifact keeps them explicit as unresolved next-handoff items.
 - If non-trivial build-vs-buy choices are in scope, the dependency/library evaluation checkpoint is present; otherwise the plan briefly states why no scan was needed.
 - No non-plan file was modified.
 
@@ -157,7 +187,7 @@ Before finishing:
 
 These are suggestions for the user to run after this command finishes. Do not run them as part of `dev:plan`.
 
-- Review the plan:
-  - `/review:change thoughts/plans/<slug>.md`
-- Execute:
-  - `/ralph:run thoughts/plans/<slug>.md`
+- If the written plan is `execution-ready`, suggest:
+  - `/review:change <plan_path>`
+  - `/ralph:run <plan_path>`
+- If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/ralph:run`.

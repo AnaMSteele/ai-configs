@@ -44,6 +44,17 @@ This directory contains a comprehensive set of commands that support a complete 
 
 ## Command Workflows
 
+### Workflow 0: Plan-First Execution (Shared Default)
+`[plan mode discovery] → /dev:plan → [execution-ready → /review:change <plan_path> → /ralph:run <plan_path>] | [research-ready / blocking question → next research or answer → /dev:plan]`
+```
+[plan mode discovery] → /dev:plan → [execution-ready → /review:change <plan_path> → /ralph:run <plan_path>] | [research-ready / blocking question → next research or answer → /dev:plan]
+```
+- Read-only plan mode gathers evidence, resolves `low-confidence` decisions, and prepares inputs for plan materialization.
+- `/dev:plan` fails closed: it only writes an `execution-ready` plan when foundational decisions are resolved; otherwise it asks the user or writes exactly one non-ready `research-ready` artifact with the next research action.
+- Only `execution-ready` plans move into `/review:change` and `/ralph:run`; `research-ready` artifacts loop back through the recorded next research action and another `/dev:plan` pass.
+- Keep simple tasks lightweight, but require complete contracts plus a `test coverage matrix` before a non-trivial plan is treated as `execution-ready`.
+- `/ralph:run` uses review findings as feedback on the `original test scope` and original plan; repeated or cross-surface misses widen coverage instead of staying local patches.
+
 ### Workflow 1: PRD-Based Development (Fidelity-Preserving)
 ```
 /prd:1:create-prd → /prd:2:gen-tasks → /3:process-tasks → /cmd:commit-push → /cmd:create-pr
@@ -97,14 +108,17 @@ All workflow commands follow strict fidelity preservation:
 - **Question Ambiguity**: Ask for clarification rather than making assumptions
 - **Source Reference**: Constantly reference source document to prevent drift
 
-### TDD-Oriented Planning
+### Execution-Ready Planning Defaults
 Plans and specifications should describe behavioral tests in plain terms around what a user, operator, or agent will be able to do after the work is complete that they could not do before.
 
 - Use TDD where practical: describe tests first, then implement code to make those tests pass.
 - If TDD is not appropriate for a phase, the plan should say why.
-- A plan is not complete if important questions remain unresolved.
-- Resolve questions with evidence when possible; ask the user when confidence is not high enough.
-- Execution commands should treat planned tests as part of the intended behavior, not optional follow-up work.
+- A plan is only `execution-ready` when important questions and `low-confidence` foundational decisions are resolved with evidence.
+- If research is still the next handoff, `/dev:plan` writes one non-ready `research-ready` artifact instead of pretending execution can safely start.
+- Only `execution-ready` plans should proceed into `/review:change` and `/ralph:run`; `research-ready` artifacts should send the agent through the recorded next research action and then back to `/dev:plan`.
+- Non-trivial ready plans should include a `test coverage matrix` that maps acceptance criteria and BDD scenarios to suites/files and `### Verify` commands.
+- `ralph:run` treats substantive review misses as evidence about the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage before phase advance.
+- A phase only advances after `ralph:run` receives `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` with each deferred low-risk item logged in `thoughts/discoveries/<plan-or-feature>.md` (or the repo's documented equivalent) and the plan's `## Decisions / Deviations Log`.
 
 ### Standardized Format
 All commands use consistent:

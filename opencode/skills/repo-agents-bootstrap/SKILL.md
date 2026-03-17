@@ -31,18 +31,22 @@ Capture these behaviors as defaults:
 - Shared planning doctrine lives in the `planning-workflow` skill, not duplicated into every repo.
 - `plan mode` is discovery-only and read-only.
 - `dev:plan` is the plan-materialization step: it may write the plan artifact, but must not change code or other repo files.
+- `dev:plan` must fail closed on `low-confidence` foundational decisions: it only hands off an `execution-ready` plan when those decisions are resolved, and otherwise asks the user or writes exactly one non-ready `research-ready` plan artifact with the exact next research action.
 - Root `AGENTS.md` tells agents to use the shared planning skill and names any repo-specific planning inputs or overrides.
-- Plan-first execution with phase checkpoints (`Implement phase N` -> `Review/Re-review` until zero critical issues).
-- Phase advancement only when the latest review reports `No issues found.` or only explicitly logged low-risk deferred items remain.
+- Plan-first execution with phase checkpoints (`Implement phase N` -> `Review/Re-review`) under the shared verdict-based `ralph:run` gate.
+- Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each deferred low-risk item is logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`.
 - Resumability: `Progress` with stable IDs, explicit `Resume Instructions`, and append-only decision/deviation logs.
 - Evidence-first validation: lint, unit, build, e2e (and contract tests if applicable) before claiming done.
-- Review loops as gates: do not advance to next phase while reviewer still reports unresolved critical issues.
+- Review loops are hard gates: reviewer narrative alone never clears a phase; only the verdict-based phase-advance rule above can do that.
+- `ralph:run` review loops must reassess the `original test scope` and original plan when substantive misses appear; repeated or cross-surface misses widen coverage or plan scope instead of staying local.
 - Commit and push discipline with rationale, not just code diffs.
 - Test-first posture: define behavior before implementation wherever practical.
+- Keep planning depth `complexity-aware`: simple tasks stay lightweight, while non-trivial ready plans need complete contracts plus a `test coverage matrix` strong enough to catch partial implementations.
 - Product-intent anchored planning: every active plan must trace back to `thoughts/specs/product_intent.md`.
 - Validate `### Verify` commands against real repo/package/target names before execution.
 - Make multi-surface parity expectations explicit when phases span HTTP/CLI/MCP/UI or similar interfaces.
 - Update stale fixtures/tests when locked contracts, payloads, schemas, or evidence sources change.
+- Repo-local planning overrides stay additive: they can tighten the shared defaults, but they must not replace or relax the central doctrine.
 
 ## TDD + BDD Rules
 
@@ -123,7 +127,7 @@ Minimum checks:
 - `Tests first` under each phase
 - `BDD scenarios` or explicit `Given/When/Then`
 - `Decisions / Deviations Log`
-- `Open Questions` present in execution-ready plans
+- `Open Questions` only in non-ready plans (`draft`, `discovery`, or `research-ready`), never in `execution-ready` plans
 
 Also check repo guidance for:
 
@@ -152,6 +156,10 @@ Required outcomes:
   - `dev:plan` writes the plan only
   - `ralph:run` executes the plan
 - Instruction to use the shared `planning-workflow` skill for plan creation.
+- The shared fail-closed ready bar: only `execution-ready` plans hand off to implementation, while unresolved `low-confidence` decisions stay in discovery or move into a single `research-ready` artifact.
+- The shared expectation that non-trivial ready plans include a `test coverage matrix`.
+- The shared `ralph:run` feedback loop: substantive review misses reassess the `original test scope` and original plan, and repeated or cross-surface misses widen coverage before phase advance.
+- The repo's discovery-ledger destination for deferred low-risk items (for example `thoughts/discoveries/<plan-or-feature>.md`).
 - Repo-specific skill-routing hints for likely work surfaces.
 - Any repo-specific rules that override stale rule files.
 
@@ -162,6 +170,7 @@ Use `references/plan_agents_template.md` only when the repo truly needs local pl
 Required outcomes:
 
 - Document only repo-local planning differences, not the entire shared doctrine again.
+- Keep repo-local overrides additive to the shared `execution-ready` / `research-ready` readiness model, `low-confidence` decision closure, `test coverage matrix` default, and `ralph:run` reassessment loop.
 - Point back to the shared `planning-workflow` skill as the default authority.
 - Record required local docs, section additions, plan locations, or quality-gate deviations if they exist.
 - Keep product-intent linkage and any repo-specific plan requirements explicit.
@@ -169,7 +178,7 @@ Required outcomes:
 Migration rule for legacy repos:
 
 - Allow heading aliases in old plans (`Objective` for `Goal`, `Metadata` for `Authority and inputs`, `Current State` for `Current implementation reality`) but require canonical headings in all new plans unless the repo documents a deliberate override.
-- Only allow `Open Questions` when plan status is explicitly `draft`/`discovery`; execution-ready plans must resolve them.
+- Only allow `Open Questions` when plan status is explicitly `draft`, `discovery`, or `research-ready`; `execution-ready` plans must resolve them.
 
 ### 5) Validate coherence
 
@@ -177,6 +186,7 @@ Before finalizing, verify:
 
 - Root `AGENTS.md` commands are real and current.
 - Root `AGENTS.md` tells agents to use the shared planning skill and names local planning inputs.
+- Root `AGENTS.md` names the discovery-ledger destination used for deferred low-risk findings.
 - Any repo-local planning overrides reference real quality gates from root `AGENTS.md`.
 - TDD + BDD requirements are explicit and testable.
 - No contradictory guidance between root `AGENTS.md`, optional planning overrides, and the shared planning workflow.

@@ -10,7 +10,7 @@ Use this skill as the canonical source of truth for plan-writing methodology acr
 ## Boundaries
 
 - `plan mode` is for discovery only: inspect the codebase, validate assumptions, gather evidence, and identify ambiguities.
-- `dev:plan` (or equivalent plan-materialization step) writes the actual plan file after discovery is complete.
+- `dev:plan` (or equivalent plan-materialization step) writes the actual plan file once discovery has produced enough evidence to choose the correct readiness state: `execution-ready` when foundational decisions are resolved, or a single non-ready `research-ready` artifact when further research is the next handoff. Before that handoff point, the work remains `discovery`.
 - `dev:plan` ends when the plan artifact is written or updated; execution starts only after a separate explicit execution command or a new user instruction.
 - During plan writing, edit only the target plan artifact unless the repo's `AGENTS.md` explicitly allows another planning-side file.
 - Do not change product code, tests, app config, docs, generated files, or environment files while planning.
@@ -95,7 +95,6 @@ For every phase:
 
 Every phase must include:
 
-- `### End state`
 - `### End State`
 - `### Tests first`
 - `### Work`
@@ -118,7 +117,7 @@ Phase guidance:
 
 ## Ready bar
 
-A plan is ready only when all of the following are true:
+An `execution-ready` plan is ready only when all of the following are true:
 
 - important questions are resolved,
 - acceptance criteria and BDD scenarios are concrete,
@@ -126,7 +125,40 @@ A plan is ready only when all of the following are true:
 - product-intent alignment is explicit when required,
 - parity expectations are explicit for multi-surface work,
 - no unresolved `Open Questions` remain in a ready plan,
+- no unresolved low-confidence decisions remain,
+- foundational decisions are not deferred into later execution phases,
 - progress and resume instructions are present.
+
+If any item above is still missing, the plan is `not ready`: stay in `discovery` while evidence is still being gathered, or emit a `research-ready` artifact when research is the explicit next handoff.
+
+## Readiness states
+
+- `discovery` means planning evidence is still being gathered and the work is not yet plan-finalization-ready; it is a pre-handoff state, not a substitute for a written research handoff.
+- `research-ready` means exactly one non-ready plan artifact may be written once discovery has established that research is the next handoff; that artifact must capture unresolved decisions, the next research step, and the condition for later promotion.
+- `execution-ready` means the plan can hand off to execution without inventing missing contracts, rollout semantics, compatibility rules, or other foundational behavior.
+- A plan is `not ready` when foundational decisions are deferred into later execution phases, even if the phase list itself looks complete.
+
+## Low-confidence decision workflow
+
+- Treat any materially outcome-shaping unknown as a `low-confidence` decision: contracts, migrations, rollout semantics, compatibility behavior, safety constraints, or cross-surface behavior.
+- Resolve low-confidence decisions from repo evidence first.
+- If repo evidence is insufficient and the choice changes intended behavior, ask the user before finalizing the plan.
+- If the answer is researchable without user intent input, delegate research immediately or emit a non-ready `research-ready` research plan artifact.
+- A non-ready plan artifact must list the unresolved low-confidence decisions, make the exact next research action explicit, and stay clearly separate from an `execution-ready` handoff.
+- Never bury low-confidence decisions inside future execution phases or assume implementation will resolve them later.
+
+## Complexity-aware completeness
+
+- Keep the doctrine `complexity-aware` and domain-agnostic: scale planning depth to the real task shape, not the stack.
+- Simple local wiring or narrow refactor tasks should stay `lightweight`; do not force heavyweight schema, protocol, or rollout sections when they do not improve confidence.
+- Non-trivial, migration-heavy, compatibility-sensitive, or multi-surface work requires complete contracts before it can be `execution-ready`.
+- Every non-trivial ready plan must include a `test coverage matrix` that maps acceptance criteria and BDD scenarios to planned test layers, intended suites or files, and `### Verify` commands strong enough to catch partial implementations.
+- If task complexity is uncertain, bias toward more explicit contracts and acceptance-to-test mapping until evidence justifies a lighter plan.
+
+## Verification ownership
+
+- Phase `### Verify` checks are agent-run execution gates: they must be runnable during implementation, grounded in repo reality, and expanded with compensating checks when strict TDD is not practical.
+- Final completion still requires a semantic coherence review across the shared files touched by the work so reviewers confirm the doctrine means the same thing everywhere, not just that strings appear.
 
 ## Handoff to execution
 
