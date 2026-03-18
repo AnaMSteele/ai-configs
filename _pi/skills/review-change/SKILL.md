@@ -1,0 +1,125 @@
+---
+name: review-change
+description: Review code changes with quality-reviewer agents. Checks for issues, security, data loss, and performance with measurable impact focus.
+---
+
+# Review Change
+
+Review code changes using quality-reviewer agents. Checks for real issues (security, data loss, regressions, performance) with measurable impact focus.
+
+## Usage
+
+```
+/skill:review-change [optional: specific files or scope]
+```
+
+## Process
+
+### 1. Determine Review Scope
+
+If no arguments provided, review all changes since the base branch.
+
+```bash
+# Get changed files
+git diff --name-only origin/main...HEAD
+# Or use origin/develop if that's the base
+```
+
+### 2. Spawn Quality Reviewers
+
+Use `subagent` with `quality-reviewer` agent:
+
+**Reviewer 1: Security & Data Loss**
+```
+Review changed files for:
+- Security vulnerabilities (injection, exposure, auth gaps)
+- Data loss risks (deletions without backup, migration issues)
+- Input validation gaps
+Return: Specific issues with file:line references and severity
+```
+
+**Reviewer 2: Performance & Correctness**
+```
+Review changed files for:
+- Performance issues (N+1 queries, unnecessary loops)
+- Logic errors or edge cases
+- Error handling gaps
+Return: Specific issues with file:line references and severity
+```
+
+**Reviewer 3: Architecture & Maintainability**
+```
+Review changed files for:
+- Code duplication
+- SOLID principle violations
+- API contract consistency
+Return: Specific issues with file:line references
+```
+
+### 3. Synthesize Results
+
+Compile findings into categories:
+- **Critical**: Must fix (security, data loss, crashes)
+- **Important**: Should fix (performance, correctness)
+- **Minor**: Nice to have (style, minor optimizations)
+
+### 4. Generate Review Report
+
+Create `thoughts/validation/YYYY-MM-DD-review-[branch].md`:
+
+```markdown
+---
+date: [timestamp]
+branch: [branch name]
+commit: [HEAD commit]
+type: review
+status: complete
+---
+
+# Code Review: [Branch/Scope]
+
+## Summary
+- Files reviewed: [N]
+- Issues found: [N critical, N important, N minor]
+- Overall: [pass/needs-work]
+
+## Critical Issues
+
+### [Issue 1 Title]
+- **Location**: `file:line`
+- **Problem**: [description]
+- **Impact**: [specific consequence]
+- **Fix**: [recommended change]
+
+## Important Issues
+[Similar format]
+
+## Minor Issues
+[Similar format]
+
+## Positive Findings
+[What was done well]
+
+## Action Items
+- [ ] Fix critical issue 1
+- [ ] Fix critical issue 2
+- [ ] Consider important issues
+```
+
+### 5. Present to User
+
+Summarize findings:
+- Number of issues by severity
+- Most critical issues requiring immediate attention
+- Recommendation (approve / fix required)
+
+If issues found, offer to:
+- Create fix tasks
+- Run `/skill:review-change-integrate` to address issues
+
+## Integration
+
+Pairs with:
+- `/skill:review-change-integrate` to apply fixes
+- `/skill:cmd-commit-push` after fixes
+- Part of `ralph:run` autopilot workflow

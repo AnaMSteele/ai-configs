@@ -167,6 +167,35 @@ These rules apply to fidelity-oriented workflows (PRDs/specs → tasks → imple
 Agents should treat this `AGENTS.md` as authoritative for project-specific rules and combine it with any instructions in prompt files that are invoked from Codex. When in doubt, prefer the stricter rule (safer choice) and surface ambiguities to the human operator.
 
 
+## Pi Configuration (New)
+
+The `.pi/skills/` directory provides pi equivalents of opencode commands using the Agent Skills standard.
+
+### Quick Reference
+
+```bash
+# Plan execution (quality-gated)
+/skill:ralph-run <plan-slug>           # Execute with developer+reviewer loop
+/skill:ralph-run-simple <plan-slug>    # Single-pass execution
+/skill:dev-plan "feature-name"         # Materialize execution plan
+
+# Git & Linear
+/skill:cmd-start-linear-issue-branch <ISSUE_KEY>
+/skill:cmd-commit-push ["message"]
+/skill:cmd-create-pr
+
+# Development
+/skill:cmd-research "how does X work"
+/skill:cmd-debug "issue description"
+/skill:review-change <plan.md>
+
+# Context
+/skill:cmd-create-handoff "pausing work"
+/skill:cmd-resume-handoff <ticket>
+```
+
+See `.pi/README.md` for complete documentation.
+
 ## Linear Integration (ltui)
 
 `ltui` is the token-efficient Linear CLI for AI agents (replaces the legacy linear CLI/MCP). Use it for all Linear interactions.
@@ -204,3 +233,40 @@ ltui issues link <ISSUE_KEY> --url <pr-url> --title "PR #123"
 ```
 
 For more, run `ltui --help` or see the ltui README in this configuration repo.
+
+## Pi Skills (pi Agent)
+
+This repository includes pi-specific skills in `.pi/skills/` that provide equivalent functionality to opencode commands. Pi is an alternative AI coding agent that uses the [Agent Skills specification](https://agentskills.io/specification).
+
+### Available Skills
+
+**Git & Linear:**
+- `/skill:cmd-commit-push` — Commit and push changes
+- `/skill:cmd-create-pr` — Create GitHub pull request
+- `/skill:cmd-start-linear-issue` — Start Linear issue with worktree
+- `/skill:cmd-start-linear-issue-branch` — Start Linear issue on branch
+
+**Development:**
+- `/skill:cmd-research` — Research codebase area
+- `/skill:cmd-debug` — Debug investigation
+- `/skill:dev-plan` — Materialize execution plan
+- `/skill:cmd-graduate` — Graduate completed work to spec/
+
+**Context Management:**
+- `/skill:cmd-create-handoff` — Create handoff document
+- `/skill:cmd-resume-handoff` — Resume from handoff
+
+**Reviews:**
+- `/skill:review-change` — Review changes against plan
+- `/skill:review-change-integrate` — Integrate review feedback
+
+### Configuration
+
+Pi auto-discovers skills from `.pi/skills/` in the project. See `.pi/README.md` for details on adding new skills.
+
+To use opencode skills within pi, add to your pi settings:
+```json
+{
+  "skills": [".agents/skills", "opencode/skills"]
+}
+```

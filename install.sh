@@ -22,36 +22,39 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 print_usage() {
-    echo "Usage: $0 [--claude|--codex|--gemini|--omp|--opencode|--tools|--skills|--all] [--append-agents] [target-directory]"
+    echo "Usage: $0 [--claude|--codex|--gemini|--omp|--opencode|--pi|--tools|--skills|--all] [--append-agents] [target-directory]"
     echo ""
     echo "Options:"
     echo "  --claude    Install Claude Code configuration only"
     echo "  --codex     Install Codex configuration only"
     echo "  --gemini    Install Gemini CLI configuration only"
     echo "  --opencode  Install OpenCode configuration only"
+    echo "  --pi        Install Pi skills only (to ~/.pi/skills)"
     echo "  --omp       Install Oh My Pi configuration only (to ~/.omp/agent)"
     echo "  --tools     Install CLI tools only (e.g., ltui)"
     echo "  --skills    Install Claude skills only (to ~/.claude/skills/)"
-    echo "  --all       Install everything: Claude, Codex, Gemini, Oh My Pi, OpenCode, tools, and skills"
+    echo "  --all       Install everything: Claude, Codex, Gemini, Oh My Pi, OpenCode, Pi, tools, and skills"
     echo "  --append-agents"
     echo "             Ensure GEMINI.md exists and contains required Personas."
     echo "             If GEMINI.md exists but is missing the Personas section, append it from the template."
     echo ""
     echo "Default behavior (no args):"
-    echo "  Installs Claude, Codex, Gemini, Oh My Pi, and OpenCode only (no tools, no global skills)."
+    echo "  Installs Claude, Codex, Gemini, Oh My Pi, OpenCode, and Pi only (no tools, no global skills)."
     echo ""
     echo "Notes:"
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
+    echo "  - When using --pi or --all, skills are installed to ~/.pi/skills"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
-    echo "  $0                               # Default: install Claude + Codex + Gemini + OMP + OpenCode"
+    echo "  $0                               # Default: install Claude + Codex + Gemini + OMP + OpenCode + Pi"
     echo "  $0 --claude                      # Install Claude to current directory"
     echo "  $0 --codex ~/my-project          # Install Codex to ~/my-project"
     echo "  $0 --gemini ~/my-project         # Install Gemini to ~/my-project"
     echo "  $0 --opencode ~/my-project       # Install OpenCode to ~/my-project"
+    echo "  $0 --pi                          # Install Pi skills globally"
     echo "  $0 --omp ~/my-project            # Install Oh My Pi config to ~/.omp/agent"
     echo "  $0 --tools                       # Install CLI tools globally"
     echo "  $0 --skills                      # Install Claude skills globally"
@@ -989,10 +992,66 @@ install_gemini() {
     fi
 }
 
+install_pi() {
+    local is_update=false
+    local pi_dir="$HOME/.pi"
+    local pi_skills_dir="$pi_dir/skills"
+    local pi_source_dir="$REPO_ROOT/_pi"
+
+    # This is a home-directory install only. Similar to skills and opencode.
+    if [ ! -d "$pi_source_dir" ]; then
+        echo -e "${YELLOW}No _pi directory found in repository, skipping Pi install...${NC}"
+        return
+    fi
+
+    if [ -d "$pi_skills_dir" ]; then
+        is_update=true
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo -e "${GREEN}  Updating Pi Skills${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${GREEN}Updating Pi skills at $pi_skills_dir${NC}"
+    else
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo -e "${GREEN}  Installing Pi Skills${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+        echo ""
+        echo -e "${GREEN}Installing Pi skills to $pi_skills_dir${NC}"
+        mkdir -p "$pi_skills_dir"
+    fi
+
+    # Install skills (similar pattern to install_skills)
+    echo "  - Installing Pi skills..."
+    for skill_path in "$pi_source_dir/skills/"*/; do
+        if [ -d "$skill_path" ]; then
+            local skill_name=$(basename "$skill_path")
+            echo "    - Installing skill: $skill_name"
+            # Remove trailing slash to copy the directory itself
+            rm -rf "$pi_skills_dir/$skill_name"
+            cp -r "${skill_path%/}" "$pi_skills_dir/"
+        fi
+    done
+
+    # Install documentation
+    if [ -f "$pi_source_dir/README.md" ]; then
+        echo "  - Installing Pi documentation..."
+        cp "$pi_source_dir/README.md" "$pi_dir/README.md"
+    fi
+
+    if [ "$is_update" = true ]; then
+        echo -e "${GREEN}✓ Pi update complete${NC}"
+    else
+        echo -e "${GREEN}✓ Pi installation complete${NC}"
+    fi
+    echo ""
+    echo "Note: Pi skills are installed to $HOME/.pi/skills"
+    echo "      Skills will be auto-discovered when running pi"
+}
+
 # Argument parsing
 while [ "$#" -gt 0 ]; do
     case "$1" in
-        --claude|--codex|--gemini|--omp|--opencode|--tools|--skills|--all|--default)
+        --claude|--codex|--gemini|--omp|--opencode|--pi|--tools|--skills|--all|--default)
             INSTALL_MODE="$1"
             shift
             ;;
@@ -1029,6 +1088,8 @@ case "$INSTALL_MODE" in
         install_omp "$TARGET_DIR"
         echo ""
         install_opencode "$TARGET_DIR"
+        echo ""
+        install_pi
         ;;
     --claude)
         install_claude "$TARGET_DIR"
@@ -1044,6 +1105,9 @@ case "$INSTALL_MODE" in
         ;;
     --opencode)
         install_opencode "$TARGET_DIR"
+        ;;
+    --pi)
+        install_pi
         ;;
     --tools)
         install_tools
@@ -1061,6 +1125,8 @@ case "$INSTALL_MODE" in
         install_omp "$TARGET_DIR"
         echo ""
         install_opencode "$TARGET_DIR"
+        echo ""
+        install_pi
         echo ""
         install_tools
         echo ""
