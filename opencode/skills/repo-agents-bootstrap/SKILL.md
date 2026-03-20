@@ -37,6 +37,7 @@ Capture these behaviors as defaults:
 - Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each deferred low-risk item is logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`.
 - Resumability: `Progress` with stable IDs, explicit `Resume Instructions`, and append-only decision/deviation logs.
 - Evidence-first validation: lint, unit, build, e2e (and contract tests if applicable) before claiming done.
+- Validated-tree discipline: repo-level validation, smoke testing, release prep, and PR-update work must end with the tested tree committed, pushed, and clean. Do not leave a repo dirty after broad validation.
 - Review loops are hard gates: reviewer narrative alone never clears a phase; only the verdict-based phase-advance rule above can do that.
 - `ralph:run` review loops must reassess the `original test scope` and original plan when substantive misses appear; repeated or cross-surface misses widen coverage or plan scope instead of staying local.
 - Commit and push discipline with rationale, not just code diffs.
@@ -151,6 +152,7 @@ Required outcomes:
 - Safety rails and repo reality checks (secrets, encrypted env files, production constraints).
 - Canonical command set with copy-paste-ready commands.
 - Explicit quality gates and ordering.
+- Release / validation discipline that treats repo-level validation as evidence for the entire checked-out tree and requires a clean, committed, pushed repo before handoff.
 - Planning boundary rules:
   - `plan mode` is read-only discovery
   - `dev:plan` writes the plan only
@@ -187,6 +189,7 @@ Before finalizing, verify:
 - Root `AGENTS.md` commands are real and current.
 - Root `AGENTS.md` tells agents to use the shared planning skill and names local planning inputs.
 - Root `AGENTS.md` names the discovery-ledger destination used for deferred low-risk findings.
+- Root `AGENTS.md` makes the post-validation clean-repo rule explicit when the repo supports repo-level gates, smoke suites, or release PR flows.
 - Any repo-local planning overrides reference real quality gates from root `AGENTS.md`.
 - TDD + BDD requirements are explicit and testable.
 - No contradictory guidance between root `AGENTS.md`, optional planning overrides, and the shared planning workflow.
