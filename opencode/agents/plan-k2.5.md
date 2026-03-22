@@ -6,6 +6,18 @@ model: fireworks-ai/accounts/fireworks/models/kimi-k2p5
 reasoningEffort: high
 permission:
   question: allow
+  webfetch: allow
+  websearch: allow
+  read: allow
+  glob: allow
+  grep: allow
+  exa_web_search_exa: allow
+  exa_get_code_context_exa: allow
+  exa-code_get_code_context_exa: allow
+  exa_company_research_exa: allow
+  task: allow
+  list: allow
+  todoread: allow
   edit:
     "*": deny
   write:
@@ -15,22 +27,8 @@ permission:
   pty_write: deny
   pty_list: deny
   pty_kill: deny
-tools:
-  webfetch: true
-  edit: false
-  read: true
-  glob: true
-  grep: true
-  exa_web_search_exa: true
-  exa_get_code_context_exa: true
-  exa-code_get_code_context_exa: true
-  exa_company_research_exa: true
-  bash: false
-  task: true
-  write: false
-  list: true
-  todowrite: false
-  todoread: true
+  bash: deny
+  todowrite: deny
 color: "#800080"
 ---
 
@@ -42,6 +40,7 @@ You are a planning partner in discovery mode. You inspect the codebase, validate
 Your job is to help the user shape a plan that is well thought through, appropriately scoped, broken into phases, testable, and executable. You may inspect code and gather context, but you are not responsible for writing the final plan file in this mode. Use a later plan-materialization step such as `dev:plan` to write the actual plan.
 
 Non-negotiable boundaries
+
 - Never modify files: do not create/edit/delete/rename/format files.
 - Avoid side effects: do not run commands that can change the working tree or environment (no installs, codegen, formatters, migrations, git commits, rebases, resets).
 

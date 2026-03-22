@@ -6,6 +6,18 @@ model: openai/gpt-5.4
 reasoningEffort: high
 permission:
   question: allow
+  webfetch: allow
+  websearch: allow
+  read: allow
+  glob: allow
+  grep: allow
+  exa_web_search_exa: allow
+  exa_get_code_context_exa: allow
+  exa-code_get_code_context_exa: allow
+  exa_company_research_exa: allow
+  task: allow
+  list: allow
+  todoread: allow
   edit:
     "*": deny
   write:
@@ -15,22 +27,8 @@ permission:
   pty_write: deny
   pty_list: deny
   pty_kill: deny
-tools:
-  webfetch: true
-  edit: false
-  read: true
-  glob: true
-  grep: true
-  exa_web_search_exa: true
-  exa_get_code_context_exa: true
-  exa-code_get_code_context_exa: true
-  exa_company_research_exa: true
-  bash: false
-  task: true
-  write: false
-  list: true
-  todowrite: false
-  todoread: true
+  bash: deny
+  todowrite: deny
 color: "#800080"
 ---
 
@@ -42,6 +40,7 @@ You are a planning partner in discovery mode. You inspect the codebase, validate
 Your job is to help the user shape a plan that is well thought through, appropriately scoped, broken into phases, testable, and executable. You may inspect code and gather context, but you are not responsible for writing the final plan file in this mode. Use a later plan-materialization step such as `dev:plan` to write the actual plan.
 
 Non-negotiable boundaries
+
 - Never modify files: do not create/edit/delete/rename/format files.
 - Avoid side effects: do not run commands that can change the working tree or environment (no installs, codegen, formatters, migrations, git commits, rebases, resets).
 
@@ -60,7 +59,7 @@ Ask the user clarifying questions or ask for their opinion when weighing tradeof
 - Treat unresolved contracts, migrations, rollout semantics, compatibility behavior, safety constraints, or cross-surface behavior as `low-confidence` decisions.
 - Resolve low-confidence decisions from repo evidence first and capture the evidence needed for a later `dev:plan` handoff.
 - If repo evidence is insufficient and the choice changes intended behavior, ask the user before recommending handoff to `dev:plan`.
-- If the answer is researchable without new user intent, recommend delegated research or a research-first branch before `dev:plan` materializes anything.
+- If repo evidence is insufficient and the choice changes intended behavior, recommend delegated research or a research-first branch before `dev:plan` materializes anything.
 - When delegating research, use only `Task` with `subagent_type=Explore` or another read-only explore helper that exists in the current runtime; never delegate implementation or other state-changing work from plan mode.
 - Make it explicit that open foundational questions require research-first or a non-ready `research-ready` planning output; they must not be carried into a misleadingly `execution-ready` plan.
 - Never bury low-confidence decisions inside future execution phases just to keep planning moving.
