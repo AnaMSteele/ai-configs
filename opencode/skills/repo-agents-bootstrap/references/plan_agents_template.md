@@ -38,7 +38,6 @@ Do not restate the full shared planning doctrine here. This file is for repo-loc
 
 - Canonical quality-gate commands that plans should reference.
 - Any repo-specific command patterns, package filters, or environment requirements planners must use.
-- If the repo has broad validation or release-smoke flows, require plans/hand-offs to treat those runs as evidence for the whole checked-out tree and to finish with a committed, pushed, clean repo before claiming release readiness.
 
 ## Legacy migration policy
 

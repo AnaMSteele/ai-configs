@@ -34,13 +34,6 @@ Define the exact gate order (example):
 
 Include one canonical command if available (for example `pnpm quality:gates`).
 
-Add a release/validation discipline note:
-
-- repo-level validation is evidence for the entire current worktree, not a selective subset of files
-- do not run broad smoke suites, quality gates, or release validation on a mixed dirty tree and then hand off uncommitted pieces of that validated tree
-- required end state after repo-level validation or release work: `git status` clean, validated changes committed, branch pushed, and any requested release PR created or updated
-- if the user explicitly wants an uncommitted patch, say that repo-level validation/release evidence does not apply until the tree is committed and clean
-
 ## 5) Plan execution mode
 
 Codify the planning and execution boundaries:
@@ -87,8 +80,6 @@ List repo-specific skill-routing hints for common work surfaces (for example fro
 
 - Commit messages capture rationale, not only what changed.
 - Require push before marking work complete (unless user asks otherwise).
-- Never leave the repo dirty after broad validation, smoke testing, release prep, or PR-update work.
-- Before broad validation, require the agent to decide the intended shipping change set; if unrelated local edits should not ship, scope validation narrowly or stop and surface the conflict.
 - Include what evidence should be returned (changed files + gate summary + residual risks).
 
 ## 7) Style and architecture guardrails
