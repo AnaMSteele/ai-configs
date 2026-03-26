@@ -169,9 +169,13 @@ Agents should treat this `AGENTS.md` as authoritative for project-specific rules
 
 ## Pi Configuration (New)
 
-The `.pi/skills/` directory provides pi equivalents of opencode commands using the Agent Skills standard.
+The `_pi/` directory provides Pi prompt templates and skills. `_pi/prompts/` contains slash-command prompt templates, and `_pi/skills/` contains Agent Skills equivalents of key OpenCode workflows.
 
 ### Quick Reference
+
+Pi now supports both:
+- direct prompt-template commands like `/cmd:debug`, `/dev:plan`, `/review:change`
+- skill commands like `/skill:ralph-run`
 
 ```bash
 # Plan execution (quality-gated)
@@ -194,7 +198,7 @@ The `.pi/skills/` directory provides pi equivalents of opencode commands using t
 /skill:cmd-resume-handoff <ticket>
 ```
 
-See `.pi/README.md` for complete documentation.
+See `_pi/README.md` for complete documentation.
 
 ## Linear Integration (ltui)
 
@@ -236,7 +240,7 @@ For more, run `ltui --help` or see the ltui README in this configuration repo.
 
 ## Pi Skills (pi Agent)
 
-This repository includes pi-specific skills in `.pi/skills/` that provide equivalent functionality to opencode commands. Pi is an alternative AI coding agent that uses the [Agent Skills specification](https://agentskills.io/specification).
+This repository includes Pi-specific resources under `_pi/`: prompt templates in `_pi/prompts/` and skills in `_pi/skills/`. Pi is an alternative AI coding agent that uses prompt templates plus the [Agent Skills specification](https://agentskills.io/specification).
 
 ### Available Skills
 
@@ -262,7 +266,7 @@ This repository includes pi-specific skills in `.pi/skills/` that provide equiva
 
 ### Configuration
 
-Pi auto-discovers skills from `.pi/skills/` in the project. See `.pi/README.md` for details on adding new skills.
+Pi auto-discovers project-local resources from `.pi/prompts/` and `.pi/skills/`, and this repo's install script installs global resources from `_pi/` into `~/.pi/agent/`. See `_pi/README.md` for details.
 
 To use opencode skills within pi, add to your pi settings:
 ```json

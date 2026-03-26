@@ -29,7 +29,7 @@ print_usage() {
     echo "  --codex     Install Codex configuration only"
     echo "  --gemini    Install Gemini CLI configuration only"
     echo "  --opencode  Install OpenCode configuration only"
-    echo "  --pi        Install Pi skills only (to ~/.pi/skills)"
+    echo "  --pi        Install Pi prompt templates and skills only (to ~/.pi/agent)"
     echo "  --omp       Install Oh My Pi configuration only (to ~/.omp/agent)"
     echo "  --tools     Install CLI tools only (e.g., ltui)"
     echo "  --skills    Install Claude skills only (to ~/.claude/skills/)"
@@ -45,7 +45,7 @@ print_usage() {
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
-    echo "  - When using --pi or --all, skills are installed to ~/.pi/skills"
+    echo "  - When using --pi or --all, Pi prompt templates and skills are installed to ~/.pi/agent"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -54,7 +54,7 @@ print_usage() {
     echo "  $0 --codex ~/my-project          # Install Codex to ~/my-project"
     echo "  $0 --gemini ~/my-project         # Install Gemini to ~/my-project"
     echo "  $0 --opencode ~/my-project       # Install OpenCode to ~/my-project"
-    echo "  $0 --pi                          # Install Pi skills globally"
+    echo "  $0 --pi                          # Install Pi prompt templates and skills globally"
     echo "  $0 --omp ~/my-project            # Install Oh My Pi config to ~/.omp/agent"
     echo "  $0 --tools                       # Install CLI tools globally"
     echo "  $0 --skills                      # Install Claude skills globally"
@@ -992,10 +992,73 @@ install_gemini() {
     fi
 }
 
+ensure_pi_prompt_paths() {
+    local pi_agent_dir="$1"
+    local pi_prompts_dir="$2"
+    local settings_path="$pi_agent_dir/settings.json"
+
+    if [ ! -d "$pi_prompts_dir" ]; then
+        return
+    fi
+
+    local status
+    status=$(PI_AGENT_DIR="$pi_agent_dir" PI_PROMPTS_DIR="$pi_prompts_dir" SETTINGS_PATH="$settings_path" python3 <<'PY'
+import json
+import os
+from pathlib import Path
+
+agent_dir = Path(os.environ["PI_AGENT_DIR"])
+prompts_dir = Path(os.environ["PI_PROMPTS_DIR"])
+settings_path = Path(os.environ["SETTINGS_PATH"])
+
+if settings_path.exists():
+    data = json.loads(settings_path.read_text())
+else:
+    data = {}
+
+prompts = data.get("prompts")
+if prompts is None:
+    prompts = []
+elif not isinstance(prompts, list):
+    raise SystemExit("invalid-prompts-setting")
+
+required_entries = []
+for child in sorted(prompts_dir.iterdir(), key=lambda path: path.name):
+    if child.is_dir():
+        relative = child.relative_to(agent_dir).as_posix()
+        required_entries.append(f"./{relative}")
+
+updated = list(prompts)
+for entry in required_entries:
+    if entry not in updated:
+        updated.append(entry)
+
+if updated != prompts:
+    data["prompts"] = updated
+    settings_path.write_text(json.dumps(data, indent=2) + "\n")
+    print("updated")
+else:
+    print("unchanged")
+PY
+)
+    local settings_status=$?
+
+    if [ $settings_status -ne 0 ]; then
+        echo "  - Unable to update Pi prompt discovery paths (check $settings_path manually)"
+        return
+    fi
+
+    if [ "$status" = "updated" ]; then
+        echo "  - Updated Pi settings to discover nested prompt directories"
+    fi
+}
+
 install_pi() {
     local is_update=false
-    local pi_dir="$HOME/.pi"
-    local pi_skills_dir="$pi_dir/skills"
+    local pi_root_dir="$HOME/.pi"
+    local pi_agent_dir="$pi_root_dir/agent"
+    local pi_skills_dir="$pi_agent_dir/skills"
+    local pi_prompts_dir="$pi_agent_dir/prompts"
     local pi_source_dir="$REPO_ROOT/_pi"
 
     # This is a home-directory install only. Similar to skills and opencode.
@@ -1004,38 +1067,49 @@ install_pi() {
         return
     fi
 
-    if [ -d "$pi_skills_dir" ]; then
+    if [ -d "$pi_agent_dir" ]; then
         is_update=true
         echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-        echo -e "${GREEN}  Updating Pi Skills${NC}"
+        echo -e "${GREEN}  Updating Pi Configuration${NC}"
         echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
         echo ""
-        echo -e "${GREEN}Updating Pi skills at $pi_skills_dir${NC}"
+        echo -e "${GREEN}Updating Pi configuration at $pi_agent_dir${NC}"
     else
         echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-        echo -e "${GREEN}  Installing Pi Skills${NC}"
+        echo -e "${GREEN}  Installing Pi Configuration${NC}"
         echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
         echo ""
-        echo -e "${GREEN}Installing Pi skills to $pi_skills_dir${NC}"
-        mkdir -p "$pi_skills_dir"
+        echo -e "${GREEN}Installing Pi configuration to $pi_agent_dir${NC}"
+        mkdir -p "$pi_agent_dir"
     fi
 
-    # Install skills (similar pattern to install_skills)
-    echo "  - Installing Pi skills..."
-    for skill_path in "$pi_source_dir/skills/"*/; do
-        if [ -d "$skill_path" ]; then
-            local skill_name=$(basename "$skill_path")
-            echo "    - Installing skill: $skill_name"
-            # Remove trailing slash to copy the directory itself
-            rm -rf "$pi_skills_dir/$skill_name"
-            cp -r "${skill_path%/}" "$pi_skills_dir/"
-        fi
-    done
+    # Install prompt templates copied from OMP commands.
+    echo "  - Installing Pi prompt templates..."
+    rm -rf "$pi_prompts_dir"
+    mkdir -p "$pi_prompts_dir"
+    if [ -d "$pi_source_dir/prompts" ]; then
+        cp -r "$pi_source_dir/prompts/." "$pi_prompts_dir/"
+        ensure_pi_prompt_paths "$pi_agent_dir" "$pi_prompts_dir"
+    fi
 
-    # Install documentation
+    # Install skills.
+    echo "  - Installing Pi skills..."
+    rm -rf "$pi_skills_dir"
+    mkdir -p "$pi_skills_dir"
+    if [ -d "$pi_source_dir/skills" ]; then
+        for skill_path in "$pi_source_dir/skills/"*/; do
+            if [ -d "$skill_path" ]; then
+                local skill_name=$(basename "$skill_path")
+                echo "    - Installing skill: $skill_name"
+                cp -r "${skill_path%/}" "$pi_skills_dir/"
+            fi
+        done
+    fi
+
+    # Install documentation.
     if [ -f "$pi_source_dir/README.md" ]; then
         echo "  - Installing Pi documentation..."
-        cp "$pi_source_dir/README.md" "$pi_dir/README.md"
+        cp "$pi_source_dir/README.md" "$pi_agent_dir/README.md"
     fi
 
     if [ "$is_update" = true ]; then
@@ -1044,8 +1118,8 @@ install_pi() {
         echo -e "${GREEN}✓ Pi installation complete${NC}"
     fi
     echo ""
-    echo "Note: Pi skills are installed to $HOME/.pi/skills"
-    echo "      Skills will be auto-discovered when running pi"
+    echo "Note: Pi prompt templates and skills are installed to $HOME/.pi/agent"
+    echo "      Prompt templates load from ~/.pi/agent/prompts and skills from ~/.pi/agent/skills"
 }
 
 # Argument parsing
