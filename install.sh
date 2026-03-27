@@ -29,7 +29,7 @@ print_usage() {
     echo "  --codex     Install Codex configuration only"
     echo "  --gemini    Install Gemini CLI configuration only"
     echo "  --opencode  Install OpenCode configuration only"
-    echo "  --pi        Install Pi prompt templates and skills only (to ~/.pi/agent)"
+    echo "  --pi        Install Pi prompt templates, skills, and subagents (to ~/.pi/agent)"
     echo "  --omp       Install Oh My Pi configuration only (to ~/.omp/agent)"
     echo "  --tools     Install CLI tools only (e.g., ltui)"
     echo "  --skills    Install Claude skills only (to ~/.claude/skills/)"
@@ -45,7 +45,7 @@ print_usage() {
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
-    echo "  - When using --pi or --all, Pi prompt templates and skills are installed to ~/.pi/agent"
+    echo "  - When using --pi or --all, Pi prompt templates, skills, and subagents are installed to ~/.pi/agent"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -54,7 +54,7 @@ print_usage() {
     echo "  $0 --codex ~/my-project          # Install Codex to ~/my-project"
     echo "  $0 --gemini ~/my-project         # Install Gemini to ~/my-project"
     echo "  $0 --opencode ~/my-project       # Install OpenCode to ~/my-project"
-    echo "  $0 --pi                          # Install Pi prompt templates and skills globally"
+    echo "  $0 --pi                          # Install Pi prompt templates, skills, and subagents globally"
     echo "  $0 --omp ~/my-project            # Install Oh My Pi config to ~/.omp/agent"
     echo "  $0 --tools                       # Install CLI tools globally"
     echo "  $0 --skills                      # Install Claude skills globally"
@@ -1028,13 +1028,17 @@ for child in sorted(prompts_dir.iterdir(), key=lambda path: path.name):
         relative = child.relative_to(agent_dir).as_posix()
         required_entries.append(f"./{relative}")
 
-updated = list(prompts)
+managed_prefix = f"./{prompts_dir.relative_to(agent_dir).as_posix()}/"
+updated = [entry for entry in prompts if not (isinstance(entry, str) and entry.startswith(managed_prefix))]
 for entry in required_entries:
     if entry not in updated:
         updated.append(entry)
 
 if updated != prompts:
-    data["prompts"] = updated
+    if updated:
+        data["prompts"] = updated
+    else:
+        data.pop("prompts", None)
     settings_path.write_text(json.dumps(data, indent=2) + "\n")
     print("updated")
 else:
@@ -1049,7 +1053,7 @@ PY
     fi
 
     if [ "$status" = "updated" ]; then
-        echo "  - Updated Pi settings to discover nested prompt directories"
+        echo "  - Synchronized Pi settings prompt directory entries"
     fi
 }
 
@@ -1059,6 +1063,7 @@ install_pi() {
     local pi_agent_dir="$pi_root_dir/agent"
     local pi_skills_dir="$pi_agent_dir/skills"
     local pi_prompts_dir="$pi_agent_dir/prompts"
+    local pi_agents_dir="$pi_agent_dir/agents"
     local pi_source_dir="$REPO_ROOT/_pi"
 
     # This is a home-directory install only. Similar to skills and opencode.
@@ -1106,6 +1111,14 @@ install_pi() {
         done
     fi
 
+    # Install subagent definitions for pi-subagents.
+    echo "  - Installing Pi subagents..."
+    rm -rf "$pi_agents_dir"
+    mkdir -p "$pi_agents_dir"
+    if [ -d "$pi_source_dir/agents" ]; then
+        cp -r "$pi_source_dir/agents/." "$pi_agents_dir/"
+    fi
+
     # Install documentation.
     if [ -f "$pi_source_dir/README.md" ]; then
         echo "  - Installing Pi documentation..."
@@ -1118,8 +1131,8 @@ install_pi() {
         echo -e "${GREEN}✓ Pi installation complete${NC}"
     fi
     echo ""
-    echo "Note: Pi prompt templates and skills are installed to $HOME/.pi/agent"
-    echo "      Prompt templates load from ~/.pi/agent/prompts and skills from ~/.pi/agent/skills"
+    echo "Note: Pi prompt templates, skills, and subagents are installed to $HOME/.pi/agent"
+    echo "      Prompt templates load from ~/.pi/agent/prompts, skills from ~/.pi/agent/skills, and subagents from ~/.pi/agent/agents"
 }
 
 # Argument parsing

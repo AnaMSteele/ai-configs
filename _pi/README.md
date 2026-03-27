@@ -4,15 +4,16 @@ This directory contains Pi-specific resources:
 
 - `prompts/` — prompt templates exposed as slash commands
 - `skills/` — Agent Skills invoked via `/skill:name`
+- `agents/` — pi-subagents-compatible agent definitions
 
-The prompt templates are copied from `_omp/commands` so Pi gets the same command library, using Pi's prompt-template system.
+The prompt templates are copied from `_omp/commands`, and the agent definitions are ported from `_omp/agents` into the flat markdown format expected by pi-subagents.
 
 ## Installation
 
 These resources are installed by `install.sh` to Pi's global agent directory:
 
 ```bash
-./install.sh --pi      # Install Pi prompt templates + skills only
+./install.sh --pi      # Install Pi prompt templates + skills + subagents
 ./install.sh --all     # Install everything, including Pi
 ```
 
@@ -25,9 +26,13 @@ Installed layout:
 │   ├── cmd:debug.md
 │   ├── dev:plan.md
 │   └── ...
-└── skills/
-    ├── cmd-commit-push/
-    ├── ralph-run/
+├── skills/
+│   ├── cmd-commit-push/
+│   ├── ralph-run/
+│   └── ...
+└── agents/
+    ├── developer.md
+    ├── quality-reviewer.md
     └── ...
 ```
 
@@ -37,10 +42,11 @@ Installed layout:
 _pi/
 ├── README.md
 ├── prompts/            # Pi prompt templates / slash commands
-│   ├── .arch/
 │   └── *.md
-└── skills/             # Pi skills (Agent Skills format)
-    └── */SKILL.md
+├── skills/             # Pi skills (Agent Skills format)
+│   └── */SKILL.md
+└── agents/             # Pi subagent definitions for pi-subagents
+    └── *.md
 ```
 
 ## Prompt Templates
@@ -53,7 +59,25 @@ Each Markdown file becomes a slash command using the filename:
 - `dev:plan.md` → `/dev:plan`
 - `review:change.md` → `/review:change`
 
-The installer also updates `~/.pi/agent/settings.json` so nested prompt directories like `prompts/.arch/` are discovered.
+Prompt templates in this repo are kept as top-level files in `_pi/prompts/`, so no extra nested prompt-directory discovery is required.
+
+## Subagents
+
+Pi subagents load agent definitions from `~/.pi/agent/agents/`.
+
+These files are based on `_omp/agents`, but normalized for the pi-subagents loader:
+
+- every agent has a `name`
+- `tools` is flattened to a comma-separated built-in Pi tool list when possible
+- unsupported OMP-only nested permission/tool metadata is omitted from the frontmatter used by pi-subagents
+
+Example installed agents:
+
+- `developer`
+- `quality-reviewer`
+- `research`
+- `plan-gpt5.4`
+- `worktree-creator`
 
 ## Skills Overview
 
@@ -100,5 +124,6 @@ Skills:
 ## Notes
 
 - Pi global resources live under `~/.pi/agent/`, not `~/.pi/`.
-- Project-local Pi resources can also live under `.pi/prompts/` and `.pi/skills/`.
+- Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, and `.pi/agents/`.
 - Pi auto-discovers `~/.pi/agent/skills/` and `~/.pi/agent/prompts/`.
+- pi-subagents-compatible agent definitions install to `~/.pi/agent/agents/`.

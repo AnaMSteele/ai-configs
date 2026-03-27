@@ -60,7 +60,7 @@ bash /path/to/adn-claude-configs/install.sh --all
 ```
 
 The install script auto-detects existing installations and:
-- Updates agents, commands/prompts, and scripts (including OMP commands/agents and Pi prompts/skills)
+- Updates agents, commands/prompts, and scripts (including OMP commands/agents and Pi prompts/skills/subagents)
 - Cleans up legacy directory structures
 - Preserves your local settings and configuration files
 - Mirrors Codex prompts to `~/.codex/prompts` for global CLI access
@@ -104,7 +104,8 @@ adn-claude-configs/
 │   └── commands/            # OMP slash commands
 ├── _pi/                      # Pi configuration
 │   ├── prompts/             # Pi prompt templates (ported from OMP commands)
-│   └── skills/              # Pi skills
+│   ├── skills/              # Pi skills
+│   └── agents/              # Pi subagent definitions (ported from OMP agents)
 ├── opencode/                 # OpenCode configuration
 │   ├── agents/              # OpenCode agents
 │   ├── commands/            # OpenCode slash commands

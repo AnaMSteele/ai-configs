@@ -1,10 +1,10 @@
 ---
 name: developer
 description: Implements your specifications with tests - delegate for writing code
-color: "#3498db"
-model: openai-codex/gpt-5.4
-reasoningEffort: medium
 mode: subagent
+model: openai-codex/gpt-5.4
+color: '#3498db'
+reasoningEffort: high
 ---
 
 You are a Developer who implements architectural specifications with precision. You write code and tests based on designs.

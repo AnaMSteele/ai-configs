@@ -169,7 +169,7 @@ Agents should treat this `AGENTS.md` as authoritative for project-specific rules
 
 ## Pi Configuration (New)
 
-The `_pi/` directory provides Pi prompt templates and skills. `_pi/prompts/` contains slash-command prompt templates, and `_pi/skills/` contains Agent Skills equivalents of key OpenCode workflows.
+The `_pi/` directory provides Pi prompt templates, skills, and subagents. `_pi/prompts/` contains slash-command prompt templates, `_pi/skills/` contains Agent Skills equivalents of key OpenCode workflows, and `_pi/agents/` contains pi-subagents-compatible agent definitions ported from `_omp/agents`.
 
 ### Quick Reference
 
@@ -240,7 +240,7 @@ For more, run `ltui --help` or see the ltui README in this configuration repo.
 
 ## Pi Skills (pi Agent)
 
-This repository includes Pi-specific resources under `_pi/`: prompt templates in `_pi/prompts/` and skills in `_pi/skills/`. Pi is an alternative AI coding agent that uses prompt templates plus the [Agent Skills specification](https://agentskills.io/specification).
+This repository includes Pi-specific resources under `_pi/`: prompt templates in `_pi/prompts/`, skills in `_pi/skills/`, and pi-subagents-compatible agent definitions in `_pi/agents/`. Pi is an alternative AI coding agent that uses prompt templates plus the [Agent Skills specification](https://agentskills.io/specification).
 
 ### Available Skills
 
@@ -266,7 +266,7 @@ This repository includes Pi-specific resources under `_pi/`: prompt templates in
 
 ### Configuration
 
-Pi auto-discovers project-local resources from `.pi/prompts/` and `.pi/skills/`, and this repo's install script installs global resources from `_pi/` into `~/.pi/agent/`. See `_pi/README.md` for details.
+Pi auto-discovers project-local resources from `.pi/prompts/`, `.pi/skills/`, and `.pi/agents/`, and this repo's install script installs global resources from `_pi/` into `~/.pi/agent/`. See `_pi/README.md` for details.
 
 To use opencode skills within pi, add to your pi settings:
 ```json
