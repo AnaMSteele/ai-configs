@@ -185,7 +185,6 @@ Pi now supports both:
 
 # Git & Linear
 /skill:cmd-start-linear-issue-branch <ISSUE_KEY>
-/skill:cmd-commit-push ["message"]
 /skill:cmd-create-pr
 
 # Development
@@ -245,7 +244,6 @@ This repository includes Pi-specific resources under `_pi/`: prompt templates in
 ### Available Skills
 
 **Git & Linear:**
-- `/skill:cmd-commit-push` — Commit and push changes
 - `/skill:cmd-create-pr` — Create GitHub pull request
 - `/skill:cmd-start-linear-issue` — Start Linear issue with worktree
 - `/skill:cmd-start-linear-issue-branch` — Start Linear issue on branch

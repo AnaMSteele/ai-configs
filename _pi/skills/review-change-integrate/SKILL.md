@@ -116,4 +116,4 @@ status: [resolved|partially-resolved]
 Part of the review workflow:
 1. `/skill:review-change` - Find issues
 2. `/skill:review-change-integrate` - Fix issues
-3. `/skill:cmd-commit-push` - Save fixes
+3. Commit or share the fixes using your preferred git workflow

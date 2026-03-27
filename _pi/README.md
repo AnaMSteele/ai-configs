@@ -27,7 +27,6 @@ Installed layout:
 │   ├── dev:plan.md
 │   └── ...
 ├── skills/
-│   ├── cmd-commit-push/
 │   ├── ralph-run/
 │   └── ...
 └── agents/
@@ -86,7 +85,6 @@ Example installed agents:
 - `ralph-run-simple` — simpler single-pass execution
 
 ### Git / workflow
-- `cmd-commit-push`
 - `cmd-create-pr`
 - `cmd-start-linear-issue`
 - `cmd-start-linear-issue-branch`
@@ -117,7 +115,6 @@ Skills:
 
 ```text
 /skill:ralph-run user-profile-redesign
-/skill:cmd-commit-push "feat: add new feature"
 /skill:cmd-start-linear-issue-branch ENG-123
 ```
 
