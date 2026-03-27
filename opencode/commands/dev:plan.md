@@ -39,7 +39,7 @@ Completion condition for this command when a plan artifact can be written safely
 - Exactly one plan file at `plan_path` is written or updated.
 - No non-plan file is modified.
 - The final response reports the plan path and readiness state, then suggests follow-up work that matches that state without running anything.
-- Only suggest `/ralph:run <plan_path>` when the written plan is `execution-ready`.
+- Only suggest `/cmd:execute-plan <plan_path>` when the written plan is `execution-ready`.
 - For a written `research-ready` artifact, point the user to the exact next research action captured in the plan instead of suggesting execution.
 - Then stop and wait for a new user instruction.
 
@@ -53,7 +53,7 @@ Forbidden transitions for this command:
 - Do not switch into build, run, or implementation mode.
 - Do not edit any file except `plan_path` unless the user explicitly broadens scope.
 - Do not run lint, tests, build, e2e, migrations, or other execution-oriented verification.
-- Do not invoke `/review:change`, `/ralph:run`, or any other follow-up command from this command; only suggest them.
+- Do not invoke `/review:change`, `/cmd:execute-plan`, `/ralph:run`, or any other follow-up command from this command; only suggest them.
 
 Legacy bundles:
 
@@ -189,5 +189,5 @@ These are suggestions for the user to run after this command finishes. Do not ru
 
 - If the written plan is `execution-ready`, suggest:
   - `/review:change <plan_path>`
-  - `/ralph:run <plan_path>`
-- If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/ralph:run`.
+  - `/cmd:execute-plan <plan_path>`
+- If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/cmd:execute-plan`.

@@ -5,6 +5,7 @@ This directory contains Pi-specific resources:
 - `prompts/` — prompt templates exposed as slash commands
 - `skills/` — Agent Skills invoked via `/skill:name`
 - `agents/` — pi-subagents-compatible agent definitions
+- `extensions/` — Pi runtime extensions, including the maintained `/plan` mode workflow
 
 The prompt templates are copied from `_omp/commands`, and the agent definitions are ported from `_omp/agents` into the flat markdown format expected by pi-subagents.
 
@@ -13,7 +14,7 @@ The prompt templates are copied from `_omp/commands`, and the agent definitions 
 These resources are installed by `install.sh` to Pi's global agent directory:
 
 ```bash
-./install.sh --pi      # Install Pi prompt templates + skills + subagents
+./install.sh --pi      # Install Pi prompt templates + skills + subagents + extensions
 ./install.sh --all     # Install everything, including Pi
 ```
 
@@ -29,10 +30,13 @@ Installed layout:
 ├── skills/
 │   ├── ralph-run/
 │   └── ...
-└── agents/
-    ├── developer.md
-    ├── quality-reviewer.md
-    └── ...
+├── agents/
+│   ├── developer.md
+│   ├── quality-reviewer.md
+│   └── ...
+└── extensions/
+    └── pi-plan-mode/
+        └── index.ts
 ```
 
 ## Structure
@@ -44,8 +48,10 @@ _pi/
 │   └── *.md
 ├── skills/             # Pi skills (Agent Skills format)
 │   └── */SKILL.md
-└── agents/             # Pi subagent definitions for pi-subagents
-    └── *.md
+├── agents/             # Pi subagent definitions for pi-subagents
+│   └── *.md
+└── extensions/         # Pi runtime extensions
+    └── */index.ts
 ```
 
 ## Prompt Templates
@@ -55,10 +61,26 @@ Pi loads prompt templates from `~/.pi/agent/prompts/`.
 Each Markdown file becomes a slash command using the filename:
 
 - `cmd:debug.md` → `/cmd:debug`
+- `cmd:execute-plan.md` → `/cmd:execute-plan`
 - `dev:plan.md` → `/dev:plan`
 - `review:change.md` → `/review:change`
 
 Prompt templates in this repo are kept as top-level files in `_pi/prompts/`, so no extra nested prompt-directory discovery is required.
+
+The `/plan` command is provided by the `pi-plan-mode` extension, not by a prompt template.
+
+## Extensions
+
+Pi loads runtime extensions from `~/.pi/agent/extensions/`.
+
+This repo now ships a maintained `pi-plan-mode` extension that:
+
+- powers `/plan` mode for `thoughts/` planning workflows,
+- keeps planning-mode file writes scoped to `thoughts/`,
+- offers `/review:plan` after plan edits,
+- offers both `/dev:run <plan>` and `/ralph:run <plan>` as post-review exit paths,
+- dispatches those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can clear context first,
+- disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
 ## Subagents
 
@@ -109,7 +131,18 @@ Prompt templates:
 /cmd:debug login flake in CI
 /dev:plan feature-name
 /review:change thoughts/plans/my-plan.md
+/cmd:execute-plan thoughts/plans/my-plan.md
 ```
+
+## Reviewed-plan handoff
+
+Use `/cmd:execute-plan <plan>` after a reviewed plan is ready to continue.
+
+- It is the canonical wrapper for choosing between `/dev:run <plan>` and `/ralph:run <plan>`.
+- In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and routes them through this handoff automatically.
+- When that extension prompt is used, `/plan` mode is disabled before dispatch so execution is not blocked by planning-only tool restrictions.
+- In Pi, the handoff command itself clears context before dispatch using the context-management tools.
+- If the Pi context-management tools are unavailable, the prompt fails closed instead of silently skipping context cleanup.
 
 Skills:
 
@@ -121,6 +154,6 @@ Skills:
 ## Notes
 
 - Pi global resources live under `~/.pi/agent/`, not `~/.pi/`.
-- Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, and `.pi/agents/`.
-- Pi auto-discovers `~/.pi/agent/skills/` and `~/.pi/agent/prompts/`.
+- Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, `.pi/agents/`, and `.pi/extensions/`.
+- Pi auto-discovers `~/.pi/agent/skills/`, `~/.pi/agent/prompts/`, and `~/.pi/agent/extensions/`.
 - pi-subagents-compatible agent definitions install to `~/.pi/agent/agents/`.

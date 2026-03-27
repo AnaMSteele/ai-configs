@@ -100,7 +100,9 @@ Use the Task tool with `subagent_type=Explore`.
 After successful integration:
 
 ```
-/dev:run <plan path | plan slug>
+/cmd:execute-plan <plan path | plan slug>
 ```
+
+If the user already knows they want direct execution, both `/dev:run <plan path | plan slug>` and `/ralph:run <plan path | plan slug>` remain valid.
 
 Stop there; do not proceed automatically.

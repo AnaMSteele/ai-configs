@@ -227,6 +227,16 @@ The system uses carefully configured agents that focus on exact scope implementa
 [Research Doc] → /spec:1:create-spec → /spec:2:gen-tasks → /3:process-tasks
 ```
 
+**Plan-First Execution Workflow** (for maintained plan surfaces):
+
+```
+/dev:plan <plan> → /review:change <plan> → /cmd:execute-plan <plan> → choose /ralph:run <plan> or /dev:run <plan>
+```
+
+- `/dev:plan` remains planning-only; it writes or updates the plan artifact and stops.
+- `/cmd:execute-plan` is the canonical reviewed-plan handoff once the plan is ready to continue, preserving both `/dev:run` and `/ralph:run` as distinct execution paths.
+- Only Pi promises context cleanup before dispatch; other surfaces share the same `/cmd:execute-plan` wrapper without claiming Pi-only context behavior.
+
 ### 3. Code Quality Workflows
 
 **Simplification Workflow**:

@@ -227,7 +227,7 @@ After integration completes, provide:
 
 ### Next Step:
 ```
-`/dev:run <plan path | plan slug>`
+`/cmd:execute-plan <plan path | plan slug>`
 ```
 ```
 
@@ -257,7 +257,7 @@ Phase 2: Synthesis (GPT5.4)
 Phase 3: Auto-Integration
   └─ Applies all feedback → Clean updated plan
     ↓
-Output: Integrated Plan (ready for /dev:run)
+Output: Integrated Plan (ready for /cmd:execute-plan or direct /dev:run or /ralph:run)
 ```
 ---
 

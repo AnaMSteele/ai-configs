@@ -187,10 +187,10 @@ def main() -> None:
         "README plan-first workflow",
         planning_workflow,
         [
-            "`[plan mode discovery] → /dev:plan → [execution-ready → /review:change <plan_path> → /ralph:run <plan_path>] | [research-ready / blocking question → next research or answer → /dev:plan]`",
+            "`[plan mode discovery] → /dev:plan → [execution-ready → /review:change <plan_path> → /cmd:execute-plan <plan_path> → choose /ralph:run <plan_path> or /dev:run <plan_path>] | [research-ready / blocking question → next research or answer → /dev:plan]`",
             "- Read-only plan mode gathers evidence, resolves `low-confidence` decisions, and prepares inputs for plan materialization.",
             "- `/dev:plan` fails closed: it only writes an `execution-ready` plan when foundational decisions are resolved; otherwise it asks the user or writes exactly one non-ready `research-ready` artifact with the next research action.",
-            "- Only `execution-ready` plans move into `/review:change` and `/ralph:run`; `research-ready` artifacts loop back through the recorded next research action and another `/dev:plan` pass.",
+            "- Only `execution-ready` plans move into `/review:change` and then `/cmd:execute-plan`; the handoff preserves the reviewed plan argument and asks whether to continue with `/ralph:run` or `/dev:run`.",
             "- Keep simple tasks lightweight, but require complete contracts plus a `test coverage matrix` before a non-trivial plan is treated as `execution-ready`.",
             "- `/ralph:run` uses review findings as feedback on the `original test scope` and original plan; repeated or cross-surface misses widen coverage instead of staying local patches.",
         ],
@@ -205,7 +205,7 @@ def main() -> None:
         [
             "- A plan is only `execution-ready` when important questions and `low-confidence` foundational decisions are resolved with evidence.",
             "- If research is still the next handoff, `/dev:plan` writes one non-ready `research-ready` artifact instead of pretending execution can safely start.",
-            "- Only `execution-ready` plans should proceed into `/review:change` and `/ralph:run`; `research-ready` artifacts should send the agent through the recorded next research action and then back to `/dev:plan`.",
+            "- Only `execution-ready` plans should proceed into `/review:change` and then `/cmd:execute-plan`; the wrapper keeps `/dev:plan` planning-only while routing into `/ralph:run` or `/dev:run` as distinct execution paths.",
             "- Non-trivial ready plans should include a `test coverage matrix` that maps acceptance criteria and BDD scenarios to suites/files and `### Verify` commands.",
             "- `ralph:run` treats substantive review misses as evidence about the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage before phase advance.",
             "- A phase only advances after `ralph:run` receives `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` with each deferred low-risk item logged in `thoughts/discoveries/<plan-or-feature>.md` (or the repo's documented equivalent) and the plan's `## Decisions / Deviations Log`.",

@@ -115,5 +115,5 @@ Before finishing:
 
 - Review the plan:
   - `/review:change thoughts/plans/<slug>.md`
-- Execute:
-  - `/dev:run thoughts/plans/<slug>.md`
+- After the reviewed plan is ready to continue, use the canonical handoff:
+  - `/cmd:execute-plan thoughts/plans/<slug>.md`
