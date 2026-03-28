@@ -1229,6 +1229,8 @@ install_pi_npm_packages() {
         "pi-side-chat"
         "pi-powerline-footer"
         "@victor-software-house/pi-multicodex"
+        "@tmustier/pi-files-widget"
+        "@tmustier/pi-raw-paste"
     )
 
     # Check if npm is available
