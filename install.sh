@@ -1059,6 +1059,17 @@ PY
     fi
 }
 
+install_pi_agents_from_repo() {
+    local pi_source_dir="$1"
+    local pi_agents_dir="$2"
+
+    rm -rf "$pi_agents_dir"
+    mkdir -p "$pi_agents_dir"
+    if [ -d "$pi_source_dir/agents" ]; then
+        cp -r "$pi_source_dir/agents/." "$pi_agents_dir/"
+    fi
+}
+
 install_pi() {
     local is_update=false
     local pi_root_dir="$HOME/.pi"
@@ -1116,11 +1127,7 @@ install_pi() {
 
     # Install subagent definitions for pi-subagents.
     echo "  - Installing Pi subagents..."
-    rm -rf "$pi_agents_dir"
-    mkdir -p "$pi_agents_dir"
-    if [ -d "$pi_source_dir/agents" ]; then
-        cp -r "$pi_source_dir/agents/." "$pi_agents_dir/"
-    fi
+    install_pi_agents_from_repo "$pi_source_dir" "$pi_agents_dir"
 
     # Install extensions.
     echo "  - Installing Pi extensions..."
@@ -1153,6 +1160,11 @@ install_pi() {
 
     # Install npm-based pi extensions
     install_pi_npm_packages
+
+    # Reinstall repo-managed subagent overrides after package installs so they win
+    # over plugin defaults and stay under version control.
+    echo "  - Re-installing Pi subagent overrides after Pi package installs..."
+    install_pi_agents_from_repo "$pi_source_dir" "$pi_agents_dir"
 }
 
 # Install pi-dcp extension via pi package manager
