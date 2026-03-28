@@ -46,7 +46,8 @@ print_usage() {
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, skills, subagents, and extensions are installed to ~/.pi/agent"
-    echo "  - When using --pi or --all, also installs pi extensions: pi-dcp, chrome-cdp-skill"
+    echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill"
+    echo "  - When using --pi or --all, also installs pi extensions via npm: pi-subagents, pi-web-access, lsp-pi, etc."
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1149,6 +1150,9 @@ install_pi() {
 
     # Install chrome-cdp-skill extension via pi package manager
     install_chrome_cdp_skill
+
+    # Install npm-based pi extensions
+    install_pi_npm_packages
 }
 
 # Install pi-dcp extension via pi package manager
@@ -1193,6 +1197,52 @@ install_chrome_cdp_skill() {
             return 1
         fi
     fi
+}
+
+# Install npm-based pi extensions
+install_pi_npm_packages() {
+    echo ""
+    echo -e "${GREEN}  Installing npm-based pi extensions...${NC}"
+
+    # Core extensions for the user's workflow
+    local npm_packages=(
+        "pi-subagents"
+        "@aliou/pi-processes"
+        "pi-web-access"
+        "pi-mcp-adapter"
+        "lsp-pi"
+        "@fnnm/pi-ast-grep"
+        "pi-updater"
+        "pi-interactive-shell"
+        "pi-side-chat"
+        "pi-powerline-footer"
+        "@victor-software-house/pi-multicodex"
+    )
+
+    # Check if npm is available
+    if ! command -v npm &> /dev/null; then
+        echo -e "    ${YELLOW}⚠ npm not found in PATH${NC}"
+        echo "      Please install Node.js/npm to install pi extensions"
+        return 1
+    fi
+
+    # Install/update each package
+    for pkg in "${npm_packages[@]}"; do
+        echo "  - Checking $pkg..."
+        # Check if already installed globally
+        if npm list -g "$pkg" &> /dev/null; then
+            echo "    ✓ $pkg already installed"
+        else
+            echo "    Installing $pkg..."
+            if npm install -g "$pkg" 2>/dev/null; then
+                echo -e "    ${GREEN}✓ $pkg installed${NC}"
+            else
+                echo -e "    ${YELLOW}⚠ Failed to install $pkg${NC}"
+            fi
+        fi
+    done
+
+    echo -e "${GREEN}  ✓ npm-based extensions processed${NC}"
 }
 
 # Argument parsing
