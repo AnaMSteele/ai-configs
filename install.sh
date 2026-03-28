@@ -46,7 +46,7 @@ print_usage() {
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, skills, subagents, and extensions are installed to ~/.pi/agent"
-    echo "  - When using --pi or --all, also installs pi-dcp extension via 'pi install git:github.com/adnichols/pi-dcp'"
+    echo "  - When using --pi or --all, also installs pi extensions: pi-dcp, chrome-cdp-skill"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1146,6 +1146,9 @@ install_pi() {
 
     # Install pi-dcp extension via pi package manager
     install_pi_dcp_package
+
+    # Install chrome-cdp-skill extension via pi package manager
+    install_chrome_cdp_skill
 }
 
 # Install pi-dcp extension via pi package manager
@@ -1165,6 +1168,28 @@ install_pi_dcp_package() {
             echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
             echo "      To install manually, run:"
             echo "        pi install git:github.com/adnichols/pi-dcp"
+            return 1
+        fi
+    fi
+}
+
+# Install chrome-cdp-skill extension via pi package manager
+install_chrome_cdp_skill() {
+    echo ""
+    echo -e "${GREEN}  Installing chrome-cdp-skill extension via pi package manager...${NC}"
+
+    # Check if chrome-cdp-skill is already installed
+    if pi list 2>/dev/null | grep -q "chrome-cdp-skill"; then
+        echo "  - chrome-cdp-skill already installed, updating..."
+        pi update chrome-cdp-skill 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
+    else
+        echo "  - Installing chrome-cdp-skill from git repository..."
+        if pi install git:github.com/pasky/chrome-cdp-skill 2>/dev/null; then
+            echo -e "    ${GREEN}✓ chrome-cdp-skill installed${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
+            echo "      To install manually, run:"
+            echo "        pi install git:github.com/pasky/chrome-cdp-skill"
             return 1
         fi
     fi
