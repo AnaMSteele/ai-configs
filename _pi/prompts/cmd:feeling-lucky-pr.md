@@ -219,8 +219,26 @@ Run `/review` against `base_ref...HEAD`, apply fixes, re-run until clean.
 
 ### 7) Commit, Push, PR, Link
 
+Commit and push directly:
+
+```bash
+if [ -z "$(git status --porcelain=v1)" ]; then
+  echo "STOP: nothing to commit"
+  exit 2
+fi
+
+git add -A
+git diff --cached --stat
+
+COMMIT_SUBJECT="feat: ${ISSUE_KEY} ${branch_name}"
+git commit -m "$COMMIT_SUBJECT"
+
+git push -u origin "${branch_name}"
+```
+
+Then create the PR:
+
 ```text
-/cmd:commit-push
 /cmd:create-pr ${base_ref}
 ```
 
