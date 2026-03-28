@@ -116,6 +116,7 @@ Example installed agents:
 - `cmd-debug`
 - `dev-plan`
 - `cmd-graduate`
+- `doct-document-ops` — doct document operations, including publishing coding plans under personal `Coding Plans`
 
 ### Context / review
 - `cmd-create-handoff`
@@ -132,6 +133,7 @@ Prompt templates:
 /dev:plan feature-name
 /review:change thoughts/plans/my-plan.md
 /cmd:execute-plan thoughts/plans/my-plan.md
+/cmd:send-plan-to-doct thoughts/plans/my-plan.md
 ```
 
 ## Reviewed-plan handoff
@@ -149,6 +151,7 @@ Skills:
 ```text
 /skill:ralph-run user-profile-redesign
 /skill:cmd-start-linear-issue-branch ENG-123
+/skill:doct-document-ops
 ```
 
 ## Notes
