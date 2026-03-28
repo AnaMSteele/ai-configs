@@ -46,7 +46,7 @@ print_usage() {
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, skills, subagents, and extensions are installed to ~/.pi/agent"
-    echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill"
+    echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm"
     echo "  - When using --pi or --all, also installs pi extensions via npm: pi-subagents, pi-web-access, lsp-pi, etc."
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
@@ -1158,6 +1158,9 @@ install_pi() {
     # Install chrome-cdp-skill extension via pi package manager
     install_chrome_cdp_skill
 
+    # Install pi-rlm extension via pi package manager
+    install_pi_rlm_package
+
     # Install npm-based pi extensions
     install_pi_npm_packages
 
@@ -1206,6 +1209,27 @@ install_chrome_cdp_skill() {
             echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
             echo "      To install manually, run:"
             echo "        pi install git:github.com/pasky/chrome-cdp-skill"
+            return 1
+        fi
+    fi
+}
+
+# Install pi-rlm extension via pi package manager
+install_pi_rlm_package() {
+    echo ""
+    echo -e "${GREEN}  Installing pi-rlm extension via pi package manager...${NC}"
+
+    if pi list 2>/dev/null | grep -q "pi-rlm"; then
+        echo "  - pi-rlm already installed, updating..."
+        pi update pi-rlm 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
+    else
+        echo "  - Installing pi-rlm from git repository..."
+        if pi install git:github.com/adnichols/pi-rlm 2>/dev/null; then
+            echo -e "    ${GREEN}✓ pi-rlm installed${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
+            echo "      To install manually, run:"
+            echo "        pi install git:github.com/adnichols/pi-rlm"
             return 1
         fi
     fi
