@@ -46,6 +46,7 @@ print_usage() {
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, skills, subagents, and extensions are installed to ~/.pi/agent"
+    echo "  - When using --pi or --all, also clones and links pi-dcp extension from github.com:adnichols/pi-dcp.git"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1142,6 +1143,59 @@ install_pi() {
     echo ""
     echo "Note: Pi prompt templates, skills, subagents, and extensions are installed to $HOME/.pi/agent"
     echo "      Prompt templates load from ~/.pi/agent/prompts, skills from ~/.pi/agent/skills, subagents from ~/.pi/agent/agents, and extensions from ~/.pi/agent/extensions"
+
+    # Install pi-dcp extension from external repo
+    install_pi_dcp
+}
+
+# Install pi-dcp extension (DCP integration for pi)
+# This clones the repo if needed and creates a symlink in extensions/
+install_pi_dcp() {
+    local pi_dcp_repo="git@github.com:adnichols/pi-dcp.git"
+    local pi_dcp_dir="${HOME}/code/3p/pi-dcp"
+    local pi_extensions_dir="${HOME}/.pi/agent/extensions"
+    local pi_dcp_link="${pi_extensions_dir}/pi-dcp"
+
+    echo ""
+    echo -e "${GREEN}  Installing pi-dcp extension...${NC}"
+
+    # Clone repo if it doesn't exist
+    if [ ! -d "$pi_dcp_dir" ]; then
+        echo "  - Cloning pi-dcp repository..."
+        mkdir -p "$(dirname "$pi_dcp_dir")"
+        if git clone "$pi_dcp_repo" "$pi_dcp_dir" 2>/dev/null; then
+            echo "    ✓ Cloned to $pi_dcp_dir"
+        else
+            echo -e "    ${YELLOW}⚠ Failed to clone pi-dcp repository${NC}"
+            echo "      To install manually:"
+            echo "        git clone $pi_dcp_repo $pi_dcp_dir"
+            echo "        ln -s $pi_dcp_dir $pi_dcp_link"
+            return 1
+        fi
+    else
+        echo "  - pi-dcp repository already exists at $pi_dcp_dir"
+    fi
+
+    # Create or update symlink in extensions directory
+    if [ -L "$pi_dcp_link" ]; then
+        local current_target=$(readlink "$pi_dcp_link")
+        if [ "$current_target" != "$pi_dcp_dir" ]; then
+            echo "  - Updating pi-dcp symlink..."
+            rm "$pi_dcp_link"
+            ln -s "$pi_dcp_dir" "$pi_dcp_link"
+        fi
+    elif [ -e "$pi_dcp_link" ]; then
+        echo "  - Removing existing pi-dcp entry..."
+        rm -rf "$pi_dcp_link"
+        ln -s "$pi_dcp_dir" "$pi_dcp_link"
+    else
+        echo "  - Creating pi-dcp symlink..."
+        ln -s "$pi_dcp_dir" "$pi_dcp_link"
+    fi
+
+    echo -e "${GREEN}  ✓ pi-dcp extension linked${NC}"
+    echo "    Repository: $pi_dcp_dir"
+    echo "    Extension:  $pi_dcp_link"
 }
 
 # Argument parsing
