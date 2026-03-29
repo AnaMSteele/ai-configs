@@ -1,11 +1,15 @@
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Key } from "@mariozechner/pi-tui";
 
 const PLAN_STATE_TYPE = "plan-mode-state";
 const PLAN_ROOT = "thoughts";
 const PLAN_DIRECTORY = "thoughts/plans";
+const PLAN_PROMPTS_DIRECTORIES = ["_pi/prompts", ".pi/prompts"] as const;
+const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
+const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
 const MAX_REVIEW_CYCLES = 3;
 
 const DESTRUCTIVE_PATTERNS = [
@@ -147,6 +151,162 @@ function isSafeCommand(command: string): boolean {
 	return !destructive && safe;
 }
 
+function stripFrontmatter(content: string): string {
+	if (!content.startsWith("---\n")) return content;
+	const end = content.indexOf("\n---\n", 4);
+	return end === -1 ? content : content.slice(end + 5);
+}
+
+function parseCommandArgs(argsString: string): string[] {
+	const args: string[] = [];
+	let current = "";
+	let inQuote: string | null = null;
+
+	for (let i = 0; i < argsString.length; i += 1) {
+		const char = argsString[i];
+
+		if (inQuote) {
+			if (char === inQuote) {
+				inQuote = null;
+			} else {
+				current += char;
+			}
+		} else if (char === '"' || char === "'") {
+			inQuote = char;
+		} else if (char === " " || char === "\t") {
+			if (current) {
+				args.push(current);
+				current = "";
+			}
+		} else {
+			current += char;
+		}
+	}
+
+	if (current) {
+		args.push(current);
+	}
+
+	return args;
+}
+
+function substituteCommandArgs(content: string, args: string[]): string {
+	let result = content.replace(/\$(\d+)/g, (_, num: string) => {
+		const index = Number.parseInt(num, 10) - 1;
+		return args[index] ?? "";
+	});
+
+	result = result.replace(/\$@\[(\d+)(?::(\d*)?)?\]/g, (_, startRaw: string, lengthRaw?: string) => {
+		const start = Number.parseInt(startRaw, 10);
+		if (!Number.isFinite(start) || start < 1) return "";
+
+		const startIndex = start - 1;
+		if (startIndex >= args.length) return "";
+		if (lengthRaw === undefined || lengthRaw === "") {
+			return args.slice(startIndex).join(" ");
+		}
+
+		const length = Number.parseInt(lengthRaw, 10);
+		if (!Number.isFinite(length) || length <= 0) return "";
+		return args.slice(startIndex, startIndex + length).join(" ");
+	});
+
+	const allArgs = args.join(" ");
+	result = result.replaceAll("$ARGUMENTS", allArgs);
+	result = result.replaceAll("$@", allArgs);
+	return result;
+}
+
+async function expandSlashCommandPrompt(cwd: string, commandText: string): Promise<string | undefined> {
+	if (!commandText.startsWith("/")) return undefined;
+
+	const spaceIndex = commandText.indexOf(" ");
+	const commandName = spaceIndex === -1 ? commandText.slice(1) : commandText.slice(1, spaceIndex);
+	const argsString = spaceIndex === -1 ? "" : commandText.slice(spaceIndex + 1);
+	const candidatePaths = [
+		...PLAN_PROMPTS_DIRECTORIES.map((directory) => resolve(cwd, directory, `${commandName}.md`)),
+		resolve(GLOBAL_PROMPTS_DIRECTORY, `${commandName}.md`),
+	];
+
+	for (const candidatePath of candidatePaths) {
+		try {
+			const template = stripFrontmatter(await readFile(candidatePath, "utf8"));
+			return substituteCommandArgs(template, parseCommandArgs(argsString));
+		} catch {
+			// Ignore missing prompt files and continue searching fallback locations.
+		}
+	}
+
+	return undefined;
+}
+
+function normalizeExecuteTarget(target: string | undefined): "dev:run" | "ralph:run" | undefined {
+	if (!target) return undefined;
+	const normalized = target.trim().replace(/^\//, "");
+	if (normalized === "dev:run" || normalized === "ralph:run") return normalized;
+	return undefined;
+}
+
+function formatCommandArg(arg: string): string {
+	return /\s/.test(arg) ? JSON.stringify(arg) : arg;
+}
+
+function getExecutePlanUsage(): string {
+	return `Usage: /${EXECUTE_PLAN_COMMAND} <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]`;
+}
+
+async function resolveExecutePlanRequest(
+	cwd: string,
+	rawArgs: string,
+): Promise<
+	| { planDispatchArgument: string; planPath: string; targetOverride?: "dev:run" | "ralph:run" }
+	| { error: string }
+> {
+	const tokens = parseCommandArgs(rawArgs.trim());
+	if (tokens.length === 0) {
+		return { error: getExecutePlanUsage() };
+	}
+
+	const targetFlagIndex = tokens.lastIndexOf("--target");
+	let planTokens = tokens;
+	let targetOverride: "dev:run" | "ralph:run" | undefined;
+
+	if (targetFlagIndex !== -1) {
+		if (targetFlagIndex === tokens.length - 1) {
+			return { error: "Missing value after --target. Valid targets: /dev:run or /ralph:run." };
+		}
+		if (targetFlagIndex < tokens.length - 2) {
+			return { error: "Unexpected extra arguments after --target. Use exactly one target value." };
+		}
+
+		targetOverride = normalizeExecuteTarget(tokens[targetFlagIndex + 1]);
+		if (!targetOverride) {
+			return { error: "Invalid --target value. Valid targets: /dev:run or /ralph:run." };
+		}
+		planTokens = tokens.slice(0, targetFlagIndex);
+	}
+
+	const planArgument = planTokens.join(" ").trim();
+	if (!planArgument) {
+		return { error: getExecutePlanUsage() };
+	}
+
+	const planDispatchArgument = stripPathSigil(planArgument);
+	const planPath = planDispatchArgument.endsWith(".md")
+		? resolveFromCwd(cwd, planDispatchArgument)
+		: resolve(cwd, PLAN_DIRECTORY, `${planDispatchArgument}.md`);
+
+	try {
+		await access(planPath);
+	} catch {
+		return {
+			error: `Reviewed plan not found: ${planPath}. /${EXECUTE_PLAN_COMMAND} requires an explicit existing reviewed plan file or slug.`,
+		};
+	}
+
+	return { planDispatchArgument, planPath, targetOverride };
+}
+
 function getThoughtsRoot(cwd: string): string {
 	return resolve(cwd, PLAN_ROOT);
 }
@@ -264,14 +424,67 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	function startReviewCycle(ctx: ExtensionContext): void {
+	async function dispatchSlashCommandPrompt(ctx: ExtensionContext, commandText: string): Promise<void> {
+		// pi.sendUserMessage() bypasses slash-command expansion, so expand prompt-backed
+		// slash commands before dispatching them from plan-mode automation.
+		const expandedPrompt = await expandSlashCommandPrompt(ctx.cwd, commandText);
+		pi.sendUserMessage(expandedPrompt ?? commandText);
+	}
+
+	function prepareFreshExecutionCommand(ctx: ExtensionContext, target: "dev:run" | "ralph:run"): void {
+		if (!currentPlanPath) return;
+		const command = `/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target ${target}`;
+		ctx.ui.setEditorText(command);
+		ctx.ui.notify(`Prepared ${command}. Press Enter to start a fresh execution session.`, "info");
+	}
+
+	async function handleExecutePlanCommand(args: string, ctx: ExtensionCommandContext): Promise<void> {
+		const request = await resolveExecutePlanRequest(ctx.cwd, args);
+		if ("error" in request) {
+			ctx.ui.notify(request.error, "warning");
+			return;
+		}
+
+		let target = request.targetOverride;
+		if (!target) {
+			if (!ctx.hasUI) {
+				ctx.ui.notify("No UI available. Re-run with --target dev:run or --target ralph:run.", "warning");
+				return;
+			}
+
+			const choice = await ctx.ui.select(`Choose execution path for ${request.planDispatchArgument}.`, [
+				`/ralph:run ${request.planDispatchArgument}`,
+				`/dev:run ${request.planDispatchArgument}`,
+			]);
+			if (!choice) {
+				return;
+			}
+			target = choice.startsWith("/ralph:run") ? "ralph:run" : "dev:run";
+		}
+
+		const executionPrompt = await expandSlashCommandPrompt(ctx.cwd, `/${target} ${request.planDispatchArgument}`);
+		if (!executionPrompt) {
+			ctx.ui.notify(`Could not expand /${target}. Ensure the corresponding prompt template exists.`, "error");
+			return;
+		}
+
+		await ctx.waitForIdle();
+		const result = await ctx.newSession({ parentSession: ctx.sessionManager.getSessionFile() });
+		if (result.cancelled) {
+			return;
+		}
+
+		pi.sendUserMessage(executionPrompt);
+	}
+
+	async function startReviewCycle(ctx: ExtensionContext): Promise<void> {
 		reviewInFlight = true;
 		pendingAutoReviewCommand = true;
 		reviewCycles += 1;
 		applyPlanTools(true);
 		updateUi(ctx);
 		persistState();
-		pi.sendUserMessage(`/review:plan ${currentPlanPath}`);
+		await dispatchSlashCommandPrompt(ctx, `/review:plan ${currentPlanPath}`);
 	}
 
 	async function hydrateState(ctx: ExtensionContext): Promise<void> {
@@ -342,15 +555,15 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return;
 		}
 
-		startReviewCycle(ctx);
+		await startReviewCycle(ctx);
 	}
 
 	async function offerPostReviewAction(ctx: ExtensionContext, reason: string): Promise<void> {
 		if (!planModeEnabled || !ctx.hasUI || !currentPlanPath) return;
 
 		const choices = [
-			"Continue with /dev:run",
-			"Continue with /ralph:run",
+			"Start fresh /dev:run session",
+			"Start fresh /ralph:run session",
 			"Keep editing in plan mode",
 		];
 		if (reviewCycles < MAX_REVIEW_CYCLES) {
@@ -359,20 +572,20 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		const choice = await ctx.ui.select(`Plan review complete (${reason}). Choose an exit path for ${currentPlanPath}.`, choices);
 
-		if (choice === "Continue with /dev:run") {
+		if (choice === "Start fresh /dev:run session") {
 			disablePlanMode(ctx);
-			pi.sendUserMessage(`/cmd:execute-plan ${currentPlanPath} --target dev:run`);
+			prepareFreshExecutionCommand(ctx, "dev:run");
 			return;
 		}
 
-		if (choice === "Continue with /ralph:run") {
+		if (choice === "Start fresh /ralph:run session") {
 			disablePlanMode(ctx);
-			pi.sendUserMessage(`/cmd:execute-plan ${currentPlanPath} --target ralph:run`);
+			prepareFreshExecutionCommand(ctx, "ralph:run");
 			return;
 		}
 
 		if (choice === "Run another review cycle") {
-			startReviewCycle(ctx);
+			await startReviewCycle(ctx);
 		}
 	}
 
@@ -385,6 +598,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	pi.registerCommand("plan", {
 		description: "Toggle plan mode for thoughts/ planning workflows",
 		handler: async (_args, ctx) => togglePlanMode(ctx),
+	});
+
+	pi.registerCommand(EXECUTE_PLAN_COMMAND, {
+		description: "Start /dev:run or /ralph:run in a fresh session from a reviewed plan",
+		handler: async (args, ctx) => handleExecutePlanCommand(args, ctx),
 	});
 
 	pi.registerShortcut(Key.ctrlAlt("p"), {
@@ -413,7 +631,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		const text = event.text.trim();
 		if (!planModeEnabled) return { action: "continue" };
 
-		if (text.startsWith("/cmd:execute-plan") || text.startsWith("/dev:run") || text.startsWith("/ralph:run")) {
+		if (text.startsWith(`/${EXECUTE_PLAN_COMMAND}`) || text.startsWith("/dev:run") || text.startsWith("/ralph:run")) {
 			disablePlanMode(ctx);
 			return { action: "continue" };
 		}
@@ -458,7 +676,7 @@ Constraints:
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
 - After creating or materially updating a plan, expect to be offered /review:plan <path>.
 - After review completes, expect to be offered both /dev:run <path> and /ralph:run <path> as exit paths from the reviewed plan.
-- In Pi, those exit choices dispatch through /cmd:execute-plan <path> --target ... so context cleanup still happens before execution.
+- In Pi, those exit choices route through /cmd:execute-plan <path> --target ... so execution starts from a fresh session instead of staying in planning context.
 - Review feedback should be integrated back into the same plan file.
 - Automatic review looping is capped at ${MAX_REVIEW_CYCLES} cycles before stopping.
 

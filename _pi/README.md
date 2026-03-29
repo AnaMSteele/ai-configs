@@ -79,7 +79,7 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - keeps planning-mode file writes scoped to `thoughts/`,
 - offers `/review:plan` after plan edits,
 - offers both `/dev:run <plan>` and `/ralph:run <plan>` as post-review exit paths,
-- dispatches those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can clear context first,
+- stages those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can launch execution from a fresh session,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
 ## Subagents
@@ -141,10 +141,9 @@ Prompt templates:
 Use `/cmd:execute-plan <plan>` after a reviewed plan is ready to continue.
 
 - It is the canonical wrapper for choosing between `/dev:run <plan>` and `/ralph:run <plan>`.
-- In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and routes them through this handoff automatically.
-- When that extension prompt is used, `/plan` mode is disabled before dispatch so execution is not blocked by planning-only tool restrictions.
-- In Pi, the handoff command itself clears context before dispatch using the context-management tools.
-- If the Pi context-management tools are unavailable, the prompt fails closed instead of silently skipping context cleanup.
+- In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
+- When that extension path is used, `/plan` mode is disabled before execution so planning-only tool restrictions do not leak into implementation.
+- In Pi, the handoff command starts a fresh session and then launches the selected execution flow from that clean context.
 
 Skills:
 
