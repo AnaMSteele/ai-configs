@@ -11,7 +11,7 @@ The prompt templates are copied from `_omp/commands`, and the agent definitions 
 
 ## Installation
 
-These resources are installed by `install.sh` to Pi's global agent directory. The installer also installs selected package-managed Pi extensions such as `pi-dcp`, `chrome-cdp-skill`, `pi-rlm`, and `pi-multi-pass`.
+These resources are installed by `install.sh` to Pi's global agent directory. The installer also registers selected package-managed Pi extensions with Pi itself: git packages such as `pi-dcp`, `chrome-cdp-skill`, and `pi-rlm`, plus npm packages such as `pi-multi-pass` and `pi-subagents`.
 
 ```bash
 ./install.sh --pi      # Install Pi prompt templates + skills + subagents + extensions

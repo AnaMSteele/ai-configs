@@ -47,7 +47,7 @@ print_usage() {
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, skills, subagents, and extensions are installed to ~/.pi/agent"
     echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm"
-    echo "  - When using --pi or --all, also installs pi extensions via npm: pi-subagents, pi-web-access, lsp-pi, pi-multi-pass, etc."
+    echo "  - When using --pi or --all, also installs pi extensions from npm via the pi package manager: pi-subagents, pi-web-access, lsp-pi, pi-multi-pass, etc."
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1264,18 +1264,21 @@ install_pi_npm_packages() {
         return 1
     fi
 
-    # Install/update each package
+    # Install/update each package through Pi so it is registered in settings
     for pkg in "${npm_packages[@]}"; do
+        local source="npm:$pkg"
         echo "  - Checking $pkg..."
-        # Check if already installed globally
-        if npm list -g "$pkg" &> /dev/null; then
-            echo "    ✓ $pkg already installed"
+        if pi list 2>/dev/null | grep -Fq "$source"; then
+            echo "    - $pkg already registered with Pi, updating..."
+            pi update "$source" 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
         else
-            echo "    Installing $pkg..."
-            if npm install -g "$pkg" 2>/dev/null; then
+            echo "    Installing $pkg via pi package manager..."
+            if pi install "$source" 2>/dev/null; then
                 echo -e "    ${GREEN}✓ $pkg installed${NC}"
             else
-                echo -e "    ${YELLOW}⚠ Failed to install $pkg${NC}"
+                echo -e "    ${YELLOW}⚠ Failed to install $pkg via pi package manager${NC}"
+                echo "      To install manually, run:"
+                echo "        pi install $source"
             fi
         fi
     done
