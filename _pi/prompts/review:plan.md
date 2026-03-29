@@ -11,14 +11,14 @@ Documents to review: $ARGUMENTS
 
 ## Execution Mode
 
-- Run three parallel reviews by delegating to the Task tool with three separate subagents.
+- Run three parallel reviews by delegating to the `subagent` tool in parallel mode with three separate review tasks.
 - Each subagent runs independently without seeing the others' work.
-- After all three complete, run a final synthesis review using GPT5.4 on high reasoning.
+- After all three complete, run a final synthesis review using a dedicated GPT5.4 synthesis subagent on high reasoning.
 - Do not perform any reviews directly in the primary agent.
 
 ## Phase 1: Parallel Review (3 Subagents)
 
-Launch three independent reviews simultaneously:
+Launch three independent reviews simultaneously using the subagent tool.
 
 ### Subagent 1: GPT5.4 Review
 - **Agent:** `reviewer-plan-gpt5.4`
@@ -43,42 +43,36 @@ Launch three independent reviews simultaneously:
 
 ### Parallel Execution
 
-Launch three independent Task calls to run reviews in parallel:
+Launch one `subagent` call in parallel mode so pi actually runs the three reviewers concurrently.
 
-**Task 1: GPT5.4 Reviewer**
-```
-Task(
-  subagent_type="reviewer-plan-gpt5.4",
-  description="Review plan with GPT5.4",
-  prompt="Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.4 instructions exactly. Add [REVIEW:GPT5.4] comments to the plan file and provide a summary."
-)
-```
-
-**Task 2: Kimi K2.5 Reviewer**
-```
-Task(
-  subagent_type="reviewer-plan-kimi",
-  description="Review plan with Kimi K2.5",
-  prompt="Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Add [REVIEW:Kimi K2.5] comments to the plan file and provide a summary."
-)
-```
-
-**Task 3: Opus 4.6 Reviewer**
-```
-Task(
-  subagent_type="reviewer-plan-opus",
-  description="Review plan with Opus 4.6",
-  prompt="Review the plan at $ARGUMENTS. Follow your reviewer-plan-opus instructions exactly. Add [REVIEW:Opus 4.6] comments to the plan file and provide a summary."
-)
+```javascript
+subagent({
+  tasks: [
+    {
+      agent: "reviewer-plan-gpt5.4",
+      task: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.4 instructions exactly. Add [REVIEW:GPT5.4] comments to the plan file and provide a summary."
+    },
+    {
+      agent: "reviewer-plan-kimi",
+      task: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Add [REVIEW:Kimi K2.5] comments to the plan file and provide a summary."
+    },
+    {
+      agent: "reviewer-plan-opus",
+      task: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-opus instructions exactly. Add [REVIEW:Opus 4.6] comments to the plan file and provide a summary."
+    }
+  ],
+  context: "fresh"
+})
 ```
 
-Use the Task tool to launch all three simultaneously. Wait for all three to complete before proceeding.
+Wait for the parallel `subagent` call to return all three review results before proceeding to Phase 2.
 
 ## Phase 2: Synthesis Review (Final)
 
 After receiving all three review outputs:
 
 ### Final Reviewer: GPT5.4 Synthesis
+- **Agent:** `reviewer-plan-synthesis`
 - **Model:** `openai-codex/gpt-5.4`
 - **Reasoning:** High
 - **Task:** 
@@ -96,14 +90,13 @@ The synthesis should:
 
 ### Synthesis Execution
 
-Launch the synthesis review using:
+Launch the synthesis review using the dedicated synthesis subagent:
 
-```
-Task(
-  subagent_type="reviewer-plan-gpt5.4",
-  description="Synthesize all plan reviews",
-  prompt="Read the plan at $ARGUMENTS which now contains review comments from GPT5.4, Kimi K2.5, and Opus 4.6. Perform a synthesis review following the instructions above. Add [REVIEW:Synthesis] comments to the plan file and provide a final consolidated summary."
-)
+```javascript
+subagent({
+  agent: "reviewer-plan-synthesis",
+  task: "Synthesize the existing GPT5.4, Kimi K2.5, and Opus 4.6 review comments already present in the plan at $ARGUMENTS. Add [REVIEW:Synthesis] comments and provide a final consolidated summary."
+})
 ```
 ## Review Integration Output
 
@@ -168,7 +161,14 @@ After synthesis is complete, automatically integrate all review comments into th
 
 #### 3.1) Explore Codebase for Context
 For any feedback that depends on feasibility or existing patterns, explore the codebase to resolve it.
-Use the Task tool with `subagent_type=Explore`.
+Use the `subagent` tool with a codebase exploration agent:
+
+```javascript
+subagent({
+  agent: "explore",
+  task: "Explore the codebase to understand [specific patterns/feasibility concern from review feedback]. Focus on [specific area]. Report findings including file paths, existing patterns, and any constraints that would affect plan implementation."
+})
+```
 
 #### 3.2) Apply Integration Edits
 Apply edits directly to the plan based on all review feedback:

@@ -59,3 +59,6 @@ tools/*/node_modules/
 tools/*/*.zip
 tools/*/.bun/
 .osgrep
+
+# Nested git repos (clones, not submodules)
+codex/pi-rlm/

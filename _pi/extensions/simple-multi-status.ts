@@ -11,10 +11,12 @@
  */
 
 import type { AssistantMessage } from "@mariozechner/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { visibleWidth } from "@mariozechner/pi-tui";
+import type { ExtensionAPI, ExtensionContext, ReadonlyFooterDataProvider } from "@mariozechner/pi-coding-agent";
+import { truncateToWidth } from "@mariozechner/pi-tui";
 
 const WIDGET_ID = "simple-status";
+const MULTICODEX_STATUS_KEY = "multicodex-usage";
+const MULTI_PASS_STATUS_KEY = "multi-pass";
 
 function fmtNumber(n: number): string {
 	if (n < 1000) return `${n}`;
@@ -43,7 +45,28 @@ function getStats(ctx: ExtensionContext) {
 	return { inputTokens, outputTokens, cacheRead, cacheWrite, cost };
 }
 
-function buildLines(ctx: ExtensionContext, width: number): string[] {
+function getCodexStatusLine(
+	footerData: ReadonlyFooterDataProvider | null,
+	width: number,
+): string | null {
+	const statuses = footerData?.getExtensionStatuses();
+	if (!statuses || statuses.size === 0) return null;
+
+	const status =
+		statuses.get(MULTICODEX_STATUS_KEY) ??
+		statuses.get(MULTI_PASS_STATUS_KEY) ??
+		Array.from(statuses.entries()).find(([key]) => key.includes("multicodex") || key.includes("multi-pass"))?.[1] ??
+		null;
+	if (!status) return null;
+
+	return truncateToWidth(status, Math.max(1, width), "");
+}
+
+function buildLines(
+	ctx: ExtensionContext,
+	width: number,
+	footerData: ReadonlyFooterDataProvider | null,
+): string[] {
 	const theme = ctx.ui.theme;
 	const model = ctx.model;
 	const { inputTokens, outputTokens, cacheRead, cacheWrite, cost } = getStats(ctx);
@@ -69,7 +92,13 @@ function buildLines(ctx: ExtensionContext, width: number): string[] {
 	tokenLine += ` · $${cost.toFixed(3)}`;
 	lines.push(theme.fg("dim", tokenLine));
 
-	// Line 3: Context usage (tokens / total window)
+	// Line 3: Codex usage on its own dedicated row
+	const codexStatusLine = getCodexStatusLine(footerData, width);
+	if (codexStatusLine) {
+		lines.push(codexStatusLine);
+	}
+
+	// Next line: Context usage (tokens / total window)
 	let contextStr: string;
 	if (usage && model) {
 		const pct = Math.round((usage.tokens / model.contextWindow) * 100);
@@ -88,13 +117,16 @@ function buildLines(ctx: ExtensionContext, width: number): string[] {
 	return lines;
 }
 
-function updateWidget(ctx: ExtensionContext): void {
+function updateWidget(
+	ctx: ExtensionContext,
+	getFooterData: () => ReadonlyFooterDataProvider | null,
+): void {
 	if (!ctx.hasUI) return;
 
 	ctx.ui.setWidget(
 		WIDGET_ID,
-		(tui, theme) => ({
-			render: (w: number) => buildLines(ctx, w),
+		(_tui, _theme) => ({
+			render: (w: number) => buildLines(ctx, w, getFooterData()),
 			invalidate: () => {},
 		}),
 		{ placement: "belowEditor" }
@@ -102,29 +134,35 @@ function updateWidget(ctx: ExtensionContext): void {
 }
 
 export default function (pi: ExtensionAPI): void {
+	let footerDataRef: ReadonlyFooterDataProvider | null = null;
 	// Initialize on session start
 	pi.on("session_start", async (_event, ctx) => {
-		// Hide the default footer to avoid duplication
-		ctx.ui.setFooter(() => ({
-			render: () => [],
-			invalidate: () => {},
-			dispose: () => {},
-		}));
-		updateWidget(ctx);
+		// Hide the default footer to avoid duplication, but keep footerData access
+		ctx.ui.setFooter((_tui, _theme, footerData) => {
+			footerDataRef = footerData;
+			return {
+				render: () => [],
+				invalidate: () => {},
+				dispose: () => {
+					if (footerDataRef === footerData) footerDataRef = null;
+				},
+			};
+		});
+		updateWidget(ctx, () => footerDataRef);
 	});
 
 	// Update after each turn (when stats change)
 	pi.on("turn_end", async (_event, ctx) => {
-		updateWidget(ctx);
+		updateWidget(ctx, () => footerDataRef);
 	});
 
 	// Update when model changes
 	pi.on("model_select", async (_event, ctx) => {
-		updateWidget(ctx);
+		updateWidget(ctx, () => footerDataRef);
 	});
 
 	// Update on session switch
 	pi.on("session_switch", async (_event, ctx) => {
-		updateWidget(ctx);
+		updateWidget(ctx, () => footerDataRef);
 	});
 }

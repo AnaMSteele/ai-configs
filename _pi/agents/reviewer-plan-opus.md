@@ -66,7 +66,7 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Correct file paths, APIs, and data structures referenced by the plan
 - Alignment with any available `PRODUCT_INTENT.md` or equivalent product-intent documents in the repository
 
-Use the Task tool with `subagent_type=Explore` to efficiently gather context.
+Use the `subagent` tool with the `explore` agent to efficiently gather context when needed.
 
 ### 2) Review Specification (Critical Spec Review)
 

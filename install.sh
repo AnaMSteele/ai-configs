@@ -47,7 +47,7 @@ print_usage() {
     echo "  - When using --opencode or --all, commands, prompts, and skills are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, skills, subagents, and extensions are installed to ~/.pi/agent"
     echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm"
-    echo "  - When using --pi or --all, also installs pi extensions via npm: pi-subagents, pi-web-access, lsp-pi, etc."
+    echo "  - When using --pi or --all, also installs pi extensions via npm: pi-subagents, pi-web-access, lsp-pi, pi-multi-pass, etc."
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1252,7 +1252,7 @@ install_pi_npm_packages() {
         "pi-interactive-shell"
         "pi-side-chat"
         "pi-powerline-footer"
-        "@victor-software-house/pi-multicodex"
+        "pi-multi-pass"
         "@tmustier/pi-files-widget"
         "@tmustier/pi-raw-paste"
     )
