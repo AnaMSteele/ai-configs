@@ -38,6 +38,7 @@ Before writing the plan:
 2. Read `thoughts/specs/product_intent.md` if the repo uses it.
 3. Read `thoughts/plans/AGENTS.md` only if it exists for local planning overrides.
 4. Load relevant skills:
+   - `product-principles` when the plan affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy; use it to define the golden path and audit repo guidance/tests for dissonance
    - `tdd-test-writer` when phases will depend on tests-first delivery
    - `dependency-selection` when introducing non-trivial functionality
    - Domain-specific skills (frontend, React/Next, Rust, etc.)
@@ -64,6 +65,8 @@ Validate key claims by directly inspecting the codebase:
 - Confirm APIs, data shapes, configuration, and constraints
 - Identify integration points and risks
 - Verify actual commands, targets, package names, and paths
+- Identify the simplest supported workflow and which inputs should be optional because the system can infer or heal them
+- Audit `AGENTS.md`, product-intent docs, onboarding/install docs, config/status surfaces, and tests for dissonance with that golden path
 
 Use `bash` with `find`, `rg`, and `read` for targeted research. Use `subagent` with exploration agents only for broad searches.
 
@@ -81,6 +84,7 @@ Non-negotiable requirements:
 - Ready plans have no unresolved `Open Questions`
 - `### Verify` steps are copy/paste ready and match actual repo reality
 - The plan is resumable by another agent without inventing missing semantics
+- For product-facing work, the plan explicitly documents the default workflow, inferred defaults, self-healing expectations, actionable error guidance, and any repo-doc/test updates needed to stay aligned
 
 ### 6) Consistency Pass
 

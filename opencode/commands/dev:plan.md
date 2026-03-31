@@ -79,7 +79,8 @@ Before writing the plan:
 2. Read `thoughts/specs/product_intent.md` if the repo uses it.
 3. Read `thoughts/plans/AGENTS.md` only if it exists and the repo uses it for local planning overrides.
 4. Load the shared `planning-workflow` skill.
-5. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
+5. Load the shared `product-principles` skill whenever the plan affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy. Use it to define the golden path, safe defaults, self-healing expectations, actionable error guidance, and a quick dissonance audit against repo guidance/tests.
+6. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
    - Use `tdd-test-writer` when the phases will depend on tests-first delivery.
    - When the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, perform an explicit dependency/library evaluation during planning by naming the official SDKs and well-maintained libraries considered, even if no dedicated repo skill covers that check.
    - Use frontend, React/Next, Rust, MCP, browser, or other domain skills when the work clearly spans those domains.
@@ -111,6 +112,8 @@ Validate key claims from the conversation by directly inspecting the codebase:
 - Confirm APIs, data shapes, configuration, and constraints
 - Identify integration points and risks
 - Verify actual commands, targets, package names, and paths that the plan will reference
+- Identify the simplest supported workflow and which inputs should be optional because the system can infer or heal them
+- Audit repo guidance (`AGENTS.md`, product-intent docs, onboarding/install docs, config/status surfaces, and tests) for dissonance with that default-path contract
 
 Use `Glob`, `Grep`, and `Read` for targeted research. If broad discovery is still needed, continue with additional targeted passes yourself or delegate read-only planning research only through helpers that actually exist in the current runtime.
 
@@ -155,6 +158,7 @@ Non-negotiable compatibility requirements:
 Before considering the plan complete:
 
 - Use product intent if the repo requires it, and make the alignment explicit in the plan.
+- For product-facing work, make the default workflow, inferred defaults, self-healing expectations, actionable error guidance, and any repo-guidance/test updates explicit in the plan.
 - Resolve every important question before finalizing an `execution-ready` plan.
 - If the codebase or docs answer a question with high confidence, answer it directly in the plan.
 - If confidence is not high enough, ask the user when intent is required; otherwise either close the gap with additional targeted planning research in this invocation, delegate read-only planning research that can still close it now, or produce a non-ready `research-ready` artifact instead of forcing an `execution-ready` handoff.

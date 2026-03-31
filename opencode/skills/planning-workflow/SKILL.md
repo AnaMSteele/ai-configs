@@ -31,6 +31,7 @@ If required repo guidance or product intent is missing, stop and ask the user or
 
 Always consider which additional skills are needed before writing the plan.
 
+- Load `product-principles` for planning work that affects user/operator/agent workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy. Use it to define the golden path, safe defaults, self-healing expectations, actionable error guidance, and a quick dissonance audit against repo guidance (`AGENTS.md`, product-intent docs, onboarding docs, config/status surfaces, and tests).
 - Load `tdd-test-writer` when phases will rely on tests-first delivery or when the RED-phase contract needs strengthening.
 - Load repo-recommended skills from `AGENTS.md` for the relevant surface or stack.
 - Load domain-specific skills when the planned work clearly spans those domains (frontend, React/Next, Rust, MCP, browser automation, UI review, etc.).
@@ -44,7 +45,9 @@ Validate important claims directly against repo reality before writing the plan:
 - locate existing files, routes, registries, commands, and patterns,
 - confirm data shapes, schemas, contracts, and constraints,
 - identify integration points, parity surfaces, and likely risks,
-- verify command names, package names, and file paths used in `### Verify` sections.
+- verify command names, package names, and file paths used in `### Verify` sections,
+- identify the simplest supported workflow and which inputs should be optional because the system can infer or heal them,
+- check whether repo guidance, onboarding docs, config defaults, status surfaces, and tests are aligned with that default-path contract.
 
 Use targeted `Glob`, `Grep`, and `Read` first. Delegate broad codebase discovery only when targeted search is not enough.
 

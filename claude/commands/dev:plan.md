@@ -67,6 +67,9 @@ Validate key claims from the conversation by directly inspecting the codebase:
 - Locate the relevant files and existing patterns
 - Confirm APIs, data shapes, configuration, and constraints
 - Identify integration points and risks
+- Load the shared `product-principles` skill when the work affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy
+- Identify the simplest supported workflow and which inputs should be optional because the system can infer or heal them
+- Audit `AGENTS.md`, product-intent docs, onboarding/install docs, config/status surfaces, and tests for dissonance with that default-path contract
 
 Use `Glob`, `Grep`, and `Read` for targeted research. Use `Task(subagent_type="explore")` only for broad searches.
 
@@ -102,6 +105,8 @@ Write (or update) `plan_path` with:
 - Plan Changelog (append-only; add a new entry when regenerating)
 
 Keep scope flexible: there are no special restrictions beyond the repository's existing guardrails and the user's stated intent.
+
+For product-facing work, make the plan explicit about the default workflow, inferred defaults, self-healing behavior, actionable error guidance, and any repo-doc/test updates required to stay aligned.
 
 ### 5) Consistency Pass
 

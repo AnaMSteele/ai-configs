@@ -1,0 +1,15 @@
+{
+  "name": "@adnichols/pi-mcp-bridge",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Vendored MCP bridge extension for pi with browser OAuth support",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

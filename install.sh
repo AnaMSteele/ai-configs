@@ -1161,6 +1161,9 @@ install_pi() {
     # Install pi-rlm extension via pi package manager
     install_pi_rlm_package
 
+    # Install repo-managed local Pi packages
+    install_pi_local_packages
+
     # Install npm-based pi extensions
     install_pi_npm_packages
 
@@ -1233,6 +1236,60 @@ install_pi_rlm_package() {
             return 1
         fi
     fi
+}
+
+# Install repo-managed local Pi packages
+install_pi_local_packages() {
+    echo ""
+    echo -e "${GREEN}  Installing repo-managed pi packages...${NC}"
+
+    local local_packages=(
+        "$REPO_ROOT/_pi/packages/mcp-bridge"
+    )
+
+    for pkg_path in "${local_packages[@]}"; do
+        if [ ! -d "$pkg_path" ]; then
+            echo -e "    ${YELLOW}⚠ Skipping missing local package${NC}: $pkg_path"
+            continue
+        fi
+
+        if [ -f "$pkg_path/package.json" ]; then
+            if ! command -v npm &> /dev/null; then
+                echo -e "    ${YELLOW}⚠ npm not found; cannot install package dependencies for${NC} $pkg_path"
+                continue
+            fi
+
+            echo "  - Bootstrapping local package dependencies for $pkg_path..."
+            if [ -f "$pkg_path/package-lock.json" ]; then
+                (cd "$pkg_path" && npm ci) || {
+                    echo -e "    ${YELLOW}⚠ Failed to install local package dependencies${NC}"
+                    continue
+                }
+            else
+                (cd "$pkg_path" && npm install) || {
+                    echo -e "    ${YELLOW}⚠ Failed to install local package dependencies${NC}"
+                    continue
+                }
+            fi
+        fi
+
+        echo "  - Checking local package $pkg_path..."
+        if pi list 2>/dev/null | grep -Fq "$pkg_path"; then
+            echo "    - Already registered with Pi, updating..."
+            pi update "$pkg_path" 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
+        else
+            echo "    Installing local package via pi package manager..."
+            if pi install "$pkg_path" 2>/dev/null; then
+                echo -e "    ${GREEN}✓ Local package installed${NC}"
+            else
+                echo -e "    ${YELLOW}⚠ Failed to install local package${NC}"
+                echo "      To install manually, run:"
+                echo "        pi install $pkg_path"
+            fi
+        fi
+    done
+
+    echo -e "${GREEN}  ✓ repo-managed pi packages processed${NC}"
 }
 
 # Install npm-based pi extensions
