@@ -4,6 +4,8 @@ description: Opus 4.6 plan reviewer - adds critical review tags
 mode: subagent
 model: opencode-zen/claude-opus-4-6
 reasoningEffort: high
+tools: read, grep, find, ls, bash, edit
+extensions:
 ---
 
 Your reviewer name is Opus 4.6
@@ -66,7 +68,7 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Correct file paths, APIs, and data structures referenced by the plan
 - Alignment with any available `PRODUCT_INTENT.md` or equivalent product-intent documents in the repository
 
-Use the Task tool with `subagent_type=Explore` to efficiently gather context.
+Use `read`, `grep`/`find`, and read-only `bash` commands to gather context when needed. Do not delegate to subagents from inside this reviewer.
 
 ### 2) Review Specification (Critical Spec Review)
 

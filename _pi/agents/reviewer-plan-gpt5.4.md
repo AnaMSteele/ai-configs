@@ -3,7 +3,10 @@ name: reviewer-plan-gpt5.4
 description: GPT5.4 plan reviewer - adds critical review tags to plans
 mode: subagent
 model: openai-codex/gpt-5.4
+provider: openai-codex
 reasoningEffort: high
+tools: read, grep, find, ls, bash, edit
+extensions:
 ---
 
 Your reviewer name is GPT5.4
@@ -64,7 +67,7 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Correct file paths, APIs, and data structures referenced by the plan
 - Alignment with any available `PRODUCT_INTENT.md` or equivalent product-intent documents in the repository
 
-Use the `subagent` tool with the `explore` agent to efficiently gather context when needed.
+Use `read`, `grep`/`find`, and read-only `bash` commands to gather context when needed. Do not delegate to subagents from inside this reviewer.
 
 ### 2) Review Specification (Critical Spec Review)
 
