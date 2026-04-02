@@ -62,6 +62,7 @@ bash /path/to/adn-claude-configs/install.sh --all
 
 The install script auto-detects existing installations and:
 - Updates agents, commands/prompts, scripts, and shared skills (including OMP commands/agents plus Pi prompts, subagents, and extensions)
+- Copies the repo-root `APPEND_SYSTEM.md` into `~/.omp/agent/APPEND_SYSTEM.md` and `~/.pi/agent/APPEND_SYSTEM.md` as shared appended system guidance for both runtimes
 - Cleans up legacy directory structures
 - Preserves your local settings and configuration files
 - Mirrors Codex prompts to `~/.codex/prompts` for global CLI access
@@ -88,6 +89,7 @@ This repository features a **Fidelity-Preserving System** that automatically:
 
 ```
 adn-claude-configs/
+├── APPEND_SYSTEM.md          # Shared appended system prompt fragment installed to Pi and OMP
 ├── claude/                   # Claude Code configuration (Source of Truth for Agents)
 │   ├── agents/              # Agent definitions
 │   ├── commands/            # Slash commands
@@ -123,6 +125,7 @@ adn-claude-configs/
 **Key Directories:**
 
 - **claude/agents/** - Source of truth for all agents
+- **APPEND_SYSTEM.md** - Shared appended system prompt fragment installed to `~/.pi/agent/APPEND_SYSTEM.md` and `~/.omp/agent/APPEND_SYSTEM.md`
 - **skills/** - Canonical shared installable skill source tree synced into `~/.agents/skills`
 - **claude/**, **gemini/**, **codex/**, **_omp/**, **_pi/**, **opencode/** - Installable configurations for each tool
 - **tools/** - Distributable CLI tools (installed globally via `--tools`)

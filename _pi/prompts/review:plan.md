@@ -29,14 +29,14 @@ Launch three independent reviews simultaneously using the subagent tool.
 
 ### Subagent 2: Kimi K2.5 Review
 - **Agent:** `reviewer-plan-kimi`
-- **Model:** `opencode-zen/kimi-k2.5`
+- **Model:** `opencode/kimi-k2.5`
 - **Reasoning:** High
 - **Task:** Perform comprehensive plan review per reviewer-plan-kimi instructions
 - **Output:** Plan file with `[REVIEW:Kimi K2.5]` comments + summary
 
 ### Subagent 3: Opus 4.6 Review
 - **Agent:** `reviewer-plan-opus`
-- **Model:** `opencode-zen/claude-opus-4-6`
+- **Model:** `opencode/claude-opus-4-6`
 - **Reasoning:** High
 - **Task:** Perform comprehensive plan review per reviewer-plan-opus instructions
 - **Output:** Plan file with `[REVIEW:Opus 4.6]` comments + summary
@@ -111,8 +111,8 @@ After completing all reviews, provide:
 
 ### Reviewers:
 - ✅ GPT5.4 (openai-codex/gpt-5.4, high reasoning)
-- ✅ Kimi K2.5 (opencode-zen/hf:moonshotai/Kimi-K2.5, high reasoning)
-- ✅ Opus 4.6 (opencode-zen/claude-opus-4-6, high reasoning)
+- ✅ Kimi K2.5 (opencode/kimi-k2.5, high reasoning)
+- ✅ Opus 4.6 (opencode/claude-opus-4-6, high reasoning)
 - ✅ Synthesis (openai-codex/gpt-5.4, high reasoning)
 
 ### Consensus Areas:

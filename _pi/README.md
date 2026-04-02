@@ -28,6 +28,7 @@ Installed layout:
 └── ...
 
 ~/.pi/agent/
+├── APPEND_SYSTEM.md
 ├── README.md
 ├── prompts/
 │   ├── cmd:debug.md
@@ -41,6 +42,8 @@ Installed layout:
     └── pi-plan-mode/
         └── index.ts
 ```
+
+The installer copies the repo-root `APPEND_SYSTEM.md` into `~/.pi/agent/APPEND_SYSTEM.md`. The same shared file is also installed to `~/.omp/agent/APPEND_SYSTEM.md` so Pi and OMP receive the same appended system guidance.
 
 ## Structure
 
@@ -162,6 +165,7 @@ Skills:
 ## Notes
 
 - Pi global resources live under `~/.pi/agent/`, not `~/.pi/`.
+- `~/.pi/agent/APPEND_SYSTEM.md` is installed from the repo-root `APPEND_SYSTEM.md` shared with OMP.
 - Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, `.pi/agents/`, and `.pi/extensions/`.
 - Pi natively auto-discovers both `~/.agents/skills/` and `~/.pi/agent/skills/`; this repo uses `~/.agents/skills/` as the canonical shared runtime location and reserves `~/.pi/agent/skills/` for Pi-local-only entries.
 - pi-subagents-compatible agent definitions install to `~/.pi/agent/agents/`.
