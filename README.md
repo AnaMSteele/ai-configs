@@ -22,7 +22,7 @@ ai-configs/
 ├── _opencode/    # OpenCode source config
 ├── _pi/          # Pi source config
 ├── scripts/      # Shared helper scripts fanned out by install.sh
-├── skills/       # Canonical shared installable skills
+├── skills/       # Repo-owned shared skills + install matrix for package-backed skills
 ├── tools/        # Distributable CLIs (for example ltui)
 ├── docs/         # Fetched/reference docs kept in repo
 ├── thoughts/     # Working plans, handoffs, research, validation
@@ -76,7 +76,7 @@ bash ~/ai-configs/install.sh --all ~
 - installs OMP to `~/.omp/agent/`
 - installs Pi to `~/.pi/agent/`
 - installs OpenCode resources to `~/.config/opencode/`
-- syncs canonical shared skills into `~/.agents/skills`
+- syncs shared skills into `~/.agents/skills` from `skills/install-matrix.json`
 - copies `APPEND_SYSTEM.md` into Pi and OMP runtime locations
 - preserves local settings files where appropriate
 
@@ -112,7 +112,7 @@ Current shared scripts include:
 - review helpers
 
 ### `skills/`
-Canonical shared skill tree. This is the only primary shared-skill source in the repo.
+Repo-owned shared skill tree plus `skills/install-matrix.json`, which also inventories package-backed shared skills fetched via `npx skills` during install.
 
 ### `tools/ltui/`
 Token-efficient Linear CLI for AI agents.
@@ -125,7 +125,7 @@ Shared skills install to:
 ~/.agents/skills/
 ```
 
-Consumer-specific compatibility links are created where needed, but `~/.agents/skills` is the canonical shared runtime location.
+Consumer-specific compatibility links are created where needed, but `~/.agents/skills` is the canonical shared runtime location. Repo-owned payloads come from `skills/`; package-backed payloads are fetched per `skills/install-matrix.json`.
 
 `ltui` lives under `tools/ltui/` and can be installed with:
 

@@ -24,6 +24,8 @@ And global/home resources where those tools expect them:
 - `~/.config/opencode/`
 - `~/.agents/skills/`
 
+Shared skill inventory is declared in `skills/install-matrix.json`; repo-owned payloads are copied from `skills/`, and package-backed payloads are fetched via `npx skills`.
+
 ## Single-surface installs
 
 ```bash

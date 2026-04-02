@@ -6,13 +6,13 @@ This directory contains Pi-specific resources:
 - `agents/` — pi-subagents-compatible agent definitions
 - `extensions/` — Pi runtime extensions, including the maintained `/plan` mode workflow
 
-Canonical shared installable Pi skills live in the repo-level `skills/` tree and install into `~/.agents/skills`.
+Repo-owned shared installable Pi skills live in the repo-level `skills/` tree, and `skills/install-matrix.json` also inventories package-backed shared skills fetched via `npx skills`. The installed shared runtime location remains `~/.agents/skills`.
 
 The prompt templates are copied from `_omp/commands`, and the agent definitions are ported from `_omp/agents` into the flat markdown format expected by pi-subagents.
 
 ## Installation
 
-These resources are installed by `install.sh` to Pi's global agent directory. The installer also syncs canonical shared skills into `~/.agents/skills` and registers selected package-managed Pi extensions with Pi itself: git packages such as `pi-dcp`, `chrome-cdp-skill`, and `pi-rlm`, plus npm packages such as `pi-multi-pass` and `pi-subagents`.
+These resources are installed by `install.sh` to Pi's global agent directory. The installer also syncs shared skills from `skills/install-matrix.json` into `~/.agents/skills` and registers selected package-managed Pi extensions with Pi itself: git packages such as `pi-dcp`, `chrome-cdp-skill`, and `pi-rlm`, plus npm packages such as `pi-multi-pass` and `pi-subagents`.
 
 ```bash
 ./install.sh --pi      # Install Pi prompt templates + subagents + extensions and sync shared skills
@@ -60,7 +60,8 @@ _pi/
     └── */index.ts
 
 skills/
-└── */SKILL.md          # Canonical shared installable skills exposed to Pi via ~/.agents/skills
+├── install-matrix.json # Shared skill inventory used by install.sh
+└── */SKILL.md          # Repo-owned shared installable skills exposed to Pi via ~/.agents/skills
 ```
 
 ## Prompt Templates
@@ -175,5 +176,5 @@ Skills:
 - Pi global resources live under `~/.pi/agent/`, not `~/.pi/`.
 - `~/.pi/agent/APPEND_SYSTEM.md` is installed from the repo-root `APPEND_SYSTEM.md` shared with OMP.
 - Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, `.pi/agents/`, and `.pi/extensions/`.
-- Pi natively auto-discovers both `~/.agents/skills/` and `~/.pi/agent/skills/`; this repo uses `~/.agents/skills/` as the canonical shared runtime location and reserves `~/.pi/agent/skills/` for Pi-local-only entries.
+- Pi natively auto-discovers both `~/.agents/skills/` and `~/.pi/agent/skills/`; this repo uses `~/.agents/skills/` as the canonical shared runtime location and reserves `~/.pi/agent/skills/` for Pi-local-only entries. Repo-owned skill payloads come from `skills/`, while package-backed entries are fetched per `skills/install-matrix.json`.
 - pi-subagents-compatible agent definitions install to `~/.pi/agent/agents/`.

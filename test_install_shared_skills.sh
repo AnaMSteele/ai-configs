@@ -82,6 +82,65 @@ exit 0
 EOF
   chmod +x "$bin_dir/bun"
 
+  cat > "$bin_dir/npx" <<'EOF'
+#!/bin/bash
+set -eu
+
+if [[ "${1:-}" != "skills" ]]; then
+  echo "stub npx only supports 'skills'" >&2
+  exit 1
+fi
+shift
+
+command="${1:-}"
+shift || true
+
+case "$command" in
+  add)
+    package="${1:-}"
+    shift || true
+    skills=()
+
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --skill|-s)
+          shift
+          while [[ $# -gt 0 ]]; do
+            case "$1" in
+              -*)
+                break
+                ;;
+              *)
+                skills+=("$1")
+                shift
+                ;;
+            esac
+          done
+          ;;
+        --global|-g|--yes|-y)
+          shift
+          ;;
+        *)
+          shift
+          ;;
+      esac
+    done
+
+    mkdir -p "$HOME/.agents/skills"
+    touch "$HOME/.agents/fake-npx-skills.log"
+    for skill in "${skills[@]}"; do
+      mkdir -p "$HOME/.agents/skills/$skill"
+      printf 'external package=%s skill=%s\n' "$package" "$skill" > "$HOME/.agents/skills/$skill/SKILL.md"
+      printf '%s\t%s\n' "$package" "$skill" >> "$HOME/.agents/fake-npx-skills.log"
+    done
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+EOF
+  chmod +x "$bin_dir/npx"
+
   printf '%s\n' "$bin_dir"
 }
 
@@ -183,6 +242,11 @@ assert_shared_skill_install_state() {
   assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"source": "skills/linear"' || return 1
   assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"managed": true' || return 1
 
+  [[ -f "$home/.agents/skills/algorithmic-art/SKILL.md" ]] || return 1
+  assert_file_contains "$home/.agents/skills/algorithmic-art/SKILL.md" 'external package=anthropics/skills skill=algorithmic-art' || return 1
+  [[ -f "$home/.agents/skills/algorithmic-art/.ai-configs-managed.json" ]] || return 1
+  assert_file_contains "$home/.agents/skills/algorithmic-art/.ai-configs-managed.json" '"source": "external-package:anthropics/skills#algorithmic-art"' || return 1
+
   [[ -d "$home/.claude/skills/custom-local" ]] || return 1
   [[ -d "$home/.config/opencode/skills/custom-local" ]] || return 1
 
@@ -196,6 +260,8 @@ assert_shared_skill_install_state() {
 
   assert_symlink_target "$home/.claude/skills/linear" "$home/.agents/skills/linear" || return 1
   assert_symlink_target "$home/.config/opencode/skills/linear" "$home/.agents/skills/linear" || return 1
+  assert_symlink_target "$home/.claude/skills/algorithmic-art" "$home/.agents/skills/algorithmic-art" || return 1
+  assert_symlink_target "$home/.config/opencode/skills/algorithmic-art" "$home/.agents/skills/algorithmic-art" || return 1
 
   [[ ! -e "$home/.claude/skills/cmd-debug" ]] || return 1
   [[ ! -e "$home/.config/opencode/skills/cmd-debug" ]] || return 1
@@ -319,6 +385,8 @@ test_failpoint_after_backup_keeps_destination_recoverable() {
 test_phase_three_docs_use_canonical_shared_skill_paths() {
   assert_file_contains "AGENTS.md" '"skills": ["skills"]' || return 1
   assert_file_not_contains "AGENTS.md" '"skills": [".agents/skills", "opencode/skills"]' || return 1
+  assert_file_contains "README.md" 'skills/install-matrix.json' || return 1
+  assert_file_contains "_pi/README.md" 'skills/install-matrix.json' || return 1
 
   assert_file_contains "_omp/commands/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
   assert_file_contains "_pi/prompts/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
@@ -349,6 +417,19 @@ test_phase_three_duplicate_skill_trees_are_removed() {
   [[ -d "_opencode/skills/opencode-conversation-reviewer" ]] || return 1
   [[ -d "_opencode/skills/template" ]] || return 1
   [[ ! -d "_opencode/skills/playwright-skill" ]] || return 1
+
+  [[ ! -d "skills/algorithmic-art" ]] || return 1
+  [[ ! -d "skills/brand-guidelines" ]] || return 1
+  [[ ! -d "skills/canvas-design" ]] || return 1
+  [[ ! -d "skills/doc-coauthoring" ]] || return 1
+  [[ ! -d "skills/frontend-design" ]] || return 1
+  [[ ! -d "skills/internal-comms" ]] || return 1
+  [[ ! -d "skills/mcp-builder" ]] || return 1
+  [[ ! -d "skills/slack-gif-creator" ]] || return 1
+  [[ ! -d "skills/theme-factory" ]] || return 1
+  [[ ! -d "skills/web-artifacts-builder" ]] || return 1
+  [[ ! -d "skills/web-design-guidelines" ]] || return 1
+  [[ ! -d "skills/webapp-testing" ]] || return 1
 
   local unexpected
   unexpected="$(find _opencode/skills -mindepth 1 -maxdepth 1 -type d ! -name 'opencode-conversation-reviewer' ! -name 'template' -print)"

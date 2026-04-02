@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "installableSkills": {
     "algorithmic-art": {
       "class": "universal-installable",
@@ -8,11 +8,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/algorithmic-art",
       "legacySources": [
         "_opencode/skills/algorithmic-art"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "brand-guidelines": {
       "class": "universal-installable",
@@ -21,11 +22,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/brand-guidelines",
       "legacySources": [
         "_opencode/skills/brand-guidelines"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "canvas-design": {
       "class": "universal-installable",
@@ -34,11 +36,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/canvas-design",
       "legacySources": [
         "_opencode/skills/canvas-design"
       ],
-      "notes": "Promoted from the OpenCode skill tree with bundled font assets."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "ccore": {
       "class": "universal-installable",
@@ -51,7 +54,8 @@
       "legacySources": [
         "_opencode/skills/ccore"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "cmd-create-handoff": {
       "class": "universal-installable",
@@ -64,7 +68,8 @@
       "legacySources": [
         "_pi/skills/cmd-create-handoff"
       ],
-      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
     },
     "cmd-create-pr": {
       "class": "universal-installable",
@@ -77,7 +82,8 @@
       "legacySources": [
         "_pi/skills/cmd-create-pr"
       ],
-      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
     },
     "cmd-debug": {
       "class": "consumer-specific-installable",
@@ -88,7 +94,8 @@
       "legacySources": [
         "_pi/skills/cmd-debug"
       ],
-      "notes": "Pi-only: orchestrates subagent-based debugging workflows."
+      "notes": "Pi-only: orchestrates subagent-based debugging workflows.",
+      "sourceType": "repo"
     },
     "cmd-graduate": {
       "class": "universal-installable",
@@ -101,7 +108,8 @@
       "legacySources": [
         "_pi/skills/cmd-graduate"
       ],
-      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
     },
     "cmd-research": {
       "class": "consumer-specific-installable",
@@ -112,7 +120,8 @@
       "legacySources": [
         "_pi/skills/cmd-research"
       ],
-      "notes": "Pi-only: depends on subagent-based codebase research orchestration."
+      "notes": "Pi-only: depends on subagent-based codebase research orchestration.",
+      "sourceType": "repo"
     },
     "cmd-resume-handoff": {
       "class": "universal-installable",
@@ -125,7 +134,8 @@
       "legacySources": [
         "_pi/skills/cmd-resume-handoff"
       ],
-      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
     },
     "cmd-start-linear-issue": {
       "class": "universal-installable",
@@ -138,7 +148,8 @@
       "legacySources": [
         "_pi/skills/cmd-start-linear-issue"
       ],
-      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
     },
     "cmd-start-linear-issue-branch": {
       "class": "universal-installable",
@@ -151,7 +162,8 @@
       "legacySources": [
         "_pi/skills/cmd-start-linear-issue-branch"
       ],
-      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
     },
     "dependency-selection": {
       "class": "universal-installable",
@@ -164,7 +176,8 @@
       "legacySources": [
         ".agents/skills/dependency-selection"
       ],
-      "notes": "Promoted from the repo-local .agents skill tree."
+      "notes": "Promoted from the repo-local .agents skill tree.",
+      "sourceType": "repo"
     },
     "design-skill": {
       "class": "universal-installable",
@@ -177,7 +190,8 @@
       "legacySources": [
         "_opencode/skills/design-skill"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "dev-plan": {
       "class": "consumer-specific-installable",
@@ -188,7 +202,8 @@
       "legacySources": [
         "_pi/skills/dev-plan"
       ],
-      "notes": "Pi-only: depends on Pi planning workflow and subagent-oriented command conventions."
+      "notes": "Pi-only: depends on Pi planning workflow and subagent-oriented command conventions.",
+      "sourceType": "repo"
     },
     "doc-coauthoring": {
       "class": "universal-installable",
@@ -197,11 +212,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/doc-coauthoring",
       "legacySources": [
         "_opencode/skills/doc-coauthoring"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "doct-document-ops": {
       "class": "universal-installable",
@@ -215,7 +231,8 @@
         "_opencode/skills/doct-document-ops",
         "_pi/skills/doct-document-ops"
       ],
-      "notes": "Canonicalized from identical OpenCode and Pi copies; retains scripts and references for shared-path use."
+      "notes": "Canonicalized from identical OpenCode and Pi copies; retains scripts and references for shared-path use.",
+      "sourceType": "repo"
     },
     "docx": {
       "class": "universal-installable",
@@ -228,7 +245,8 @@
       "legacySources": [
         "_opencode/skills/docx"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "frontend-design": {
       "class": "universal-installable",
@@ -237,11 +255,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/frontend-design",
       "legacySources": [
         "_opencode/skills/frontend-design"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "internal-comms": {
       "class": "universal-installable",
@@ -250,11 +269,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/internal-comms",
       "legacySources": [
         "_opencode/skills/internal-comms"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "linear": {
       "class": "universal-installable",
@@ -268,7 +288,8 @@
         "skills/linear",
         "_opencode/skills/linear"
       ],
-      "notes": "Existing canonical skill retained; OpenCode copy is identical."
+      "notes": "Existing canonical skill retained; OpenCode copy is identical.",
+      "sourceType": "repo"
     },
     "mcp-builder": {
       "class": "universal-installable",
@@ -277,11 +298,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/mcp-builder",
       "legacySources": [
         "_opencode/skills/mcp-builder"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "pdf": {
       "class": "universal-installable",
@@ -294,7 +316,8 @@
       "legacySources": [
         "_opencode/skills/pdf"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "planning-workflow": {
       "class": "universal-installable",
@@ -307,7 +330,8 @@
       "legacySources": [
         "_opencode/skills/planning-workflow"
       ],
-      "notes": "Promoted from the OpenCode skill tree as shared planning doctrine."
+      "notes": "Promoted from the OpenCode skill tree as shared planning doctrine.",
+      "sourceType": "repo"
     },
     "playwright-skill": {
       "class": "universal-installable",
@@ -320,7 +344,8 @@
       "legacySources": [
         "_opencode/skills/playwright-skill"
       ],
-      "notes": "Promoted from the OpenCode skill tree; excludes transient .temp-execution artifacts from the canonical payload."
+      "notes": "Promoted from the OpenCode skill tree; excludes transient .temp-execution artifacts from the canonical payload.",
+      "sourceType": "repo"
     },
     "pptx": {
       "class": "universal-installable",
@@ -333,7 +358,8 @@
       "legacySources": [
         "_opencode/skills/pptx"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "product-principles": {
       "class": "universal-installable",
@@ -348,7 +374,8 @@
         "_opencode/skills/product-principles",
         "_pi/skills/product-principles"
       ],
-      "notes": "Existing canonical skill retained; OpenCode and Pi copies are identical."
+      "notes": "Existing canonical skill retained; OpenCode and Pi copies are identical.",
+      "sourceType": "repo"
     },
     "ralph-run": {
       "class": "consumer-specific-installable",
@@ -359,7 +386,8 @@
       "legacySources": [
         "_pi/skills/ralph-run"
       ],
-      "notes": "Pi-only: requires pi-subagents orchestration."
+      "notes": "Pi-only: requires pi-subagents orchestration.",
+      "sourceType": "repo"
     },
     "ralph-run-simple": {
       "class": "consumer-specific-installable",
@@ -370,7 +398,8 @@
       "legacySources": [
         "_pi/skills/ralph-run-simple"
       ],
-      "notes": "Pi-only: requires Pi subagent orchestration."
+      "notes": "Pi-only: requires Pi subagent orchestration.",
+      "sourceType": "repo"
     },
     "repo-agents-bootstrap": {
       "class": "universal-installable",
@@ -383,7 +412,8 @@
       "legacySources": [
         "_opencode/skills/repo-agents-bootstrap"
       ],
-      "notes": "Promoted from the OpenCode skill tree as shared repo bootstrap guidance."
+      "notes": "Promoted from the OpenCode skill tree as shared repo bootstrap guidance.",
+      "sourceType": "repo"
     },
     "review-change": {
       "class": "consumer-specific-installable",
@@ -394,7 +424,8 @@
       "legacySources": [
         "_pi/skills/review-change"
       ],
-      "notes": "Pi-only: depends on subagent-based review orchestration."
+      "notes": "Pi-only: depends on subagent-based review orchestration.",
+      "sourceType": "repo"
     },
     "review-change-integrate": {
       "class": "consumer-specific-installable",
@@ -405,7 +436,8 @@
       "legacySources": [
         "_pi/skills/review-change-integrate"
       ],
-      "notes": "Pi-only: depends on subagent-based review orchestration."
+      "notes": "Pi-only: depends on subagent-based review orchestration.",
+      "sourceType": "repo"
     },
     "rust-engineer": {
       "class": "universal-installable",
@@ -418,7 +450,8 @@
       "legacySources": [
         "_opencode/skills/rust-engineer"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "sentry-cli": {
       "class": "universal-installable",
@@ -431,7 +464,8 @@
       "legacySources": [
         "_pi/skills/sentry-cli"
       ],
-      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
     },
     "skill-creator": {
       "class": "universal-installable",
@@ -444,7 +478,8 @@
       "legacySources": [
         "_opencode/skills/skill-creator"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "slack-gif-creator": {
       "class": "universal-installable",
@@ -453,11 +488,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/slack-gif-creator",
       "legacySources": [
         "_opencode/skills/slack-gif-creator"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "theme-factory": {
       "class": "universal-installable",
@@ -466,11 +502,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/theme-factory",
       "legacySources": [
         "_opencode/skills/theme-factory"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "vercel-react-best-practices": {
       "class": "universal-installable",
@@ -483,7 +520,8 @@
       "legacySources": [
         "_opencode/skills/vercel-react-best-practices"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     },
     "web-artifacts-builder": {
       "class": "universal-installable",
@@ -492,11 +530,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/web-artifacts-builder",
       "legacySources": [
         "_opencode/skills/web-artifacts-builder"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "web-design-guidelines": {
       "class": "universal-installable",
@@ -505,11 +544,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/web-design-guidelines",
       "legacySources": [
         "_opencode/skills/web-design-guidelines"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add vercel-labs/agent-skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "vercel-labs/agent-skills"
     },
     "webapp-testing": {
       "class": "universal-installable",
@@ -518,11 +558,12 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/webapp-testing",
       "legacySources": [
         "_opencode/skills/webapp-testing"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
+      "sourceType": "external-package",
+      "packageSource": "anthropics/skills"
     },
     "xlsx": {
       "class": "universal-installable",
@@ -535,7 +576,8 @@
       "legacySources": [
         "_opencode/skills/xlsx"
       ],
-      "notes": "Promoted from the OpenCode skill tree."
+      "notes": "Promoted from the OpenCode skill tree.",
+      "sourceType": "repo"
     }
   },
   "repoLocalOnlySkills": {

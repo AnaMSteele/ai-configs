@@ -36,7 +36,7 @@ print_usage() {
     echo "  --pi        Install Pi prompt templates, subagents, and extensions, then refresh shared skills"
     echo "  --omp       Install Oh My Pi configuration and refresh shared skills"
     echo "  --tools     Install CLI tools only (e.g., ltui)"
-    echo "  --skills    Sync canonical shared skills into ~/.agents/skills"
+    echo "  --skills    Sync repo-owned and package-managed shared skills into ~/.agents/skills"
     echo "  --all       Install everything: Claude, Codex, Gemini, Oh My Pi, OpenCode, Pi, tools, and shared skills"
     echo "  --append-agents"
     echo "             Ensure GEMINI.md exists and contains required Personas."
@@ -47,7 +47,7 @@ print_usage() {
     echo ""
     echo "Notes:"
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
-    echo "  - Shared installable skills are sourced from skills/ and synced into ~/.agents/skills"
+    echo "  - Shared installable skills are declared in skills/install-matrix.json and synced into ~/.agents/skills"
     echo "  - Claude/OpenCode consume compatible shared skills via per-skill links into ~/.agents/skills"
     echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
@@ -65,7 +65,7 @@ print_usage() {
     echo "  $0 --pi                          # Install Pi prompt templates, subagents, extensions, and refresh shared skills"
     echo "  $0 --omp ~/my-project            # Install Oh My Pi config to ~/.omp/agent"
     echo "  $0 --tools                       # Install CLI tools globally"
-    echo "  $0 --skills                      # Sync shared skills globally into ~/.agents/skills"
+    echo "  $0 --skills                      # Sync repo-owned and package-managed shared skills into ~/.agents/skills"
     echo "  $0 --all --append-agents         # Install everything and ensure GEMINI.md Personas"
 }
 
@@ -708,12 +708,61 @@ with open(matrix_path, 'r', encoding='utf-8') as handle:
     data = json.load(handle)
 
 for name, meta in sorted(data["installableSkills"].items()):
+    source_type = meta.get("sourceType", "repo")
+    if source_type == "external-package":
+        source_id = f"external-package:{meta['packageSource']}#{name}"
+    else:
+        source_id = meta["canonicalSource"]
+
     print("\t".join([
         name,
-        meta["canonicalSource"],
+        source_id,
         meta.get("class", ""),
         ",".join(meta.get("allowedConsumers", [])),
     ]))
+PY
+}
+
+iterate_repo_installable_skills() {
+    local matrix_path
+    matrix_path="$(skill_matrix_path)"
+
+    python3 - "$matrix_path" <<'PY'
+import json
+import sys
+
+matrix_path = sys.argv[1]
+with open(matrix_path, 'r', encoding='utf-8') as handle:
+    data = json.load(handle)
+
+for name, meta in sorted(data["installableSkills"].items()):
+    if meta.get("sourceType", "repo") != "repo":
+        continue
+    print("\t".join([name, meta["canonicalSource"]]))
+PY
+}
+
+iterate_external_skill_packages() {
+    local matrix_path
+    matrix_path="$(skill_matrix_path)"
+
+    python3 - "$matrix_path" <<'PY'
+import json
+import sys
+from collections import defaultdict
+
+matrix_path = sys.argv[1]
+with open(matrix_path, 'r', encoding='utf-8') as handle:
+    data = json.load(handle)
+
+groups = defaultdict(list)
+for name, meta in sorted(data["installableSkills"].items()):
+    if meta.get("sourceType") != "external-package":
+        continue
+    groups[meta["packageSource"]].append(name)
+
+for package_source, skills in sorted(groups.items()):
+    print("\t".join([package_source, ",".join(sorted(skills))]))
 PY
 }
 
@@ -796,22 +845,49 @@ with open(marker_path, 'w', encoding='utf-8') as handle:
 PY
 }
 
-stage_skill_payload() {
+build_external_skill_source_id() {
+    local package_source="$1"
+    local skill_name="$2"
+    echo "external-package:${package_source}#${skill_name}"
+}
+
+stage_skill_payload_from_dir() {
     local skill_name="$1"
-    local source_rel="$2"
-    local shared_skills_dir="$3"
-    local source_path="$REPO_ROOT/$source_rel"
+    local source_id="$2"
+    local source_path="$3"
+    local shared_skills_dir="$4"
     local stage_dir
 
     if [ ! -d "$source_path" ]; then
-        echo -e "${RED}Error: Missing canonical skill source $source_path${NC}" >&2
+        echo -e "${RED}Error: Missing skill source directory $source_path${NC}" >&2
         return 1
     fi
 
     stage_dir="$(mktemp -d "$shared_skills_dir/.${skill_name}.stage.XXXXXX")"
     cp -a "$source_path/." "$stage_dir/"
-    write_skill_marker "$stage_dir" "$source_rel"
+    write_skill_marker "$stage_dir" "$source_id"
     echo "$stage_dir"
+}
+
+stage_repo_skill_payload() {
+    local skill_name="$1"
+    local source_rel="$2"
+    local shared_skills_dir="$3"
+    local source_path="$REPO_ROOT/$source_rel"
+
+    stage_skill_payload_from_dir "$skill_name" "$source_rel" "$source_path" "$shared_skills_dir"
+}
+
+stage_external_skill_payload() {
+    local skill_name="$1"
+    local package_source="$2"
+    local package_skills_dir="$3"
+    local shared_skills_dir="$4"
+    local source_id
+    local source_path="$package_skills_dir/$skill_name"
+
+    source_id="$(build_external_skill_source_id "$package_source" "$skill_name")"
+    stage_skill_payload_from_dir "$skill_name" "$source_id" "$source_path" "$shared_skills_dir"
 }
 
 skills_are_identical() {
@@ -859,19 +935,17 @@ print_recovery_error() {
     echo "  Restore the affected skill from $backup_path and rerun ./install.sh --skills after resolving the underlying issue." >&2
 }
 
-install_shared_skill() {
+install_staged_shared_skill() {
     local skill_name="$1"
-    local source_rel="$2"
-    local shared_skills_dir="$3"
+    local source_id="$2"
+    local stage_dir="$3"
+    local shared_skills_dir="$4"
     local destination_path="$shared_skills_dir/$skill_name"
-    local stage_dir
     local previous_path
     local backup_path
 
-    stage_dir="$(stage_skill_payload "$skill_name" "$source_rel" "$shared_skills_dir")"
-
     if [ -e "$destination_path" ] || [ -L "$destination_path" ]; then
-        if is_repo_managed_skill_dir "$destination_path" "$source_rel"; then
+        if is_repo_managed_skill_dir "$destination_path" "$source_id"; then
             if skills_are_identical "$stage_dir" "$destination_path"; then
                 rm -rf "$stage_dir"
                 echo "    - Shared skill unchanged: $skill_name"
@@ -917,6 +991,57 @@ install_shared_skill() {
 
     mv "$stage_dir" "$destination_path"
     echo "    - Installed shared skill: $skill_name"
+}
+
+install_shared_skill() {
+    local skill_name="$1"
+    local source_rel="$2"
+    local shared_skills_dir="$3"
+    local stage_dir
+
+    stage_dir="$(stage_repo_skill_payload "$skill_name" "$source_rel" "$shared_skills_dir")"
+    install_staged_shared_skill "$skill_name" "$source_rel" "$stage_dir" "$shared_skills_dir"
+}
+
+install_external_skill_package() {
+    local package_source="$1"
+    local csv_skill_names="$2"
+    local shared_skills_dir="$3"
+    local temp_home
+    local package_skills_dir
+    local skill_name
+    local source_id
+    local stage_dir
+    local skill_names=()
+
+    if ! command -v npx >/dev/null 2>&1; then
+        echo -e "${RED}Error: npx is required to fetch external package-managed skills${NC}" >&2
+        return 1
+    fi
+
+    IFS=',' read -r -a skill_names <<< "$csv_skill_names"
+    temp_home="$(mktemp -d)"
+    package_skills_dir="$temp_home/.agents/skills"
+
+    if ! HOME="$temp_home" npx skills add "$package_source" -g --skill "${skill_names[@]}" -y </dev/null >/dev/null; then
+        rm -rf "$temp_home"
+        echo -e "${RED}Error: Failed to fetch external skills from $package_source via npx skills${NC}" >&2
+        return 1
+    fi
+
+    for skill_name in "${skill_names[@]}"; do
+        source_id="$(build_external_skill_source_id "$package_source" "$skill_name")"
+        stage_dir="$(stage_external_skill_payload "$skill_name" "$package_source" "$package_skills_dir" "$shared_skills_dir")" || {
+            rm -rf "$temp_home"
+            return 1
+        }
+        install_staged_shared_skill "$skill_name" "$source_id" "$stage_dir" "$shared_skills_dir" || {
+            rm -rf "$temp_home"
+            return 1
+        }
+    done
+
+    rm -rf "$temp_home"
 }
 
 consumer_entry_is_repo_managed() {
@@ -1070,10 +1195,15 @@ sync_shared_skills() {
 
     mkdir -p "$shared_skills_dir"
 
-    echo "  - Syncing canonical installable skills into ~/.agents/skills/..."
-    while IFS=$'\t' read -r skill_name source_rel _skill_class _allowed_consumers; do
+    echo "  - Syncing repo-managed shared skills from skills/ into ~/.agents/skills/..."
+    while IFS=$'\t' read -r skill_name source_rel; do
         install_shared_skill "$skill_name" "$source_rel" "$shared_skills_dir"
-    done < <(iterate_installable_skills)
+    done < <(iterate_repo_installable_skills)
+
+    echo "  - Fetching external package-managed shared skills via npx skills..."
+    while IFS=$'\t' read -r package_source csv_skill_names; do
+        install_external_skill_package "$package_source" "$csv_skill_names" "$shared_skills_dir"
+    done < <(iterate_external_skill_packages)
 
     sync_consumer_skill_links "claude" "$HOME/.claude/skills" "$@"
     sync_consumer_skill_links "opencode" "$HOME/.config/opencode/skills" "$@"
@@ -1082,6 +1212,7 @@ sync_shared_skills() {
     echo -e "${GREEN}✓ Shared skills synced successfully${NC}"
     echo ""
     echo "  Shared skills now live in ~/.agents/skills"
+    echo "  Repo-owned payloads come from skills/; package-backed payloads are fetched per skills/install-matrix.json"
 }
 
 install_skills() {

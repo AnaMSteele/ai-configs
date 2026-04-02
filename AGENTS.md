@@ -169,7 +169,7 @@ Agents should treat this `AGENTS.md` as authoritative for project-specific rules
 
 ## Pi Configuration (New)
 
-The `_pi/` directory provides Pi prompt templates, subagents, and extensions. Shared installable Pi skills now live canonically under `skills/`, while `_pi/prompts/` contains slash-command prompt templates and `_pi/agents/` contains pi-subagents-compatible agent definitions ported from `_omp/agents`.
+The `_pi/` directory provides Pi prompt templates, subagents, and extensions. Repo-owned shared Pi skills live under `skills/`, while `skills/install-matrix.json` also inventories package-backed shared skills fetched via `npx skills`. `_pi/prompts/` contains slash-command prompt templates and `_pi/agents/` contains pi-subagents-compatible agent definitions ported from `_omp/agents`.
 
 ### Quick Reference
 
@@ -239,7 +239,7 @@ For more, run `ltui --help` or see the ltui README in this configuration repo.
 
 ## Pi Skills (pi Agent)
 
-This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-subagents-compatible agent definitions under `_pi/agents/`, and canonical shared installable skills under `skills/`. Pi is an alternative AI coding agent that uses prompt templates plus the [Agent Skills specification](https://agentskills.io/specification).
+This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-subagents-compatible agent definitions under `_pi/agents/`, and shared installable skills declared by `skills/install-matrix.json` (with repo-owned payloads under `skills/`). Pi is an alternative AI coding agent that uses prompt templates plus the [Agent Skills specification](https://agentskills.io/specification).
 
 ### Available Skills
 
@@ -265,9 +265,9 @@ This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-s
 
 ### Configuration
 
-Pi auto-discovers project-local resources from `.pi/prompts/`, `.pi/skills/`, and `.pi/agents/`. In this repo, canonical shared installable skills live under `skills/`, while `install.sh` installs Pi prompt templates, agents, and extensions from `_pi/` into `~/.pi/agent/` and syncs shared skills into `~/.agents/skills`. See `_pi/README.md` for details.
+Pi auto-discovers project-local resources from `.pi/prompts/`, `.pi/skills/`, and `.pi/agents/`. In this repo, repo-owned shared installable skills live under `skills/`, `skills/install-matrix.json` inventories the full shared skill set, and `install.sh` installs Pi prompt templates, agents, and extensions from `_pi/` into `~/.pi/agent/` while syncing shared skills into `~/.agents/skills`. See `_pi/README.md` for details.
 
-For local development in this repo, add the canonical shared skill tree to your Pi settings:
+For local development in this repo, add the repo-owned shared skill tree to your Pi settings:
 ```json
 {
   "skills": ["skills"]
