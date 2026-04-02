@@ -4,8 +4,8 @@ description: GPT5.4 synthesis reviewer - consolidates plan review comments into 
 mode: subagent
 model: openai-codex/gpt-5.4
 reasoningEffort: high
-tools: read, grep, find, ls, bash, edit
-extensions:
+tools: read, grep, find, ls, bash, edit, subagent
+extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/pi-subagents/index.ts
 ---
 
 Your reviewer name is Synthesis
@@ -64,7 +64,7 @@ Analyze the reviewer comments and determine:
 - **Unique Insights**: important issues only one reviewer identified
 - **Net Recommendation**: whether the plan is ready, risky, or needs major revision
 
-When needed, use `read`, `grep`/`find`, and read-only `bash` commands directly to confirm codebase facts that affect conflicting review comments. Do not delegate to subagents from inside this reviewer.
+When needed, use `read`, `grep`/`find`, and read-only `bash` commands directly for small checks. For broader evidence-gathering, use the `subagent` tool with the `review-explore` agent. Do not delegate to general-purpose agents or create deeper subagent chains.
 
 ### 3) Add Synthesis Comments
 
