@@ -12,7 +12,12 @@ The prompt templates are copied from `_omp/commands`, and the agent definitions 
 
 ## Installation
 
-These resources are installed by `install.sh` to Pi's global agent directory. The installer also syncs shared skills from `skills/install-matrix.json` into `~/.agents/skills` and registers the current Pi extension baseline with Pi itself. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
+These resources are installed by `install.sh` to Pi's global agent directory. There are two distinct Pi installation surfaces:
+
+- repo-managed extensions: copied from this repo into `~/.pi/agent/extensions/`
+- package-managed Pi installs: registered via `pi install` / `pi update` and visible in `pi list`
+
+`pi list` only shows the package-managed set; it does not list repo-managed files like `todo.ts`, `simple-multi-status.ts`, or `pi-plan-mode`. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
 
 ```bash
 ./install.sh --pi      # Install Pi prompt templates + subagents + extensions and sync shared skills
@@ -113,7 +118,7 @@ Pi subagents load agent definitions from `~/.pi/agent/agents/`.
 
 ## Package-managed Pi extensions
 
-In addition to the repo-managed files under `~/.pi/agent/extensions/`, `install.sh --pi` also registers Pi packages via `pi install` / `pi update`.
+In addition to the repo-managed files under `~/.pi/agent/extensions/`, `install.sh --pi` also registers Pi packages via `pi install` / `pi update`. These are the entries that appear in `pi list`.
 
 Git-managed packages:
 - `pi-dcp`
@@ -137,7 +142,7 @@ npm-managed packages:
 - `@tmustier/pi-files-widget`
 - `@tmustier/pi-raw-paste`
 
-Use `pi list` on a host to verify what is currently registered.
+Use `pi list` on a host to verify what is currently registered. To verify both surfaces together, run `scripts/verify-pi-install.sh` from this repo.
 
 These files are based on `_omp/agents`, but normalized for the pi-subagents loader:
 
@@ -211,6 +216,7 @@ Skills:
 ## Notes
 
 - Pi global resources live under `~/.pi/agent/`, not `~/.pi/`.
+- Repo-managed extensions live in `~/.pi/agent/extensions/`; package-managed installs are reported by `pi list`.
 - `~/.pi/agent/APPEND_SYSTEM.md` is installed from the repo-root `APPEND_SYSTEM.md` shared with OMP.
 - Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, `.pi/agents/`, and `.pi/extensions/`.
 - Pi natively auto-discovers both `~/.agents/skills/` and `~/.pi/agent/skills/`; this repo uses `~/.agents/skills/` as the canonical shared runtime location and reserves `~/.pi/agent/skills/` for Pi-local-only entries. Repo-owned skill payloads come from `skills/`, while package-backed entries are fetched per `skills/install-matrix.json`.

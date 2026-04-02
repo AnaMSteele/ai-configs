@@ -75,6 +75,7 @@ bash ~/ai-configs/install.sh --all ~
 - mirrors shared helper scripts into the runtime locations that need them
 - installs OMP to `~/.omp/agent/`
 - installs Pi to `~/.pi/agent/`
+- copies repo-managed Pi extensions into `~/.pi/agent/extensions/` (these do not appear in `pi list`)
 - registers Pi-managed packages via `pi install` / `pi update`: git (`pi-dcp`, `chrome-cdp-skill`, `pi-rlm`) and npm (`pi-subagents`, `@aliou/pi-processes`, `pi-web-access`, `pi-mcp-adapter`, `lsp-pi`, `@fnnm/pi-ast-grep`, `pi-updater`, `pi-interactive-shell`, `pi-side-chat`, `pi-powerline-footer`, `pi-side-agents`, `pi-multi-pass`, `pi-no-soft-cursor`, `@tmustier/pi-files-widget`, `@tmustier/pi-raw-paste`)
 - installs OpenCode resources to `~/.config/opencode/`
 - syncs shared skills into `~/.agents/skills` from `skills/install-matrix.json`
@@ -98,7 +99,7 @@ Gemini TOML command definitions plus the `GEMINI.template.md` persona template.
 Native OMP commands and agents.
 
 ### `_pi/`
-Pi prompts, subagents, repo-managed extensions, and Pi package baseline documentation.
+Pi prompts, subagents, repo-managed extensions copied into `~/.pi/agent/extensions/`, and Pi package baseline documentation for the separate `pi list`-visible package set.
 
 ### `_opencode/`
 OpenCode commands, agents, prompts, repo-local-only skills, onboarding docs, and helper scripts.
@@ -147,6 +148,12 @@ The repo keeps long-lived and working documentation separate:
 - This repo intentionally no longer tracks accumulated local runtime trees like `.claude/`, `.gemini/`, `.codex/`, `.opencode/`, `.agent/`, or `.agents/`.
 - If older notes or scripts reference pre-cleanup paths such as `claude/...`, `codex/...`, `gemini/...`, or `opencode/...`, use the underscored source paths instead.
 - Installed runtime paths remain the normal dot-directories used by each tool.
+
+For a host-level verification of both Pi installation surfaces, run:
+
+```bash
+bash ./scripts/verify-pi-install.sh
+```
 
 ## More specific docs
 
