@@ -247,6 +247,11 @@ assert_shared_skill_install_state() {
   [[ -f "$home/.agents/skills/algorithmic-art/.ai-configs-managed.json" ]] || return 1
   assert_file_contains "$home/.agents/skills/algorithmic-art/.ai-configs-managed.json" '"source": "external-package:anthropics/skills#algorithmic-art"' || return 1
 
+  [[ -f "$home/.agents/skills/design-skill/SKILL.md" ]] || return 1
+  assert_file_contains "$home/.agents/skills/design-skill/SKILL.md" 'external package=arjunkshah/design-skill skill=design' || return 1
+  [[ -f "$home/.agents/skills/design-skill/.ai-configs-managed.json" ]] || return 1
+  assert_file_contains "$home/.agents/skills/design-skill/.ai-configs-managed.json" '"source": "external-package:arjunkshah/design-skill#design-skill"' || return 1
+
   [[ -d "$home/.claude/skills/custom-local" ]] || return 1
   [[ -d "$home/.config/opencode/skills/custom-local" ]] || return 1
 
@@ -262,6 +267,8 @@ assert_shared_skill_install_state() {
   assert_symlink_target "$home/.config/opencode/skills/linear" "$home/.agents/skills/linear" || return 1
   assert_symlink_target "$home/.claude/skills/algorithmic-art" "$home/.agents/skills/algorithmic-art" || return 1
   assert_symlink_target "$home/.config/opencode/skills/algorithmic-art" "$home/.agents/skills/algorithmic-art" || return 1
+  assert_symlink_target "$home/.claude/skills/design-skill" "$home/.agents/skills/design-skill" || return 1
+  assert_symlink_target "$home/.config/opencode/skills/design-skill" "$home/.agents/skills/design-skill" || return 1
 
   [[ ! -e "$home/.claude/skills/cmd-debug" ]] || return 1
   [[ ! -e "$home/.config/opencode/skills/cmd-debug" ]] || return 1
@@ -395,10 +402,8 @@ test_phase_three_docs_use_canonical_shared_skill_paths() {
   assert_file_not_contains "_pi/prompts/cmd:send-plan-to-doct.md" '$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
   assert_file_not_contains "_opencode/commands/cmd:send-plan-to-doct.md" '$HOME/.config/opencode/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
 
-  assert_file_contains "skills/playwright-skill/SKILL.md" '~/.agents/skills/playwright-skill' || return 1
-  assert_file_not_contains "skills/playwright-skill/SKILL.md" 'Manual global: `~/.claude/skills/playwright-skill`' || return 1
-  assert_file_contains "skills/playwright-skill/API_REFERENCE.md" '~/.agents/skills/playwright-skill' || return 1
-  assert_file_not_contains "skills/playwright-skill/API_REFERENCE.md" 'cd ~/.claude/skills/playwright-skill' || return 1
+  assert_file_contains "skills/install-matrix.json" '"playwright-skill"' || return 1
+  assert_file_contains "skills/install-matrix.json" '"packageSource": "lackeyjb/playwright-skill"' || return 1
 
   # removed root duplicate
   # assert_file_not_contains "OPENCODE_ONBOARDING.md" 'cp -r ./_opencode/skills/playwright-skill/' || return 1
@@ -421,15 +426,24 @@ test_phase_three_duplicate_skill_trees_are_removed() {
   [[ ! -d "skills/algorithmic-art" ]] || return 1
   [[ ! -d "skills/brand-guidelines" ]] || return 1
   [[ ! -d "skills/canvas-design" ]] || return 1
+  [[ ! -d "skills/design-skill" ]] || return 1
   [[ ! -d "skills/doc-coauthoring" ]] || return 1
+  [[ ! -d "skills/docx" ]] || return 1
   [[ ! -d "skills/frontend-design" ]] || return 1
   [[ ! -d "skills/internal-comms" ]] || return 1
   [[ ! -d "skills/mcp-builder" ]] || return 1
+  [[ ! -d "skills/pdf" ]] || return 1
+  [[ ! -d "skills/playwright-skill" ]] || return 1
+  [[ ! -d "skills/pptx" ]] || return 1
+  [[ ! -d "skills/rust-engineer" ]] || return 1
+  [[ ! -d "skills/skill-creator" ]] || return 1
   [[ ! -d "skills/slack-gif-creator" ]] || return 1
   [[ ! -d "skills/theme-factory" ]] || return 1
+  [[ ! -d "skills/vercel-react-best-practices" ]] || return 1
   [[ ! -d "skills/web-artifacts-builder" ]] || return 1
   [[ ! -d "skills/web-design-guidelines" ]] || return 1
   [[ ! -d "skills/webapp-testing" ]] || return 1
+  [[ ! -d "skills/xlsx" ]] || return 1
 
   local unexpected
   unexpected="$(find _opencode/skills -mindepth 1 -maxdepth 1 -type d ! -name 'opencode-conversation-reviewer' ! -name 'template' -print)"

@@ -759,7 +759,8 @@ groups = defaultdict(list)
 for name, meta in sorted(data["installableSkills"].items()):
     if meta.get("sourceType") != "external-package":
         continue
-    groups[meta["packageSource"]].append(name)
+    package_skill_name = meta.get("packageSkillName", name)
+    groups[meta["packageSource"]].append(f"{name}={package_skill_name}")
 
 for package_source, skills in sorted(groups.items()):
     print("\t".join([package_source, ",".join(sorted(skills))]))
@@ -881,10 +882,11 @@ stage_repo_skill_payload() {
 stage_external_skill_payload() {
     local skill_name="$1"
     local package_source="$2"
-    local package_skills_dir="$3"
-    local shared_skills_dir="$4"
+    local package_skill_name="$3"
+    local package_skills_dir="$4"
+    local shared_skills_dir="$5"
     local source_id
-    local source_path="$package_skills_dir/$skill_name"
+    local source_path="$package_skills_dir/$package_skill_name"
 
     source_id="$(build_external_skill_source_id "$package_source" "$skill_name")"
     stage_skill_payload_from_dir "$skill_name" "$source_id" "$source_path" "$shared_skills_dir"
@@ -1005,37 +1007,48 @@ install_shared_skill() {
 
 install_external_skill_package() {
     local package_source="$1"
-    local csv_skill_names="$2"
+    local csv_skill_mappings="$2"
     local shared_skills_dir="$3"
     local temp_home
     local package_skills_dir
-    local skill_name
+    local skill_mapping
+    local local_skill_name
+    local package_skill_name
     local source_id
     local stage_dir
-    local skill_names=()
+    local package_skill_names=()
+    local skill_mappings=()
 
     if ! command -v npx >/dev/null 2>&1; then
         echo -e "${RED}Error: npx is required to fetch external package-managed skills${NC}" >&2
         return 1
     fi
 
-    IFS=',' read -r -a skill_names <<< "$csv_skill_names"
+    IFS=',' read -r -a skill_mappings <<< "$csv_skill_mappings"
+    for skill_mapping in "${skill_mappings[@]}"; do
+        local_skill_name="${skill_mapping%%=*}"
+        package_skill_name="${skill_mapping#*=}"
+        package_skill_names+=("$package_skill_name")
+    done
+
     temp_home="$(mktemp -d)"
     package_skills_dir="$temp_home/.agents/skills"
 
-    if ! HOME="$temp_home" npx skills add "$package_source" -g --skill "${skill_names[@]}" -y </dev/null >/dev/null; then
+    if ! HOME="$temp_home" npx skills add "$package_source" -g --skill "${package_skill_names[@]}" -y </dev/null >/dev/null; then
         rm -rf "$temp_home"
         echo -e "${RED}Error: Failed to fetch external skills from $package_source via npx skills${NC}" >&2
         return 1
     fi
 
-    for skill_name in "${skill_names[@]}"; do
-        source_id="$(build_external_skill_source_id "$package_source" "$skill_name")"
-        stage_dir="$(stage_external_skill_payload "$skill_name" "$package_source" "$package_skills_dir" "$shared_skills_dir")" || {
+    for skill_mapping in "${skill_mappings[@]}"; do
+        local_skill_name="${skill_mapping%%=*}"
+        package_skill_name="${skill_mapping#*=}"
+        source_id="$(build_external_skill_source_id "$package_source" "$local_skill_name")"
+        stage_dir="$(stage_external_skill_payload "$local_skill_name" "$package_source" "$package_skill_name" "$package_skills_dir" "$shared_skills_dir")" || {
             rm -rf "$temp_home"
             return 1
         }
-        install_staged_shared_skill "$skill_name" "$source_id" "$stage_dir" "$shared_skills_dir" || {
+        install_staged_shared_skill "$local_skill_name" "$source_id" "$stage_dir" "$shared_skills_dir" || {
             rm -rf "$temp_home"
             return 1
         }

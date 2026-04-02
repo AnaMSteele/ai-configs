@@ -67,13 +67,13 @@ cd /tmp && opencode
 - `_opencode/OPENCODE_ONBOARDING.md` - Comprehensive onboarding guide (use this!)
 - `_opencode/config-template.json` - OpenCode configuration template
 - `_opencode/prompts/glm-reasoning.md` - GLM thinking prompt
-- `skills/playwright-skill/` - Canonical browser automation skill source
+- `skills/install-matrix.json` - Shared skill inventory, including package-backed Playwright installation metadata
 
 ## For Other Repositories
 
 To use these configurations in any repository:
 
-1. Copy the `_opencode/` directory plus the canonical `skills/` directory from this repo to your target repo
+1. Copy the `_opencode/` directory plus the repo-owned `skills/` directory (and its `install-matrix.json`) from this repo to your target repo
 2. Run the onboarding: "Follow _opencode/OPENCODE_ONBOARDING.md"
 3. All paths in the onboarding document are relative to the repository root
 
