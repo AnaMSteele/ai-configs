@@ -3,32 +3,35 @@
 This directory contains Pi-specific resources:
 
 - `prompts/` — prompt templates exposed as slash commands
-- `skills/` — Agent Skills invoked via `/skill:name`
 - `agents/` — pi-subagents-compatible agent definitions
 - `extensions/` — Pi runtime extensions, including the maintained `/plan` mode workflow
+
+Canonical shared installable Pi skills live in the repo-level `skills/` tree and install into `~/.agents/skills`.
 
 The prompt templates are copied from `_omp/commands`, and the agent definitions are ported from `_omp/agents` into the flat markdown format expected by pi-subagents.
 
 ## Installation
 
-These resources are installed by `install.sh` to Pi's global agent directory. The installer also registers selected package-managed Pi extensions with Pi itself: git packages such as `pi-dcp`, `chrome-cdp-skill`, and `pi-rlm`, plus npm packages such as `pi-multi-pass` and `pi-subagents`.
+These resources are installed by `install.sh` to Pi's global agent directory. The installer also syncs canonical shared skills into `~/.agents/skills` and registers selected package-managed Pi extensions with Pi itself: git packages such as `pi-dcp`, `chrome-cdp-skill`, and `pi-rlm`, plus npm packages such as `pi-multi-pass` and `pi-subagents`.
 
 ```bash
-./install.sh --pi      # Install Pi prompt templates + skills + subagents + extensions
+./install.sh --pi      # Install Pi prompt templates + subagents + extensions and sync shared skills
 ./install.sh --all     # Install everything, including Pi
 ```
 
 Installed layout:
 
 ```text
+~/.agents/skills/
+├── ralph-run/
+├── doct-document-ops/
+└── ...
+
 ~/.pi/agent/
 ├── README.md
 ├── prompts/
 │   ├── cmd:debug.md
 │   ├── dev:plan.md
-│   └── ...
-├── skills/
-│   ├── ralph-run/
 │   └── ...
 ├── agents/
 │   ├── developer.md
@@ -46,12 +49,13 @@ _pi/
 ├── README.md
 ├── prompts/            # Pi prompt templates / slash commands
 │   └── *.md
-├── skills/             # Pi skills (Agent Skills format)
-│   └── */SKILL.md
 ├── agents/             # Pi subagent definitions for pi-subagents
 │   └── *.md
 └── extensions/         # Pi runtime extensions
     └── */index.ts
+
+skills/
+└── */SKILL.md          # Canonical shared installable skills exposed to Pi via ~/.agents/skills
 ```
 
 ## Prompt Templates
@@ -117,6 +121,7 @@ Example installed agents:
 - `dev-plan`
 - `cmd-graduate`
 - `doct-document-ops` — doct document operations, including publishing coding plans under personal `Coding Plans`
+- `sentry-cli` — investigate Sentry orgs, projects, issues, and recent events; optionally mute/resolve/unresolve issues after confirmation
 
 ### Context / review
 - `cmd-create-handoff`
@@ -151,11 +156,12 @@ Skills:
 /skill:ralph-run user-profile-redesign
 /skill:cmd-start-linear-issue-branch ENG-123
 /skill:doct-document-ops
+/skill:sentry-cli
 ```
 
 ## Notes
 
 - Pi global resources live under `~/.pi/agent/`, not `~/.pi/`.
 - Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, `.pi/agents/`, and `.pi/extensions/`.
-- Pi auto-discovers `~/.pi/agent/skills/`, `~/.pi/agent/prompts/`, and `~/.pi/agent/extensions/`.
+- Pi natively auto-discovers both `~/.agents/skills/` and `~/.pi/agent/skills/`; this repo uses `~/.agents/skills/` as the canonical shared runtime location and reserves `~/.pi/agent/skills/` for Pi-local-only entries.
 - pi-subagents-compatible agent definitions install to `~/.pi/agent/agents/`.

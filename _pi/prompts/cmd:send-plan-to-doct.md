@@ -28,16 +28,21 @@ Request: $ARGUMENTS
 doct-cli auth status
 ```
 
-2. Publish the plan:
+2. Publish the plan with REST by:
+- resolving the personal workspace id
+- ensuring a root document titled `Coding Plans` exists
+- creating a new `text` document with `parentId` set to the `Coding Plans` document id
+
+Preferred helper when this repo is installed:
 
 ```bash
-bash "$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh" --file "$ARGUMENTS"
+bash "$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh" --file "$ARGUMENTS"
 ```
 
 If the plan is not already in a file, write the markdown to a temp file first or pipe it on stdin:
 
 ```bash
-printf '%s' "$PLAN_MARKDOWN" | bash "$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh" --title "Plan Title"
+printf '%s' "$PLAN_MARKDOWN" | bash "$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh" --title "Plan Title"
 ```
 
 3. Return to the user:
@@ -51,3 +56,4 @@ printf '%s' "$PLAN_MARKDOWN" | bash "$HOME/.pi/agent/skills/doct-document-ops/sc
 - New plans are created as child documents, not appended into the parent body.
 - Standard doct-cli device login is read-only. For publishing, set `DOCT_ACCESS_TOKEN` to a write-scope PAT if the current token lacks write access.
 - If auth is missing, run `doct-cli auth login --url https://doct.nodaste.com` first.
+- If the helper script is unavailable, perform the same steps manually with `doct-cli workspaces list --json`, `doct-cli docs list --workspace <id> --json`, and `POST /api/documents`.

@@ -1,0 +1,557 @@
+{
+  "version": 1,
+  "installableSkills": {
+    "algorithmic-art": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/algorithmic-art",
+      "legacySources": [
+        "opencode/skills/algorithmic-art"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "brand-guidelines": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/brand-guidelines",
+      "legacySources": [
+        "opencode/skills/brand-guidelines"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "canvas-design": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/canvas-design",
+      "legacySources": [
+        "opencode/skills/canvas-design"
+      ],
+      "notes": "Promoted from the OpenCode skill tree with bundled font assets."
+    },
+    "ccore": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/ccore",
+      "legacySources": [
+        "opencode/skills/ccore"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "cmd-create-handoff": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-create-handoff",
+      "legacySources": [
+        "_pi/skills/cmd-create-handoff"
+      ],
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+    },
+    "cmd-create-pr": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-create-pr",
+      "legacySources": [
+        "_pi/skills/cmd-create-pr"
+      ],
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+    },
+    "cmd-debug": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-debug",
+      "legacySources": [
+        "_pi/skills/cmd-debug"
+      ],
+      "notes": "Pi-only: orchestrates subagent-based debugging workflows."
+    },
+    "cmd-graduate": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-graduate",
+      "legacySources": [
+        "_pi/skills/cmd-graduate"
+      ],
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+    },
+    "cmd-research": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-research",
+      "legacySources": [
+        "_pi/skills/cmd-research"
+      ],
+      "notes": "Pi-only: depends on subagent-based codebase research orchestration."
+    },
+    "cmd-resume-handoff": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-resume-handoff",
+      "legacySources": [
+        "_pi/skills/cmd-resume-handoff"
+      ],
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+    },
+    "cmd-start-linear-issue": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-start-linear-issue",
+      "legacySources": [
+        "_pi/skills/cmd-start-linear-issue"
+      ],
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+    },
+    "cmd-start-linear-issue-branch": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/cmd-start-linear-issue-branch",
+      "legacySources": [
+        "_pi/skills/cmd-start-linear-issue-branch"
+      ],
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+    },
+    "dependency-selection": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/dependency-selection",
+      "legacySources": [
+        ".agents/skills/dependency-selection"
+      ],
+      "notes": "Promoted from the repo-local .agents skill tree."
+    },
+    "design-skill": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/design-skill",
+      "legacySources": [
+        "opencode/skills/design-skill"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "dev-plan": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/dev-plan",
+      "legacySources": [
+        "_pi/skills/dev-plan"
+      ],
+      "notes": "Pi-only: depends on Pi planning workflow and subagent-oriented command conventions."
+    },
+    "doc-coauthoring": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/doc-coauthoring",
+      "legacySources": [
+        "opencode/skills/doc-coauthoring"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "doct-document-ops": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/doct-document-ops",
+      "legacySources": [
+        "opencode/skills/doct-document-ops",
+        "_pi/skills/doct-document-ops"
+      ],
+      "notes": "Canonicalized from identical OpenCode and Pi copies; retains scripts and references for shared-path use."
+    },
+    "docx": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/docx",
+      "legacySources": [
+        "opencode/skills/docx"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "frontend-design": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/frontend-design",
+      "legacySources": [
+        "opencode/skills/frontend-design"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "internal-comms": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/internal-comms",
+      "legacySources": [
+        "opencode/skills/internal-comms"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "linear": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/linear",
+      "legacySources": [
+        "skills/linear",
+        "opencode/skills/linear"
+      ],
+      "notes": "Existing canonical skill retained; OpenCode copy is identical."
+    },
+    "mcp-builder": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/mcp-builder",
+      "legacySources": [
+        "opencode/skills/mcp-builder"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "pdf": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/pdf",
+      "legacySources": [
+        "opencode/skills/pdf"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "planning-workflow": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/planning-workflow",
+      "legacySources": [
+        "opencode/skills/planning-workflow"
+      ],
+      "notes": "Promoted from the OpenCode skill tree as shared planning doctrine."
+    },
+    "playwright-skill": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/playwright-skill",
+      "legacySources": [
+        "opencode/skills/playwright-skill"
+      ],
+      "notes": "Promoted from the OpenCode skill tree; excludes transient .temp-execution artifacts from the canonical payload."
+    },
+    "pptx": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/pptx",
+      "legacySources": [
+        "opencode/skills/pptx"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "product-principles": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/product-principles",
+      "legacySources": [
+        "skills/product-principles",
+        "opencode/skills/product-principles",
+        "_pi/skills/product-principles"
+      ],
+      "notes": "Existing canonical skill retained; OpenCode and Pi copies are identical."
+    },
+    "ralph-run": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/ralph-run",
+      "legacySources": [
+        "_pi/skills/ralph-run"
+      ],
+      "notes": "Pi-only: requires pi-subagents orchestration."
+    },
+    "ralph-run-simple": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/ralph-run-simple",
+      "legacySources": [
+        "_pi/skills/ralph-run-simple"
+      ],
+      "notes": "Pi-only: requires Pi subagent orchestration."
+    },
+    "repo-agents-bootstrap": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/repo-agents-bootstrap",
+      "legacySources": [
+        "opencode/skills/repo-agents-bootstrap"
+      ],
+      "notes": "Promoted from the OpenCode skill tree as shared repo bootstrap guidance."
+    },
+    "review-change": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/review-change",
+      "legacySources": [
+        "_pi/skills/review-change"
+      ],
+      "notes": "Pi-only: depends on subagent-based review orchestration."
+    },
+    "review-change-integrate": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/review-change-integrate",
+      "legacySources": [
+        "_pi/skills/review-change-integrate"
+      ],
+      "notes": "Pi-only: depends on subagent-based review orchestration."
+    },
+    "rust-engineer": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/rust-engineer",
+      "legacySources": [
+        "opencode/skills/rust-engineer"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "sentry-cli": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/sentry-cli",
+      "legacySources": [
+        "_pi/skills/sentry-cli"
+      ],
+      "notes": "Pi-originated workflow skill promoted as a universal installable skill."
+    },
+    "skill-creator": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/skill-creator",
+      "legacySources": [
+        "opencode/skills/skill-creator"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "slack-gif-creator": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/slack-gif-creator",
+      "legacySources": [
+        "opencode/skills/slack-gif-creator"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "theme-factory": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/theme-factory",
+      "legacySources": [
+        "opencode/skills/theme-factory"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "vercel-react-best-practices": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/vercel-react-best-practices",
+      "legacySources": [
+        "opencode/skills/vercel-react-best-practices"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "web-artifacts-builder": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/web-artifacts-builder",
+      "legacySources": [
+        "opencode/skills/web-artifacts-builder"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "web-design-guidelines": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/web-design-guidelines",
+      "legacySources": [
+        "opencode/skills/web-design-guidelines"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "webapp-testing": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/webapp-testing",
+      "legacySources": [
+        "opencode/skills/webapp-testing"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    },
+    "xlsx": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/xlsx",
+      "legacySources": [
+        "opencode/skills/xlsx"
+      ],
+      "notes": "Promoted from the OpenCode skill tree."
+    }
+  },
+  "repoLocalOnlySkills": {
+    "opencode-conversation-reviewer": {
+      "class": "repo-local-only",
+      "allowedConsumers": [
+        "opencode"
+      ],
+      "sourcePath": "opencode/skills/opencode-conversation-reviewer",
+      "notes": "Excluded from shared promotion per locked decision; depends on opencode db."
+    },
+    "template": {
+      "class": "repo-local-only",
+      "allowedConsumers": [],
+      "sourcePath": "opencode/skills/template",
+      "notes": "Excluded from shared promotion per locked decision; scaffold placeholder only."
+    }
+  }
+}

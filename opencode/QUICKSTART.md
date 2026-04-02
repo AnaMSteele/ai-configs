@@ -32,24 +32,26 @@ If you prefer manual installation or need to troubleshoot:
 
 ```bash
 # 1. Create directories
-mkdir -p ~/.config/opencode/{agents,commands,prompts,skills/playwright-skill/lib,plugin}
+mkdir -p ~/.config/opencode/{agents,commands,prompts,skills,plugin} ~/.agents/skills
 
 # 2. Copy config files
 cp opencode/config-template.json ~/.config/opencode/opencode.json
 cp opencode/prompts/glm-reasoning.md ~/.config/opencode/prompts/
-cp -r opencode/skills/playwright-skill/ ~/.config/opencode/skills/
 cp -r opencode/commands/ ~/.config/opencode/commands/
 cp -r opencode/agents/ ~/.config/opencode/agents/
 
-# 3. Install Playwright dependencies
-cd ~/.config/opencode/skills/playwright-skill
+# 3. Sync canonical shared skills
+bash ./install.sh --skills
+
+# 4. Install Playwright dependencies
+cd ~/.agents/skills/playwright-skill
 npm run setup
 
-# 4. Configure API keys
+# 5. Configure API keys
 opencode auth add --provider synthetic
 opencode auth add --provider deepinfra
 
-# 5. Verify
+# 6. Verify
 cd /tmp && opencode
 ```
 
@@ -57,7 +59,7 @@ cd /tmp && opencode
 
 - ✅ **MCP Servers**: Playwright (browser automation), Serena (code analysis)
 - ✅ **Model Providers**: Synthetic.new, DeepInfra, Google (via Antigravity)
-- ✅ **Custom Skills**: Playwright browser automation skill
+- ✅ **Custom Skills**: Playwright browser automation skill (canonically installed in `~/.agents/skills` and exposed to OpenCode via compatibility link)
 - ✅ **Custom Prompts**: GLM-4.7 preserved thinking protocol
 
 ## Key Files in this Repository
@@ -65,13 +67,13 @@ cd /tmp && opencode
 - `opencode/OPENCODE_ONBOARDING.md` - Comprehensive onboarding guide (use this!)
 - `opencode/config-template.json` - OpenCode configuration template
 - `opencode/prompts/glm-reasoning.md` - GLM thinking prompt
-- `opencode/skills/playwright-skill/` - Browser automation skill
+- `skills/playwright-skill/` - Canonical browser automation skill source
 
 ## For Other Repositories
 
 To use these configurations in any repository:
 
-1. Copy the `opencode/` directory from this repo to your target repo
+1. Copy the `opencode/` directory plus the canonical `skills/` directory from this repo to your target repo
 2. Run the onboarding: "Follow opencode/OPENCODE_ONBOARDING.md"
 3. All paths in the onboarding document are relative to the repository root
 

@@ -169,7 +169,7 @@ Agents should treat this `AGENTS.md` as authoritative for project-specific rules
 
 ## Pi Configuration (New)
 
-The `_pi/` directory provides Pi prompt templates, skills, and subagents. `_pi/prompts/` contains slash-command prompt templates, `_pi/skills/` contains Agent Skills equivalents of key OpenCode workflows, and `_pi/agents/` contains pi-subagents-compatible agent definitions ported from `_omp/agents`.
+The `_pi/` directory provides Pi prompt templates, subagents, and extensions. Shared installable Pi skills now live canonically under `skills/`, while `_pi/prompts/` contains slash-command prompt templates and `_pi/agents/` contains pi-subagents-compatible agent definitions ported from `_omp/agents`.
 
 ### Quick Reference
 
@@ -239,7 +239,7 @@ For more, run `ltui --help` or see the ltui README in this configuration repo.
 
 ## Pi Skills (pi Agent)
 
-This repository includes Pi-specific resources under `_pi/`: prompt templates in `_pi/prompts/`, skills in `_pi/skills/`, and pi-subagents-compatible agent definitions in `_pi/agents/`. Pi is an alternative AI coding agent that uses prompt templates plus the [Agent Skills specification](https://agentskills.io/specification).
+This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-subagents-compatible agent definitions under `_pi/agents/`, and canonical shared installable skills under `skills/`. Pi is an alternative AI coding agent that uses prompt templates plus the [Agent Skills specification](https://agentskills.io/specification).
 
 ### Available Skills
 
@@ -253,6 +253,7 @@ This repository includes Pi-specific resources under `_pi/`: prompt templates in
 - `/skill:cmd-debug` — Debug investigation
 - `/skill:dev-plan` — Materialize execution plan
 - `/skill:cmd-graduate` — Graduate completed work to spec/
+- `/skill:sentry-cli` — Investigate Sentry issues/events and safely mute, resolve, or unresolve issues after confirmation
 
 **Context Management:**
 - `/skill:cmd-create-handoff` — Create handoff document
@@ -264,11 +265,11 @@ This repository includes Pi-specific resources under `_pi/`: prompt templates in
 
 ### Configuration
 
-Pi auto-discovers project-local resources from `.pi/prompts/`, `.pi/skills/`, and `.pi/agents/`, and this repo's install script installs global resources from `_pi/` into `~/.pi/agent/`. See `_pi/README.md` for details.
+Pi auto-discovers project-local resources from `.pi/prompts/`, `.pi/skills/`, and `.pi/agents/`. In this repo, canonical shared installable skills live under `skills/`, while `install.sh` installs Pi prompt templates, agents, and extensions from `_pi/` into `~/.pi/agent/` and syncs shared skills into `~/.agents/skills`. See `_pi/README.md` for details.
 
-To use opencode skills within pi, add to your pi settings:
+For local development in this repo, add the canonical shared skill tree to your Pi settings:
 ```json
 {
-  "skills": [".agents/skills", "opencode/skills"]
+  "skills": ["skills"]
 }
 ```

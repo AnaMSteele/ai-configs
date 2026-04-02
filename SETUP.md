@@ -1,6 +1,6 @@
 # Quick Setup Guide
 
-This guide provides quick installation instructions for the Claude Code, Codex, Gemini CLI, Oh My Pi (OMP), and OpenCode configuration system.
+This guide provides quick installation instructions for the Claude Code, Codex, Gemini CLI, Oh My Pi (OMP), Pi, and OpenCode configuration system.
 
 ## Installation
 
@@ -19,7 +19,7 @@ pip3 install -r requirements.txt
 # Navigate to your project
 cd /path/to/your/project
 
-# Install All Tools (Claude, Gemini, Codex, OMP, OpenCode)
+# Install All Tools (Claude, Gemini, Codex, OMP, Pi, OpenCode, shared skills)
 bash ~/adn-claude-configs/install.sh --all
 
 # Or install individually:
@@ -28,16 +28,18 @@ bash ~/adn-claude-configs/install.sh --all
 # bash ~/adn-claude-configs/install.sh --codex
 # bash ~/adn-claude-configs/install.sh --omp
 # bash ~/adn-claude-configs/install.sh --opencode
+# bash ~/adn-claude-configs/install.sh --pi
 ```
 
-This creates `.claude/`, `.gemini/`, and `.codex/` directories in your project, plus installs OMP config to `~/.omp/agent` and OpenCode config to `~/.config/opencode`.
+This creates `.claude/`, `.gemini/`, and `.codex/` directories in your project, installs OMP config to `~/.omp/agent`, installs OpenCode config to `~/.config/opencode`, installs Pi config to `~/.pi/agent`, and syncs shared installable skills into `~/.agents/skills`.
 
 ### Option 2: Global Installation
 
 Install to your home directory for use across all projects:
 
 ```bash
-# Install to ~/.claude, ~/.gemini, ~/.codex, ~/.omp/agent, and ~/.config/opencode
+# Install to ~/.claude, ~/.gemini, ~/.codex, ~/.omp/agent, ~/.pi/agent, ~/.config/opencode,
+# and sync shared skills into ~/.agents/skills
 bash ~/adn-claude-configs/install.sh --all ~
 ```
 
@@ -65,7 +67,7 @@ bash ~/adn-claude-configs/install.sh --all
 ```
 
 The script will:
-- Update agents, commands/prompts, and scripts (including OMP commands and agents)
+- Update agents, commands/prompts, scripts, and shared skills (including OMP commands/agents plus Pi prompts, subagents, and extensions)
 - Clean up legacy directory structures
 - Preserve your local settings files
 

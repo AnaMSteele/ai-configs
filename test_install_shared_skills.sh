@@ -1,0 +1,428 @@
+#!/bin/bash
+
+set -u
+set -o pipefail
+
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly INSTALLER="$SCRIPT_DIR/install.sh"
+
+TESTS_RUN=0
+TESTS_PASSED=0
+TESTS_FAILED=0
+TMP_DIRS=()
+
+pass() {
+  printf 'PASS %s\n' "$1"
+  TESTS_PASSED=$((TESTS_PASSED + 1))
+}
+
+fail() {
+  printf 'FAIL %s\n' "$1" >&2
+  TESTS_FAILED=$((TESTS_FAILED + 1))
+}
+
+run_test() {
+  local name="$1"
+  TESTS_RUN=$((TESTS_RUN + 1))
+  if "$name"; then
+    pass "$name"
+  else
+    fail "$name"
+  fi
+}
+
+cleanup() {
+  local dir
+  for dir in "${TMP_DIRS[@]:-}"; do
+    if [[ -n "$dir" && -e "$dir" ]]; then
+      rm -rf "$dir"
+    fi
+  done
+}
+
+trap cleanup EXIT
+
+new_tmp_dir() {
+  local dir
+  dir="$(mktemp -d)"
+  TMP_DIRS+=("$dir")
+  printf '%s\n' "$dir"
+}
+
+create_fake_tool_bin() {
+  local home="$1"
+  local bin_dir="$home/test-bin"
+
+  mkdir -p "$bin_dir"
+  cat > "$bin_dir/pi" <<'EOF'
+#!/bin/bash
+set -eu
+
+case "${1:-}" in
+  list)
+    exit 0
+    ;;
+  install|update)
+    echo "stub pi $*" >/dev/null
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+EOF
+  chmod +x "$bin_dir/pi"
+
+  cat > "$bin_dir/bun" <<'EOF'
+#!/bin/bash
+set -eu
+
+echo "stub bun $*" >/dev/null
+exit 0
+EOF
+  chmod +x "$bin_dir/bun"
+
+  printf '%s\n' "$bin_dir"
+}
+
+seed_phase_two_home() {
+  local home="$1"
+
+  mkdir -p \
+    "$home/.claude/skills/custom-local" \
+    "$home/.config/opencode/skills/custom-local" \
+    "$home/.config/opencode/skills/cmd-debug" \
+    "$home/.pi/agent" \
+    "$home/.omp/agent" \
+    "$home/.agents/skills/external-skill" \
+    "$home/.agents/skills/linear" \
+    "$home/.claude/skills/linear"
+
+  printf 'external\n' > "$home/.agents/skills/external-skill/SKILL.md"
+  printf 'foreign-linear\n' > "$home/.agents/skills/linear/SKILL.md"
+  printf 'old-claude-linear\n' > "$home/.claude/skills/linear/SKILL.md"
+  printf 'foreign-opencode-cmd-debug\n' > "$home/.config/opencode/skills/cmd-debug/SKILL.md"
+}
+
+assert_file_contains() {
+  local path="$1"
+  local expected="$2"
+  [[ -f "$path" ]] || return 1
+  grep -Fq -- "$expected" "$path"
+}
+
+assert_file_not_contains() {
+  local path="$1"
+  local unexpected="$2"
+  [[ -f "$path" ]] || return 1
+  ! grep -Fq -- "$unexpected" "$path"
+}
+
+assert_symlink_target() {
+  local path="$1"
+  local expected="$2"
+  [[ -L "$path" ]] || return 1
+  [[ "$(readlink "$path")" == "$expected" ]]
+}
+
+assert_no_dangling_symlinks() {
+  local root="$1"
+  local dangling
+
+  dangling="$(find "$root" -maxdepth 1 -type l ! -exec test -e {} \; -print)"
+  [[ -z "$dangling" ]]
+}
+
+assert_command_output_contains() {
+  local output="$1"
+  local expected="$2"
+  grep -Fq "$expected" <<<"$output"
+}
+
+assert_command_output_not_contains() {
+  local output="$1"
+  local unexpected="$2"
+  ! grep -Fq "$unexpected" <<<"$output"
+}
+
+find_backup_dir() {
+  local home="$1"
+  local skill="$2"
+  find "$home/.agents/skill-backups/ai-configs" -mindepth 2 -maxdepth 2 -type d -name "$skill" 2>/dev/null | sort | head -n 1
+}
+
+find_consumer_backup_dir() {
+  local home="$1"
+  local consumer="$2"
+  local skill="$3"
+  find "$home/.agents/skill-backups/ai-configs" -path "*/consumers/$consumer/$skill" -type d 2>/dev/null | sort | head -n 1
+}
+
+count_backup_dirs() {
+  local home="$1"
+  find "$home/.agents/skill-backups/ai-configs" -mindepth 2 -type d 2>/dev/null | wc -l | tr -d ' '
+}
+
+assert_shared_skill_install_state() {
+  local home="$1"
+  local backup_dir
+  local claude_backup_dir
+  local opencode_backup_dir
+
+  [[ -d "$home/.agents/skills" ]] || return 1
+  [[ -f "$home/.agents/skills/external-skill/SKILL.md" ]] || return 1
+  assert_file_contains "$home/.agents/skills/external-skill/SKILL.md" 'external' || return 1
+
+  backup_dir="$(find_backup_dir "$home" linear)"
+  [[ -n "$backup_dir" ]] || return 1
+  [[ -f "$backup_dir/SKILL.md" ]] || return 1
+  assert_file_contains "$backup_dir/SKILL.md" 'foreign-linear' || return 1
+
+  [[ -f "$home/.agents/skills/linear/.ai-configs-managed.json" ]] || return 1
+  assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"repo": "ai-configs"' || return 1
+  assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"source": "skills/linear"' || return 1
+  assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"managed": true' || return 1
+
+  [[ -d "$home/.claude/skills/custom-local" ]] || return 1
+  [[ -d "$home/.config/opencode/skills/custom-local" ]] || return 1
+
+  claude_backup_dir="$(find_consumer_backup_dir "$home" claude linear)"
+  [[ -n "$claude_backup_dir" ]] || return 1
+  assert_file_contains "$claude_backup_dir/SKILL.md" 'old-claude-linear' || return 1
+
+  opencode_backup_dir="$(find_consumer_backup_dir "$home" opencode cmd-debug)"
+  [[ -n "$opencode_backup_dir" ]] || return 1
+  assert_file_contains "$opencode_backup_dir/SKILL.md" 'foreign-opencode-cmd-debug' || return 1
+
+  assert_symlink_target "$home/.claude/skills/linear" "$home/.agents/skills/linear" || return 1
+  assert_symlink_target "$home/.config/opencode/skills/linear" "$home/.agents/skills/linear" || return 1
+
+  [[ ! -e "$home/.claude/skills/cmd-debug" ]] || return 1
+  [[ ! -e "$home/.config/opencode/skills/cmd-debug" ]] || return 1
+  [[ ! -e "$home/.pi/agent/skills/linear" ]] || return 1
+  [[ ! -e "$home/.pi/agent/skills/cmd-debug" ]] || return 1
+}
+
+run_installer() {
+  local home="$1"
+  shift
+  local fake_bin
+  fake_bin="$(create_fake_tool_bin "$home")"
+  HOME="$home" PATH="$fake_bin:$PATH" bash "$INSTALLER" "$@"
+}
+
+run_installer_capture() {
+  local home="$1"
+  local output_file="$2"
+  shift 2
+  local fake_bin
+  fake_bin="$(create_fake_tool_bin "$home")"
+  HOME="$home" PATH="$fake_bin:$PATH" bash "$INSTALLER" "$@" >"$output_file" 2>&1
+}
+
+test_skills_mode_installs_additively_and_is_idempotent() {
+  local home
+  local backup_count_before
+  local backup_count_after
+
+  home="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  run_installer "$home" --skills || return 1
+  assert_shared_skill_install_state "$home" || return 1
+
+  backup_count_before="$(count_backup_dirs "$home")"
+  run_installer "$home" --skills || return 1
+  assert_shared_skill_install_state "$home" || return 1
+  backup_count_after="$(count_backup_dirs "$home")"
+  [[ "$backup_count_before" == "$backup_count_after" ]]
+}
+
+test_default_mode_reuses_shared_sync_without_mutating_repo_root() {
+  local home
+  local target
+  local backup_count_before
+  local backup_count_after
+
+  home="$(new_tmp_dir)"
+  target="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  run_installer "$home" --skills || return 1
+  backup_count_before="$(count_backup_dirs "$home")"
+
+  run_installer "$home" --default "$target" || return 1
+  assert_shared_skill_install_state "$home" || return 1
+  backup_count_after="$(count_backup_dirs "$home")"
+  [[ "$backup_count_before" == "$backup_count_after" ]] || return 1
+
+  [[ -d "$target/.claude" ]] || return 1
+  [[ -d "$target/.codex" ]] || return 1
+  [[ -d "$target/.gemini" ]] || return 1
+}
+
+test_single_surface_modes_reuse_shared_sync() {
+  local home
+  local target
+
+  home="$(new_tmp_dir)"
+  target="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+  run_installer "$home" --claude "$target" || return 1
+  [[ -d "$home/.agents/skills" ]] || return 1
+  assert_symlink_target "$home/.claude/skills/linear" "$home/.agents/skills/linear" || return 1
+
+  home="$(new_tmp_dir)"
+  target="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+  run_installer "$home" --opencode "$target" || return 1
+  [[ -d "$home/.agents/skills" ]] || return 1
+  assert_symlink_target "$home/.config/opencode/skills/linear" "$home/.agents/skills/linear" || return 1
+  [[ ! -e "$home/.config/opencode/skills/cmd-debug" ]] || return 1
+
+  home="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+  run_installer "$home" --pi || return 1
+  [[ -d "$home/.agents/skills" ]] || return 1
+  [[ ! -e "$home/.pi/agent/skills/linear" ]] || return 1
+  [[ ! -e "$home/.pi/agent/skills/cmd-debug" ]] || return 1
+
+  home="$(new_tmp_dir)"
+  target="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+  run_installer "$home" --omp "$target" || return 1
+  [[ -d "$home/.agents/skills" ]] || return 1
+  [[ ! -e "$home/.omp/agent/skills" ]] || return 1
+}
+
+test_failpoint_after_backup_keeps_destination_recoverable() {
+  local home
+  local output_file
+  local backup_dir
+
+  home="$(new_tmp_dir)"
+  output_file="$(new_tmp_dir)/install.log"
+  seed_phase_two_home "$home"
+
+  if AI_CONFIGS_FAILPOINT='after-backup:linear' run_installer_capture "$home" "$output_file" --skills; then
+    return 1
+  fi
+
+  backup_dir="$(find_backup_dir "$home" linear)"
+  [[ -n "$backup_dir" ]] || return 1
+  assert_file_contains "$home/.agents/skills/linear/SKILL.md" 'foreign-linear' || return 1
+  assert_file_contains "$output_file" 'after-backup:linear' || return 1
+  assert_file_contains "$output_file" 'Restore the affected skill from' || return 1
+  assert_file_contains "$output_file" '.agents/skill-backups/ai-configs' || return 1
+}
+
+test_phase_three_docs_use_canonical_shared_skill_paths() {
+  assert_file_contains "AGENTS.md" '"skills": ["skills"]' || return 1
+  assert_file_not_contains "AGENTS.md" '"skills": [".agents/skills", "opencode/skills"]' || return 1
+
+  assert_file_contains "_omp/commands/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_file_contains "_pi/prompts/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_file_contains "opencode/commands/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_file_not_contains "_omp/commands/cmd:send-plan-to-doct.md" '$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_file_not_contains "_pi/prompts/cmd:send-plan-to-doct.md" '$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_file_not_contains "opencode/commands/cmd:send-plan-to-doct.md" '$HOME/.config/opencode/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+
+  assert_file_contains "skills/playwright-skill/SKILL.md" '~/.agents/skills/playwright-skill' || return 1
+  assert_file_not_contains "skills/playwright-skill/SKILL.md" 'Manual global: `~/.claude/skills/playwright-skill`' || return 1
+  assert_file_contains "skills/playwright-skill/API_REFERENCE.md" '~/.agents/skills/playwright-skill' || return 1
+  assert_file_not_contains "skills/playwright-skill/API_REFERENCE.md" 'cd ~/.claude/skills/playwright-skill' || return 1
+
+  assert_file_not_contains "OPENCODE_ONBOARDING.md" 'cp -r ./opencode/skills/playwright-skill/' || return 1
+  assert_file_not_contains "opencode/OPENCODE_ONBOARDING.md" 'cp -r ./opencode/skills/playwright-skill/' || return 1
+  assert_file_not_contains "opencode/QUICKSTART.md" 'cp -r opencode/skills/playwright-skill/' || return 1
+  assert_file_contains "OPENCODE_ONBOARDING.md" '~/.agents/skills/playwright-skill' || return 1
+  assert_file_contains "opencode/OPENCODE_ONBOARDING.md" '~/.agents/skills/playwright-skill' || return 1
+  assert_file_contains "opencode/QUICKSTART.md" '~/.agents/skills/playwright-skill' || return 1
+}
+
+test_phase_three_duplicate_skill_trees_are_removed() {
+  [[ ! -d ".agents/skills/dependency-selection" ]] || return 1
+  [[ ! -d "_pi/skills" ]] || return 1
+  [[ -d "opencode/skills" ]] || return 1
+  [[ -d "opencode/skills/opencode-conversation-reviewer" ]] || return 1
+  [[ -d "opencode/skills/template" ]] || return 1
+  [[ ! -d "opencode/skills/playwright-skill" ]] || return 1
+
+  local unexpected
+  unexpected="$(find opencode/skills -mindepth 1 -maxdepth 1 -type d ! -name 'opencode-conversation-reviewer' ! -name 'template' -print)"
+  [[ -z "$unexpected" ]]
+}
+
+test_phase_four_validation_proves_final_alignment() {
+  local home
+  local target
+  local claude_symlinks
+  local opencode_symlinks
+  local stale_tree_refs
+  local stale_install_instructions
+  local help_output
+
+  home="$(new_tmp_dir)"
+  target="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  run_installer "$home" --skills || return 1
+  run_installer "$home" --all "$target" || return 1
+
+  [[ -f "$home/.agents/skills/external-skill/SKILL.md" ]] || return 1
+  [[ -f "$home/.agents/skills/linear/SKILL.md" ]] || return 1
+  [[ -f "$home/.agents/skills/doct-document-ops/SKILL.md" ]] || return 1
+
+  claude_symlinks="$(find "$home/.claude/skills" -mindepth 1 -maxdepth 1 -type l | sort)"
+  opencode_symlinks="$(find "$home/.config/opencode/skills" -mindepth 1 -maxdepth 1 -type l | sort)"
+  assert_command_output_contains "$claude_symlinks" "$home/.claude/skills/linear" || return 1
+  assert_command_output_contains "$opencode_symlinks" "$home/.config/opencode/skills/linear" || return 1
+  assert_command_output_not_contains "$claude_symlinks" "$home/.claude/skills/cmd-debug" || return 1
+  assert_command_output_not_contains "$opencode_symlinks" "$home/.config/opencode/skills/cmd-debug" || return 1
+
+  assert_no_dangling_symlinks "$home/.claude/skills" || return 1
+  assert_no_dangling_symlinks "$home/.config/opencode/skills" || return 1
+
+  [[ ! -e "$home/.pi/agent/skills/linear" ]] || return 1
+  [[ ! -e "$home/.pi/agent/skills/doct-document-ops" ]] || return 1
+  [[ ! -e "$home/.pi/agent/skills/cmd-debug" ]] || return 1
+
+  help_output="$(HOME="$home" bash "$home/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh" --help)" || return 1
+  assert_command_output_contains "$help_output" 'Usage: publish-coding-plan.sh' || return 1
+  assert_command_output_contains "$help_output" 'Creates a new doct text document as a child of the user' || return 1
+
+  stale_tree_refs="$(git grep -n 'opencode/skills/\|_pi/skills/' README.md SETUP.md AGENTS.md _pi opencode _omp OPENCODE_ONBOARDING.md skills install.sh || true)"
+  assert_command_output_not_contains "$stale_tree_refs" 'cp -r ./opencode/skills' || return 1
+  assert_command_output_not_contains "$stale_tree_refs" '~/.config/opencode/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_command_output_not_contains "$stale_tree_refs" '$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+
+  stale_install_instructions="$(git grep -n 'cp -r .*skills' README.md SETUP.md AGENTS.md _pi opencode _omp OPENCODE_ONBOARDING.md skills install.sh || true)"
+  [[ -z "$stale_install_instructions" ]] || return 1
+
+  assert_file_not_contains "README.md" 'install to `~/.claude/skills`' || return 1
+  assert_file_not_contains "README.md" 'install to `~/.config/opencode/skills`' || return 1
+  assert_file_not_contains "README.md" 'install to `~/.pi/agent/skills`' || return 1
+  assert_file_not_contains "OPENCODE_ONBOARDING.md" 'install to `~/.config/opencode/skills`' || return 1
+  assert_file_not_contains "opencode/OPENCODE_ONBOARDING.md" 'install to `~/.config/opencode/skills`' || return 1
+
+  assert_file_contains "thoughts/plans/skill-consolidation-to-agents.md" '- [x] P4 - Validate migration behavior, preservation rules, consumer compatibility wiring, and final repo alignment.' || return 1
+  assert_file_contains "thoughts/plans/skill-consolidation-to-agents.md" '2026-04-02 (P4): Ran the final temp-home validation flow' || return 1
+}
+
+main() {
+  run_test test_skills_mode_installs_additively_and_is_idempotent
+  run_test test_default_mode_reuses_shared_sync_without_mutating_repo_root
+  run_test test_single_surface_modes_reuse_shared_sync
+  run_test test_failpoint_after_backup_keeps_destination_recoverable
+  run_test test_phase_three_docs_use_canonical_shared_skill_paths
+  run_test test_phase_three_duplicate_skill_trees_are_removed
+  run_test test_phase_four_validation_proves_final_alignment
+
+  printf '\nTests run: %s\n' "$TESTS_RUN"
+  printf 'Passed: %s\n' "$TESTS_PASSED"
+  printf 'Failed: %s\n' "$TESTS_FAILED"
+
+  [[ "$TESTS_FAILED" -eq 0 ]]
+}
+
+main "$@"
