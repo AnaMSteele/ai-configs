@@ -7,19 +7,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a Claude Code, Codex, and Gemini CLI configuration repository containing:
 
 ### Configuration Directories (Source of Truth)
-- **claude/**: Claude Code configuration
+- **_claude/**: Claude Code configuration
   - `agents/` - Agent definitions for specialized tasks
   - `commands/` - Slash commands for task processing and code management
-  - `scripts/` - Helper scripts for documentation and utilities
   - `settings.local.json` - Claude Code project settings
-- **gemini/**: Gemini CLI configuration
+- **_gemini/**: Gemini CLI configuration
   - `commands/` - Gemini commands (TOML)
   - `GEMINI.template.md` - Gemini context template
-- **codex/**: Codex configuration
-  - `prompts/` - Codex prompts (includes all claude commands + codex-specific prompts)
-  - `scripts/` - Shared utility scripts
+- **_codex/**: Codex configuration
+  - `prompts/` - Codex prompts
   - `config.toml` - Codex configuration template
   - `mcp-servers.toml` - MCP server definitions
+- **scripts/**: Shared helper scripts fanned out into installed runtime locations
 
 ### Installation Scripts
 - **install.sh**: Install and update configurations (auto-detects existing installations)
@@ -30,16 +29,16 @@ Install configurations to any project using:
 
 ```bash
 # Install Claude Code
-bash /path/to/adn-claude-configs/install.sh --claude
+bash /path/to/ai-configs/install.sh --claude
 
 # Install Gemini CLI
-bash /path/to/adn-claude-configs/install.sh --gemini
+bash /path/to/ai-configs/install.sh --gemini
 
 # Install Codex
-bash /path/to/adn-claude-configs/install.sh --codex
+bash /path/to/ai-configs/install.sh --codex
 
 # Install everything
-bash /path/to/adn-claude-configs/install.sh --all
+bash /path/to/ai-configs/install.sh --all
 ```
 
 This copies the appropriate configuration to `.claude/`, `.gemini/`, and/or `.codex/` directories.
@@ -50,7 +49,7 @@ To sync the latest changes from this repository, simply run the install script a
 
 ```bash
 cd /path/to/your/project
-bash /path/to/adn-claude-configs/install.sh --all
+bash /path/to/ai-configs/install.sh --all
 ```
 
 The install script auto-detects existing installations and:
@@ -278,7 +277,7 @@ All agents reference CLAUDE.md for:
 
 ## MCP Server Configuration
 
-MCP servers are pre-configured in `codex/mcp-servers.toml`:
+MCP servers are pre-configured in `_codex/mcp-servers.toml`:
 
 - **Playwright**: Browser automation and testing
 - **Context7**: Up-to-date library documentation fetching (used by `/doc:fetch` and spec creation)
@@ -405,8 +404,8 @@ ltui issues --help
 
 To keep installed configurations up-to-date:
 
-1. **Update source**: Edit files in `claude/` or `codex/` directories in this repository
+1. **Update source**: Edit files in `_claude/`, `_codex/`, `_gemini/`, `_pi/`, `_omp/`, or `_opencode/` as appropriate
 2. **Sync to projects**: Run `bash install.sh --all` in target projects
 3. **Preserve settings**: Local settings files are never overwritten
 
-The `claude/` and `codex/` directories are the source of truth. Changes here are distributed via the install script.
+The underscored tool directories (`_claude/`, `_codex/`, `_gemini/`, `_pi/`, `_omp/`, `_opencode/`) are the source of truth. Installed dot-directories are runtime artifacts and should not be committed.

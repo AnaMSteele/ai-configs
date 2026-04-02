@@ -55,18 +55,17 @@ Configure profiles for different Linear workspaces. Agents can work across perso
 git clone <repository-url>
 cd ltui
 
-# Run the installer (builds, links globally, and installs Claude Code skill)
+# Run the installer (builds and links globally)
 ./install.sh
 ```
 
 This will:
 1. Install dependencies and build the project
 2. Link `ltui` globally so it's available system-wide
-3. Install the Claude Code skill to `~/.claude/skills/ltui.md`
 
 After installation:
 - Run `ltui --help` from anywhere to use the CLI
-- Claude Code will automatically understand how to use ltui when working with Linear
+- Configure your agent environment separately if you want agent-specific ltui guidance
 
 ### Manual Install
 
@@ -86,10 +85,6 @@ bun run build
 # Link globally for system-wide access
 bun link
 # or: npm link
-
-# Optionally install Claude Code skill
-mkdir -p ~/.claude/skills
-cp claude/skills/ltui.md ~/.claude/skills/ltui.md
 ```
 
 After linking, `ltui` will be available globally. Otherwise, use `./bin/ltui` from the project directory.
@@ -380,31 +375,7 @@ Tests use a mock Linear client (`src/test-utils/mockLinearClient.ts`) to ensure 
 ## Agent Integration Tips
 
 ### For Claude Code
-`ltui` includes a built-in skill for Claude Code that teaches the AI assistant how to effectively use ltui to interact with Linear.
-
-**Installation:**
-The skill is automatically installed when you run `./install.sh`, or manually:
-```bash
-mkdir -p ~/.claude/skills
-cp claude/skills/ltui.md ~/.claude/skills/ltui.md
-```
-
-**What the skill provides:**
-- Complete command reference and examples
-- Best practices for token-efficient usage
-- Common workflows (creating issues, updating status, managing relationships)
-- Output format parsing guidance
-- Error handling patterns
-
-Once installed, Claude Code will automatically understand how to:
-- Check Linear issues, projects, and teams
-- Create and update issues with proper formatting
-- Add comments and links to issues
-- Manage issue relationships and labels
-- Parse ltui output efficiently
-
-**Usage:**
-Just ask Claude naturally: "Check my Linear issues" or "Create a Linear issue for this bug" and Claude will use ltui automatically.
+Use the main `ai-configs` repo install flow for Claude-specific guidance and skills. `ltui` itself is just the CLI binary; agent-specific usage docs should live in the surrounding agent config system.
 
 ### For MCP Servers
 If you're setting this up for an MCP server integration:
@@ -421,7 +392,7 @@ Same principles apply:
 - Use per-project `.ltui.json` for automatic defaults
 - Prefer TSV output for parsing
 - Handle structured errors programmatically
-- Consider copying `claude/skills/ltui.md` to your agent's skill/documentation directory
+- Document recommended ltui usage in your agent's own skill or prompt system
 
 ## Project Structure
 
@@ -445,20 +416,14 @@ ltui/
 │       ├── cycles.ts     # Cycle queries
 │       ├── labels.ts     # Label management
 │       └── users.ts      # User queries
-├── claude/
-│   └── skills/
-│       └── ltui.md       # Claude Code skill definition
 ├── install.sh            # Installation script
 ├── SPEC.md               # Full technical specification
-├── AGENTS.md             # Development guidelines
-├── CLAUDE.md             # Instructions for Claude Code
 └── README.md             # This file
 ```
 
 ## Additional Resources
 
 - **[SPEC.md](./SPEC.md)** — Complete technical specification with API contracts
-- **[AGENTS.md](./AGENTS.md)** — Development and testing guidelines
 - **[Linear API Documentation](https://developers.linear.app/)** — Official Linear API reference
 
 ## License
@@ -467,7 +432,7 @@ ltui/
 
 ## Contributing
 
-Contributions welcome! Please read [AGENTS.md](./AGENTS.md) for development guidelines and testing requirements.
+Contributions welcome. Use `SPEC.md` plus the package scripts and tests in `tools/ltui/` as the development reference surface.
 
 ---
 

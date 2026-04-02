@@ -174,7 +174,7 @@ PY
 ensure_gemini_personas() {
     # Ensure GEMINI.md has the required Personas section
     local project_root="$1"
-    local template_path="$REPO_ROOT/gemini/GEMINI.template.md"
+    local template_path="$REPO_ROOT/_gemini/GEMINI.template.md"
     local gemini_path="$project_root/GEMINI.md"
     local gemini_created=false
 
@@ -549,11 +549,7 @@ sync_codex_prompts() {
         rm -rf "$destination/_lib"
     fi
 
-    if [ -d "$REPO_ROOT/codex/prompts/_lib" ]; then
-        cp -R "$REPO_ROOT/codex/prompts/_lib" "$destination/"
-    fi
-
-    for prompt in "$REPO_ROOT"/codex/prompts/*.md; do
+    for prompt in "$REPO_ROOT"/_codex/prompts/*.md; do
         [ -e "$prompt" ] || continue
         cp "$prompt" "$destination/"
     done
@@ -585,7 +581,7 @@ install_claude() {
     if [ -d "$target/agents" ]; then
         rm -rf "$target/agents"
     fi
-    cp -r "$REPO_ROOT/claude/agents" "$target/"
+    cp -r "$REPO_ROOT/_claude/agents" "$target/"
 
     # Update commands (remove first to ensure clean state)
     if [ -d "$target/commands" ]; then
@@ -608,21 +604,21 @@ install_claude() {
     if [ -d "$target/commands" ]; then
         rm -rf "$target/commands"
     fi
-    cp -r "$REPO_ROOT/claude/commands" "$target/"
+    cp -r "$REPO_ROOT/_claude/commands" "$target/"
 
     # Update scripts (remove first to ensure clean state)
     echo "  - Installing scripts..."
     if [ -d "$target/scripts" ]; then
         rm -rf "$target/scripts"
     fi
-    cp -r "$REPO_ROOT/claude/scripts" "$target/"
+    cp -r "$REPO_ROOT/scripts" "$target/"
 
     # Handle settings.local.json (preserve if exists)
     if [ -f "$target/settings.local.json" ]; then
         echo -e "  ${YELLOW}✓ Preserved existing settings.local.json${NC}"
     else
         echo "  - Installing settings.local.json..."
-        cp "$REPO_ROOT/claude/settings.local.json" "$target/"
+        cp "$REPO_ROOT/_claude/settings.local.json" "$target/"
     fi
 
     # Setup thoughts directory structure and migrate legacy directories
@@ -1132,22 +1128,22 @@ install_codex() {
 
     echo "  - Syncing Codex scripts globally..."
     rm -rf "$global_codex_dir/scripts"
-    cp -r "$REPO_ROOT/codex/scripts" "$global_codex_dir/"
+    cp -r "$REPO_ROOT/scripts" "$global_codex_dir/"
 
     # Merge config.toml if it exists
     if [ -f "$target/config.toml" ]; then
         echo -e "  ${YELLOW}- config.toml already exists${NC}"
-        echo "  - Review $REPO_ROOT/codex/config.toml for settings to merge"
+        echo "  - Review $REPO_ROOT/_codex/config.toml for settings to merge"
     else
         echo "  - Installing config.toml..."
-        cp "$REPO_ROOT/codex/config.toml" "$target/"
+        cp "$REPO_ROOT/_codex/config.toml" "$target/"
     fi
 
     ensure_codex_cli_flags "$target"
 
     # Copy MCP servers configuration
     echo "  - Installing mcp-servers.toml..."
-    cp "$REPO_ROOT/codex/mcp-servers.toml" "$target/"
+    cp "$REPO_ROOT/_codex/mcp-servers.toml" "$target/"
 
     if [ "$is_update" = true ]; then
         echo -e "${GREEN}✓ Codex update complete${NC}"
@@ -1292,22 +1288,22 @@ install_opencode() {
     # Install prompts
     echo "  - Installing OpenCode prompts..."
     mkdir -p "$opencode_prompts_dir"
-    cp "$REPO_ROOT/opencode/prompts/glm-reasoning.md" "$opencode_prompts_dir/" 2>/dev/null || true
+    cp "$REPO_ROOT/_opencode/prompts/glm-reasoning.md" "$opencode_prompts_dir/" 2>/dev/null || true
 
     # Install commands (authoritative global location)
     echo "  - Installing OpenCode commands to ~/.config/opencode/commands..."
     rm -rf "$opencode_commands_dir"
     mkdir -p "$opencode_commands_dir"
-    if [ -d "$REPO_ROOT/opencode/commands" ]; then
-        cp -r "$REPO_ROOT/opencode/commands/"* "$opencode_commands_dir/"
+    if [ -d "$REPO_ROOT/_opencode/commands" ]; then
+        cp -r "$REPO_ROOT/_opencode/commands/"* "$opencode_commands_dir/"
     fi
 
     # Install agents
     echo "  - Installing OpenCode agents to ~/.config/opencode/agents..."
     rm -rf "$opencode_agents_dir"
     mkdir -p "$opencode_agents_dir"
-    if [ -d "$REPO_ROOT/opencode/agents" ]; then
-        cp -r "$REPO_ROOT/opencode/agents/"* "$opencode_agents_dir/"
+    if [ -d "$REPO_ROOT/_opencode/agents" ]; then
+        cp -r "$REPO_ROOT/_opencode/agents/"* "$opencode_agents_dir/"
     fi
 
     # Shared skills are managed centrally via ~/.agents/skills.
@@ -1316,7 +1312,7 @@ install_opencode() {
 
     # Install documentation to home config (not the repo)
     echo "  - Installing OpenCode documentation..."
-    cp "$REPO_ROOT/opencode/OPENCODE_ONBOARDING.md" "$opencode_config_dir/OPENCODE_ONBOARDING.md" 2>/dev/null || true
+    cp "$REPO_ROOT/_opencode/OPENCODE_ONBOARDING.md" "$opencode_config_dir/OPENCODE_ONBOARDING.md" 2>/dev/null || true
 
     if [ "$is_update" = true ]; then
         echo -e "${GREEN}✓ OpenCode update complete${NC}"
@@ -1325,7 +1321,7 @@ install_opencode() {
     fi
     echo ""
     echo "Note: OpenCode configuration file opencode.json is not auto-installed"
-    echo "      Copy opencode/config-template.json to your repo root and customize as needed"
+    echo "      Copy _opencode/config-template.json to your repo root and customize as needed"
     echo "      Commands, agents, and prompts are installed to $HOME/.config/opencode"
     echo "      Compatible shared skills are linked from ~/.config/opencode/skills to ~/.agents/skills"
     echo "      Documentation installed to $HOME/.config/opencode/OPENCODE_ONBOARDING.md"
@@ -1362,7 +1358,14 @@ install_gemini() {
         rm -rf "$target/commands"
     fi
     mkdir -p "$target/commands"
-    cp -r "$REPO_ROOT/gemini/commands/"* "$target/commands/"
+    cp -r "$REPO_ROOT/_gemini/commands/"* "$target/commands/"
+
+    # Install shared scripts used by Gemini command prompts
+    echo "  - Installing scripts..."
+    if [ -d "$target/scripts" ]; then
+        rm -rf "$target/scripts"
+    fi
+    cp -r "$REPO_ROOT/scripts" "$target/"
 
     # Setup thoughts directory structure
     if [ "$target_root" != "$HOME" ]; then

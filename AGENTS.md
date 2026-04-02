@@ -1,12 +1,12 @@
 # Agent Catalog
 
-Current roster of bespoke Claude and Codex agents defined in this repository. All briefs live under `claude/agents/`, and templates for new roles live in `claude/agents/templates/` (if applicable).
+Current roster of bespoke Claude and Codex agents defined in this repository. All briefs live under `_claude/agents/`, and templates for new roles live in `_claude/agents/templates/` (if applicable).
 
 ## Implementation & Architecture
-- `developer` (sonnet; `claude/agents/developer.md`) — Implements specs with tests and enforces zero linting violations.
-- `developer` (sonnet; `opencode/agents/developer.md`) — Architectural specification implementation with tests and zero linting violations.
-- `developer-fidelity` (sonnet; `claude/agents/developer-fidelity.md`) — Implements specifications with absolute fidelity—no extra tests, features, or safeguards.
-- `simplify-planner` (opus; `claude/agents/simplify-planner.md`) — Refactor planning specialist who produces cleanup plans that preserve existing behaviour.
+- `developer` (sonnet; `_claude/agents/developer.md`) — Implements specs with tests and enforces zero linting violations.
+- `developer` (sonnet; `_opencode/agents/developer.md`) — Architectural specification implementation with tests and zero linting violations.
+- `developer-fidelity` (sonnet; `_claude/agents/developer-fidelity.md`) — Implements specifications with absolute fidelity—no extra tests, features, or safeguards.
+- `simplify-planner` (opus; `_claude/agents/simplify-planner.md`) — Refactor planning specialist who produces cleanup plans that preserve existing behaviour.
 
 ## Tool Selection Priority (Codex Environment)
 
@@ -26,35 +26,35 @@ When agents run within Codex, they MUST prioritize native Codex tools over MCP s
 **Rationale:** MCP tool wrapping introduces unnecessary latency and may produce inconsistent results. Native Codex tools are optimized for the local filesystem and provide superior performance.
 
 ## Review & Fidelity Safeguards
-- `quality-reviewer` (sonnet; `opencode/agents/quality-reviewer.md`) — Reviews code for real issues (security, data loss, performance) with measurable impact focus.
-- `quality-reviewer` (inherits workspace default model; `claude/agents/quality-reviewer.md`) — Production safety review covering security, data loss, regressions, and performance.
-- `quality-reviewer-fidelity` (sonnet; `claude/agents/quality-reviewer-fidelity.md`) — Ensures code matches specification requirements exactly with no scope expansion.
-- `fidelity-reviewer` (opus; `claude/agents/fidelity-reviewer.md`) — Compares generated task lists against source specifications and researches discrepancies.
+- `quality-reviewer` (sonnet; `_opencode/agents/quality-reviewer.md`) — Reviews code for real issues (security, data loss, performance) with measurable impact focus.
+- `quality-reviewer` (inherits workspace default model; `_claude/agents/quality-reviewer.md`) — Production safety review covering security, data loss, regressions, and performance.
+- `quality-reviewer-fidelity` (sonnet; `_claude/agents/quality-reviewer-fidelity.md`) — Ensures code matches specification requirements exactly with no scope expansion.
+- `fidelity-reviewer` (opus; `_claude/agents/fidelity-reviewer.md`) — Compares generated task lists against source specifications and researches discrepancies.
 
 ## Debugging Support
-- `debugger` (sonnet; `claude/agents/debugger.md`) — Evidence-driven debugger who gathers logs, forms hypotheses, and recommends fixes without modifying production code.
+- `debugger` (sonnet; `_claude/agents/debugger.md`) — Evidence-driven debugger who gathers logs, forms hypotheses, and recommends fixes without modifying production code.
 
 ## Documentation
-- `technical-writer` (sonnet; `claude/agents/technical-writer.md`) — Produces concise post-implementation documentation with tight token limits.
+- `technical-writer` (sonnet; `_claude/agents/technical-writer.md`) — Produces concise post-implementation documentation with tight token limits.
 
 ## Utility Agents
 These agents are typically invoked by other agents or for specific tool-use tasks:
 
-- `codebase-analyzer` (`claude/agents/codebase-analyzer.md`) — Explains how code works, traces execution paths and data flows.
-- `codebase-locator` (`claude/agents/codebase-locator.md`) — Finds where things are in the codebase.
-- `codebase-pattern-finder` (`claude/agents/codebase-pattern-finder.md`) — Identifies architectural patterns and conventions.
-- `explore` (temperature 0.1; `opencode/agents/explore.md`) — Fast code exploration using Serena tools for search and analysis.
-- `multi-reviewer` (glm-4.7; `opencode/agents/multi-reviewer.md`) — Reviews specifications and writes structured feedback to a file.
-- `playwright-runner` (`opencode/agents/playwright-runner.md`) — Runs E2E tests in isolated PTY sessions with real-time failure streaming.
-- `thoughts-analyzer` (`claude/agents/thoughts-analyzer.md`) — Synthesizes context from plans, specs, and research in `thoughts/`.
-- `thoughts-locator` (`claude/agents/thoughts-locator.md`) — Finds relevant documentation within `thoughts/`.
-- `web-search-researcher` (`claude/agents/web-search-researcher.md`) — Finds external information using web search.
-- `worktree-creator` (`claude/agents/worktree-creator.md`) — Manages git worktrees for parallel execution.
-- `worktree-creator` (deepinfra/MiniMaxAI/MiniMax-M2.1; `opencode/agents/worktree-creator.md`) — Creates git worktrees for Linear issues.
+- `codebase-analyzer` (`_claude/agents/codebase-analyzer.md`) — Explains how code works, traces execution paths and data flows.
+- `codebase-locator` (`_claude/agents/codebase-locator.md`) — Finds where things are in the codebase.
+- `codebase-pattern-finder` (`_claude/agents/codebase-pattern-finder.md`) — Identifies architectural patterns and conventions.
+- `explore` (temperature 0.1; `_opencode/agents/explore.md`) — Fast code exploration using Serena tools for search and analysis.
+- `multi-reviewer` (glm-4.7; `_opencode/agents/multi-reviewer.md`) — Reviews specifications and writes structured feedback to a file.
+- `playwright-runner` (`_opencode/agents/playwright-runner.md`) — Runs E2E tests in isolated PTY sessions with real-time failure streaming.
+- `thoughts-analyzer` (`_claude/agents/thoughts-analyzer.md`) — Synthesizes context from plans, specs, and research in `thoughts/`.
+- `thoughts-locator` (`_claude/agents/thoughts-locator.md`) — Finds relevant documentation within `thoughts/`.
+- `web-search-researcher` (`_claude/agents/web-search-researcher.md`) — Finds external information using web search.
+- `worktree-creator` (`_claude/agents/worktree-creator.md`) — Manages git worktrees for parallel execution.
+- `worktree-creator` (deepinfra/MiniMaxAI/MiniMax-M2.1; `_opencode/agents/worktree-creator.md`) — Creates git worktrees for Linear issues.
 
 ---
 
-When adding new agents, create the brief in `claude/agents/` and update this catalog so downstream installations discover the new capability.
+When adding new agents, create the brief in `_claude/agents/` and update this catalog so downstream installations discover the new capability.
 
 ## Fidelity & Execution House Rules (Template for Project Repos)
 

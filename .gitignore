@@ -1,5 +1,14 @@
-# History/configuration directories
+# Local runtime / generated config trees
+.agent/
+.agents/
+.claude/
+.codex/
+.crush/
+.gemini/
 .history/
+.opencode/
+.pi/
+.ruff_cache/
 
 # OS generated files
 .DS_Store
@@ -22,13 +31,14 @@ Thumbs.db
 *.temp
 *.log
 
-# Node.js (if applicable)
+# Node.js / package artifacts
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+_pi/packages/*/node_modules/
 
-# Python (if applicable)
+# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -45,14 +55,6 @@ venv.bak/
 .env.local
 .env.*.local
 
-# Claude Devcontainer configs
-.claude/agents/
-.claude/commands/
-.claude/scripts/
-
-# OpenCode local artifacts (do not commit)
-.opencode/
-
 # Tool build artifacts
 tools/*/dist/
 tools/*/node_modules/
@@ -61,4 +63,4 @@ tools/*/.bun/
 .osgrep
 
 # Nested git repos (clones, not submodules)
-codex/pi-rlm/
+_codex/pi-rlm/

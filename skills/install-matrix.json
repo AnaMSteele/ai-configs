@@ -10,7 +10,7 @@
       ],
       "canonicalSource": "skills/algorithmic-art",
       "legacySources": [
-        "opencode/skills/algorithmic-art"
+        "_opencode/skills/algorithmic-art"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -23,7 +23,7 @@
       ],
       "canonicalSource": "skills/brand-guidelines",
       "legacySources": [
-        "opencode/skills/brand-guidelines"
+        "_opencode/skills/brand-guidelines"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -36,7 +36,7 @@
       ],
       "canonicalSource": "skills/canvas-design",
       "legacySources": [
-        "opencode/skills/canvas-design"
+        "_opencode/skills/canvas-design"
       ],
       "notes": "Promoted from the OpenCode skill tree with bundled font assets."
     },
@@ -49,7 +49,7 @@
       ],
       "canonicalSource": "skills/ccore",
       "legacySources": [
-        "opencode/skills/ccore"
+        "_opencode/skills/ccore"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -175,7 +175,7 @@
       ],
       "canonicalSource": "skills/design-skill",
       "legacySources": [
-        "opencode/skills/design-skill"
+        "_opencode/skills/design-skill"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -199,7 +199,7 @@
       ],
       "canonicalSource": "skills/doc-coauthoring",
       "legacySources": [
-        "opencode/skills/doc-coauthoring"
+        "_opencode/skills/doc-coauthoring"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -212,7 +212,7 @@
       ],
       "canonicalSource": "skills/doct-document-ops",
       "legacySources": [
-        "opencode/skills/doct-document-ops",
+        "_opencode/skills/doct-document-ops",
         "_pi/skills/doct-document-ops"
       ],
       "notes": "Canonicalized from identical OpenCode and Pi copies; retains scripts and references for shared-path use."
@@ -226,7 +226,7 @@
       ],
       "canonicalSource": "skills/docx",
       "legacySources": [
-        "opencode/skills/docx"
+        "_opencode/skills/docx"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -239,7 +239,7 @@
       ],
       "canonicalSource": "skills/frontend-design",
       "legacySources": [
-        "opencode/skills/frontend-design"
+        "_opencode/skills/frontend-design"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -252,7 +252,7 @@
       ],
       "canonicalSource": "skills/internal-comms",
       "legacySources": [
-        "opencode/skills/internal-comms"
+        "_opencode/skills/internal-comms"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -266,7 +266,7 @@
       "canonicalSource": "skills/linear",
       "legacySources": [
         "skills/linear",
-        "opencode/skills/linear"
+        "_opencode/skills/linear"
       ],
       "notes": "Existing canonical skill retained; OpenCode copy is identical."
     },
@@ -279,7 +279,7 @@
       ],
       "canonicalSource": "skills/mcp-builder",
       "legacySources": [
-        "opencode/skills/mcp-builder"
+        "_opencode/skills/mcp-builder"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -292,7 +292,7 @@
       ],
       "canonicalSource": "skills/pdf",
       "legacySources": [
-        "opencode/skills/pdf"
+        "_opencode/skills/pdf"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -305,7 +305,7 @@
       ],
       "canonicalSource": "skills/planning-workflow",
       "legacySources": [
-        "opencode/skills/planning-workflow"
+        "_opencode/skills/planning-workflow"
       ],
       "notes": "Promoted from the OpenCode skill tree as shared planning doctrine."
     },
@@ -318,7 +318,7 @@
       ],
       "canonicalSource": "skills/playwright-skill",
       "legacySources": [
-        "opencode/skills/playwright-skill"
+        "_opencode/skills/playwright-skill"
       ],
       "notes": "Promoted from the OpenCode skill tree; excludes transient .temp-execution artifacts from the canonical payload."
     },
@@ -331,7 +331,7 @@
       ],
       "canonicalSource": "skills/pptx",
       "legacySources": [
-        "opencode/skills/pptx"
+        "_opencode/skills/pptx"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -345,7 +345,7 @@
       "canonicalSource": "skills/product-principles",
       "legacySources": [
         "skills/product-principles",
-        "opencode/skills/product-principles",
+        "_opencode/skills/product-principles",
         "_pi/skills/product-principles"
       ],
       "notes": "Existing canonical skill retained; OpenCode and Pi copies are identical."
@@ -381,7 +381,7 @@
       ],
       "canonicalSource": "skills/repo-agents-bootstrap",
       "legacySources": [
-        "opencode/skills/repo-agents-bootstrap"
+        "_opencode/skills/repo-agents-bootstrap"
       ],
       "notes": "Promoted from the OpenCode skill tree as shared repo bootstrap guidance."
     },
@@ -416,7 +416,7 @@
       ],
       "canonicalSource": "skills/rust-engineer",
       "legacySources": [
-        "opencode/skills/rust-engineer"
+        "_opencode/skills/rust-engineer"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -442,7 +442,7 @@
       ],
       "canonicalSource": "skills/skill-creator",
       "legacySources": [
-        "opencode/skills/skill-creator"
+        "_opencode/skills/skill-creator"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -455,7 +455,7 @@
       ],
       "canonicalSource": "skills/slack-gif-creator",
       "legacySources": [
-        "opencode/skills/slack-gif-creator"
+        "_opencode/skills/slack-gif-creator"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -468,7 +468,7 @@
       ],
       "canonicalSource": "skills/theme-factory",
       "legacySources": [
-        "opencode/skills/theme-factory"
+        "_opencode/skills/theme-factory"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -481,7 +481,7 @@
       ],
       "canonicalSource": "skills/vercel-react-best-practices",
       "legacySources": [
-        "opencode/skills/vercel-react-best-practices"
+        "_opencode/skills/vercel-react-best-practices"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -494,7 +494,7 @@
       ],
       "canonicalSource": "skills/web-artifacts-builder",
       "legacySources": [
-        "opencode/skills/web-artifacts-builder"
+        "_opencode/skills/web-artifacts-builder"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -507,7 +507,7 @@
       ],
       "canonicalSource": "skills/web-design-guidelines",
       "legacySources": [
-        "opencode/skills/web-design-guidelines"
+        "_opencode/skills/web-design-guidelines"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -520,7 +520,7 @@
       ],
       "canonicalSource": "skills/webapp-testing",
       "legacySources": [
-        "opencode/skills/webapp-testing"
+        "_opencode/skills/webapp-testing"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     },
@@ -533,7 +533,7 @@
       ],
       "canonicalSource": "skills/xlsx",
       "legacySources": [
-        "opencode/skills/xlsx"
+        "_opencode/skills/xlsx"
       ],
       "notes": "Promoted from the OpenCode skill tree."
     }
@@ -544,13 +544,13 @@
       "allowedConsumers": [
         "opencode"
       ],
-      "sourcePath": "opencode/skills/opencode-conversation-reviewer",
+      "sourcePath": "_opencode/skills/opencode-conversation-reviewer",
       "notes": "Excluded from shared promotion per locked decision; depends on opencode db."
     },
     "template": {
       "class": "repo-local-only",
       "allowedConsumers": [],
-      "sourcePath": "opencode/skills/template",
+      "sourcePath": "_opencode/skills/template",
       "notes": "Excluded from shared promotion per locked decision; scaffold placeholder only."
     }
   }

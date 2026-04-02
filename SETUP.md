@@ -1,205 +1,103 @@
-# Quick Setup Guide
+# Quick Setup
 
-This guide provides quick installation instructions for the Claude Code, Codex, Gemini CLI, Oh My Pi (OMP), Pi, and OpenCode configuration system.
-
-## Installation
-
-### Option 1: Project-Level Installation (Recommended)
-
-Install configurations to a specific project:
+## Recommended project install
 
 ```bash
-# Clone the repository (if not already done)
-git clone <repository-url> ~/adn-claude-configs
-cd ~/adn-claude-configs
-
-# Install Python dependencies for doc:fetch commands
+git clone <repository-url> ~/ai-configs
+cd ~/ai-configs
 pip3 install -r requirements.txt
 
-# Navigate to your project
 cd /path/to/your/project
-
-# Install All Tools (Claude, Gemini, Codex, OMP, Pi, OpenCode, shared skills)
-bash ~/adn-claude-configs/install.sh --all
-
-# Or install individually:
-# bash ~/adn-claude-configs/install.sh --claude
-# bash ~/adn-claude-configs/install.sh --gemini
-# bash ~/adn-claude-configs/install.sh --codex
-# bash ~/adn-claude-configs/install.sh --omp
-# bash ~/adn-claude-configs/install.sh --opencode
-# bash ~/adn-claude-configs/install.sh --pi
+bash ~/ai-configs/install.sh --all
 ```
 
-This creates `.claude/`, `.gemini/`, and `.codex/` directories in your project, installs OMP config to `~/.omp/agent`, installs OpenCode config to `~/.config/opencode`, installs Pi config to `~/.pi/agent`, copies the shared repo-root `APPEND_SYSTEM.md` into both `~/.omp/agent/APPEND_SYSTEM.md` and `~/.pi/agent/APPEND_SYSTEM.md`, and syncs shared installable skills into `~/.agents/skills`.
+This installs the project-facing runtime directories as needed:
 
-### Option 2: Global Installation
+- `.claude/`
+- `.gemini/`
+- `.codex/`
 
-Install to your home directory for use across all projects:
+And global/home resources where those tools expect them:
+
+- `~/.omp/agent/`
+- `~/.pi/agent/`
+- `~/.config/opencode/`
+- `~/.agents/skills/`
+
+## Single-surface installs
 
 ```bash
-# Install to ~/.claude, ~/.gemini, ~/.codex, ~/.omp/agent, ~/.pi/agent, ~/.config/opencode,
-# and sync shared skills into ~/.agents/skills
-bash ~/adn-claude-configs/install.sh --all ~
+bash ~/ai-configs/install.sh --claude
+bash ~/ai-configs/install.sh --codex
+bash ~/ai-configs/install.sh --gemini
+bash ~/ai-configs/install.sh --omp
+bash ~/ai-configs/install.sh --pi
+bash ~/ai-configs/install.sh --opencode
+bash ~/ai-configs/install.sh --skills
+bash ~/ai-configs/install.sh --tools
 ```
 
-### Option 3: Development Setup (Symlinks)
-
-For developing and testing these configurations:
+## Global install
 
 ```bash
-# Clone the repository
-git clone <repository-url> ~/adn-claude-configs
-cd ~/adn-claude-configs
-
-# Create symlinks for local testing
-ln -sf ~/adn-claude-configs/claude .claude
-ln -sf ~/adn-claude-configs/gemini .gemini
+bash ~/ai-configs/install.sh --all ~
 ```
 
-## Updating Existing Installations
+## Updating
 
-Simply run the install script again - it auto-detects existing installations:
+Re-run the same install command:
 
 ```bash
-cd /path/to/your/project
-bash ~/adn-claude-configs/install.sh --all
+bash ~/ai-configs/install.sh --all
 ```
 
-The script will:
-- Update agents, commands/prompts, scripts, and shared skills (including OMP commands/agents plus Pi prompts, subagents, and extensions)
-- Refresh `~/.omp/agent/APPEND_SYSTEM.md` and `~/.pi/agent/APPEND_SYSTEM.md` from the repo-root `APPEND_SYSTEM.md`
-- Clean up legacy directory structures
-- Preserve your local settings files
+The installer refreshes managed resources while preserving local settings where supported.
+
+## Source vs runtime
+
+In this repo:
+
+- `_<tool>/` = committed source-of-truth config
+- `.<tool>/` = local runtime/install artifact
+
+Examples:
+- `_claude/` is repo source, `.claude/` is installed runtime
+- `_codex/` is repo source, `.codex/` is installed runtime
+- `_gemini/` is repo source, `.gemini/` is installed runtime
+
+Shared helper scripts live in repo-level `scripts/` and are copied into runtime locations by `install.sh`.
 
 ## Verification
 
-Test your installation:
+After install, sanity check the surfaces you care about:
 
 ```bash
-# In Claude Code or Gemini CLI, try running a command:
-/prd:1:create-prd
-
-# Or fetch documentation:
-/doc:fetch react
-
-# Verify agents are available:
-@developer-fidelity
-@quality-reviewer-fidelity
-@technical-writer
+ls .claude .gemini .codex 2>/dev/null
+ls ~/.omp/agent ~/.pi/agent ~/.config/opencode ~/.agents/skills 2>/dev/null
 ```
-
-## First Usage
-
-### PRD-Based Development
-
-1. **Create a PRD**:
-   ```bash
-   /prd:1:create-prd
-   ```
-
-2. **Generate task list**:
-   ```bash
-   /prd:2:gen-tasks @path/to/prd.md
-   ```
-
-3. **Process tasks** (creates branch automatically):
-   ```bash
-   /3:process-tasks @path/to/tasks.md
-   ```
-
-### Specification-Based Development
-
-1. **Create specification from research**:
-   ```bash
-   /spec:1:create-spec @research-notes.md
-   ```
-
-2. **Generate task list**:
-   ```bash
-   /spec:2:gen-tasks @path/to/spec.md
-   ```
-
-3. **Process tasks**:
-   ```bash
-   /3:process-tasks @path/to/tasks.md
-   ```
-
-## Command Reference
-
-### Workflow Commands
-- `/prd:1:create-prd` - Create Product Requirements Document
-- `/prd:2:gen-tasks` - Generate tasks from PRD
-- `/spec:1:create-spec` - Create specification from research
-- `/spec:2:gen-tasks` - Generate tasks from specification
-- `/3:process-tasks` - Process tasks (unified for both PRD and spec)
-
-### Documentation Commands
-- `/doc:fetch` - Fetch library/framework documentation
-- `/doc:fetch-batch` - Batch fetch multiple libraries
-- `/doc:update` - Update project documentation
-
-### Simplification Commands
-- `/simplify:create-plan` - Analyze code for simplification
-- `/simplify:process-plan` - Execute simplification plan
-
-### Git Utilities
-- `/commit-push` - Commit and push changes
-- `/create-pr` - Create pull request
-- `/start-linear-issue` - Start work on Linear issue
 
 ## Troubleshooting
 
-**Commands not found**:
-- Ensure installation completed successfully
-- Restart Claude Code
-- Check that `.claude/commands/` directory exists and contains `.md` files
+### Commands not showing up
+Re-run `install.sh`, then restart the relevant tool.
 
-**Agent not found**:
-- Verify agents are in `.claude/agents/` directory
-- Check agent file names match expected format
-- Restart Claude Code
-
-**Git branch error**:
-- Commands require working on a feature branch (not main)
-- Use `/3:process-tasks` which can create branches automatically
-
-**Legacy subdirectories**:
-- If you have old `cmd/`, `doc/`, `prd/`, `spec/` subdirectories, run the install script again
-- It will automatically flatten the structure
-
-**Documentation fetch errors**:
-- Ensure Python dependencies are installed: `pip3 install -r requirements.txt`
-- Check that `_lib/` directory exists in `.claude/commands/`
-
-## Advanced Usage
-
-### Autonomous Processing
-
-Process tasks without confirmation prompts:
+### Codex prompts missing
+Check:
 
 ```bash
-/3:process-tasks @path/to/tasks.md NOSUBCONF
+ls ~/.codex/prompts
 ```
 
-### Batch Documentation Fetching
-
-Fetch multiple libraries at once:
+### Shared skills missing
+Check:
 
 ```bash
-/doc:fetch-batch --file README.md --section "Dependencies"
+ls ~/.agents/skills
 ```
 
-### Fidelity-Preserving Workflow
+### OpenCode onboarding
+Use:
 
-The system uses specialized agents for exact scope implementation:
-
-- **@developer-fidelity** - Implements only what's specified
-- **@quality-reviewer-fidelity** - Reviews against specification only
-- **@fidelity-reviewer** - Validates specification compliance
-
-## Need Help?
-
-- **Full documentation**: See [README.md](README.md)
-- **Command details**: See [commands/README.md](commands/README.md)
-- **Project guidance**: See [CLAUDE.md](CLAUDE.md)
+```text
+_opencode/OPENCODE_ONBOARDING.md
+```

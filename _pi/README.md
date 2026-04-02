@@ -39,8 +39,10 @@ Installed layout:
 │   ├── quality-reviewer.md
 │   └── ...
 └── extensions/
-    └── pi-plan-mode/
-        └── index.ts
+    ├── pi-plan-mode/
+    │   └── index.ts
+    ├── simple-multi-status.ts
+    └── todo.ts
 ```
 
 The installer copies the repo-root `APPEND_SYSTEM.md` into `~/.pi/agent/APPEND_SYSTEM.md`. The same shared file is also installed to `~/.omp/agent/APPEND_SYSTEM.md` so Pi and OMP receive the same appended system guidance.
@@ -88,6 +90,12 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - offers both `/dev:run <plan>` and `/ralph:run <plan>` as post-review exit paths,
 - stages those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can launch execution from a fresh session,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
+
+This repo also vendors Pi's official upstream `todo.ts` example extension, which auto-loads on install and provides:
+
+- a `todo` tool for branch-aware todo tracking,
+- a `/todos` command for inspecting the current branch todo list,
+- session-detail persistence so todo state follows Pi branching correctly.
 
 ## Subagents
 

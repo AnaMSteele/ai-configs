@@ -322,34 +322,36 @@ test_phase_three_docs_use_canonical_shared_skill_paths() {
 
   assert_file_contains "_omp/commands/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
   assert_file_contains "_pi/prompts/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
-  assert_file_contains "opencode/commands/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_file_contains "_opencode/commands/cmd:send-plan-to-doct.md" '$HOME/.agents/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
   assert_file_not_contains "_omp/commands/cmd:send-plan-to-doct.md" '$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
   assert_file_not_contains "_pi/prompts/cmd:send-plan-to-doct.md" '$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
-  assert_file_not_contains "opencode/commands/cmd:send-plan-to-doct.md" '$HOME/.config/opencode/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
+  assert_file_not_contains "_opencode/commands/cmd:send-plan-to-doct.md" '$HOME/.config/opencode/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
 
   assert_file_contains "skills/playwright-skill/SKILL.md" '~/.agents/skills/playwright-skill' || return 1
   assert_file_not_contains "skills/playwright-skill/SKILL.md" 'Manual global: `~/.claude/skills/playwright-skill`' || return 1
   assert_file_contains "skills/playwright-skill/API_REFERENCE.md" '~/.agents/skills/playwright-skill' || return 1
   assert_file_not_contains "skills/playwright-skill/API_REFERENCE.md" 'cd ~/.claude/skills/playwright-skill' || return 1
 
-  assert_file_not_contains "OPENCODE_ONBOARDING.md" 'cp -r ./opencode/skills/playwright-skill/' || return 1
-  assert_file_not_contains "opencode/OPENCODE_ONBOARDING.md" 'cp -r ./opencode/skills/playwright-skill/' || return 1
-  assert_file_not_contains "opencode/QUICKSTART.md" 'cp -r opencode/skills/playwright-skill/' || return 1
-  assert_file_contains "OPENCODE_ONBOARDING.md" '~/.agents/skills/playwright-skill' || return 1
-  assert_file_contains "opencode/OPENCODE_ONBOARDING.md" '~/.agents/skills/playwright-skill' || return 1
-  assert_file_contains "opencode/QUICKSTART.md" '~/.agents/skills/playwright-skill' || return 1
+  # removed root duplicate
+  # assert_file_not_contains "OPENCODE_ONBOARDING.md" 'cp -r ./_opencode/skills/playwright-skill/' || return 1
+  assert_file_not_contains "_opencode/OPENCODE_ONBOARDING.md" 'cp -r ./_opencode/skills/playwright-skill/' || return 1
+  assert_file_not_contains "_opencode/QUICKSTART.md" 'cp -r _opencode/skills/playwright-skill/' || return 1
+  # removed root duplicate
+  # assert_file_contains "OPENCODE_ONBOARDING.md" '~/.agents/skills/playwright-skill' || return 1
+  assert_file_contains "_opencode/OPENCODE_ONBOARDING.md" '~/.agents/skills/playwright-skill' || return 1
+  assert_file_contains "_opencode/QUICKSTART.md" '~/.agents/skills/playwright-skill' || return 1
 }
 
 test_phase_three_duplicate_skill_trees_are_removed() {
   [[ ! -d ".agents/skills/dependency-selection" ]] || return 1
   [[ ! -d "_pi/skills" ]] || return 1
-  [[ -d "opencode/skills" ]] || return 1
-  [[ -d "opencode/skills/opencode-conversation-reviewer" ]] || return 1
-  [[ -d "opencode/skills/template" ]] || return 1
-  [[ ! -d "opencode/skills/playwright-skill" ]] || return 1
+  [[ -d "_opencode/skills" ]] || return 1
+  [[ -d "_opencode/skills/opencode-conversation-reviewer" ]] || return 1
+  [[ -d "_opencode/skills/template" ]] || return 1
+  [[ ! -d "_opencode/skills/playwright-skill" ]] || return 1
 
   local unexpected
-  unexpected="$(find opencode/skills -mindepth 1 -maxdepth 1 -type d ! -name 'opencode-conversation-reviewer' ! -name 'template' -print)"
+  unexpected="$(find _opencode/skills -mindepth 1 -maxdepth 1 -type d ! -name 'opencode-conversation-reviewer' ! -name 'template' -print)"
   [[ -z "$unexpected" ]]
 }
 
@@ -391,19 +393,20 @@ test_phase_four_validation_proves_final_alignment() {
   assert_command_output_contains "$help_output" 'Usage: publish-coding-plan.sh' || return 1
   assert_command_output_contains "$help_output" 'Creates a new doct text document as a child of the user' || return 1
 
-  stale_tree_refs="$(git grep -n 'opencode/skills/\|_pi/skills/' README.md SETUP.md AGENTS.md _pi opencode _omp OPENCODE_ONBOARDING.md skills install.sh || true)"
-  assert_command_output_not_contains "$stale_tree_refs" 'cp -r ./opencode/skills' || return 1
+  stale_tree_refs="$(git grep -n '_opencode/skills/\|_pi/skills/' README.md SETUP.md AGENTS.md _pi _opencode _omp skills install.sh || true)"
+  assert_command_output_not_contains "$stale_tree_refs" 'cp -r ./_opencode/skills' || return 1
   assert_command_output_not_contains "$stale_tree_refs" '~/.config/opencode/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
   assert_command_output_not_contains "$stale_tree_refs" '$HOME/.pi/agent/skills/doct-document-ops/scripts/publish-coding-plan.sh' || return 1
 
-  stale_install_instructions="$(git grep -n 'cp -r .*skills' README.md SETUP.md AGENTS.md _pi opencode _omp OPENCODE_ONBOARDING.md skills install.sh || true)"
+  stale_install_instructions="$(git grep -n 'cp -r .*skills' README.md SETUP.md AGENTS.md _pi _opencode _omp skills install.sh || true)"
   [[ -z "$stale_install_instructions" ]] || return 1
 
   assert_file_not_contains "README.md" 'install to `~/.claude/skills`' || return 1
   assert_file_not_contains "README.md" 'install to `~/.config/opencode/skills`' || return 1
   assert_file_not_contains "README.md" 'install to `~/.pi/agent/skills`' || return 1
-  assert_file_not_contains "OPENCODE_ONBOARDING.md" 'install to `~/.config/opencode/skills`' || return 1
-  assert_file_not_contains "opencode/OPENCODE_ONBOARDING.md" 'install to `~/.config/opencode/skills`' || return 1
+  # removed root duplicate
+  # assert_file_not_contains "OPENCODE_ONBOARDING.md" 'install to `~/.config/opencode/skills`' || return 1
+  assert_file_not_contains "_opencode/OPENCODE_ONBOARDING.md" 'install to `~/.config/opencode/skills`' || return 1
 
   assert_file_contains "thoughts/plans/skill-consolidation-to-agents.md" '- [x] P4 - Validate migration behavior, preservation rules, consumer compatibility wiring, and final repo alignment.' || return 1
   assert_file_contains "thoughts/plans/skill-consolidation-to-agents.md" '2026-04-02 (P4): Ran the final temp-home validation flow' || return 1
