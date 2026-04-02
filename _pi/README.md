@@ -12,7 +12,7 @@ The prompt templates are copied from `_omp/commands`, and the agent definitions 
 
 ## Installation
 
-These resources are installed by `install.sh` to Pi's global agent directory. The installer also syncs shared skills from `skills/install-matrix.json` into `~/.agents/skills` and registers selected package-managed Pi extensions with Pi itself: git packages such as `pi-dcp`, `chrome-cdp-skill`, and `pi-rlm`, plus npm packages such as `pi-multi-pass` and `pi-subagents`.
+These resources are installed by `install.sh` to Pi's global agent directory. The installer also syncs shared skills from `skills/install-matrix.json` into `~/.agents/skills` and registers the current Pi extension baseline with Pi itself. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
 
 ```bash
 ./install.sh --pi      # Install Pi prompt templates + subagents + extensions and sync shared skills
@@ -57,7 +57,8 @@ _pi/
 ├── agents/             # Pi subagent definitions for pi-subagents
 │   └── *.md
 └── extensions/         # Pi runtime extensions
-    └── */index.ts
+    ├── */index.ts
+    └── *.ts
 
 skills/
 ├── install-matrix.json # Shared skill inventory used by install.sh
@@ -92,7 +93,15 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - stages those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can launch execution from a fresh session,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
-This repo also vendors Pi's official upstream `todo.ts` example extension, which auto-loads on install and provides:
+This repo also ships `simple-multi-status.ts`, a lightweight multi-line status widget that auto-loads on install and shows:
+
+- the active model,
+- token, cache, and cost totals,
+- multi-pass / multicodex status when present,
+- current context-window usage,
+- the current working directory.
+
+This repo also vendors Pi's `todo.ts` example extension, which auto-loads on install and provides:
 
 - a `todo` tool for branch-aware todo tracking,
 - a `/todos` command for inspecting the current branch todo list,
@@ -101,6 +110,34 @@ This repo also vendors Pi's official upstream `todo.ts` example extension, which
 ## Subagents
 
 Pi subagents load agent definitions from `~/.pi/agent/agents/`.
+
+## Package-managed Pi extensions
+
+In addition to the repo-managed files under `~/.pi/agent/extensions/`, `install.sh --pi` also registers Pi packages via `pi install` / `pi update`.
+
+Git-managed packages:
+- `pi-dcp`
+- `chrome-cdp-skill`
+- `pi-rlm`
+
+npm-managed packages:
+- `pi-subagents`
+- `@aliou/pi-processes`
+- `pi-web-access`
+- `pi-mcp-adapter`
+- `lsp-pi`
+- `@fnnm/pi-ast-grep`
+- `pi-updater`
+- `pi-interactive-shell`
+- `pi-side-chat`
+- `pi-powerline-footer`
+- `pi-side-agents`
+- `pi-multi-pass`
+- `pi-no-soft-cursor`
+- `@tmustier/pi-files-widget`
+- `@tmustier/pi-raw-paste`
+
+Use `pi list` on a host to verify what is currently registered.
 
 These files are based on `_omp/agents`, but normalized for the pi-subagents loader:
 
