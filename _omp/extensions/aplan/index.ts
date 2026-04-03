@@ -2,7 +2,6 @@ import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
-import { Key } from "@mariozechner/pi-tui";
 
 const PLAN_STATE_TYPE = "aplan-mode-state";
 const PLAN_ROOT = "thoughts";
@@ -280,6 +279,21 @@ function derivePlanTools(allTools: string[], normalTools: string[] | undefined, 
 	return selected;
 }
 
+function buildAplanBootstrapPrompt(userArgs: string): string {
+	const workflow = [
+		"Use the repo-managed OMP planning workflow for this repository.",
+		`Keep plan files under ${PLAN_DIRECTORY}/ as single markdown plan documents.`,
+		"After materially updating a plan, run /review:plan on that file and optionally /review:plan-adversarial for a challenge pass.",
+		`When the reviewed plan is ready for implementation, hand execution off through /${EXECUTE_PLAN_COMMAND} to /dev:run or /ralph:run.`,
+	].join(" ");
+
+	if (!userArgs) {
+		return workflow;
+	}
+
+	return `${workflow}\n\nUser request: ${userArgs}`;
+}
+
 export default function aplanModeExtension(pi: ExtensionAPI): void {
 	let planModeEnabled = false;
 	let currentPlanPath: string | undefined;
@@ -417,10 +431,6 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 			lastReviewCommand = stateEntry.data.lastReviewCommand;
 		}
 
-		if (pi.getFlag("aplan") === true) {
-			planModeEnabled = true;
-		}
-
 		if (currentPlanPath) {
 			try {
 				await access(resolve(ctx.cwd, currentPlanPath));
@@ -511,20 +521,14 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 		}
 	}
 
-	pi.registerFlag("aplan", {
-		description: "Start in /aplan mode",
-		type: "boolean",
-		default: false,
-	});
-
 	pi.registerCommand("aplan", {
-		description: "Toggle /aplan mode for thoughts/ planning workflows",
-		handler: async (_args, ctx) => togglePlanMode(ctx),
-	});
-
-	pi.registerShortcut(Key.ctrlAlt("p"), {
-		description: "Toggle /aplan mode",
-		handler: async (ctx) => togglePlanMode(ctx),
+		description: "Alias to built-in /plan with the repo-managed OMP planning workflow",
+		handler: async (args, ctx) => {
+			if (!ctx.hasUI) return;
+			const rewritten = `/plan ${buildAplanBootstrapPrompt(args.trim())}`;
+			ctx.ui.setEditorText(rewritten);
+			ctx.ui.notify("/aplan rewrites to built-in /plan before submission. Press Enter if auto-rewrite did not run.", "warning");
+		},
 	});
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -546,11 +550,19 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 	pi.on("input", async (event, ctx) => {
 		turnTouchedPlan = false;
 		const text = event.text.trim();
-		if (!planModeEnabled) return { action: "continue" };
+
+		if (text === "/aplan" || text.startsWith("/aplan ")) {
+			const args = text.slice("/aplan".length).trim();
+			return { text: `/plan ${buildAplanBootstrapPrompt(args)}` };
+		}
+
+		if (!planModeEnabled) {
+			return {};
+		}
 
 		if (text.startsWith(`/${EXECUTE_PLAN_COMMAND}`) || text.startsWith("/dev:run") || text.startsWith("/ralph:run")) {
 			disablePlanMode(ctx);
-			return { action: "continue" };
+			return {};
 		}
 
 		if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`) || text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)) {
@@ -571,7 +583,7 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 			persistState();
 		}
 
-		return { action: "continue" };
+		return {};
 	});
 
 	pi.on("before_agent_start", async (_event) => {

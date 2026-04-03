@@ -11,9 +11,10 @@ This tree contains the repo-managed OMP runtime surfaces installed by `install.s
 Use `/aplan` for the repo-managed OMP planning workflow in this repository.
 
 - `/aplan` is provided by `_omp/extensions/aplan/index.ts`
-- built-in `/plan` remains untouched and should continue to coexist
+- interactive `/aplan` rewrites into built-in `/plan` so it enters native plan mode immediately instead of behaving like a long-running prompt command
+- built-in `/plan` remains untouched and continues to coexist
 - reviewed-plan execution continues to route through the prompt-backed `/cmd:execute-plan` command
-- `/review:plan` and `/review:plan-adversarial` remain the review surfaces used by `/aplan`
+- `/review:plan` and `/review:plan-adversarial` remain the review surfaces referenced by the `/aplan` bootstrap instructions
 
 ## Legacy note about `_omp/agents/aplan-legacy.md`
 
