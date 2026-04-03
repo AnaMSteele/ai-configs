@@ -11,14 +11,15 @@ Documents to review: $ARGUMENTS
 
 ## Execution Mode
 
-- Run two parallel reviews by delegating to the `subagent` tool in parallel mode with two separate review tasks.
-- Each subagent runs independently without seeing the other's work.
-- After both complete, run the Claude Code review-and-integration pass directly through the `review:change-claude-code` workflow.
+- Use the actual Pi subagent tool surface: launch two background agents with `Agent`, then wait for both with `get_subagent_result`.
+- Each reviewer runs independently without seeing the other's work.
+- After both complete, run the Claude Code review-and-integration pass directly in this command via the `process` tool.
 - Do not perform any reviews directly in the primary agent.
+- Do not rely on a nonexistent `subagent(...)` runner or on slash-command chaining for Phase 2.
 
 ## Phase 1: Parallel Review (2 Subagents)
 
-Launch two independent reviews simultaneously using the subagent tool.
+Launch two independent reviews simultaneously using the `Agent` tool.
 
 ### Subagent 1: GPT5.4 Review
 - **Agent:** `reviewer-plan-gpt5.4`
@@ -36,42 +37,59 @@ Launch two independent reviews simultaneously using the subagent tool.
 
 ### Parallel Execution
 
-Launch one `subagent` call in parallel mode so pi actually runs the two reviewers concurrently.
+Launch two background `Agent` calls so Pi actually runs the reviewers concurrently.
 
 ```javascript
-subagent({
-  tasks: [
-    {
-      agent: "reviewer-plan-gpt5.4",
-      task: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.4 instructions exactly. Add [REVIEW:GPT5.4] comments to the plan file and provide a summary."
-    },
-    {
-      agent: "reviewer-plan-kimi",
-      task: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Add [REVIEW:Kimi K2.5] comments to the plan file and provide a summary."
-    }
-  ],
-  context: "fresh"
-})
+const gpt54 = Agent({
+  subagent_type: "reviewer-plan-gpt5.4",
+  description: "Review plan with GPT5.4",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.4 instructions exactly. Add [REVIEW:GPT5.4] comments to the plan file and provide a summary.",
+  run_in_background: true,
+});
+
+const kimi = Agent({
+  subagent_type: "reviewer-plan-kimi",
+  description: "Review plan with Kimi K2.5",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Add [REVIEW:Kimi K2.5] comments to the plan file and provide a summary.",
+  run_in_background: true,
+});
+
+get_subagent_result({ agent_id: gpt54.agent_id ?? gpt54.id, wait: true });
+get_subagent_result({ agent_id: kimi.agent_id ?? kimi.id, wait: true });
+
+// Equivalent alternative: launch both first, then wait for both results.
+// Do not serialize the launches.
 ```
 
-Wait for the parallel `subagent` call to return both review results before proceeding to Phase 2.
+Wait for both `get_subagent_result(..., wait: true)` calls to complete before proceeding to Phase 2.
 
 ## Phase 2: Claude Code Review and Integration
 
-After receiving both review outputs, run the direct Claude Code review workflow to apply the final pass and integrate accepted feedback into the same plan file.
+After receiving both review outputs, run Claude Code directly from this command to apply the final pass and integrate accepted feedback into the same plan file.
 
 ### Claude Code Pass
-- **Command:** `/review:change-claude-code`
+- **Tool:** `process`
 - **Purpose:** Review the plan with Claude Code directly, then integrate the accepted feedback into the same file.
-- **Task:** Run the new direct Claude Code review workflow against the target plan file after the two parallel reviewer passes complete.
+- **Task:** Start one Claude Code process against the target plan file after the two parallel reviewer passes complete.
+- **Shell requirement:** launch Claude Code through a login shell so user-local PATH entries such as `~/.local/bin/claude` are available on macOS and similar setups.
 
 ### Claude Code Execution
 
-Run the direct Claude Code review command against the same plan file:
+Use the same direct review-and-integrate behavior as `/review:change-claude-code`, but perform it here with `process` rather than by invoking another slash command.
 
-```text
-/review:change-claude-code $ARGUMENTS
+Example shape:
+
+```javascript
+process({
+  action: "start",
+  name: "claude-code-review",
+  command: `zsh -lic 'export PATH="$HOME/.local/bin:$PATH"; command -v claude >/dev/null && claude -p "<review-and-integrate prompt for $ARGUMENTS>"'`,
+  alertOnSuccess: true,
+  alertOnFailure: true,
+});
 ```
+
+Then wait for completion, read the resulting plan file, and verify that no unresolved `[REVIEW:...]` comments remain.
 
 ## Review Integration Output
 
@@ -145,9 +163,9 @@ Whenever a plan is created or updated and needs review:
 ```text
 User: "Review this plan"
 Agent: Delegate to /review:plan <plan-path>
-  → Task launches 2 parallel reviewers
+  → Agent launches 2 parallel reviewers with the Agent tool
   → Each adds [REVIEW:Name] comments
-  → Claude Code integration pass resolves feedback
+  → Claude Code integration pass runs directly via process and resolves feedback
   → Returns a clean integrated plan
 ```
 

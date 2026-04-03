@@ -20,7 +20,7 @@ Use this after the standard /review:plan flow when you want an explicit challeng
 
 ## Execution Mode
 
-- Run two adversarial reviews in parallel using the `subagent` tool.
+- Run two adversarial reviews in parallel using the actual Pi subagent tools: `Agent` + `get_subagent_result`.
 - Each reviewer works independently.
 - After both complete, run the synthesis reviewer.
 - Then integrate the review feedback and remove resolved review comments.
@@ -43,19 +43,22 @@ Use this after the standard /review:plan flow when you want an explicit challeng
 ### Parallel Execution
 
 ```javascript
-subagent({
-  tasks: [
-    {
-      agent: "reviewer-plan-adversarial-gpt5.4",
-      task: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-gpt5.4 instructions exactly. Add [REVIEW:Adversarial GPT5.4] comments to the plan file and provide a summary."
-    },
-    {
-      agent: "reviewer-plan-adversarial-opus",
-      task: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-opus instructions exactly. Add [REVIEW:Adversarial Opus 4.6] comments to the plan file and provide a summary."
-    }
-  ],
-  context: "fresh"
-})
+const adversarialGpt = Agent({
+  subagent_type: "reviewer-plan-adversarial-gpt5.4",
+  description: "Challenge plan with Adversarial GPT5.4",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-gpt5.4 instructions exactly. Add [REVIEW:Adversarial GPT5.4] comments to the plan file and provide a summary.",
+  run_in_background: true,
+});
+
+const adversarialOpus = Agent({
+  subagent_type: "reviewer-plan-adversarial-opus",
+  description: "Challenge plan with Adversarial Opus 4.6",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-opus instructions exactly. Add [REVIEW:Adversarial Opus 4.6] comments to the plan file and provide a summary.",
+  run_in_background: true,
+});
+
+get_subagent_result({ agent_id: adversarialGpt.agent_id ?? adversarialGpt.id, wait: true });
+get_subagent_result({ agent_id: adversarialOpus.agent_id ?? adversarialOpus.id, wait: true });
 ```
 
 Wait for both reviews to complete before proceeding.
@@ -65,9 +68,10 @@ Wait for both reviews to complete before proceeding.
 Run the synthesis reviewer after the adversarial reviewers complete.
 
 ```javascript
-subagent({
-  agent: "reviewer-plan-synthesis",
-  task: "Synthesize the existing review comments already present in the plan at $ARGUMENTS, including any adversarial review comments. Add [REVIEW:Synthesis] comments and provide a final consolidated summary."
+Agent({
+  subagent_type: "reviewer-plan-synthesis",
+  description: "Synthesize adversarial review results",
+  prompt: "Synthesize the existing review comments already present in the plan at $ARGUMENTS, including any adversarial review comments. Add [REVIEW:Synthesis] comments and provide a final consolidated summary."
 })
 ```
 

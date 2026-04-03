@@ -13,6 +13,8 @@ Documents to review: $ARGUMENTS
 
 - Use the `process` tool from the `pi-processes` extension to launch Claude Code directly.
 - Start a named process such as `claude-code-review` and run a Claude Code review prompt against the target plan file (for example via `claude -p` or `claude task`, depending on the installed CLI surface).
+- Launch Claude Code through a login shell so PATH entries supplied by shell startup files are available (for example `zsh -lic` on macOS where `claude` may live in `~/.local/bin`).
+- If needed, prepend `export PATH="$HOME/.local/bin:$PATH"` before invoking `claude`.
 - Run a single Claude Code session that:
   1. resolves the target plan file,
   2. reviews the plan as a cohesive unit,
@@ -75,6 +77,18 @@ If multiple candidates match or a required file is missing, ask for an explicit 
 ### 1) Launch Claude Code Directly
 
 Use the `process` tool to start one Claude Code session that performs the review.
+
+Prefer a login-shell launch shape such as:
+
+```javascript
+process({
+  action: "start",
+  name: "claude-code-review",
+  command: `zsh -lic 'export PATH="$HOME/.local/bin:$PATH"; command -v claude >/dev/null && claude -p "<prompt>"'`,
+  alertOnSuccess: true,
+  alertOnFailure: true,
+})
+```
 
 The launched Claude Code prompt should:
 

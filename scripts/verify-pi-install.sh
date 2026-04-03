@@ -33,24 +33,24 @@ EXPECTED_NPM_PACKAGES=(
   "npm:@tmustier/pi-raw-paste"
 )
 
-mapfile -t EXPECTED_REPO_EXTENSIONS < <(
-  cd "$REPO_ROOT" && find _pi/extensions -mindepth 1 -maxdepth 1 -printf '%f\n' | sort
-)
-
-mapfile -t INSTALLED_REPO_EXTENSIONS < <(
-  if [ -d "$PI_EXT_DIR" ]; then
-    find "$PI_EXT_DIR" -mindepth 1 -maxdepth 1 -printf '%f\n' | sort
+list_find_entries() {
+  local dir="$1"
+  if [ -d "$dir" ]; then
+    find "$dir" -mindepth 1 -maxdepth 1 -exec basename {} \; | sort
   fi
-)
+}
 
-mapfile -t INSTALLED_PI_PACKAGES < <(
+EXPECTED_REPO_EXTENSIONS="$(cd "$REPO_ROOT" && list_find_entries "_pi/extensions")"
+INSTALLED_REPO_EXTENSIONS="$(list_find_entries "$PI_EXT_DIR")"
+
+INSTALLED_PI_PACKAGES="$(
   if command -v pi >/dev/null 2>&1; then
     pi list 2>/dev/null |
       sed -n 's/^  \([^[:space:]].*\)$/\1/p' |
       sed -E 's#^(git:[^@[:space:]]+)@.*#\1#' |
       sort -u
   fi
-)
+)"
 
 CODEX_WEB_SEARCH_DISABLED="unknown"
 if [ -f "$PI_SETTINGS_PATH" ]; then
@@ -84,51 +84,60 @@ print_section() {
 
 print_list() {
   local prefix="$1"
-  shift || true
-  if [ "$#" -eq 0 ]; then
+  local lines="${2:-}"
+
+  if [ -z "$(printf '%s' "$lines" | tr -d '[:space:]')" ]; then
     echo "  (none)"
     return
   fi
-  for item in "$@"; do
+
+  while IFS= read -r item; do
+    [ -n "$item" ] || continue
     echo "  ${prefix}${item}"
-  done
+  done <<EOF
+$lines
+EOF
 }
 
 compare_lists() {
   local label="$1"
-  shift
-  local -n expected_ref=$1
-  shift
-  local -n actual_ref=$1
-  shift
+  local expected_lines="$2"
+  local actual_lines="$3"
 
   local expected_file actual_file
   expected_file="$(mktemp)"
   actual_file="$(mktemp)"
 
-  printf '%s\n' "${expected_ref[@]}" | sed '/^$/d' | sort -u > "$expected_file"
-  printf '%s\n' "${actual_ref[@]}" | sed '/^$/d' | sort -u > "$actual_file"
+  printf '%s\n' "$expected_lines" | sed '/^$/d' | sort -u > "$expected_file"
+  printf '%s\n' "$actual_lines" | sed '/^$/d' | sort -u > "$actual_file"
 
-  mapfile -t missing < <(comm -23 "$expected_file" "$actual_file")
-  mapfile -t extra < <(comm -13 "$expected_file" "$actual_file")
+  local missing extra
+  missing="$(comm -23 "$expected_file" "$actual_file")"
+  extra="$(comm -13 "$expected_file" "$actual_file")"
 
   echo "$label"
-  if [ "${#missing[@]}" -eq 0 ]; then
+  if [ -z "$missing" ]; then
     echo "  Missing: none"
   else
     echo "  Missing:"
-    for item in "${missing[@]}"; do
+    while IFS= read -r item; do
+      [ -n "$item" ] || continue
       echo "    - $item"
-    done
+    done <<EOF
+$missing
+EOF
   fi
 
-  if [ "${#extra[@]}" -eq 0 ]; then
+  if [ -z "$extra" ]; then
     echo "  Extra: none"
   else
     echo "  Extra:"
-    for item in "${extra[@]}"; do
+    while IFS= read -r item; do
+      [ -n "$item" ] || continue
       echo "    - $item"
-    done
+    done <<EOF
+$extra
+EOF
   fi
 
   rm -f "$expected_file" "$actual_file"
@@ -139,18 +148,18 @@ echo "Repo root: $REPO_ROOT"
 echo "Pi agent dir: $PI_AGENT_DIR"
 
 print_section "1) Repo-managed Pi extensions (copied into ~/.pi/agent/extensions; these do NOT appear in 'pi list')"
-print_list "expected: " "${EXPECTED_REPO_EXTENSIONS[@]}"
-print_list "installed: " "${INSTALLED_REPO_EXTENSIONS[@]}"
-compare_lists "  Comparison:" EXPECTED_REPO_EXTENSIONS INSTALLED_REPO_EXTENSIONS
+print_list "expected: " "$EXPECTED_REPO_EXTENSIONS"
+print_list "installed: " "$INSTALLED_REPO_EXTENSIONS"
+compare_lists "  Comparison:" "$EXPECTED_REPO_EXTENSIONS" "$INSTALLED_REPO_EXTENSIONS"
 
 print_section "2) Package-managed Pi installs (registered via 'pi install'; these DO appear in 'pi list')"
-print_list "expected git: " "${EXPECTED_GIT_PACKAGES[@]}"
-print_list "expected npm: " "${EXPECTED_NPM_PACKAGES[@]}"
-print_list "registered: " "${INSTALLED_PI_PACKAGES[@]}"
-ALL_EXPECTED_PACKAGES=("${EXPECTED_GIT_PACKAGES[@]}" "${EXPECTED_NPM_PACKAGES[@]}")
-compare_lists "  Comparison:" ALL_EXPECTED_PACKAGES INSTALLED_PI_PACKAGES
+print_list "expected git: " "$(printf '%s\n' "${EXPECTED_GIT_PACKAGES[@]}")"
+print_list "expected npm: " "$(printf '%s\n' "${EXPECTED_NPM_PACKAGES[@]}")"
+print_list "registered: " "$INSTALLED_PI_PACKAGES"
+ALL_EXPECTED_PACKAGES="$(printf '%s\n' "${EXPECTED_GIT_PACKAGES[@]}" "${EXPECTED_NPM_PACKAGES[@]}")"
+compare_lists "  Comparison:" "$ALL_EXPECTED_PACKAGES" "$INSTALLED_PI_PACKAGES"
 
 print_section "Quick checks"
-echo "  Repo-managed extensions: find ~/.pi/agent/extensions -mindepth 1 -maxdepth 1 -printf '%f\\n' | sort"
+echo "  Repo-managed extensions: find ~/.pi/agent/extensions -mindepth 1 -maxdepth 1 -exec basename {} \\; | sort"
 echo "  Package-managed installs: pi list"
 echo "  piCodexConversion.disableWebSearch: $CODEX_WEB_SEARCH_DISABLED"
