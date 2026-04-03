@@ -53,7 +53,7 @@ print_usage() {
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
-    echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm"
+    echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm, pi-codex-conversion"
     echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, pi-mcp-adapter, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, @marckrenn/pi-sub-bar, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
@@ -1697,14 +1697,63 @@ install_pi() {
     # Install pi-rlm extension via pi package manager
     install_pi_rlm_package
 
+    # Install pi-codex-conversion extension via pi package manager
+    install_pi_codex_conversion_package
+
 
     # Install npm-based pi extensions
     install_pi_npm_packages
+
+    # Disable codex-conversion web_search via extension config so the rest of
+    # the adapter stays active without colliding with pi-web-access.
+    configure_pi_codex_conversion_settings "$pi_agent_dir/settings.json"
 
     # Reinstall repo-managed subagent overrides after package installs so they win
     # over plugin defaults and stay under version control.
     echo "  - Re-installing Pi subagent overrides after Pi package installs..."
     install_pi_agents_from_repo "$pi_source_dir" "$pi_agents_dir"
+}
+
+configure_pi_codex_conversion_settings() {
+    local settings_path="$1"
+
+    if [ ! -f "$settings_path" ]; then
+        echo "  - Skipping pi-codex-conversion config update (missing settings: $settings_path)"
+        return 0
+    fi
+
+    local status
+    status=$(SETTINGS_PATH="$settings_path" python3 <<'PY'
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ["SETTINGS_PATH"])
+data = json.loads(path.read_text())
+existing = data.get("piCodexConversion")
+changed = existing != {"disableWebSearch": True}
+
+data["piCodexConversion"] = {"disableWebSearch": True}
+
+if changed:
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    print("configured")
+else:
+    print("already-configured")
+PY
+)
+
+    case "$status" in
+        configured)
+            echo "  - Configured piCodexConversion.disableWebSearch=true so pi-codex-conversion leaves web_search to pi-web-access"
+            ;;
+        already-configured)
+            echo "  - piCodexConversion.disableWebSearch already configured"
+            ;;
+        *)
+            echo -e "    ${YELLOW}⚠ Unable to determine pi-codex-conversion config status for $settings_path${NC}"
+            ;;
+    esac
 }
 
 # Install pi-dcp extension via pi package manager
@@ -1772,6 +1821,32 @@ install_pi_rlm_package() {
     fi
 }
 
+# Install pi-codex-conversion extension via pi package manager
+install_pi_codex_conversion_package() {
+    echo ""
+    echo -e "${GREEN}  Installing pi-codex-conversion extension via pi package manager...${NC}"
+
+    if pi list 2>/dev/null | grep -Fq "npm:@howaboua/pi-codex-conversion"; then
+        echo "  - Removing deprecated npm pi-codex-conversion package..."
+        pi remove "npm:@howaboua/pi-codex-conversion" 2>/dev/null || echo -e "    ${YELLOW}⚠ Failed to remove deprecated npm pi-codex-conversion package${NC}"
+    fi
+
+    if pi list 2>/dev/null | grep -Fq "git:github.com/adnichols/pi-codex-conversion"; then
+        echo "  - pi-codex-conversion already installed from git, updating..."
+        pi update "git:github.com/adnichols/pi-codex-conversion" 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
+    else
+        echo "  - Installing pi-codex-conversion from git repository..."
+        if pi install git:github.com/adnichols/pi-codex-conversion 2>/dev/null; then
+            echo -e "    ${GREEN}✓ pi-codex-conversion installed${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
+            echo "      To install manually, run:"
+            echo "        pi install git:github.com/adnichols/pi-codex-conversion"
+            return 1
+        fi
+    fi
+}
+
 
 # Install npm-based pi extensions
 install_pi_npm_packages() {
@@ -1798,6 +1873,7 @@ install_pi_npm_packages() {
     )
     local deprecated_npm_packages=(
         "pi-subagents"
+        "@howaboua/pi-codex-conversion"
     )
 
     # Check if npm is available

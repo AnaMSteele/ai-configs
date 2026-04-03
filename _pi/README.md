@@ -124,6 +124,7 @@ Git-managed packages:
 - `pi-dcp`
 - `chrome-cdp-skill`
 - `pi-rlm`
+- `pi-codex-conversion`
 
 npm-managed packages:
 - `@tintinweb/pi-subagents`
@@ -141,6 +142,8 @@ npm-managed packages:
 - `pi-no-soft-cursor`
 - `@tmustier/pi-files-widget`
 - `@tmustier/pi-raw-paste`
+
+`install.sh` also sets `piCodexConversion.disableWebSearch=true` in Pi settings so the codex-conversion adapter stays active while leaving `web_search` ownership to `pi-web-access`.
 
 Use `pi list` on a host to verify what is currently registered. To verify both surfaces together, run `scripts/verify-pi-install.sh` from this repo.
 

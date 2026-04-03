@@ -77,7 +77,7 @@ bash ~/ai-configs/install.sh --all ~
 - copies repo-managed OMP extensions into `~/.omp/agent/extensions/`
 - installs Pi to `~/.pi/agent/`
 - copies repo-managed Pi extensions into `~/.pi/agent/extensions/` (these do not appear in `pi list`)
-- registers Pi-managed packages via `pi install` / `pi update`: git (`pi-dcp`, `chrome-cdp-skill`, `pi-rlm`) and npm (`@tintinweb/pi-subagents`, `@aliou/pi-processes`, `pi-web-access`, `pi-mcp-adapter`, `lsp-pi`, `@fnnm/pi-ast-grep`, `pi-updater`, `pi-interactive-shell`, `pi-powerline-footer`, `@marckrenn/pi-sub-bar`, `pi-side-agents`, `pi-multi-pass`, `pi-no-soft-cursor`, `@tmustier/pi-files-widget`, `@tmustier/pi-raw-paste`)
+- registers Pi-managed packages via `pi install` / `pi update`: git (`pi-dcp`, `chrome-cdp-skill`, `pi-rlm`, `pi-codex-conversion`) and npm (`@tintinweb/pi-subagents`, `@aliou/pi-processes`, `pi-web-access`, `pi-mcp-adapter`, `lsp-pi`, `@fnnm/pi-ast-grep`, `pi-updater`, `pi-interactive-shell`, `pi-powerline-footer`, `@marckrenn/pi-sub-bar`, `pi-side-agents`, `pi-multi-pass`, `pi-no-soft-cursor`, `@tmustier/pi-files-widget`, `@tmustier/pi-raw-paste`)
 - installs OpenCode resources to `~/.config/opencode/`
 - syncs shared skills into `~/.agents/skills` from `skills/install-matrix.json`
 - copies `APPEND_SYSTEM.md` into Pi and OMP runtime locations
