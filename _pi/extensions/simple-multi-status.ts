@@ -161,8 +161,4 @@ export default function (pi: ExtensionAPI): void {
 		updateWidget(ctx, () => footerDataRef);
 	});
 
-	// Update on session switch
-	pi.on("session_switch", async (_event, ctx) => {
-		updateWidget(ctx, () => footerDataRef);
-	});
 }
