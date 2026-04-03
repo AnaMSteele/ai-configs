@@ -54,7 +54,7 @@ print_usage() {
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
     echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm, pi-codex-conversion"
-    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, pi-mcp-adapter, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, @marckrenn/pi-sub-bar, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste"
+    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, pi-mcp-adapter, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, @marckrenn/pi-sub-bar, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, @sting8k/pi-vcc"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1870,6 +1870,7 @@ install_pi_npm_packages() {
         "pi-no-soft-cursor"
         "@tmustier/pi-files-widget"
         "@tmustier/pi-raw-paste"
+        "@sting8k/pi-vcc"
     )
     local deprecated_npm_packages=(
         "pi-subagents"

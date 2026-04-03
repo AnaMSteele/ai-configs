@@ -31,6 +31,7 @@ EXPECTED_NPM_PACKAGES=(
   "npm:pi-no-soft-cursor"
   "npm:@tmustier/pi-files-widget"
   "npm:@tmustier/pi-raw-paste"
+  "npm:@sting8k/pi-vcc"
 )
 
 list_find_entries() {

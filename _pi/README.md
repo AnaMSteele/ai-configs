@@ -142,6 +142,7 @@ npm-managed packages:
 - `pi-no-soft-cursor`
 - `@tmustier/pi-files-widget`
 - `@tmustier/pi-raw-paste`
+- `@sting8k/pi-vcc`
 
 `install.sh` also sets `piCodexConversion.disableWebSearch=true` in Pi settings so the codex-conversion adapter stays active while leaving `web_search` ownership to `pi-web-access`.
 
