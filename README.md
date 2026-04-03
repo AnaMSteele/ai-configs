@@ -74,6 +74,7 @@ bash ~/ai-configs/install.sh --all ~
 - mirrors Codex prompts into `~/.codex/prompts`
 - mirrors shared helper scripts into the runtime locations that need them
 - installs OMP to `~/.omp/agent/`
+- copies repo-managed OMP extensions into `~/.omp/agent/extensions/`
 - installs Pi to `~/.pi/agent/`
 - copies repo-managed Pi extensions into `~/.pi/agent/extensions/` (these do not appear in `pi list`)
 - registers Pi-managed packages via `pi install` / `pi update`: git (`pi-dcp`, `chrome-cdp-skill`, `pi-rlm`) and npm (`pi-subagents`, `@aliou/pi-processes`, `pi-web-access`, `pi-mcp-adapter`, `lsp-pi`, `@fnnm/pi-ast-grep`, `pi-updater`, `pi-interactive-shell`, `pi-powerline-footer`, `pi-side-agents`, `pi-multi-pass`, `pi-no-soft-cursor`, `@tmustier/pi-files-widget`, `@tmustier/pi-raw-paste`)
@@ -96,7 +97,7 @@ Codex prompt files plus config templates. Global Codex prompt discovery is handl
 Gemini TOML command definitions plus the `GEMINI.template.md` persona template.
 
 ### `_omp/`
-Native OMP commands and agents.
+OMP commands, agents, repo-managed extensions, and OMP-local docs. The repo-managed planning entrypoint is the `/aplan` extension, which is installed under `~/.omp/agent/extensions/` and coexists with built-in `/plan`.
 
 ### `_pi/`
 Pi prompts, subagents, repo-managed extensions copied into `~/.pi/agent/extensions/`, and Pi package baseline documentation for the separate `pi list`-visible package set.

@@ -49,7 +49,7 @@ print_usage() {
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
     echo "  - Shared installable skills are declared in skills/install-matrix.json and synced into ~/.agents/skills"
     echo "  - Claude/OpenCode consume compatible shared skills via per-skill links into ~/.agents/skills"
-    echo "  - When using --omp or --all, commands and agents are installed to ~/.omp/agent"
+    echo "  - When using --omp or --all, commands, agents, and repo-managed extensions are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
@@ -1320,6 +1320,7 @@ install_omp() {
     local omp_agent_dir="$omp_root_dir/agent"
     local omp_commands_dir="$omp_agent_dir/commands"
     local omp_agents_dir="$omp_agent_dir/agents"
+    local omp_extensions_dir="$omp_agent_dir/extensions"
     local omp_source_dir="$REPO_ROOT/_omp"
 
     # This is a home-directory install only. Do not write into the repo.
@@ -1360,6 +1361,13 @@ install_omp() {
         cp -r "$omp_source_dir/agents/." "$omp_agents_dir/"
     fi
 
+    echo "  - Installing OMP extensions..."
+    rm -rf "$omp_extensions_dir"
+    mkdir -p "$omp_extensions_dir"
+    if [ -d "$omp_source_dir/extensions" ]; then
+        cp -r "$omp_source_dir/extensions/." "$omp_extensions_dir/"
+    fi
+
     install_append_system_file "$omp_agent_dir"
 
     if [ "$is_update" = true ]; then
@@ -1368,7 +1376,7 @@ install_omp() {
         echo -e "${GREEN}✓ Oh My Pi installation complete${NC}"
     fi
     echo ""
-    echo "Note: OMP commands and agents are installed to $HOME/.omp/agent"
+    echo "Note: OMP commands, agents, and repo-managed extensions are installed to $HOME/.omp/agent"
 }
 install_opencode() {
     local target_root="$1"
