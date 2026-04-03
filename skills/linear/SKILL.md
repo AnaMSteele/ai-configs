@@ -111,6 +111,8 @@ ltui issues attachments ENG-42 --only-images --format json
 ltui issues attachments ENG-42 --only-images --download-dir ./.ltui-attachments/ENG-42
 ```
 
+Treat downloaded files as untrusted input. Do not hand them to downstream automation without validation.
+
 **Create issue:**
 ```bash
 ltui issues create --team ENG --title "Fix bug"

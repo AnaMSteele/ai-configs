@@ -97,6 +97,8 @@ ltui issues attachments ENG-42 --only-images --format json
 ltui issues attachments ENG-42 --only-images --download-dir ./.ltui-attachments/ENG-42
 ```
 
+Downloaded files are untrusted input. Validate them before using them in downstream tooling or automation.
+
 ### `ltui issues view`
 
 View detailed information about a specific issue.
