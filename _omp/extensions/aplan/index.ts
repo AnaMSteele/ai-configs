@@ -522,12 +522,11 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 	}
 
 	pi.registerCommand("aplan", {
-		description: "Alias to built-in /plan with the repo-managed OMP planning workflow",
-		handler: async (args, ctx) => {
+		description: "Enter built-in /plan mode and queue the repo-managed OMP planning workflow for the next planning turn",
+		handler: async (_args, ctx) => {
 			if (!ctx.hasUI) return;
-			const rewritten = `/plan ${buildAplanBootstrapPrompt(args.trim())}`;
-			ctx.ui.setEditorText(rewritten);
-			ctx.ui.notify("/aplan rewrites to built-in /plan before submission. Press Enter if auto-rewrite did not run.", "warning");
+			ctx.ui.setEditorText("/plan");
+			ctx.ui.notify("/aplan enters native /plan mode. Your next planning message will get the repo-managed workflow guidance.", "info");
 		},
 	});
 
@@ -553,7 +552,16 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 
 		if (text === "/aplan" || text.startsWith("/aplan ")) {
 			const args = text.slice("/aplan".length).trim();
-			return { text: `/plan ${buildAplanBootstrapPrompt(args)}` };
+			pi.sendMessage(
+				{
+					customType: "aplan-bootstrap",
+					content: buildAplanBootstrapPrompt(args),
+					display: false,
+					attribution: "agent",
+				},
+				{ deliverAs: "nextTurn" },
+			);
+			return { text: "/plan" };
 		}
 
 		if (!planModeEnabled) {
