@@ -189,7 +189,7 @@ Example installed agents:
 - `review-change`
 - `review-change-integrate`
 - `review-change-opus`
-- `review-change-claude-code` — direct Claude Code review + integration via pi-processes
+- `review-change-claude-code` — direct Claude Code review + integration via pi-interactive-shell dispatch
 
 ## Usage
 
