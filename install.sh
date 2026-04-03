@@ -54,7 +54,7 @@ print_usage() {
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
     echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm"
-    echo "  - Package-managed Pi installs DO appear in 'pi list': pi-subagents, @aliou/pi-processes, pi-web-access, pi-mcp-adapter, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste"
+    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, pi-mcp-adapter, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, @marckrenn/pi-sub-bar, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1659,7 +1659,7 @@ install_pi() {
     # Shared installable skills are discovered via ~/.agents/skills.
     echo "  - Shared installable skills are discovered via ~/.agents/skills; ~/.pi/agent/skills is reserved for Pi-local-only entries."
 
-    # Install subagent definitions for pi-subagents.
+    # Install subagent definitions for @tintinweb/pi-subagents.
     echo "  - Installing Pi subagents..."
     install_pi_agents_from_repo "$pi_source_dir" "$pi_agents_dir"
 
@@ -1780,7 +1780,7 @@ install_pi_npm_packages() {
 
     # Core extensions for the user's workflow
     local npm_packages=(
-        "pi-subagents"
+        "@tintinweb/pi-subagents"
         "@aliou/pi-processes"
         "pi-web-access"
         "pi-mcp-adapter"
@@ -1789,11 +1789,15 @@ install_pi_npm_packages() {
         "pi-updater"
         "pi-interactive-shell"
         "pi-powerline-footer"
+        "@marckrenn/pi-sub-bar"
         "pi-side-agents"
         "pi-multi-pass"
         "pi-no-soft-cursor"
         "@tmustier/pi-files-widget"
         "@tmustier/pi-raw-paste"
+    )
+    local deprecated_npm_packages=(
+        "pi-subagents"
     )
 
     # Check if npm is available
@@ -1802,6 +1806,21 @@ install_pi_npm_packages() {
         echo "      Please install Node.js/npm to install pi extensions"
         return 1
     fi
+
+    # Remove deprecated packages from Pi settings before installing replacements.
+    for pkg in "${deprecated_npm_packages[@]}"; do
+        local source="npm:$pkg"
+        if pi list 2>/dev/null | grep -Fq "$source"; then
+            echo "  - Removing deprecated Pi package $pkg..."
+            if pi remove "$source" 2>/dev/null; then
+                echo -e "    ${GREEN}✓ $pkg removed${NC}"
+            else
+                echo -e "    ${YELLOW}⚠ Failed to remove deprecated package $pkg${NC}"
+                echo "      To remove manually, run:"
+                echo "        pi remove $source"
+            fi
+        fi
+    done
 
     # Install/update each package through Pi so it is registered in settings
     for pkg in "${npm_packages[@]}"; do

@@ -5,7 +5,7 @@ mode: subagent
 model: opencode/claude-opus-4-6
 reasoningEffort: high
 tools: read, grep, find, ls, bash, edit, subagent
-extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/pi-subagents/index.ts
+extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/@tintinweb/pi-subagents/index.ts
 ---
 
 Your reviewer name is Adversarial Opus 4.6

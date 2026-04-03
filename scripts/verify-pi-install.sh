@@ -14,7 +14,7 @@ EXPECTED_GIT_PACKAGES=(
 )
 
 EXPECTED_NPM_PACKAGES=(
-  "npm:pi-subagents"
+  "npm:@tintinweb/pi-subagents"
   "npm:@aliou/pi-processes"
   "npm:pi-web-access"
   "npm:pi-mcp-adapter"
@@ -23,6 +23,7 @@ EXPECTED_NPM_PACKAGES=(
   "npm:pi-updater"
   "npm:pi-interactive-shell"
   "npm:pi-powerline-footer"
+  "npm:@marckrenn/pi-sub-bar"
   "npm:pi-side-agents"
   "npm:pi-multi-pass"
   "npm:pi-no-soft-cursor"

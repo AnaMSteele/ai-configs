@@ -6,7 +6,7 @@ model: openai-codex/gpt-5.4
 provider: openai-codex
 reasoningEffort: high
 tools: read, grep, find, ls, bash, edit, subagent
-extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/pi-subagents/index.ts
+extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/@tintinweb/pi-subagents/index.ts
 ---
 
 Your reviewer name is Adversarial GPT5.4

@@ -5,7 +5,7 @@ mode: subagent
 model: opencode/kimi-k2.5
 reasoningEffort: high
 tools: read, grep, find, ls, bash, edit, subagent
-extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/pi-subagents/index.ts
+extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/@tintinweb/pi-subagents/index.ts
 ---
 
 Your reviewer name is Kimi K2.5

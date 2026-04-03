@@ -17,7 +17,7 @@ This skill implements the ralph pattern:
 
 ## Prerequisites
 
-Requires pi-subagents extension for agent delegation.
+Requires the `@tintinweb/pi-subagents` extension for agent delegation.
 
 ## Usage
 

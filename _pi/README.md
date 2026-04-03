@@ -3,12 +3,12 @@
 This directory contains Pi-specific resources:
 
 - `prompts/` — prompt templates exposed as slash commands
-- `agents/` — pi-subagents-compatible agent definitions
+- `agents/` — @tintinweb/pi-subagents-compatible agent definitions
 - `extensions/` — Pi runtime extensions, including the maintained `/plan` mode workflow
 
 Repo-owned shared installable Pi skills live in the repo-level `skills/` tree, and `skills/install-matrix.json` also inventories package-backed shared skills fetched via `npx skills`. The installed shared runtime location remains `~/.agents/skills`.
 
-The prompt templates are copied from `_omp/commands`, and the agent definitions are ported from `_omp/agents` into the flat markdown format expected by pi-subagents.
+The prompt templates are copied from `_omp/commands`, and the agent definitions are ported from `_omp/agents` into the flat markdown format expected by `@tintinweb/pi-subagents`.
 
 ## Installation
 
@@ -59,7 +59,7 @@ _pi/
 ├── README.md
 ├── prompts/            # Pi prompt templates / slash commands
 │   └── *.md
-├── agents/             # Pi subagent definitions for pi-subagents
+├── agents/             # Pi subagent definitions for @tintinweb/pi-subagents
 │   └── *.md
 └── extensions/         # Pi runtime extensions
     ├── */index.ts
@@ -126,7 +126,7 @@ Git-managed packages:
 - `pi-rlm`
 
 npm-managed packages:
-- `pi-subagents`
+- `@tintinweb/pi-subagents`
 - `@aliou/pi-processes`
 - `pi-web-access`
 - `pi-mcp-adapter`
@@ -135,6 +135,7 @@ npm-managed packages:
 - `pi-updater`
 - `pi-interactive-shell`
 - `pi-powerline-footer`
+- `@marckrenn/pi-sub-bar`
 - `pi-side-agents`
 - `pi-multi-pass`
 - `pi-no-soft-cursor`
@@ -143,11 +144,11 @@ npm-managed packages:
 
 Use `pi list` on a host to verify what is currently registered. To verify both surfaces together, run `scripts/verify-pi-install.sh` from this repo.
 
-These files are based on `_omp/agents`, but normalized for the pi-subagents loader:
+These files are based on `_omp/agents`, but normalized for the `@tintinweb/pi-subagents` loader:
 
 - every agent has a `name`
 - `tools` is flattened to a comma-separated built-in Pi tool list when possible
-- unsupported OMP-only nested permission/tool metadata is omitted from the frontmatter used by pi-subagents
+- unsupported OMP-only nested permission/tool metadata is omitted from the frontmatter used by `@tintinweb/pi-subagents`
 
 Example installed agents:
 
@@ -229,4 +230,4 @@ Skills:
 - `~/.pi/agent/APPEND_SYSTEM.md` is installed from the repo-root `APPEND_SYSTEM.md` shared with OMP.
 - Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, `.pi/agents/`, and `.pi/extensions/`.
 - Pi natively auto-discovers both `~/.agents/skills/` and `~/.pi/agent/skills/`; this repo uses `~/.agents/skills/` as the canonical shared runtime location and reserves `~/.pi/agent/skills/` for Pi-local-only entries. Repo-owned skill payloads come from `skills/`, while package-backed entries are fetched per `skills/install-matrix.json`.
-- pi-subagents-compatible agent definitions install to `~/.pi/agent/agents/`.
+- `@tintinweb/pi-subagents`-compatible agent definitions install to `~/.pi/agent/agents/`.
