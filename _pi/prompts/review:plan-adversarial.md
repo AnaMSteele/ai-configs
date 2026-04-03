@@ -1,5 +1,5 @@
 ---
-description: Run adversarial second-pass plan review using GPT5.4 and Opus 4.6 after the standard multi-model review
+description: Run adversarial second-pass plan review after the standard /review:plan flow
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
@@ -11,7 +11,7 @@ Documents to review: $ARGUMENTS
 
 ## When to use this command
 
-Use this after the standard multi-model review when you want an explicit challenge pass focused on:
+Use this after the standard /review:plan flow when you want an explicit challenge pass focused on:
 
 - hidden weaknesses and incomplete exploration,
 - product-intent drift,

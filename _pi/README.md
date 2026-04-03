@@ -183,6 +183,8 @@ Example installed agents:
 - `cmd-resume-handoff`
 - `review-change`
 - `review-change-integrate`
+- `review-change-opus`
+- `review-change-claude-code` — direct Claude Code review + integration via pi-processes
 
 ## Usage
 
@@ -194,6 +196,8 @@ Prompt templates:
 /review:plan thoughts/plans/my-plan.md
 /review:plan-adversarial thoughts/plans/my-plan.md
 /review:change thoughts/plans/my-plan.md
+/review:change-opus thoughts/plans/my-plan.md
+/review:change-claude-code thoughts/plans/my-plan.md
 /cmd:execute-plan thoughts/plans/my-plan.md
 /cmd:send-plan-to-doct thoughts/plans/my-plan.md
 ```
