@@ -12,6 +12,7 @@ const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
 const STANDARD_PLAN_REVIEW_COMMAND = "review:plan";
 const ADVERSARIAL_PLAN_REVIEW_COMMAND = "review:plan-adversarial";
+const CLAUDE_REVIEW_COMMAND = "review:change-claude-code";
 const MAX_REVIEW_CYCLES = 3;
 
 const DESTRUCTIVE_PATTERNS = [
@@ -362,6 +363,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let reviewCycles = 0;
 	let reviewInFlight = false;
 	let pendingAutoReviewCommand = false;
+	let reviewSawProcess = false;
+	let reviewClaudeFallbackAttempted = false;
 	let lastReviewCommand: string | undefined;
 	let turnTouchedPlan = false;
 
@@ -410,6 +413,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = true;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
+		reviewSawProcess = false;
+		reviewClaudeFallbackAttempted = false;
 		lastReviewCommand = undefined;
 		turnTouchedPlan = false;
 		applyPlanTools(false);
@@ -424,6 +429,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = false;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
+		reviewSawProcess = false;
+		reviewClaudeFallbackAttempted = false;
 		lastReviewCommand = undefined;
 		turnTouchedPlan = false;
 		if (savedActiveTools && savedActiveTools.length > 0) {
@@ -502,6 +509,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	): Promise<void> {
 		reviewInFlight = true;
 		pendingAutoReviewCommand = true;
+		reviewSawProcess = false;
+		reviewClaudeFallbackAttempted = false;
 		lastReviewCommand = command;
 		reviewCycles += 1;
 		applyPlanTools(true);
@@ -514,6 +523,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = false;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
+		reviewSawProcess = false;
+		reviewClaudeFallbackAttempted = false;
 		currentPlanPath = undefined;
 		savedActiveTools = undefined;
 		reviewCycles = 0;
@@ -668,6 +679,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`) || text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)) {
 			reviewInFlight = true;
+			reviewSawProcess = false;
+			reviewClaudeFallbackAttempted = false;
 			lastReviewCommand = text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
 				? ADVERSARIAL_PLAN_REVIEW_COMMAND
 				: STANDARD_PLAN_REVIEW_COMMAND;
@@ -723,6 +736,11 @@ ${currentPlanInstruction}`,
 	pi.on("tool_call", async (event, ctx) => {
 		if (!planModeEnabled) return;
 
+		if (reviewInFlight && event.toolName === "process") {
+			reviewSawProcess = true;
+			persistState();
+		}
+
 		if (event.toolName === "bash") {
 			const command = String(event.input.command ?? "");
 			if (!isSafeCommand(command)) {
@@ -765,8 +783,28 @@ ${currentPlanInstruction}`,
 		if (!planModeEnabled) return;
 
 		if (reviewInFlight) {
+			if (
+				lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND &&
+				!reviewSawProcess &&
+				!reviewClaudeFallbackAttempted &&
+				currentPlanPath
+			) {
+				reviewClaudeFallbackAttempted = true;
+				applyPlanTools(true);
+				updateUi(ctx);
+				persistState();
+				ctx.ui.notify(
+					`/${STANDARD_PLAN_REVIEW_COMMAND} ended before launching Claude Code. Starting /${CLAUDE_REVIEW_COMMAND} for ${currentPlanPath}.`,
+					"warning",
+				);
+				await dispatchSlashCommandPrompt(ctx, `/${CLAUDE_REVIEW_COMMAND} ${formatCommandArg(currentPlanPath)}`);
+				return;
+			}
+
 			reviewInFlight = false;
 			pendingAutoReviewCommand = false;
+			reviewSawProcess = false;
+			reviewClaudeFallbackAttempted = false;
 			applyPlanTools(false);
 			updateUi(ctx);
 			persistState();

@@ -14,6 +14,7 @@ Documents to review: $ARGUMENTS
 - Use the actual Pi subagent tool surface: launch two background agents with `Agent`, then wait for both with `get_subagent_result`.
 - Each reviewer runs independently without seeing the other's work.
 - After both complete, run the Claude Code review-and-integration pass directly in this command via the `process` tool.
+- After both `get_subagent_result(..., wait: true)` calls return, your very next step must be a `process({ action: "start", ... })` call that launches Claude Code. Do not stop after Phase 1.
 - Do not perform any reviews directly in the primary agent.
 - Do not rely on a nonexistent `subagent(...)` runner or on slash-command chaining for Phase 2.
 
@@ -61,7 +62,7 @@ get_subagent_result({ agent_id: kimi.agent_id ?? kimi.id, wait: true });
 // Do not serialize the launches.
 ```
 
-Wait for both `get_subagent_result(..., wait: true)` calls to complete before proceeding to Phase 2.
+Wait for both `get_subagent_result(..., wait: true)` calls to complete before proceeding to Phase 2. Once they return, immediately launch Claude Code before producing any summary text.
 
 ## Phase 2: Claude Code Review and Integration
 
@@ -90,6 +91,8 @@ process({
 ```
 
 Then wait for completion, read the resulting plan file, and verify that no unresolved `[REVIEW:...]` comments remain.
+
+Failure condition: if the command returns before a `process` call launches Claude Code, the review is incomplete and must not be treated as successful.
 
 ## Review Integration Output
 
