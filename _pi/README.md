@@ -186,8 +186,11 @@ Example installed agents:
 ### Context / review
 - `cmd-create-handoff`
 - `cmd-resume-handoff`
+- `review-plan`
+- `review-plan-adversarial`
 - `review-change`
 - `review-change-integrate`
+- `review-change-kimi`
 - `review-change-opus`
 - `review-change-claude-code` — direct Claude Code review-only pass via pi-interactive-shell hands-free launch, then backgrounded
 
@@ -201,6 +204,7 @@ Prompt templates:
 /review:plan thoughts/plans/my-plan.md
 /review:plan-adversarial thoughts/plans/my-plan.md
 /review:change thoughts/plans/my-plan.md
+/review:change-kimi thoughts/plans/my-plan.md
 /review:change-opus thoughts/plans/my-plan.md
 /review:change-claude-code thoughts/plans/my-plan.md
 /cmd:execute-plan thoughts/plans/my-plan.md

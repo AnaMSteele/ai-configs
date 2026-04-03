@@ -201,8 +201,7 @@ Use the plan-gpt5.4 subagent to create a plann with slug `plan_slug` and ensure 
 ### 4) Plan Review + Integrate
 
 ```text
-/review:change-gpt5.4 ${plan_slug}
-/review:change-k2.5 ${plan_slug}
+/review:plan ${plan_slug}
 /review:change-integrate ${plan_slug}
 ```
 

@@ -58,7 +58,7 @@ If no inline review comments exist, inform the user and abort (nothing to integr
 
 For any feedback that depends on feasibility or existing patterns, explore the codebase to resolve it.
 
-Use the Task tool with `subagent_type=Explore`.
+Use the available repo exploration tools in this session.
 
 ### 4) Integrate Updates
 

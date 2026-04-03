@@ -7,9 +7,9 @@ model: opencode/gemini-3.1-pro
 ---
 
 ## Execution Mode
-- Run this review by delegating to the Task tool with `agent: reviewer-gemini` and exactly one task.
-- Do not perform the review directly in the primary agent.
-- Pass the complete review requirements from this command to that subagent and wait for completion before responding.
+- This prompt already runs inside the `reviewer-gemini` subagent selected by frontmatter.
+- Perform the review directly in this session.
+- Do not try to spawn another `reviewer-gemini` task just to satisfy this prompt.
 Your reviewer name is GEMINI 
 
 Use this comment format:
@@ -69,7 +69,7 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Feasibility and integration constraints
 - Correct file paths, APIs, and data structures referenced by the plan
 
-Use the Task tool with `subagent_type=Explore` to efficiently gather context.
+Use the available repo exploration tools in this session to gather context.
 
 ### 2) Review Specification (Critical Spec Review)
 

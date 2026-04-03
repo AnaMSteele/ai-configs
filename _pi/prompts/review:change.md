@@ -54,7 +54,7 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Feasibility and integration constraints
 - Correct file paths, APIs, and data structures referenced by the plan
 
-Use the Task tool with `subagent_type=Explore` to efficiently gather context.
+Use the available repo exploration tools in this session to gather context.
 
 ### 2) Review Specification (Critical Spec Review)
 
