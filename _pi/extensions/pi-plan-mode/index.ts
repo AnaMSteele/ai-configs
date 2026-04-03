@@ -10,6 +10,8 @@ const PLAN_DIRECTORY = "thoughts/plans";
 const PLAN_PROMPTS_DIRECTORIES = ["_pi/prompts", ".pi/prompts"] as const;
 const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
+const STANDARD_PLAN_REVIEW_COMMAND = "review:plan";
+const ADVERSARIAL_PLAN_REVIEW_COMMAND = "review:plan-adversarial";
 const MAX_REVIEW_CYCLES = 3;
 
 const DESTRUCTIVE_PATTERNS = [
@@ -125,6 +127,7 @@ interface PlanModeState {
 	currentPlanPath?: string;
 	savedActiveTools?: string[];
 	reviewCycles: number;
+	lastReviewCommand?: string;
 }
 
 function stripPathSigil(inputPath: string): string {
@@ -347,6 +350,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let reviewCycles = 0;
 	let reviewInFlight = false;
 	let pendingAutoReviewCommand = false;
+	let lastReviewCommand: string | undefined;
 	let turnTouchedPlan = false;
 
 	function getAllToolNames(): string[] {
@@ -359,6 +363,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			currentPlanPath,
 			savedActiveTools,
 			reviewCycles,
+			lastReviewCommand,
 		} satisfies PlanModeState);
 	}
 
@@ -393,6 +398,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = true;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
+		lastReviewCommand = undefined;
 		turnTouchedPlan = false;
 		applyPlanTools(false);
 		updateUi(ctx);
@@ -406,6 +412,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = false;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
+		lastReviewCommand = undefined;
 		turnTouchedPlan = false;
 		if (savedActiveTools && savedActiveTools.length > 0) {
 			pi.setActiveTools(savedActiveTools);
@@ -477,14 +484,18 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		pi.sendUserMessage(executionPrompt);
 	}
 
-	async function startReviewCycle(ctx: ExtensionContext): Promise<void> {
+	async function startReviewCycle(
+		ctx: ExtensionContext,
+		command: string = STANDARD_PLAN_REVIEW_COMMAND,
+	): Promise<void> {
 		reviewInFlight = true;
 		pendingAutoReviewCommand = true;
+		lastReviewCommand = command;
 		reviewCycles += 1;
 		applyPlanTools(true);
 		updateUi(ctx);
 		persistState();
-		await dispatchSlashCommandPrompt(ctx, `/review:plan ${currentPlanPath}`);
+		await dispatchSlashCommandPrompt(ctx, `/${command} ${currentPlanPath}`);
 	}
 
 	async function hydrateState(ctx: ExtensionContext): Promise<void> {
@@ -494,6 +505,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		currentPlanPath = undefined;
 		savedActiveTools = undefined;
 		reviewCycles = 0;
+		lastReviewCommand = undefined;
 		turnTouchedPlan = false;
 
 		const stateEntry = ctx.sessionManager
@@ -506,6 +518,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			currentPlanPath = stateEntry.data.currentPlanPath;
 			savedActiveTools = stateEntry.data.savedActiveTools;
 			reviewCycles = stateEntry.data.reviewCycles ?? 0;
+			lastReviewCommand = stateEntry.data.lastReviewCommand;
 		}
 
 		if (pi.getFlag("plan") === true) {
@@ -518,6 +531,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			} catch {
 				currentPlanPath = undefined;
 				reviewCycles = 0;
+				lastReviewCommand = undefined;
 			}
 		}
 
@@ -546,16 +560,20 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return;
 		}
 
-		const choice = await ctx.ui.select(`Plan updated (${reason}). Run /review:plan for ${currentPlanPath}?`, [
-			"Run multi-agent plan review",
+		const choice = await ctx.ui.select(`Plan updated (${reason}). Run /${STANDARD_PLAN_REVIEW_COMMAND} for ${currentPlanPath}?`, [
+			"Run standard multi-agent plan review",
 			"Keep editing in plan mode",
 		]);
 
-		if (choice !== "Run multi-agent plan review") {
+		if (choice !== "Run standard multi-agent plan review") {
 			return;
 		}
 
-		await startReviewCycle(ctx);
+		await startReviewCycle(ctx, STANDARD_PLAN_REVIEW_COMMAND);
+	}
+
+	async function startAdversarialReviewCycle(ctx: ExtensionContext): Promise<void> {
+		await startReviewCycle(ctx, ADVERSARIAL_PLAN_REVIEW_COMMAND);
 	}
 
 	async function offerPostReviewAction(ctx: ExtensionContext, reason: string): Promise<void> {
@@ -566,8 +584,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			"Start fresh /ralph:run session",
 			"Keep editing in plan mode",
 		];
+		if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND) {
+			choices.splice(2, 0, `Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`);
+		}
 		if (reviewCycles < MAX_REVIEW_CYCLES) {
-			choices.splice(2, 0, "Run another review cycle");
+			choices.splice(choices.length - 1, 0, "Run another standard review cycle");
 		}
 
 		const choice = await ctx.ui.select(`Plan review complete (${reason}). Choose an exit path for ${currentPlanPath}.`, choices);
@@ -584,8 +605,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return;
 		}
 
-		if (choice === "Run another review cycle") {
-			await startReviewCycle(ctx);
+		if (choice === `Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`) {
+			await startAdversarialReviewCycle(ctx);
+			return;
+		}
+
+		if (choice === "Run another standard review cycle") {
+			await startReviewCycle(ctx, STANDARD_PLAN_REVIEW_COMMAND);
 		}
 	}
 
@@ -636,8 +662,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return { action: "continue" };
 		}
 
-		if (text.startsWith("/review:plan")) {
+		if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`) || text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)) {
 			reviewInFlight = true;
+			lastReviewCommand = text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
+				? ADVERSARIAL_PLAN_REVIEW_COMMAND
+				: STANDARD_PLAN_REVIEW_COMMAND;
 			if (pendingAutoReviewCommand) {
 				pendingAutoReviewCommand = false;
 			} else {
@@ -675,6 +704,7 @@ Constraints:
 - Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/.
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
 - After creating or materially updating a plan, expect to be offered /review:plan <path>.
+- After a standard review completes, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
 - After review completes, expect to be offered both /dev:run <path> and /ralph:run <path> as exit paths from the reviewed plan.
 - In Pi, those exit choices route through /cmd:execute-plan <path> --target ... so execution starts from a fresh session instead of staying in planning context.
 - Review feedback should be integrated back into the same plan file.
@@ -721,6 +751,7 @@ ${currentPlanInstruction}`,
 		currentPlanPath = relativeToCwd(ctx.cwd, inputPath);
 		if (!reviewInFlight) {
 			reviewCycles = 0;
+			lastReviewCommand = undefined;
 		}
 		updateUi(ctx);
 		persistState();

@@ -52,6 +52,8 @@ Read the full plan and identify the existing inline comments from:
 - `[REVIEW:GPT5.4]`
 - `[REVIEW:Kimi K2.5]`
 - `[REVIEW:Opus 4.6]`
+- `[REVIEW:Adversarial GPT5.4]`
+- `[REVIEW:Adversarial Opus 4.6]`
 
 If one or more reviewer comment sets are missing, note that clearly in the summary and synthesize only what is present.
 

@@ -156,6 +156,8 @@ Example installed agents:
 - `quality-reviewer`
 - `research`
 - `plan-gpt5.4`
+- `reviewer-plan-adversarial-gpt5.4`
+- `reviewer-plan-adversarial-opus`
 - `worktree-creator`
 
 ## Skills Overview
@@ -190,6 +192,8 @@ Prompt templates:
 ```text
 /cmd:debug login flake in CI
 /dev:plan feature-name
+/review:plan thoughts/plans/my-plan.md
+/review:plan-adversarial thoughts/plans/my-plan.md
 /review:change thoughts/plans/my-plan.md
 /cmd:execute-plan thoughts/plans/my-plan.md
 /cmd:send-plan-to-doct thoughts/plans/my-plan.md
@@ -198,6 +202,8 @@ Prompt templates:
 ## Reviewed-plan handoff
 
 Use `/cmd:execute-plan <plan>` after a reviewed plan is ready to continue.
+
+Optional second pass: run `/review:plan-adversarial <plan>` after `/review:plan <plan>` when you want an explicit challenge review before execution.
 
 - It is the canonical wrapper for choosing between `/dev:run <plan>` and `/ralph:run <plan>`.
 - In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
