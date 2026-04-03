@@ -1,5 +1,5 @@
 ---
-description: Legacy compatibility shim for the repo-managed OMP planning workflow; prefer the runtime /aplan extension.
+description: Legacy compatibility shim for the repo-managed OMP planning workflow; renamed off /aplan so the runtime extension owns that command.
 mode: primary
 permission:
   question: allow
@@ -28,6 +28,8 @@ color: "#800080"
 # Legacy `/aplan` shim
 
 This file is retained only so repo-local OMP guidance can point old references to the new runtime planning surface.
+
+It has been renamed to `aplan-legacy` so it no longer collides with the runtime `/aplan` command.
 
 Preferred entrypoint: use the runtime `/aplan` command provided by `_omp/extensions/aplan/index.ts`.
 

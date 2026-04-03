@@ -15,6 +15,6 @@ Use `/aplan` for the repo-managed OMP planning workflow in this repository.
 - reviewed-plan execution continues to route through the prompt-backed `/cmd:execute-plan` command
 - `/review:plan` and `/review:plan-adversarial` remain the review surfaces used by `/aplan`
 
-## Legacy note about `_omp/agents/aplan.md`
+## Legacy note about `_omp/agents/aplan-legacy.md`
 
-That file is kept only as a compatibility/documentation shim so repo-local guidance can point users to `/aplan`. It is not the preferred planning surface anymore.
+The legacy shim was renamed off the `/aplan` name so the runtime extension owns `/aplan` unambiguously. Keep `_omp/agents/aplan-legacy.md` only for historical guidance; it is not a command entrypoint.
