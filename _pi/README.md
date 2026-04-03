@@ -134,7 +134,6 @@ npm-managed packages:
 - `@fnnm/pi-ast-grep`
 - `pi-updater`
 - `pi-interactive-shell`
-- `pi-side-chat`
 - `pi-powerline-footer`
 - `pi-side-agents`
 - `pi-multi-pass`

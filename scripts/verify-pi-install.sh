@@ -22,7 +22,6 @@ EXPECTED_NPM_PACKAGES=(
   "npm:@fnnm/pi-ast-grep"
   "npm:pi-updater"
   "npm:pi-interactive-shell"
-  "npm:pi-side-chat"
   "npm:pi-powerline-footer"
   "npm:pi-side-agents"
   "npm:pi-multi-pass"
