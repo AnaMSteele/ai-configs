@@ -122,6 +122,14 @@ const DEFAULT_PLAN_TOOLS = [
 	"questionnaire",
 ] as const;
 
+const REVIEW_ORCHESTRATION_TOOLS = [
+	"subagent",
+	"Agent",
+	"get_subagent_result",
+	"steer_subagent",
+	"process",
+] as const;
+
 interface PlanModeState {
 	enabled: boolean;
 	currentPlanPath?: string;
@@ -327,9 +335,13 @@ function isPlanFilePath(cwd: string, inputPath: string): boolean {
 	return isWithin(getPlansRoot(cwd), resolved) && resolved.endsWith(".md");
 }
 
-function derivePlanTools(allTools: string[], normalTools: string[] | undefined, includeSubagent: boolean): string[] {
+function derivePlanTools(allTools: string[], normalTools: string[] | undefined, includeReviewTools: boolean): string[] {
 	const desired = new Set<string>(DEFAULT_PLAN_TOOLS);
-	if (includeSubagent) desired.add("subagent");
+	if (includeReviewTools) {
+		for (const toolName of REVIEW_ORCHESTRATION_TOOLS) {
+			desired.add(toolName);
+		}
+	}
 
 	const orderedSource = normalTools && normalTools.length > 0 ? normalTools : allTools;
 	const selected = orderedSource.filter((tool) => desired.has(tool));
@@ -386,9 +398,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		]);
 	}
 
-	function applyPlanTools(includeSubagent = false): void {
+	function applyPlanTools(includeReviewTools = false): void {
 		const allTools = getAllToolNames();
-		pi.setActiveTools(derivePlanTools(allTools, savedActiveTools, includeSubagent));
+		pi.setActiveTools(derivePlanTools(allTools, savedActiveTools, includeReviewTools));
 	}
 
 	function enablePlanMode(ctx: ExtensionContext): void {
