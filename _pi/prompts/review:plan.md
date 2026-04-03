@@ -1,30 +1,31 @@
 ---
-description: Run comprehensive plan review using GPT5.4, Kimi K2.5, and Claude Code via interactive-shell dispatch
+description: Run comprehensive review-only plan review using GPT5.4, Kimi K2.5, and Claude Code in parallel
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Multi-Model Plan Review Process
 
-This command orchestrates a comprehensive plan review using two independent reviewers in parallel, followed by a single deterministic Claude Code review-and-integration pass.
+This command orchestrates a comprehensive review-only plan review using three independent reviewers in parallel: GPT5.4, Kimi K2.5, and Claude Code.
 
 Documents to review: $ARGUMENTS
 
 ## Execution Mode
 
-- Use the actual Pi subagent tool surface: launch two background agents with `Agent`, then wait for both with `get_subagent_result`.
+- Use the actual Pi subagent tool surface: launch two background agents with `Agent`, and launch Claude Code via `interactive_shell`.
 - Each reviewer runs independently without seeing the other's work.
-- After both complete, run the Claude Code review-and-integration pass directly in this command via `interactive_shell`.
-- After both `get_subagent_result(..., wait: true)` calls return, your very next steps must be the deterministic Claude launcher prep described below and then an `interactive_shell({ ... })` call that launches Claude Code. Do not stop after Phase 1.
+- Start the Claude session in `hands-free` mode, then immediately move that session to the background so it does not pin the foreground overlay while it works.
+- All three reviewers must be launched before waiting for completions.
 - Do not perform any reviews directly in the primary agent.
-- Do not rely on a nonexistent `subagent(...)` runner or on slash-command chaining for Phase 2.
-- Do not use the `process` tool for the Claude phase.
-- Launch exactly one Claude Code session for Phase 2 and treat that session as authoritative.
-- Do not infer failure from silent stdout/stderr. Claude may stay quiet until completion.
+- Do not rely on a nonexistent `subagent(...)` runner or on slash-command chaining.
+- Do not use the `process` tool for the Claude review.
+- Launch exactly one Claude Code review session and treat that session as authoritative.
+- Do not infer failure from quiet output. Claude may think silently and then return to its prompt.
 - Do not launch a second Claude Code session unless the first session has already exited non-zero and you are explicitly retrying after reporting that failure cause.
+- This command is review-only. Do not integrate or clean up review comments here.
 
-## Phase 1: Parallel Review (2 Subagents)
+## Phase 1: Parallel Review (3 Reviewers)
 
-Launch two independent reviews simultaneously using the `Agent` tool.
+Launch all three reviews before waiting for any of them to finish.
 
 ### Subagent 1: GPT5.4 Review
 - **Agent:** `reviewer-plan-gpt5.4`
@@ -40,9 +41,15 @@ Launch two independent reviews simultaneously using the `Agent` tool.
 - **Task:** Perform comprehensive plan review per reviewer-plan-kimi instructions
 - **Output:** Plan file with `[REVIEW:Kimi K2.5]` comments + summary
 
+### Reviewer 3: Claude Code Review
+- **Tool:** `interactive_shell`
+- **Reviewer name:** `CLAUDE`
+- **Task:** Perform a review-only pass equivalent to `/review:change-opus`, but by launching real Claude Code via `interactive_shell`
+- **Output:** Plan file with `[REVIEW:CLAUDE]` comments + summary
+
 ### Parallel Execution
 
-Launch two background `Agent` calls so Pi actually runs the reviewers concurrently.
+Launch two background `Agent` calls plus one backgrounded Claude Code session so Pi actually runs all three reviewers concurrently.
 
 ```javascript
 const gpt54 = Agent({
@@ -59,37 +66,77 @@ const kimi = Agent({
   run_in_background: true,
 });
 
+exec_command({
+  cmd: `cat > /tmp/pi-claude-review-prompt.txt <<'EOF'
+Review the plan at $ARGUMENTS as a review-only pass.
+
+Your reviewer name is CLAUDE.
+Use [REVIEW:CLAUDE] ... [/REVIEW] comments.
+Only insert review comments. Do not rewrite, integrate, or remove plan content. Stop after your review summary.
+EOF
+cat > /tmp/pi-claude-review-wrapper.py <<'PY'
+import os
+import sys
+
+repo = sys.argv[1]
+prompt_path = sys.argv[2]
+with open(prompt_path, 'r', encoding='utf-8') as fh:
+    prompt = fh.read()
+
+cmd = [
+    'claude',
+    '--permission-mode', 'bypassPermissions',
+    '--effort', 'high',
+    prompt,
+]
+
+os.chdir(repo)
+os.execvp(cmd[0], cmd)
+PY`,
+});
+
+const claudeSession = interactive_shell({
+  command: `zsh -lic 'export PATH="$HOME/.local/bin:$PATH"; cd "$PWD" || exit 1; command -v claude >/dev/null 2>&1 || { echo "claude_not_found" >&2; exit 127; }; exec python3 /tmp/pi-claude-review-wrapper.py "$PWD" /tmp/pi-claude-review-prompt.txt'`,
+  mode: "hands-free",
+  handsFree: { autoExitOnQuiet: false, quietThreshold: 8000, updateInterval: 60000 },
+  reason: "Claude Code review-only pass",
+});
+
+interactive_shell({ sessionId: claudeSession.sessionId, background: true });
+
 get_subagent_result({ agent_id: gpt54.agent_id ?? gpt54.id, wait: true });
 get_subagent_result({ agent_id: kimi.agent_id ?? kimi.id, wait: true });
-
-// Equivalent alternative: launch both first, then wait for both results.
-// Do not serialize the launches.
+interactive_shell({ sessionId: claudeSession.sessionId, outputLines: 80, outputMaxChars: 12000 });
+interactive_shell({ sessionId: claudeSession.sessionId, input: "/exit" });
+interactive_shell({ sessionId: claudeSession.sessionId, inputKeys: ["enter"] });
+interactive_shell({ sessionId: claudeSession.sessionId, outputLines: 80, outputMaxChars: 12000 });
 ```
 
-Wait for both `get_subagent_result(..., wait: true)` calls to complete before proceeding to Phase 2. Once they return, immediately launch Claude Code before producing any summary text.
+Wait for both `get_subagent_result(..., wait: true)` calls and the Claude Code session to complete before producing any summary text.
 
-## Phase 2: Claude Code Review and Integration
+## Phase 2: Claude Code Review Lifecycle
 
-After receiving both review outputs, run Claude Code directly from this command to apply the final pass and integrate accepted feedback into the same plan file.
+Claude Code is another review-only reviewer in this command, not an integration pass.
 
 ### Claude Code Pass
 - **Tool:** `interactive_shell`
-- **Purpose:** Review the plan with Claude Code directly, then integrate the accepted feedback into the same file.
-- **Task:** Start exactly one Claude Code interactive-shell session against the target plan file after the two parallel reviewer passes complete.
+- **Purpose:** Review the plan with Claude Code directly in parallel with GPT5.4 and Kimi.
+- **Task:** Start exactly one Claude Code interactive-shell session against the target plan file while the two parallel reviewer subagents are also running.
 - **Shell requirement:** launch Claude Code through a login shell so user-local PATH entries such as `~/.local/bin/claude` are available on macOS and similar setups.
-- **Mode requirement:** use `mode: "dispatch"` so Pi tracks the session lifecycle and wakes the agent on completion instead of forcing the agent to guess from log silence.
+- **Mode requirement:** use `mode: "hands-free"`, not `dispatch`, so the launch path creates a real Claude Code TUI session that can then be backgrounded and later controlled explicitly.
+- **Lifecycle requirement:** set `handsFree.autoExitOnQuiet: false`. Interactive Claude does not exit on its own after answering.
 - **Prompt transport requirement:** do not inline the full Claude review prompt directly inside shell quotes. Instead, write the prompt body to `/tmp/pi-claude-review-prompt.txt`, write the exact Python wrapper below to `/tmp/pi-claude-review-wrapper.py`, and launch that wrapper through `interactive_shell`.
 
 ### Claude Code Execution
 
-Use the same direct review-and-integrate behavior as `/review:change-claude-code`, but perform it here with `interactive_shell` rather than by invoking another slash command.
+Use the same review-only behavior as `/review:change-claude-code`, but perform it here with `interactive_shell` rather than by invoking another slash command.
 
 Example shape:
 
 ```javascript
 exec_command({
   cmd: `cat > /tmp/pi-claude-review-prompt.txt <<'EOF'
-<review-and-integrate prompt for $ARGUMENTS>
+<review-only prompt for $ARGUMENTS using [REVIEW:CLAUDE] comments>
 EOF
 cat > /tmp/pi-claude-review-wrapper.py <<'PY'
 import os
@@ -103,42 +150,46 @@ with open(prompt_path, 'r', encoding='utf-8') as fh:
 
 cmd = [
     'claude',
-    '-p',
-    '--output-format', 'json',
     '--permission-mode', 'bypassPermissions',
-    '--add-dir', repo,
     '--effort', 'high',
     prompt,
 ]
 
-completed = subprocess.run(cmd, cwd=repo, stdin=subprocess.DEVNULL)
-sys.exit(completed.returncode)
+os.chdir(repo)
+os.execvp(cmd[0], cmd)
 PY`,
 })
 
-interactive_shell({
+const claudeSession = interactive_shell({
   command: `zsh -lic 'export PATH="$HOME/.local/bin:$PATH"; cd "$PWD" || exit 1; command -v claude >/dev/null 2>&1 || { echo "claude_not_found" >&2; exit 127; }; exec python3 /tmp/pi-claude-review-wrapper.py "$PWD" /tmp/pi-claude-review-prompt.txt'`,
-  mode: "dispatch",
-  reason: "Claude Code plan review + integration",
+  mode: "hands-free",
+  handsFree: { autoExitOnQuiet: false, quietThreshold: 8000, updateInterval: 60000 },
+  reason: "Claude Code plan review",
 });
+
+interactive_shell({ sessionId: claudeSession.sessionId, background: true });
 ```
 
 Execution rules:
 
 - Launch one session.
-- Do not start a second Claude Code session while the first dispatch session is still running.
-- Wait for the automatic completion turn from `interactive_shell`.
-- Only if that session exits non-zero may you inspect the failure and decide whether one explicit retry is justified.
+- Do not start a second Claude Code session while the first interactive session is still running.
+- After the session starts, immediately dismiss it to the background with `interactive_shell({ sessionId: claudeSession.sessionId, background: true })` so the review continues without occupying the foreground overlay.
+- Wait about 60 seconds before the first status query unless the user interrupts sooner.
+- Query the session with `interactive_shell({ sessionId, outputLines: 80, outputMaxChars: 12000 })`.
+- When the output shows Claude has returned to its `❯` prompt after finishing the review, send `/exit` with `interactive_shell({ sessionId, input: "/exit" })`, then press Enter with `interactive_shell({ sessionId, inputKeys: ["enter"] })`.
+- After sending `/exit` and Enter, wait briefly and query once more to confirm the session exited.
+- If the user wants to watch it again, reattach with `interactive_shell({ attach: sessionId, mode: "dispatch" })` or equivalent before continuing.
+- Only if that session exits non-zero or fails to launch may you inspect the failure and decide whether one explicit retry is justified.
 - Do not invent alternate quoting strategies or new launcher shapes mid-run. The prompt-file + Python-wrapper transport above is the required transport.
-- Keep the option order exactly as shown so the final prompt string is not swallowed by Claude's variadic `--add-dir` parsing.
 
-Then read the resulting plan file and verify that no unresolved `[REVIEW:...]` comments remain.
+Then read the resulting plan file and report the review comments left by the reviewers.
 
 Failure condition: if the command returns before an `interactive_shell` call launches Claude Code, the review is incomplete and must not be treated as successful.
 
-## Review Integration Output
+## Review Output
 
-The final plan file will reflect the GPT5.4 and Kimi feedback after the Claude Code integration pass. No Opus review path remains in this command.
+The final plan file should be an annotated plan containing any `[REVIEW:...]` comments left by GPT5.4, Kimi K2.5, and Claude.
 
 ## Summary Format
 
@@ -150,16 +201,16 @@ After completing all reviews, provide:
 ### Reviewers:
 - ✅ GPT5.4 (openai-codex/gpt-5.4, high reasoning)
 - ✅ Kimi K2.5 (opencode/kimi-k2.5, high reasoning)
-- ✅ Claude Code (direct integration via pi-interactive-shell dispatch)
+- ✅ Claude Code (review-only via pi-interactive-shell hands-free, then backgrounded)
 
 ### Consensus Areas:
-[List issues GPT5.4 and Kimi both flagged before Claude Code integration]
+[List issues multiple reviewers flagged]
 
 ### Divergent Views:
 [List any disagreements between GPT5.4 and Kimi, if present]
 
 ### Unique Insights:
-[List issues caught by only one of the parallel reviewers]
+[List issues caught by only one reviewer]
 
 ### Final Recommendation:
 [Major revision needed / Proceed with caution / Ready to execute]
@@ -167,25 +218,25 @@ After completing all reviews, provide:
 
 ## Scope
 
-This command performs review and integration in sequence:
+This command is review-only:
 
-- Phase 1: Review-only (parallel subagents insert `[REVIEW:...]` comments)
-- Phase 2: Claude Code review-and-integration (single dispatch session cleans up the plan)
-- The final output is a clean, updated plan ready for execution
+- Phase 1: GPT5.4 review-only pass
+- Phase 1: Kimi K2.5 review-only pass
+- Phase 1: Claude Code review-only pass
+- The final output is an annotated plan with review comments left in place
+- If the user wants integration afterward, run `/review:change-integrate <plan>`
 
 ## Execution Flow Summary
 
 ```text
 Input Plan
     ↓
-Phase 1: Parallel Reviews (2 subagents)
+Phase 1: Parallel Reviews (3 reviewers)
   ├─ GPT5.4 Review → [REVIEW:GPT5.4] comments
-  └─ Kimi K2.5 Review → [REVIEW:Kimi K2.5] comments
+  ├─ Kimi K2.5 Review → [REVIEW:Kimi K2.5] comments
+  └─ Claude Code Review → [REVIEW:CLAUDE] comments
     ↓
-Phase 2: Claude Code Review + Integration
-  └─ Single Claude Code dispatch session → integrated plan
-    ↓
-Output: Integrated Plan (ready for /cmd:execute-plan or direct /dev:run or /ralph:run)
+Output: Annotated Plan (run /review:change-integrate before execution if you want comments resolved)
 ```
 
 ---
@@ -200,8 +251,8 @@ Whenever a plan is created or updated and needs review:
 
 1. **Primary agent MUST delegate to this command** instead of performing direct review
 2. **Always use the full multi-model review** - do not skip reviewers or use single-reviewer shortcuts
-3. **Wait for parallel completion** - both reviewer passes must complete before the Claude Code pass
-4. **Respect the Claude Code integration pass** - the final integrated plan is the consolidated expert output
+3. **Launch all three reviewers before waiting** - GPT5.4, Kimi, and Claude Code should all be running in parallel
+4. **Keep this command review-only** - it should stop with inline review comments still present in the plan
 5. **Do not make the running agent invent fallback launcher logic** - this prompt must already specify the exact Claude launch path and lifecycle handling
 
 ### Process Flow:
@@ -209,23 +260,22 @@ Whenever a plan is created or updated and needs review:
 ```text
 User: "Review this plan"
 Agent: Delegate to /review:plan <plan-path>
-  → Agent launches 2 parallel reviewers with the Agent tool
+  → Agent launches GPT5.4 + Kimi reviewers and Claude Code in parallel
   → Each adds [REVIEW:Name] comments
-  → Claude Code integration pass runs through interactive-shell dispatch and resolves feedback
-  → Returns a clean integrated plan
+  → Returns an annotated plan with review comments left in place
 ```
 
 ### Benefits:
 
 - **Multiple perspectives:** Two different model architectures catch different issue types
-- **High reasoning mode:** Both reviewers use maximum reasoning effort
-- **Parallel efficiency:** Reviews run simultaneously for faster turnaround
-- **Deterministic integration:** Claude Code runs as one tracked interactive-shell session instead of a guessed background process
+- **High reasoning mode:** All reviewers use a strong review pass
+- **Parallel efficiency:** All three reviews run simultaneously for faster turnaround
+- **Deterministic Claude launch:** Claude Code runs as one tracked interactive-shell session, then gets backgrounded instead of occupying the foreground overlay
 - **Consistency:** Standardized review format and process across all plans
 
 ### Do NOT:
 
 - Run single-reviewer reviews for plans
-- Skip the Claude Code integration phase
+- Skip the Claude Code review phase
 - Use lower reasoning settings to save time
 - Manually review plans without delegating to this command

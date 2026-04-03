@@ -128,6 +128,7 @@ const REVIEW_ORCHESTRATION_TOOLS = [
 	"Agent",
 	"get_subagent_result",
 	"steer_subagent",
+	"interactive_shell",
 	"process",
 ] as const;
 
@@ -736,7 +737,7 @@ ${currentPlanInstruction}`,
 	pi.on("tool_call", async (event, ctx) => {
 		if (!planModeEnabled) return;
 
-		if (reviewInFlight && event.toolName === "process") {
+		if (reviewInFlight && (event.toolName === "process" || event.toolName === "interactive_shell")) {
 			reviewSawProcess = true;
 			persistState();
 		}
