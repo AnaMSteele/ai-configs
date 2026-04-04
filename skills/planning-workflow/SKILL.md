@@ -38,6 +38,14 @@ Always consider which additional skills are needed before writing the plan.
 
 The plan should reflect the behavior those skills require, not merely mention them.
 
+When product work touches interactions, commands, processes, or operator/agent workflows, the plan should encode these default beliefs unless repo evidence explicitly requires a different constraint:
+
+- the product should do the obvious right thing by default,
+- routine faults should be detected and healed inside the normal requested flow,
+- normal workflows should not depend on users discovering and running separate status or remediation commands,
+- errors should assume a capable agent is reading them and should explain what happened, what the system already tried, why automation stopped, and what to do next,
+- fail-closed behavior is reserved for ambiguous or high-risk situations such as data loss, security/privacy risk, or identity/authority uncertainty.
+
 ## Research standard
 
 Validate important claims directly against repo reality before writing the plan:
@@ -47,6 +55,7 @@ Validate important claims directly against repo reality before writing the plan:
 - identify integration points, parity surfaces, and likely risks,
 - verify command names, package names, and file paths used in `### Verify` sections,
 - identify the simplest supported workflow and which inputs should be optional because the system can infer or heal them,
+- identify which manual status-check or repair steps currently exist and whether they should instead become built-in behavior on the normal path,
 - check whether repo guidance, onboarding docs, config defaults, status surfaces, and tests are aligned with that default-path contract.
 
 Use targeted `Glob`, `Grep`, and `Read` first. Delegate broad codebase discovery only when targeted search is not enough.
@@ -82,10 +91,17 @@ Legacy heading aliases may be preserved in historical plans, but new plans shoul
 For every acceptance area:
 
 - define acceptance in observable user or system outcomes,
+- define what the system should do automatically before asking the user or agent to intervene,
 - add `Given/When/Then` scenarios for happy path, failure path, and relevant edge cases,
 - add counterexample or ambiguity scenarios when matching, routing, identity, parsing, refs, or policies could yield misleading passes,
 - add boundary or scale scenarios when volume, fan-out, or aggregation could change correctness,
 - add cross-surface parity scenarios when behavior must match across HTTP/CLI/MCP/UI or similar interfaces.
+
+For workflow and product-surface planning, include scenarios that distinguish:
+
+- routine recoverable faults that should self-heal,
+- ambiguous or high-risk faults that should fail closed,
+- and the exact agent-legible error or inline guidance expected when automation must stop.
 
 For every phase:
 
@@ -127,6 +143,8 @@ An `execution-ready` plan is ready only when all of the following are true:
 - phase `### Verify` steps are executable and current for the real repo,
 - product-intent alignment is explicit when required,
 - parity expectations are explicit for multi-surface work,
+- self-healing expectations and fail-closed boundaries are explicit for workflow-affecting work,
+- plans do not normalize routine manual remediation when the product should absorb that burden instead,
 - no unresolved `Open Questions` remain in a ready plan,
 - no unresolved low-confidence decisions remain,
 - foundational decisions are not deferred into later execution phases,

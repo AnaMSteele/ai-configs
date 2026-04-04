@@ -31,6 +31,8 @@ The product should guide both operators and agents toward the correct behavior b
 
 A supported product workflow should not depend on hidden tribal knowledge, extra flags that the system could infer safely, or brittle setup steps the system could repair automatically.
 
+Routine product success should not depend on asking the user to run separate status or remedial commands just to complete the original task.
+
 ## Golden-path first
 
 Treat the simplest reasonable workflow as a primary product contract.
@@ -56,6 +58,8 @@ Design for:
 - and explicit guidance when ambiguity or security boundaries mean inference should stop.
 
 The system should reduce operator burden rather than exporting internal complexity into the interface.
+
+If the product knows the next obvious safe step, it should usually take that step instead of merely describing it.
 
 ## Safe defaults and inference rules
 
@@ -92,6 +96,10 @@ Self-healing expectations:
 - persist the healed state when appropriate,
 - and surface what happened in a way the user can understand.
 
+Treat this as the default rule for normal recoverable faults.
+
+Reserve fail-closed behavior for cases where the system lacks high confidence or where the wrong automatic choice could create data loss, privacy/security harm, or identity/authority corruption.
+
 Do not leave systems in a state where the product healed itself successfully but still reports stale or misleading status.
 
 ## Errors must always provide a path forward
@@ -101,9 +109,14 @@ A product should never leave the operator or agent wondering what to do next.
 Error messages should:
 - say what failed,
 - say why when knowable,
+- say what the system already tried,
 - distinguish retryable vs fixable vs fail-closed cases,
 - name the exact next action,
 - and include specific commands, flags, environment variables, or UI steps when relevant.
+
+Assume a capable agent is reading the output.
+
+Errors should be detailed enough that an agent can continue the workflow without needing source-repo access just to decode what happened.
 
 Good errors reduce support burden and make automation more reliable.
 
@@ -159,6 +172,8 @@ When planning product work, explicitly define:
 - what the user or agent should be able to omit,
 - which defaults are inferred and from where,
 - what the system should self-heal,
+- which routine issues must be absorbed into normal command flow rather than exported as extra manual steps,
+- where fail-closed behavior begins and why,
 - what errors should say,
 - and which tests prove the golden path stays intact.
 
