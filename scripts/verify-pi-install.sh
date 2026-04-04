@@ -6,13 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PI_AGENT_DIR="${PI_AGENT_DIR:-$HOME/.pi/agent}"
 PI_EXT_DIR="$PI_AGENT_DIR/extensions"
-PI_SETTINGS_PATH="$PI_AGENT_DIR/settings.json"
 
 EXPECTED_GIT_PACKAGES=(
   "git:github.com/adnichols/pi-dcp"
   "git:github.com/pasky/chrome-cdp-skill"
   "git:github.com/adnichols/pi-rlm"
-  "git:github.com/adnichols/pi-codex-conversion"
 )
 
 EXPECTED_NPM_PACKAGES=(
@@ -52,31 +50,6 @@ INSTALLED_PI_PACKAGES="$(
       sort -u
   fi
 )"
-
-CODEX_WEB_SEARCH_DISABLED="unknown"
-if [ -f "$PI_SETTINGS_PATH" ]; then
-  CODEX_WEB_SEARCH_DISABLED=$(SETTINGS_PATH="$PI_SETTINGS_PATH" python3 <<'PY'
-import json
-import os
-from pathlib import Path
-
-path = Path(os.environ["SETTINGS_PATH"])
-try:
-    data = json.loads(path.read_text())
-except Exception:
-    print("invalid-json")
-    raise SystemExit(0)
-
-value = data.get("piCodexConversion", {}).get("disableWebSearch")
-if value is True:
-    print("true")
-elif value is False:
-    print("false")
-else:
-    print("unset")
-PY
-)
-fi
 
 print_section() {
   echo
@@ -163,4 +136,3 @@ compare_lists "  Comparison:" "$ALL_EXPECTED_PACKAGES" "$INSTALLED_PI_PACKAGES"
 print_section "Quick checks"
 echo "  Repo-managed extensions: find ~/.pi/agent/extensions -mindepth 1 -maxdepth 1 -exec basename {} \\; | sort"
 echo "  Package-managed installs: pi list"
-echo "  piCodexConversion.disableWebSearch: $CODEX_WEB_SEARCH_DISABLED"
