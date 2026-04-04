@@ -132,6 +132,15 @@ const REVIEW_ORCHESTRATION_TOOLS = [
 	"process",
 ] as const;
 
+const REVIEW_ACTIVITY_TOOLS = [
+	"subagent",
+	"Agent",
+	"get_subagent_result",
+	"steer_subagent",
+	"interactive_shell",
+	"process",
+] as const;
+
 interface PlanModeState {
 	enabled: boolean;
 	currentPlanPath?: string;
@@ -364,7 +373,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let reviewCycles = 0;
 	let reviewInFlight = false;
 	let pendingAutoReviewCommand = false;
-	let reviewSawProcess = false;
+	let reviewSawReviewActivity = false;
 	let reviewClaudeFallbackAttempted = false;
 	let lastReviewCommand: string | undefined;
 	let turnTouchedPlan = false;
@@ -414,7 +423,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = true;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
-		reviewSawProcess = false;
+		reviewSawReviewActivity = false;
 		reviewClaudeFallbackAttempted = false;
 		lastReviewCommand = undefined;
 		turnTouchedPlan = false;
@@ -430,7 +439,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = false;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
-		reviewSawProcess = false;
+		reviewSawReviewActivity = false;
 		reviewClaudeFallbackAttempted = false;
 		lastReviewCommand = undefined;
 		turnTouchedPlan = false;
@@ -510,7 +519,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	): Promise<void> {
 		reviewInFlight = true;
 		pendingAutoReviewCommand = true;
-		reviewSawProcess = false;
+		reviewSawReviewActivity = false;
 		reviewClaudeFallbackAttempted = false;
 		lastReviewCommand = command;
 		reviewCycles += 1;
@@ -524,7 +533,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		planModeEnabled = false;
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
-		reviewSawProcess = false;
+		reviewSawReviewActivity = false;
 		reviewClaudeFallbackAttempted = false;
 		currentPlanPath = undefined;
 		savedActiveTools = undefined;
@@ -680,7 +689,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`) || text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)) {
 			reviewInFlight = true;
-			reviewSawProcess = false;
+			reviewSawReviewActivity = false;
 			reviewClaudeFallbackAttempted = false;
 			lastReviewCommand = text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
 				? ADVERSARIAL_PLAN_REVIEW_COMMAND
@@ -737,8 +746,8 @@ ${currentPlanInstruction}`,
 	pi.on("tool_call", async (event, ctx) => {
 		if (!planModeEnabled) return;
 
-		if (reviewInFlight && (event.toolName === "process" || event.toolName === "interactive_shell")) {
-			reviewSawProcess = true;
+		if (reviewInFlight && REVIEW_ACTIVITY_TOOLS.includes(event.toolName as (typeof REVIEW_ACTIVITY_TOOLS)[number])) {
+			reviewSawReviewActivity = true;
 			persistState();
 		}
 
@@ -786,7 +795,7 @@ ${currentPlanInstruction}`,
 		if (reviewInFlight) {
 			if (
 				lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND &&
-				!reviewSawProcess &&
+				!reviewSawReviewActivity &&
 				!reviewClaudeFallbackAttempted &&
 				currentPlanPath
 			) {
@@ -804,7 +813,7 @@ ${currentPlanInstruction}`,
 
 			reviewInFlight = false;
 			pendingAutoReviewCommand = false;
-			reviewSawProcess = false;
+			reviewSawReviewActivity = false;
 			reviewClaudeFallbackAttempted = false;
 			applyPlanTools(false);
 			updateUi(ctx);

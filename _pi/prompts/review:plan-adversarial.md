@@ -1,17 +1,23 @@
 ---
-description: Run adversarial second-pass plan review after the standard /review:plan flow
+description: Run adversarial second-pass plan review using parallel interactive Claude Code and Codex, then GPT5.4 synthesis and integration
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Adversarial Plan Review Process
 
-This command runs a second-pass adversarial review after the normal `/review:plan` flow. It uses two challengers in parallel, then a synthesis pass, then integrates the feedback back into the plan.
+This command runs a second-pass adversarial review after the normal `/review:plan` flow.
+
+It uses **two real interactive external reviewers in parallel**:
+- Claude Code
+- Codex
+
+After both finish, it runs a **GPT5.4 synthesis pass** and then integrates the review feedback back into the plan.
 
 Documents to review: $ARGUMENTS
 
 ## When to use this command
 
-Use this after the standard /review:plan flow when you want an explicit challenge pass focused on:
+Use this after the standard `/review:plan` flow when you want an explicit challenge pass focused on:
 
 - hidden weaknesses and incomplete exploration,
 - product-intent drift,
@@ -20,60 +26,121 @@ Use this after the standard /review:plan flow when you want an explicit challeng
 
 ## Execution Mode
 
-- Run two adversarial reviews in parallel using the actual Pi subagent tools: `Agent` + `get_subagent_result`.
-- Each reviewer works independently.
-- After both complete, run the synthesis reviewer.
-- Then integrate the review feedback and remove resolved review comments.
-- Do not perform the review directly in the primary agent.
+- Launch **two real interactive CLI review sessions** using `interactive_shell` in parallel:
+  - one Claude Code session,
+  - one Codex session.
+- Use `mode: "hands-free"` for both, then immediately background both sessions.
+- Do not use the old adversarial reviewer subagents.
+- Do not run the adversarial review directly in the primary agent.
+- After both external reviewers finish, run the GPT5.4 synthesis reviewer.
+- Then integrate the feedback into the plan and remove resolved review comments.
 
-## Phase 1: Parallel Adversarial Review (2 Subagents)
+## Reviewer Names and Comment Formats
 
-### Subagent 1: Adversarial GPT5.4
-- **Agent:** `reviewer-plan-adversarial-gpt5.4`
-- **Model:** `openai-codex/gpt-5.4`
-- **Reasoning:** High
-- **Output:** Plan file with `[REVIEW:Adversarial GPT5.4]` comments + summary
-
-### Subagent 2: Adversarial Opus 4.6
-- **Agent:** `reviewer-plan-adversarial-opus`
-- **Model:** `opencode/claude-opus-4-6`
-- **Reasoning:** High
-- **Output:** Plan file with `[REVIEW:Adversarial Opus 4.6]` comments + summary
-
-### Parallel Execution
-
-```javascript
-const adversarialGpt = Agent({
-  subagent_type: "reviewer-plan-adversarial-gpt5.4",
-  description: "Challenge plan with Adversarial GPT5.4",
-  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-gpt5.4 instructions exactly. Add [REVIEW:Adversarial GPT5.4] comments to the plan file and provide a summary.",
-  run_in_background: true,
-});
-
-const adversarialOpus = Agent({
-  subagent_type: "reviewer-plan-adversarial-opus",
-  description: "Challenge plan with Adversarial Opus 4.6",
-  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-opus instructions exactly. Add [REVIEW:Adversarial Opus 4.6] comments to the plan file and provide a summary.",
-  run_in_background: true,
-});
-
-get_subagent_result({ agent_id: adversarialGpt.agent_id ?? adversarialGpt.id, wait: true });
-get_subagent_result({ agent_id: adversarialOpus.agent_id ?? adversarialOpus.id, wait: true });
+Claude reviewer name:
+```text
+CLAUDE
 ```
 
-Wait for both reviews to complete before proceeding.
+Claude comment format:
+```text
+[REVIEW:CLAUDE] Your critical feedback here [/REVIEW]
+```
 
-## Phase 2: Synthesis Review
+Codex reviewer name:
+```text
+CODEX
+```
 
-Run the synthesis reviewer after the adversarial reviewers complete.
+Codex comment format:
+```text
+[REVIEW:CODEX] Your critical feedback here [/REVIEW]
+```
+
+## Phase 1: Parallel Interactive Adversarial Reviews
+
+Launch both sessions before waiting for either of them to finish.
+
+### Shared adversarial review goals
+
+Both reviewers should challenge the plan through these lenses:
+
+1. hidden weaknesses and incomplete exploration,
+2. product-intent drift,
+3. insufficient detail for accurate execution,
+4. false completion / loophole analysis,
+5. boundary handling and fail-closed behavior,
+6. recovery realism,
+7. verification realism for the actual shipped/operator path.
+
+Both reviewers must:
+
+- review the plan as if it will be implemented literally,
+- insert inline review comments only,
+- avoid rewriting or integrating the plan,
+- preserve plan structure and progress state,
+- stop after a concise summary.
+
+### Canonical reviewer transports
+
+Do not duplicate launcher mechanics here.
+Use these prompt templates as the canonical transport + lifecycle specs:
+
+- Claude leg: `/review:change-claude-code`
+- Codex leg: `/review:change-codex-cli`
+
+For each leg:
+
+- follow that prompt template's launcher shape, wrapper transport, shell setup, backgrounding behavior, and lifecycle rules,
+- keep the review **interactive** via `interactive_shell`,
+- run exactly one session per reviewer,
+- do not invent alternate launcher shapes,
+- do not route the work through Pi reviewer subagents.
+
+### Required adversarial reviewer prompt content
+
+When adapting those canonical reviewer prompts for this adversarial pass, make both reviewers use adversarial instructions that:
+
+- resolve the target plan path,
+- review the plan as if it will be implemented literally,
+- add inline review comments only,
+- use the reviewer-specific comment tag,
+- not rewrite, integrate, or remove comments,
+- not modify any file other than the plan,
+- preserve plan structure and progress state,
+- stop after a concise summary.
+
+Both adversarial prompts must explicitly challenge the plan for:
+
+- hidden weaknesses,
+- product-intent drift,
+- ambiguity that would allow the wrong implementation,
+- false-positive verify steps,
+- missing fail-closed behavior,
+- incomplete recovery guidance,
+- and places where the plan could ship green while the real outcome is still wrong.
+
+## Phase 1 lifecycle
+
+- Launch both sessions first, in parallel.
+- Apply the lifecycle and completion handling from the canonical prompt for each reviewer:
+  - `/review:change-claude-code` for Claude,
+  - `/review:change-codex-cli` for Codex.
+- Only inspect failure details if a session exits non-zero or clearly fails to review the plan.
+
+## Phase 2: GPT5.4 Synthesis
+
+After both interactive reviewers complete, run the GPT5.4 synthesis reviewer.
 
 ```javascript
 Agent({
   subagent_type: "reviewer-plan-synthesis",
   description: "Synthesize adversarial review results",
-  prompt: "Synthesize the existing review comments already present in the plan at $ARGUMENTS, including any adversarial review comments. Add [REVIEW:Synthesis] comments and provide a final consolidated summary."
+  prompt: "Synthesize the existing review comments already present in the plan at $ARGUMENTS, including any [REVIEW:CLAUDE] and [REVIEW:CODEX] comments. Add [REVIEW:Synthesis] comments and provide a final consolidated summary.",
 })
 ```
+
+Wait for the synthesis reviewer to complete before integration.
 
 ## Phase 3: Auto-Integration
 
@@ -81,10 +148,10 @@ After synthesis completes, integrate the review feedback into the plan.
 
 ### Integration requirements
 
-- Read the plan and extract `[REVIEW:Adversarial GPT5.4]`, `[REVIEW:Adversarial Opus 4.6]`, and `[REVIEW:Synthesis]` comments.
+- Read the plan and extract `[REVIEW:CLAUDE]`, `[REVIEW:CODEX]`, and `[REVIEW:Synthesis]` comments.
 - Apply edits directly to the plan based on the feedback.
 - Remove resolved review comments.
-- Update any affected sections such as Locked Decisions, Acceptance Criteria, BDD scenarios, phase work, verify steps, resume instructions, and changelog.
+- Update affected sections such as Locked Decisions, Acceptance Criteria, BDD scenarios, phase work, verify steps, resume instructions, and changelog.
 - Resolve important open questions before finishing integration.
 - Validate that no `[REVIEW:...]` comments remain and that the plan still satisfies the repo’s canonical plan structure.
 
@@ -96,12 +163,15 @@ After review and integration, provide:
 ## Adversarial Review Complete
 
 ### Reviewers:
-- ✅ Adversarial GPT5.4
-- ✅ Adversarial Opus 4.6
-- ✅ Synthesis
+- ✅ Claude Code
+- ✅ Codex (GPT-5.4)
+- ✅ GPT5.4 Synthesis
 
 ### Highest-risk issues:
 [List the most important issues found]
+
+### Divergent views:
+[List any meaningful differences between Claude and Codex]
 
 ### Changes integrated:
 [List the important plan changes made]

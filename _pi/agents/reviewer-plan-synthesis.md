@@ -47,11 +47,13 @@ Resolution rules:
 
 ### 1) Read Existing Review Comments
 
-Read the full plan and identify the existing inline comments from:
+Read the full plan and identify the existing inline comments from any present reviewer set, including:
 
 - `[REVIEW:GPT5.4]`
 - `[REVIEW:Kimi K2.5]`
 - `[REVIEW:Opus 4.6]`
+- `[REVIEW:CLAUDE]`
+- `[REVIEW:CODEX]`
 - `[REVIEW:Adversarial GPT5.4]`
 - `[REVIEW:Adversarial Opus 4.6]`
 

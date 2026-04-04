@@ -53,7 +53,7 @@ print_usage() {
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
-    echo "  - When using --pi or --all, also installs pi extensions via git: pi-dcp, chrome-cdp-skill, pi-rlm"
+    echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-rlm"
     echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, pi-mcp-adapter, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, @marckrenn/pi-sub-bar, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, @sting8k/pi-vcc"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
@@ -1688,8 +1688,8 @@ install_pi() {
     echo "Note: Pi prompt templates, subagents, and extensions are installed to $HOME/.pi/agent"
     echo "      Prompt templates load from ~/.pi/agent/prompts, shared installable skills load from ~/.agents/skills, subagents load from ~/.pi/agent/agents, and extensions load from ~/.pi/agent/extensions"
 
-    # Install pi-dcp extension via pi package manager
-    install_pi_dcp_package
+    # Remove deprecated Pi git packages before installing supported ones
+    remove_deprecated_pi_git_packages
 
     # Install chrome-cdp-skill extension via pi package manager
     install_chrome_cdp_skill
@@ -1706,26 +1706,23 @@ install_pi() {
     install_pi_agents_from_repo "$pi_source_dir" "$pi_agents_dir"
 }
 
-# Install pi-dcp extension via pi package manager
-install_pi_dcp_package() {
-    echo ""
-    echo -e "${GREEN}  Installing pi-dcp extension via pi package manager...${NC}"
+remove_deprecated_pi_git_packages() {
+    local deprecated_git_packages=(
+        "git:github.com/adnichols/pi-dcp"
+    )
 
-    # Check if pi-dcp is already installed
-    if pi list 2>/dev/null | grep -q "pi-dcp"; then
-        echo "  - pi-dcp already installed, updating..."
-        pi update pi-dcp 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
-    else
-        echo "  - Installing pi-dcp from git repository..."
-        if pi install git:github.com/adnichols/pi-dcp 2>/dev/null; then
-            echo -e "    ${GREEN}✓ pi-dcp installed${NC}"
-        else
-            echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
-            echo "      To install manually, run:"
-            echo "        pi install git:github.com/adnichols/pi-dcp"
-            return 1
+    for source in "${deprecated_git_packages[@]}"; do
+        if pi list 2>/dev/null | grep -Fq "$source"; then
+            echo "  - Removing deprecated Pi package $source..."
+            if pi remove "$source" 2>/dev/null; then
+                echo -e "    ${GREEN}✓ $source removed${NC}"
+            else
+                echo -e "    ${YELLOW}⚠ Failed to remove deprecated package $source${NC}"
+                echo "      To remove manually, run:"
+                echo "        pi remove $source"
+            fi
         fi
-    fi
+    done
 }
 
 # Install chrome-cdp-skill extension via pi package manager

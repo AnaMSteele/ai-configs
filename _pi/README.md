@@ -121,7 +121,6 @@ Pi subagents load agent definitions from `~/.pi/agent/agents/`.
 In addition to the repo-managed files under `~/.pi/agent/extensions/`, `install.sh --pi` also registers Pi packages via `pi install` / `pi update`. These are the entries that appear in `pi list`.
 
 Git-managed packages:
-- `pi-dcp`
 - `chrome-cdp-skill`
 - `pi-rlm`
 
