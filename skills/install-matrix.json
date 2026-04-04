@@ -57,6 +57,15 @@
       "notes": "Repo-owned local skill retained in ai-configs.",
       "sourceType": "repo"
     },
+    "claude-code-review": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/claude-code-review",
+      "notes": "Pi-only: launches Claude Code via interactive_shell for background plan/code reviews.",
+      "sourceType": "repo"
+    },
     "cmd-create-handoff": {
       "class": "universal-installable",
       "allowedConsumers": [
