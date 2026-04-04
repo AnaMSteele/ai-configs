@@ -1798,6 +1798,9 @@ install_pi_npm_packages() {
     local deprecated_npm_packages=(
         "pi-subagents"
     )
+    local deprecated_git_packages=(
+        "git:github.com/adnichols/pi-codex-conversion"
+    )
 
     # Check if npm is available
     if ! command -v npm &> /dev/null; then
@@ -1815,6 +1818,18 @@ install_pi_npm_packages() {
                 echo -e "    ${GREEN}✓ $pkg removed${NC}"
             else
                 echo -e "    ${YELLOW}⚠ Failed to remove deprecated package $pkg${NC}"
+                echo "      To remove manually, run:"
+                echo "        pi remove $source"
+            fi
+        fi
+    done
+    for source in "${deprecated_git_packages[@]}"; do
+        if pi list 2>/dev/null | grep -Fq "$source"; then
+            echo "  - Removing deprecated Pi package $source..."
+            if pi remove "$source" 2>/dev/null; then
+                echo -e "    ${GREEN}✓ $source removed${NC}"
+            else
+                echo -e "    ${YELLOW}⚠ Failed to remove deprecated package $source${NC}"
                 echo "      To remove manually, run:"
                 echo "        pi remove $source"
             fi
