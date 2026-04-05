@@ -97,7 +97,7 @@ Codex prompt files plus config templates. Global Codex prompt discovery is handl
 Gemini TOML command definitions plus the `GEMINI.template.md` persona template.
 
 ### `_omp/`
-OMP commands, agents, repo-managed extensions, and OMP-local docs. The repo-managed planning entrypoint is the `/aplan` extension/alias, which is installed under `~/.omp/agent/extensions/`, enters built-in `/plan` mode without auto-starting a planning turn, and coexists with `/plan`.
+OMP commands, agents, repo-managed extensions, and OMP-local docs. The repo-managed planning entrypoint is the `/aplan` extension/alias, which is installed under `~/.omp/agent/extensions/`, enters built-in `/plan` mode while queueing repo-managed planning guidance for the next planning turn, preserves native `/plan`, auto-runs `/review:change-integrate` after standard plan review leaves inline comments, and hands reviewed plans off through prepared `/cmd:execute-plan ... --target ...` execution choices.
 
 ### `_pi/`
 Pi prompts, subagents, repo-managed extensions copied into `~/.pi/agent/extensions/`, and Pi package baseline documentation for the separate `pi list`-visible package set.

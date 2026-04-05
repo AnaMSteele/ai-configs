@@ -1,11 +1,11 @@
 ---
-description: Canonical reviewed-plan handoff that routes an explicit plan into /dev:run or /ralph:run
+description: Start /dev:run or /ralph:run in a fresh session from a reviewed plan
 argument-hint: '<plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]'
 ---
 
 # Execute Reviewed Plan
 
-This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` or `/ralph:run`; it validates an explicit reviewed plan argument, optionally accepts a target override, asks the user which of those two commands to run when needed, and then dispatches using the same normalized plan argument.
+This command is the reviewed-plan handoff for repo-managed OMP. It does not replace `/dev:run` or `/ralph:run`; it validates an explicit reviewed plan argument, optionally accepts a target override, asks the user which of those two commands to run when needed, and then starts the chosen execution path in a fresh session using the same normalized plan argument.
 
 **Arguments**: `$ARGUMENTS`
 
@@ -16,7 +16,7 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 - Accept an optional target suffix: `--target dev:run` or `--target ralph:run`.
 - Present exactly two execution choices: `/dev:run` and `/ralph:run`.
 - Preserve the same normalized plan argument when dispatching.
-- Do not promise Pi-specific context reset behavior on this surface.
+- Start execution outside `/aplan` planning context by opening a fresh session before dispatch.
 
 ## Instructions
 
@@ -70,9 +70,9 @@ Determine `TARGET_COMMAND`:
 
 Do not offer a planning pass here. Do not offer a third option.
 
-### 4) Dispatch
+### 4) Dispatch in a Fresh Session
 
-Run exactly one of the following and then stop:
+Open a fresh session, then run exactly one of the following and stop:
 
 ```text
 /dev:run <PLAN_DISPATCH_ARGUMENT>
@@ -83,3 +83,5 @@ Run exactly one of the following and then stop:
 ```
 
 This command is only the reviewed-plan handoff wrapper; `/dev:run` and `/ralph:run` remain distinct execution paths with different behaviors.
+
+When the `_omp/extensions/aplan` runtime extension is installed, invoking `/cmd:execute-plan` from an `/aplan` workflow disables the planning companion state before that fresh-session handoff so execution does not inherit planning restrictions.

@@ -1,7 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { isAbsolute, relative, resolve } from "node:path";
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
 
 const PLAN_STATE_TYPE = "aplan-mode-state";
 const PLAN_ROOT = "thoughts";
@@ -11,6 +11,7 @@ const GLOBAL_COMMANDS_DIRECTORY = resolve(homedir(), ".omp/agent/commands");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
 const STANDARD_PLAN_REVIEW_COMMAND = "review:plan";
 const ADVERSARIAL_PLAN_REVIEW_COMMAND = "review:plan-adversarial";
+const CHANGE_REVIEW_INTEGRATE_COMMAND = "review:change-integrate";
 const MAX_REVIEW_CYCLES = 3;
 
 const DESTRUCTIVE_PATTERNS = [
@@ -250,6 +251,69 @@ async function expandSlashCommandPrompt(cwd: string, commandText: string): Promi
 	return undefined;
 }
 
+function normalizeExecuteTarget(target: string | undefined): "dev:run" | "ralph:run" | undefined {
+	if (!target) return undefined;
+	const normalized = target.trim().replace(/^\//, "");
+	if (normalized === "dev:run" || normalized === "ralph:run") return normalized;
+	return undefined;
+}
+
+function getExecutePlanUsage(): string {
+	return `Usage: /${EXECUTE_PLAN_COMMAND} <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]`;
+}
+
+async function resolveExecutePlanRequest(
+	cwd: string,
+	rawArgs: string,
+): Promise<
+	| { planDispatchArgument: string; planPath: string; targetOverride?: "dev:run" | "ralph:run" }
+	| { error: string }
+> {
+	const tokens = parseCommandArgs(rawArgs.trim());
+	if (tokens.length === 0) {
+		return { error: getExecutePlanUsage() };
+	}
+
+	const targetFlagIndex = tokens.lastIndexOf("--target");
+	let planTokens = tokens;
+	let targetOverride: "dev:run" | "ralph:run" | undefined;
+
+	if (targetFlagIndex !== -1) {
+		if (targetFlagIndex === tokens.length - 1) {
+			return { error: "Missing value after --target. Valid targets: /dev:run or /ralph:run." };
+		}
+		if (targetFlagIndex < tokens.length - 2) {
+			return { error: "Unexpected extra arguments after --target. Use exactly one target value." };
+		}
+
+		targetOverride = normalizeExecuteTarget(tokens[targetFlagIndex + 1]);
+		if (!targetOverride) {
+			return { error: "Invalid --target value. Valid targets: /dev:run or /ralph:run." };
+		}
+		planTokens = tokens.slice(0, targetFlagIndex);
+	}
+
+	const planArgument = planTokens.join(" ").trim();
+	if (!planArgument) {
+		return { error: getExecutePlanUsage() };
+	}
+
+	const planDispatchArgument = stripPathSigil(planArgument);
+	const planPath = planDispatchArgument.endsWith(".md")
+		? resolveFromCwd(cwd, planDispatchArgument)
+		: resolve(cwd, PLAN_DIRECTORY, `${planDispatchArgument}.md`);
+
+	try {
+		await access(planPath);
+	} catch {
+		return {
+			error: `Reviewed plan not found: ${planPath}. /${EXECUTE_PLAN_COMMAND} requires an explicit existing reviewed plan file or slug.`,
+		};
+	}
+
+	return { planDispatchArgument, planPath, targetOverride };
+}
+
 function formatCommandArg(arg: string): string {
 	return /\s/.test(arg) ? JSON.stringify(arg) : arg;
 }
@@ -295,7 +359,7 @@ function buildAplanBootstrapPrompt(userArgs: string): string {
 	const workflow = [
 		"Use the repo-managed OMP planning workflow for this repository.",
 		`Keep plan files under ${PLAN_DIRECTORY}/ as single markdown plan documents.`,
-		"After materially updating a plan, run /review:plan on that file and optionally /review:plan-adversarial for a challenge pass.",
+		`After materially updating a plan, run /${STANDARD_PLAN_REVIEW_COMMAND} on that file, integrate any inline review comments back into the same plan with /${CHANGE_REVIEW_INTEGRATE_COMMAND}, and optionally run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} for a challenge pass.`,
 		`When the reviewed plan is ready for implementation, hand execution off through /${EXECUTE_PLAN_COMMAND} to /dev:run or /ralph:run.`,
 	].join(" ");
 
@@ -399,6 +463,49 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 		pi.sendUserMessage(expandedPrompt ?? commandText);
 	}
 
+	async function handleExecutePlanCommand(args: string, ctx: ExtensionCommandContext): Promise<void> {
+		const request = await resolveExecutePlanRequest(ctx.cwd, args);
+		if ("error" in request) {
+			ctx.ui.notify(request.error, "warning");
+			return;
+		}
+
+		let target = request.targetOverride;
+		if (!target) {
+			if (!ctx.hasUI) {
+				ctx.ui.notify("No UI available. Re-run with --target dev:run or --target ralph:run.", "warning");
+				return;
+			}
+
+			const choice = await ctx.ui.select(`Choose execution path for ${request.planDispatchArgument}.`, [
+				`/ralph:run ${request.planDispatchArgument}`,
+				`/dev:run ${request.planDispatchArgument}`,
+			]);
+			if (!choice) {
+				return;
+			}
+			target = choice.startsWith("/ralph:run") ? "ralph:run" : "dev:run";
+		}
+
+		const executionPrompt = await expandSlashCommandPrompt(ctx.cwd, `/${target} ${request.planDispatchArgument}`);
+		if (!executionPrompt) {
+			ctx.ui.notify(`Could not expand /${target}. Ensure the corresponding command template exists.`, "error");
+			return;
+		}
+
+		if (planModeEnabled) {
+			disablePlanMode(ctx);
+		}
+
+		await ctx.waitForIdle();
+		const result = await ctx.newSession({ parentSession: ctx.sessionManager.getSessionFile() });
+		if (result.cancelled) {
+			return;
+		}
+
+		pi.sendUserMessage(executionPrompt);
+	}
+
 	function prepareFreshExecutionCommand(ctx: ExtensionContext, target: "dev:run" | "ralph:run"): void {
 		if (!currentPlanPath) return;
 		const command = `/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target ${target}`;
@@ -418,6 +525,32 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 		updateUi(ctx);
 		persistState();
 		await dispatchSlashCommandPrompt(ctx, `/${command} ${currentPlanPath}`);
+	}
+
+	async function startReviewIntegration(ctx: ExtensionContext, options?: { automatic?: boolean }): Promise<void> {
+		if (!currentPlanPath) return;
+		reviewInFlight = true;
+		pendingAutoReviewCommand = false;
+		lastReviewCommand = CHANGE_REVIEW_INTEGRATE_COMMAND;
+		applyPlanTools(false);
+		updateUi(ctx);
+		persistState();
+		if (options?.automatic) {
+			ctx.ui.notify(
+				`/${STANDARD_PLAN_REVIEW_COMMAND} completed for ${currentPlanPath}. Automatically running /${CHANGE_REVIEW_INTEGRATE_COMMAND}.`,
+				"info",
+			);
+		}
+		await dispatchSlashCommandPrompt(ctx, `/${CHANGE_REVIEW_INTEGRATE_COMMAND} ${formatCommandArg(currentPlanPath)}`);
+	}
+
+	async function planHasInlineReviewComments(planPath: string, ctx: ExtensionContext): Promise<boolean> {
+		try {
+			const content = await readFile(resolveFromCwd(ctx.cwd, planPath), "utf8");
+			return /\[REVIEW(?::[^\]]+)?\][\s\S]*?\[\/REVIEW\]/.test(content);
+		} catch {
+			return false;
+		}
 	}
 
 	async function hydrateState(ctx: ExtensionContext): Promise<void> {
@@ -502,7 +635,7 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 			"Start fresh /ralph:run session",
 			"Keep editing in /aplan",
 		];
-		if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND) {
+		if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND || lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND) {
 			choices.splice(2, 0, `Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`);
 		}
 		if (reviewCycles < MAX_REVIEW_CYCLES) {
@@ -540,6 +673,11 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 			ctx.ui.setEditorText("/plan");
 			ctx.ui.notify("/aplan enters native /plan mode. Your next planning message will get the repo-managed workflow guidance.", "info");
 		},
+	});
+
+	pi.registerCommand(EXECUTE_PLAN_COMMAND, {
+		description: "Start /dev:run or /ralph:run in a fresh session from a reviewed plan",
+		handler: async (args, ctx) => handleExecutePlanCommand(args, ctx),
 	});
 
 	pi.on("session_start", async (_event, ctx) => {
@@ -580,25 +718,31 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 			return {};
 		}
 
-		if (text.startsWith(`/${EXECUTE_PLAN_COMMAND}`) || text.startsWith("/dev:run") || text.startsWith("/ralph:run")) {
+		if (text.startsWith("/dev:run") || text.startsWith("/ralph:run")) {
 			disablePlanMode(ctx);
 			return {};
 		}
 
-		if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`) || text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)) {
+		if (
+			text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`) ||
+			text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`) ||
+			text.startsWith(`/${CHANGE_REVIEW_INTEGRATE_COMMAND}`)
+		) {
 			reviewInFlight = true;
 			lastReviewCommand = text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
 				? ADVERSARIAL_PLAN_REVIEW_COMMAND
-				: STANDARD_PLAN_REVIEW_COMMAND;
+				: text.startsWith(`/${CHANGE_REVIEW_INTEGRATE_COMMAND}`)
+					? CHANGE_REVIEW_INTEGRATE_COMMAND
+					: STANDARD_PLAN_REVIEW_COMMAND;
 			if (pendingAutoReviewCommand) {
 				pendingAutoReviewCommand = false;
-			} else {
+			} else if (lastReviewCommand !== CHANGE_REVIEW_INTEGRATE_COMMAND) {
 				reviewCycles += 1;
 			}
 			if (!savedActiveTools || savedActiveTools.length === 0) {
 				savedActiveTools = pi.getActiveTools();
 			}
-			applyPlanTools(true);
+			applyPlanTools(lastReviewCommand !== CHANGE_REVIEW_INTEGRATE_COMMAND);
 			updateUi(ctx);
 			persistState();
 		}
@@ -627,9 +771,10 @@ Constraints:
 - Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/.
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
 - After creating or materially updating a plan, expect to be offered /review:plan <path>.
-- After a standard review completes, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
-- After review completes, expect to be offered both /dev:run <path> and /ralph:run <path> as exit paths from the reviewed plan.
-- In OMP, those exit choices route through /cmd:execute-plan <path> --target ... so execution starts outside /aplan mode.
+- After a standard review writes inline review comments into the plan, expect /review:change-integrate <path> to run automatically so feedback is resolved back into the same plan before any exit prompt.
+- After standard review integration, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
+- After an integrated review completes, expect to be offered both /dev:run <path> and /ralph:run <path> as exit paths from the reviewed plan.
+- In OMP, those exit choices route through /cmd:execute-plan <path> --target ... so execution starts from a fresh session outside /aplan mode.
 - Review feedback should be integrated back into the same plan file.
 - Automatic review looping is capped at ${MAX_REVIEW_CYCLES} cycles before stopping.
 
@@ -689,10 +834,27 @@ ${currentPlanInstruction}`,
 			applyPlanTools(false);
 			updateUi(ctx);
 			persistState();
-			await offerPostReviewAction(
-				ctx,
-				turnTouchedPlan ? `review cycle ${reviewCycles} integrated` : `review cycle ${reviewCycles} completed`,
-			);
+			if (
+				lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND &&
+				turnTouchedPlan &&
+				currentPlanPath &&
+				(await planHasInlineReviewComments(currentPlanPath, ctx))
+			) {
+				await startReviewIntegration(ctx, { automatic: true });
+				turnTouchedPlan = false;
+				return;
+			}
+
+			const reviewReason = lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND
+				? turnTouchedPlan
+					? `review cycle ${reviewCycles} integrated`
+					: `review cycle ${reviewCycles} integration completed`
+				: lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND
+					? `review cycle ${reviewCycles} completed`
+					: turnTouchedPlan
+						? `review cycle ${reviewCycles} updated the plan`
+						: `review cycle ${reviewCycles} completed`;
+			await offerPostReviewAction(ctx, reviewReason);
 			turnTouchedPlan = false;
 			return;
 		}
