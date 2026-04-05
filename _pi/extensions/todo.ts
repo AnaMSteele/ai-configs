@@ -1,9 +1,10 @@
 /**
- * Todo Extension - Demonstrates state management via session entries
+ * Todo Extension - Session-aware task management for agents
  *
  * This extension:
  * - Registers a `todo` tool for the LLM to manage todos
  * - Registers a `/todos` command for users to view the list
+ * - Encourages agents to create comprehensive todo lists BEFORE beginning work
  *
  * State is stored in tool result details (not external files), which allows
  * proper branching - when you branch, the todo state is automatically
@@ -136,7 +137,15 @@ export default function (pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "todo",
 		label: "Todo",
-		description: "Manage a todo list. Actions: list, add (text), toggle (id), clear",
+		description:
+			"Track and manage a persistent todo list within the session. Use this instead of conversational lists when the user wants trackable, actionable items that persist across the conversation.",
+		promptSnippet: "Track todos within the session (add, toggle, clear, list)",
+		promptGuidelines: [
+			"When the user asks to track tasks, create a todo list, or manage action items, use the todo tool instead of conversational responses.",
+			"When the user mentions 'todo', 'tasks', or asks to see their todos, call todo with action: 'list'.",
+			"After completing work, offer to update or clear the todo list using the todo tool.",
+			"Prefer the todo tool over conversational lists when the user wants persistent, trackable items.",
+		],
 		parameters: TodoParams,
 
 		async execute(_toolCallId, params, _signal, _onUpdate, _ctx) {
