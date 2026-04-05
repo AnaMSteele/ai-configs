@@ -4,7 +4,7 @@ This directory contains Pi-specific resources:
 
 - `prompts/` — prompt templates exposed as slash commands
 - `agents/` — @tintinweb/pi-subagents-compatible agent definitions
-- `extensions/` — Pi runtime extensions, including the maintained `/plan` mode workflow
+- `extensions/` — Pi runtime extensions, including the maintained `/plan` and `/prd` mode workflows
 
 Repo-owned shared installable Pi skills live in the repo-level `skills/` tree, and `skills/install-matrix.json` also inventories package-backed shared skills fetched via `npx skills`. The installed shared runtime location remains `~/.agents/skills`.
 
@@ -17,7 +17,7 @@ These resources are installed by `install.sh` to Pi's global agent directory. Th
 - repo-managed extensions: copied from this repo into `~/.pi/agent/extensions/`
 - package-managed Pi installs: registered via `pi install` / `pi update` and visible in `pi list`
 
-`pi list` only shows the package-managed set; it does not list repo-managed files like `todo.ts` or `pi-plan-mode`. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
+`pi list` only shows the package-managed set; it does not list repo-managed files like `todo.ts`, `simple-multi-status.ts`, `pi-plan-mode`, or `pi-prd-mode`. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
 
 ```bash
 ./install.sh --pi      # Install Pi prompt templates + subagents + extensions and sync shared skills
@@ -40,12 +40,17 @@ Installed layout:
 │   ├── dev:plan.md
 │   └── ...
 ├── agents/
-│   ├── developer.md
+│   ├── developer-mid.md
+│   ├── developer-mm.md
 │   ├── quality-reviewer.md
 │   └── ...
 └── extensions/
     ├── pi-plan-mode/
     │   └── index.ts
+    ├── pi-prd-mode/
+    │   └── index.ts
+    ├── simple-multi-status.ts
+    ├── percentage-compaction.ts
     └── todo.ts
 ```
 
@@ -78,11 +83,14 @@ Each Markdown file becomes a slash command using the filename:
 - `cmd:debug.md` → `/cmd:debug`
 - `cmd:execute-plan.md` → `/cmd:execute-plan`
 - `dev:plan.md` → `/dev:plan`
+- `dev:plan-from-prd.md` → `/dev:plan-from-prd`
+- `prd:clarify-round.md` → `/prd:clarify-round`
 - `review:change.md` → `/review:change`
+- `review:prd.md` → `/review:prd`
 
 Prompt templates in this repo are kept as top-level files in `_pi/prompts/`, so no extra nested prompt-directory discovery is required.
 
-The `/plan` command is provided by the `pi-plan-mode` extension, not by a prompt template.
+The `/plan` command is provided by the `pi-plan-mode` extension, and the `/prd` command is provided by the `pi-prd-mode` extension, not by prompt templates.
 
 ## Extensions
 
@@ -97,11 +105,45 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - stages those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can launch execution from a fresh session,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
-This repo also vendors Pi's `todo.ts` example extension, which auto-loads on install and provides:
+This repo also ships a maintained `pi-prd-mode` extension that:
 
-- a `todo` tool for branch-aware todo tracking,
+- powers `/prd` mode for PRD/spec workflows,
+- keeps PRD-mode writes scoped to `thoughts/plans/prd-*.md`, `thoughts/specs/spec-*.md`, and transient review artifacts under `thoughts/validation/prd-reviews/<prd-slug>/`,
+- asks the model to compare each answer round against the intent/spec baseline and use `/prd:clarify-round` for the critical-thinker-first clarification loop,
+- keeps `/review:prd` as an explicit review gate instead of auto-running it after edits,
+- records PRD review approval in `thoughts/validation/prd-reviews/<prd-slug>/review-status.json`,
+- prompts you to run `/review:prd` before handoff whenever the latest PRD review is missing, stale, or not approved,
+- offers `/dev:plan-from-prd <prd>` as the reviewed-PRD handoff path,
+- disables `/prd` before dispatching into the fresh planning session so PRD mode restrictions do not leak into execution planning.
+
+This repo also ships `simple-multi-status.ts`, a lightweight multi-line status widget that auto-loads on install and shows:
+
+- the active model,
+- token, cache, and cost totals,
+- multi-pass / multicodex status when present,
+- current context-window usage,
+- the current working directory.
+
+This repo also ships `percentage-compaction.ts`, which gives you percentage-based control over context compaction:
+
+- set a custom threshold (default 60%) for when compaction should trigger,
+- warning notification when crossing the threshold,
+- `/compact-status` to check current context usage,
+- `/compact-now [instructions]` to trigger compaction manually,
+- gates pi's auto-compaction to only occur at or above the threshold,
+- **integrates with pi-vcc** for algorithmic (non-LLM) compaction when threshold is reached
+
+To adjust the threshold, edit `COMPACTION_THRESHOLD_PERCENT` in the extension file (default is 60).
+To use with pi-vcc, ensure pi-vcc is installed (`pi list` should show `npm:@sting8k/pi-vcc`).
+
+**Note:** With pi-vcc installed, no additional compaction configuration is needed. The extension gates compaction at the percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered.
+
+This repo also vendors Pi's `todo.ts` extension, which auto-loads on install and provides:
+
+- a `todo` tool for branch-aware task tracking with **proactive planning guidance** — agents are encouraged to create comprehensive todo lists BEFORE beginning work,
 - a `/todos` command for inspecting the current branch todo list,
-- session-detail persistence so todo state follows Pi branching correctly.
+- session-detail persistence so todo state follows Pi branching correctly,
+- best practices baked into the tool description: decompose tasks into small steps, update progress as you go, keep todos specific and measurable.
 
 ## Subagents
 
@@ -119,6 +161,7 @@ npm-managed packages:
 - `@tintinweb/pi-subagents`
 - `@aliou/pi-processes`
 - `pi-web-access`
+- `pi-mcp-adapter`
 - `lsp-pi`
 - `@fnnm/pi-ast-grep`
 - `pi-updater`
@@ -142,7 +185,8 @@ These files are based on `_omp/agents`, but normalized for the `@tintinweb/pi-su
 
 Example installed agents:
 
-- `developer`
+- `developer-mid`
+- `developer-mm`
 - `quality-reviewer`
 - `research`
 - `plan-gpt5.4`
@@ -187,13 +231,17 @@ Prompt templates:
 ```text
 /cmd:debug login flake in CI
 /dev:plan feature-name
+/prd feature-name
+/prd:clarify-round thoughts/plans/prd-my-feature.md
 /review:plan thoughts/plans/my-plan.md
 /review:plan-adversarial thoughts/plans/my-plan.md
+/review:prd thoughts/plans/prd-my-feature.md
 /review:change thoughts/plans/my-plan.md
 /review:change-kimi thoughts/plans/my-plan.md
 /review:change-opus thoughts/plans/my-plan.md
 /review:change-claude-code thoughts/plans/my-plan.md
 /cmd:execute-plan thoughts/plans/my-plan.md
+/dev:plan-from-prd thoughts/plans/prd-my-feature.md
 /cmd:send-plan-to-doct thoughts/plans/my-plan.md
 ```
 
@@ -207,6 +255,16 @@ Optional second pass: run `/review:plan-adversarial <plan>` after `/review:plan 
 - In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
 - When that extension path is used, `/plan` mode is disabled before execution so planning-only tool restrictions do not leak into implementation.
 - In Pi, the handoff command starts a fresh session and then launches the selected execution flow from that clean context.
+
+Use `/dev:plan-from-prd <prd>` after a reviewed PRD delta is ready to become an execution plan.
+
+- It is the canonical wrapper for turning a reviewed PRD delta into a fresh single-file plan session.
+- In Pi `/prd` mode, the typical sequence is `/prd` → update the PRD with the latest user answers → `/prd:clarify-round` → repeat that clarification loop as needed → `/review:prd` when a wider review is worthwhile → `/dev:plan-from-prd <prd>` after an approved review result.
+- `/review:prd` writes seven per-reviewer files under `thoughts/validation/prd-reviews/<prd-slug>/`, integrates the combined findings back into the PRD, keeps `integration-ledger.md` plus `review-status.json`, and removes the seven reviewer output files after integration.
+- `/dev:plan-from-prd` validates that `thoughts/validation/prd-reviews/<prd-slug>/review-status.json` exists, is approved, and is not older than the PRD.
+- The extension does not auto-run `/review:prd`; that gate is explicit and should happen only once the intent is clarified.
+- When the handoff path is used, `/prd` mode is disabled before planning so PRD-only tool restrictions do not leak into execution planning.
+- In Pi, the handoff command starts a fresh session and then continues the planning work from that clean context.
 
 Skills:
 
