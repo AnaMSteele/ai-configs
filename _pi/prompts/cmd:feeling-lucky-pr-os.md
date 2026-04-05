@@ -23,7 +23,7 @@ End-to-end autonomous flow:
 
 ## Requirements
 
-- The developer agent MUST be used for any code changes and repository management
+- The developer-mid agent MUST be used for any code changes and repository management
 - The quality-reviewer agent must be used for any code reviews
 - the plan agent must be used for any plan creation or editing
 - Always prefer a sub-agent when making changes, the orchestrator should not make code changes

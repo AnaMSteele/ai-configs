@@ -5,6 +5,7 @@ import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@m
 import { Key } from "@mariozechner/pi-tui";
 
 const PLAN_STATE_TYPE = "plan-mode-state";
+const PRD_STATE_TYPE = "prd-mode-state";
 const PLAN_ROOT = "thoughts";
 const PLAN_DIRECTORY = "thoughts/plans";
 const PLAN_PROMPTS_DIRECTORIES = ["_pi/prompts", ".pi/prompts"] as const;
@@ -148,6 +149,16 @@ interface PlanModeState {
 	savedActiveTools?: string[];
 	reviewCycles: number;
 	lastReviewCommand?: string;
+}
+
+function isPrdModeActive(
+	entries: Array<{ type: string; customType?: string; data?: { enabled?: boolean } }>,
+	prdFlagEnabled = false,
+): boolean {
+	const stateEntry = entries
+		.filter((entry) => entry.type === "custom" && entry.customType === PRD_STATE_TYPE)
+		.pop();
+	return Boolean(stateEntry?.data?.enabled) || prdFlagEnabled;
 }
 
 function stripPathSigil(inputPath: string): string {
@@ -419,6 +430,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 	function enablePlanMode(ctx: ExtensionContext): void {
 		if (!planModeEnabled) {
+			const entries = ctx.sessionManager.getEntries() as Array<{ type: string; customType?: string; data?: { enabled?: boolean } }>;
+			if (isPrdModeActive(entries, pi.getFlag("prd") === true)) {
+				ctx.ui.notify(`Cannot enable /plan while /prd mode is active. Disable /prd first, then retry /plan.`, "warning");
+				return;
+			}
 			savedActiveTools = pi.getActiveTools();
 		}
 		planModeEnabled = true;
@@ -567,6 +583,15 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				reviewCycles = 0;
 				lastReviewCommand = undefined;
 			}
+		}
+
+		const entries = ctx.sessionManager.getEntries() as Array<{ type: string; customType?: string; data?: { enabled?: boolean } }>;
+		if (planModeEnabled && isPrdModeActive(entries, pi.getFlag("prd") === true)) {
+			planModeEnabled = false;
+			updateUi(ctx);
+			persistState();
+			ctx.ui.notify(`Plan mode state conflicted with /prd mode on restore. Disable /prd, then re-enable /plan.`, "warning");
+			return;
 		}
 
 		if (planModeEnabled) {

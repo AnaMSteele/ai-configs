@@ -73,7 +73,7 @@ For each phase (tracked by `## Progress`), run 1 implementation pass followed by
 
 #### Iteration 1: Implement
 
-Delegate to the `developer` agent with this prompt:
+Delegate to the `developer-mid` agent with this prompt:
 
 > Implement phase N of this plan: `<plan_path>`
 >
@@ -97,7 +97,7 @@ Delegate to the `developer` agent with this prompt:
 >
 > After implementation, run the phase's `### Verify` steps if they exist.
 
-After the developer agent completes, proceed immediately to the first review pass - do not pause.
+After the developer-mid agent completes, proceed immediately to the first review pass - do not pause.
 
 #### Review Passes: Review and Fix
 

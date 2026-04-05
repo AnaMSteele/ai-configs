@@ -1,0 +1,109 @@
+---
+description: Analyze the current PRD round by running the critical thinker first, then optional research, before asking the next question
+argument-hint: '<prd path | prd slug>'
+---
+
+# PRD Clarification Round
+
+Run the clarification support loop for the current PRD delta.
+
+Documents to inspect: $ARGUMENTS
+
+## Contract
+
+This command is for the iterative clarification loop, not the final seven-reviewer gate.
+
+Use it after each meaningful batch of new user answers:
+- update the PRD with the new answers first,
+- then rerun this clarification command,
+- then decide whether more clarification is needed or whether `/review:prd` is now worthwhile.
+
+Required order per round:
+1. Run the critical thinker first on the updated PRD.
+2. Only run the researcher if the critical thinker identifies a decision-relevant gap that needs external defaults, prior art, or precedent.
+3. After those support passes, ask up to 10 clarification questions that would materially help clarify product intent and decisions, or explicitly say no further clarification questions are currently needed.
+
+Do not run `/review:prd` from this command.
+Do not launch any of the seven final PRD reviewers from this command.
+
+## Phase 0: Resolve Inputs
+
+- If `$ARGUMENTS` starts with `@`, strip the leading `@` and treat it as workspace-relative.
+- If a single argument is an existing `.md` file, treat it as `prd_path`.
+- If a single argument is a slug, resolve to `thoughts/plans/prd-<slug>.md`.
+- If the PRD file does not exist, ask for an explicit PRD path.
+
+## Phase 1: Read the Current PRD and Baseline
+
+Read the PRD fully.
+Also read any selected functional spec paths named in the PRD.
+If `thoughts/specs/product_intent.md` exists and is relevant, read it too.
+
+## Phase 2: Critical Thinker Pass (Always)
+
+Launch the critical thinker first.
+
+```javascript
+const critic = Agent({
+  subagent_type: "prd-critical-thinker",
+  description: "Analyze PRD clarification gaps",
+  prompt: "Analyze the current PRD round for $ARGUMENTS. Read the PRD and its selected baseline specs. Follow your prd-critical-thinker instructions exactly and return blockers, missing baseline facts, and whether another clarification question is needed.",
+  run_in_background: true,
+});
+
+const criticResult = await get_subagent_result({ agent_id: critic.agent_id ?? critic.id, wait: true });
+```
+
+## Phase 3: Research Pass (Conditional)
+
+Run the researcher only if the critical thinker shows that research would change a concrete decision.
+Examples:
+- missing precedent or prior art,
+- missing default behavior guidance,
+- uncertainty about a recommended pattern,
+- a decision that cannot be grounded from repo-local evidence alone.
+
+If the critical thinker only found local contradictions, missing flows, or missing user intent, skip research.
+
+Conditional launch:
+
+```javascript
+const research = Agent({
+  subagent_type: "prd-researcher",
+  description: "Research PRD decision gaps",
+  prompt: "Research only the decision-relevant gaps identified for $ARGUMENTS. Follow your prd-researcher instructions exactly and return concise findings, sources, and a recommendation.",
+  run_in_background: true,
+});
+
+const researchResult = await get_subagent_result({ agent_id: research.agent_id ?? research.id, wait: true });
+```
+
+## Phase 4: Next-Step Decision
+
+Using the PRD plus the support-agent outputs:
+
+- If the PRD still has unresolved contradictions, missing required behavior, or unclear intent, ask up to 10 targeted clarification questions that would materially improve product intent clarity or decision quality.
+- Keep the question list prioritized and high-signal; do not pad it just to reach 10.
+- If the PRD is internally coherent and no further clarification is currently needed, say that explicitly.
+- After the user answers, fold those answers into the PRD and start another clarification round from the critical thinker.
+- If wider review is now worthwhile, say that `/review:prd <prd-path>` is available, but do not run it automatically.
+
+## Output Format
+
+```markdown
+## Clarification Round Complete
+
+### Critical Thinker
+- [Key blocker or confirmation]
+
+### Research
+- [Finding] or `Skipped — not needed for this round`
+
+### Next Step
+- [Up to 10 prioritized clarification questions]
+- or `No further clarification questions are currently needed.`
+
+### Review Gate
+- `Do not run yet.`
+- or `A wider /review:prd pass is now worthwhile.`
+```

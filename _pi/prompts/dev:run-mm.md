@@ -1,15 +1,15 @@
 ---
-description: Execute a single-file plan with resumable progress tracking using developer-mid subagent
+description: Execute a single-file plan with resumable progress tracking using developer-mm subagent (MiniMax)
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 ---
 
-# Run Plan (Single File with Subagent)
+# Run Plan with MiniMax Developer (Single File)
 
-Execute a single plan document (spec + phases + progress) using the `developer-mid` subagent.
+Execute a single plan document (spec + phases + progress) using the `developer-mm` subagent.
 
-- Follow the plan, but keep implementation flexibility.
+- Follow the plan using MiniMax model implementation.
 - Track progress by updating `## Progress` in the plan file.
-- Use the cost-effective `developer-mid` (gpt-5.4-mini) subagent for implementation.
+- Use the `developer-mm` (MiniMax) subagent for implementation.
 
 ## Inputs
 
@@ -56,13 +56,13 @@ Immediately begin execution:
 
 - Identify the first unchecked item in `## Progress`.
 - Find the corresponding phase section.
-- Delegate that phase to `developer-mid`.
+- Delegate that phase to `developer-mm`.
 
 ### 3) Execute Phase-by-Phase
 
 For each phase in order:
 
-1. Launch the phase implementation with `Agent` using `subagent_type: "developer-mid"`.
+1. Launch the phase implementation with `Agent` using `subagent_type: "developer-mm"`.
 2. Wait for the result with `get_subagent_result(..., wait: true)`.
 3. Inspect the returned summary and verification evidence before changing the plan file.
 4. Run the phase `### Verify` steps yourself if the subagent did not clearly complete them.

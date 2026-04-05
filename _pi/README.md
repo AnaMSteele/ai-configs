@@ -231,7 +231,7 @@ Prompt templates:
 ```text
 /cmd:debug login flake in CI
 /dev:plan feature-name
-/prd feature-name
+/prd
 /prd:clarify-round thoughts/plans/prd-my-feature.md
 /review:plan thoughts/plans/my-plan.md
 /review:plan-adversarial thoughts/plans/my-plan.md
@@ -258,10 +258,22 @@ Optional second pass: run `/review:plan-adversarial <plan>` after `/review:plan 
 
 Use `/dev:plan-from-prd <prd>` after a reviewed PRD delta is ready to become an execution plan.
 
+The sequence below is the end-to-end reviewed-PRD path from PRD entry through handoff. Clarification continues in `/prd` and `/prd:clarify-round` until complete before the operator runs `/review:prd`.
+
+```text
+/prd
+/review:prd thoughts/plans/prd-my-feature.md
+/dev:plan-from-prd thoughts/plans/prd-my-feature.md
+```
+
 - It is the canonical wrapper for turning a reviewed PRD delta into a fresh single-file plan session.
 - In Pi `/prd` mode, the typical sequence is `/prd` → update the PRD with the latest user answers → `/prd:clarify-round` → repeat that clarification loop as needed → `/review:prd` when a wider review is worthwhile → `/dev:plan-from-prd <prd>` after an approved review result.
+- `/review:prd` is the explicit review gate before `/dev:plan-from-prd`.
 - `/review:prd` writes seven per-reviewer files under `thoughts/validation/prd-reviews/<prd-slug>/`, integrates the combined findings back into the PRD, keeps `integration-ledger.md` plus `review-status.json`, and removes the seven reviewer output files after integration.
 - `/dev:plan-from-prd` validates that `thoughts/validation/prd-reviews/<prd-slug>/review-status.json` exists, is approved, and is not older than the PRD.
+- If the latest review result for the same PRD is `needs_changes`, resolve the inline `[REVIEW:...]` comments in that PRD and rerun `/review:prd <prd-path>`.
+- If the latest review result for the same PRD is `review_failed`, inspect `thoughts/validation/prd-reviews/<prd-slug>/integration-ledger.md` for the failed reviewer row(s) and notes, resolve the failed review-cycle cause(s), and rerun `/review:prd <prd-path>`.
+- If the latest review result for the same PRD is stale, or the same PRD does not yet have a current approved review result, rerun `/review:prd <prd-path>` before handoff.
 - The extension does not auto-run `/review:prd`; that gate is explicit and should happen only once the intent is clarified.
 - When the handoff path is used, `/prd` mode is disabled before planning so PRD-only tool restrictions do not leak into execution planning.
 - In Pi, the handoff command starts a fresh session and then continues the planning work from that clean context.

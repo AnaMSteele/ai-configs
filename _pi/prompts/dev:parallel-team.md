@@ -1,372 +1,198 @@
 ---
-description: Execute work using parallel team with fan-out pattern - 3 developers per group + selector, TDD-driven, with iterative quality loop
+description: Execute work using parallel team with fan-out pattern - 3 developer-mm agents per group + selector, TDD-driven, with iterative quality loop
 argument-hint: '<specification> [--groups=N] [--strategy=a,b,c]'
 ---
 
 # Parallel Team Execution with Fan-Out
 
 Execute complex implementation work using a parallel team structure:
+
 - **Phase 1**: TDD Test Writer creates failing (red) tests
-- **Phase 2**: Parallel fan-out to N groups, each with 3 developers (different strategies) + 1 quality-reviewer (selector)
+- **Phase 2**: Parallel fan-out to N groups, each with 3 `developer-mm` agents (different strategies) + 1 quality-reviewer selector
 - **Phase 3**: Integrate selected implementations from all groups
-- **Phase 4**: Final quality-reviewer iterates with developer until clean
+- **Phase 4**: Final quality-reviewer iterates with `developer-mm` until clean
 
 ## Arguments
 
 - `$ARGUMENTS`: Specification of work to implement (file path, description, or plan slug)
 - `--groups=N` (optional): Number of parallel groups (default: 3, max: 5)
-- `--strategy=a,b,c` (optional): Comma-separated strategy names for the 3 developers (default: conservative,aggressive,balanced)
+- `--strategy=a,b,c` (optional): Comma-separated strategy names for the 3 `developer-mm` agents (default: conservative,aggressive,balanced)
 
 ## Execution Flow
 
 ### Phase 0: Parse Arguments and Setup
 
-Parse input specification:
+Parse the input specification:
+
 - If file path: read specification from file
 - If slug: read from `thoughts/plans/<slug>.md`
 - If plain text: treat as inline specification
 
 Determine parallelization:
-```bash
-GROUPS=${GROUPS:-3}
-STRATEGIES=${STRATEGIES:-"conservative,aggressive,balanced"}
-```
 
-### Phase 1: TDD Test Writer - Create Red Tests
+- `GROUPS=${GROUPS:-3}`
+- `STRATEGIES=${STRATEGIES:-"conservative,aggressive,balanced"}`
 
-Spawn developer-mm (in test-writer mode) to create comprehensive failing tests:
+Use the actual Pi tool surface:
 
-```
-Task(
-  subagent_type="developer-mm",
-  description="Write failing tests for specification (TDD RED phase)",
-  prompt="""
-  Specification: $SPECIFICATION
-  
-  You are in TDD RED PHASE mode. Write comprehensive FAILING tests that:
-  - Cover all acceptance criteria from the specification
-  - Include edge cases and error conditions
-  - Use project-standard testing framework (check CLAUDE.md/TESTING.md)
-  - Are in test files at appropriate locations
-  - Will FAIL when run against current codebase (no implementation yet)
-  
-  Do NOT implement any production code - only write failing tests.
-  Run tests to confirm they fail (RED).
-  Return: List of test files created and what each test verifies.
-  """
+- launch workers with `Agent`
+- wait with `get_subagent_result(..., wait: true)`
+- run every parallel implementation worker with `isolation: "worktree"` so candidates cannot overwrite each other
+- do not use placeholder `Task(...)` syntax
 
+### Phase 1: TDD Test Writer (RED)
 
-Wait for test writer to complete. Capture:
-- Test file paths
-- Expected behavior defined by tests
+Launch one `developer-mm` agent to create the failing tests first.
+
+Required prompt shape:
+
+> Specification: `$SPECIFICATION`
+>
+> You are in TDD RED PHASE mode. Write comprehensive failing tests that:
+> - cover all acceptance criteria from the specification
+> - include edge cases and error conditions
+> - use the project-standard testing framework
+> - live in appropriate test files
+> - fail against the current codebase before implementation
+>
+> Do not implement production code.
+> Run the tests to confirm they fail.
+> Return the created test files, the commands run, and the failing evidence.
+
+Wait for the test writer to complete before moving to Phase 2.
+
+Capture:
+
+- test file paths
+- commands used to demonstrate RED
+- expected behavior defined by the tests
 
 ### Phase 2: Parallel Group Fan-Out
 
-Launch N parallel groups. Each group operates independently.
+Launch `N` groups in parallel. Each group works independently.
 
-**For each group i in 1..N:**
+For each group:
 
-#### Group Task Structure
+1. Read the specification and the red tests.
+2. Launch 3 parallel `developer-mm` implementation agents using the requested strategies.
+3. Each implementation agent must run in its own isolated worktree (`isolation: "worktree"`).
+4. Wait for all 3 results.
+5. Launch one `quality-reviewer` to select the best implementation from that group.
+6. Return the selected implementation, rejected alternatives, the selector rationale, and the winning worktree/branch reference.
 
-```
-# Launch group in parallel with other groups
-Task(
-  subagent_type="general",
-  description="Parallel implementation group $i",
-  prompt="""
-  You are Group $i of $GROUPS implementing: $SPECIFICATION
-  
-  Red tests have been written. Your job:
-  1. Read the red tests to understand requirements
-  2. Coordinate 3 parallel developer implementations
-  3. Have quality-reviewer select the best
-  
-  ## Step 1: Spawn 3 Developers (Parallel)
-  
-  Launch 3 Task() calls simultaneously with developer-mm:
-  
-  **Developer A (Conservative Strategy):**
-  ```
-  Task(
-    subagent_type="developer-mm",
-    description="Group $i - Conservative implementation",
-    prompt=f"""
-    Specification: $SPECIFICATION
-    Strategy: CONSERVATIVE
-    - Use ONLY patterns already existing in the codebase
-    - NO new dependencies
-    - Prefer copy-paste-modify from existing similar features
-    - Optimize for stability and maintainability
-    
-    Red tests exist at: [test file paths]
-    Make ALL these tests PASS (GREEN phase).
-    
-    Constraints:
-    - Zero linting violations
-    - Follow project conventions from CLAUDE.md
-    - Handle all errors appropriately
-    - Write minimal code to make tests pass
-    """
-  )
-  ```
-  
-  **Developer B (Aggressive Strategy):**
-  ```
-  Task(
-    subagent_type="developer-mm",
-    description="Group $i - Aggressive implementation",
-    prompt=f"""
-    Specification: $SPECIFICATION
-    Strategy: AGGRESSIVE
-    - PRIORITIZE performance and modern patterns
-    - New dependencies allowed with explicit justification
-    - Explore newer features (streaming, async, etc.)
-    - Optimize for speed and innovation
-    
-    Red tests exist at: [test file paths]
-    Make ALL these tests PASS (GREEN phase).
-    
-    Constraints:
-    - Zero linting violations
-    - Follow project conventions from CLAUDE.md
-    - Handle all errors appropriately
-    - Can refactor existing patterns if justified
-    """
-  )
-  ```
-  
-  **Developer C (Balanced Strategy):**
-  ```
-  Task(
-    subagent_type="developer-mm",
-    description="Group $i - Balanced implementation",
-    prompt=f"""
-    Specification: $SPECIFICATION
-    Strategy: BALANCED
-    - Prefer EXISTING patterns in the codebase
-    - ONE new dependency allowed if it significantly improves code
-    - Balance stability with reasonable innovation
-    - Default to conservative, allow one strategic optimization
-    
-    Red tests exist at: [test file paths]
-    Make ALL these tests PASS (GREEN phase).
-    
-    Constraints:
-    - Zero linting violations
-    - Follow project conventions from CLAUDE.md
-    - Handle all errors appropriately
-    - Best practices from both worlds
-    """
-  )
-  ```
-  
-  Wait for all 3 developers to complete.
-  
-  ## Step 2: Quality Reviewer - Select Best Implementation
-  
-  Spawn quality-reviewer to evaluate all 3 implementations:
-  
-  ```
-  Task(
-    subagent_type="quality-reviewer",
-    description="Group $i - Select best implementation",
-    prompt=f"""
-    Review 3 implementations of: $SPECIFICATION
-    
-    Implementation A (Conservative): [file paths, summary]
-    Implementation B (Aggressive): [file paths, summary]
-    Implementation C (Balanced): [file paths, summary]
-    
-    All must pass the red tests.
-    
-    Evaluate on:
-    1. Code quality and maintainability
-    2. Performance characteristics
-    3. Alignment with project patterns
-    4. Error handling robustness
-    5. Test coverage completeness
-    
-    Select ONE implementation to keep.
-    
-    Return:
-    - Selected strategy (A/B/C)
-    - File paths of selected implementation
-    - Brief justification for selection
-    - List of rejected implementations with reasons
-    """
-  )
-  ```
-  
-  Capture the selected implementation from this group.
-  """
-)
-```
+#### Developer roles per group
 
-Wait for ALL N groups to complete. Collect:
-- Group 1 selected implementation
-- Group 2 selected implementation
-- ...
-- Group N selected implementation
+Every group must use these three `developer-mm` variants:
+
+- **Conservative**
+  - prefer existing repo patterns
+  - no new dependencies
+  - optimize for stability and maintainability
+- **Aggressive**
+  - prioritize performance and modern patterns
+  - allow a new dependency only with explicit justification
+  - optimize for speed and innovation
+- **Balanced**
+  - default to existing patterns
+  - allow one strategic improvement when clearly justified
+  - balance stability with targeted modernization
+
+Each implementation prompt must require:
+
+- make all red tests pass
+- zero linting violations
+- project-convention alignment
+- robust error handling
+- a truthful summary of what still fails, if anything
+- the worker’s isolated worktree path or branch reference
+- the touched file list
+- the verification commands and results
+
+#### Group selector
+
+After the three `developer-mm` implementations finish, launch one `quality-reviewer` for that group.
+
+The selector must review the candidates as separate isolated outputs. Do not compare mixed shared-checkout state.
+
+Selector responsibilities:
+
+- compare all 3 implementations using their isolated worktree/branch references plus returned file lists and verification evidence
+- reject any implementation that does not actually pass the red tests
+- choose exactly one implementation to carry forward
+- explain the choice in terms of maintainability, correctness, performance, alignment with repo patterns, and error handling
+
+#### Group failure rule
+
+If all 3 implementations in a group fail:
+
+- mark the group as failed
+- include the failure reasons in the group summary
+- continue with other successful groups
 
 ### Phase 3: Integration
 
-Integrate all N selected implementations into a cohesive solution:
+After all groups finish, integrate the selected implementations into one cohesive solution.
 
-```
-Task(
-  subagent_type="developer-mm",
-  description="Integrate selected implementations",
-  prompt=f"""
-  Integrate $GROUPS selected implementations into one cohesive solution.
-  
-  Selected implementations:
-  - Group 1 (Strategy X): [files]
-  - Group 2 (Strategy Y): [files]
-  - ...
-  
-  Integration requirements:
-  1. Resolve any conflicts between implementations
-  2. Ensure all red tests still pass
-  3. Maintain consistent style and patterns
-  4. Produce clean, unified codebase
-  
-  Return: Final integrated file paths and summary.
-  """
-)
-```
+Use a `developer-mm` integrator prompt that requires:
 
-### Phase 4: Final Quality Loop (Iterative)
+- reading the selected isolated worktree outputs and merging only the chosen candidates into the main solution
+- resolving conflicts between selected group outputs
+- preserving the passing test behavior from the chosen implementations
+- keeping style and patterns consistent
+- rerunning the relevant tests after integration
+- returning final file paths plus verification results
 
-Run quality-reviewer in a loop until clean:
+If some groups failed entirely, integrate only from the successful groups and say so explicitly.
 
-```
-QUALITY_PASSES = 0
-MAX_PASSES = 5
+### Phase 4: Final Quality Loop
 
-while QUALITY_PASSES < MAX_PASSES:
-    
-    # Run final quality review
-    Task(
-      subagent_type="quality-reviewer",
-      description="Final quality review - iteration $QUALITY_PASSES",
-      prompt=f"""
-      Review the integrated implementation: [file paths]
-      
-      Specification: $SPECIFICATION
-      
-      Check for:
-      - Security issues
-      - Performance problems
-      - Data loss risks
-      - Code quality issues
-      - Testing gaps
-      - Error handling gaps
-      
-      Return:
-      - Status: CLEAN or NEEDS_FIX
-      - If NEEDS_FIX: list specific issues with file:line references
-      - If CLEAN: confirm all quality gates pass
-      """
-    )
-    
-    if review.status == "CLEAN":
-        break
-    
-    # If issues found, spawn developer-mm to fix
-    Task(
-      subagent_type="developer-mm",
-      description="Fix quality issues - iteration $QUALITY_PASSES",
-      prompt=f"""
-      Fix the following quality issues in the integrated implementation:
-      
-      Issues from quality-reviewer:
-      [list all issues with file:line references]
-      
-      Requirements:
-      - Address ALL issues
-      - Maintain zero linting violations
-      - Ensure all tests still pass
-      - Follow project conventions
-      
-      Return: Summary of fixes made.
-      """
-    )
-    
-    QUALITY_PASSES += 1
+Run a final quality loop until clean or until you hit the iteration limit.
 
-if QUALITY_PASSES >= MAX_PASSES:
-    Report: "Quality loop reached max iterations. Manual review required."
-```
+- reviewer: `quality-reviewer`
+- fixer: `developer-mm`
+- max passes: 5
+
+Loop contract:
+
+1. Run `quality-reviewer` on the integrated implementation.
+2. If the review says clean, stop.
+3. If it reports issues, launch `developer-mm` to fix those specific issues.
+4. Re-run verification.
+5. Repeat until clean or max passes reached.
+
+Do not claim success while substantive quality findings remain unresolved.
 
 ## Output
 
 After completion, provide:
 
-```
+```markdown
 ## Parallel Team Execution Complete
 
-### Configuration:
-- Groups: $GROUPS
-- Strategies: $STRATEGIES
-- Quality iterations: $QUALITY_PASSES
+### Configuration
+- Groups: <N>
+- Strategies: <strategy list>
+- Quality iterations: <count>
 
-### Results by Group:
-| Group | Selected Strategy | Reason |
-|-------|------------------|--------|
-| 1 | [strategy] | [brief justification] |
-| 2 | [strategy] | [brief justification] |
-| ... | ... | ... |
+### Results by Group
+| Group | Selected Strategy | Outcome | Reason |
+| --- | --- | --- | --- |
+| 1 | conservative/aggressive/balanced | selected/failed | ... |
 
-### Final Output:
+### Final Output
 - Integrated implementation: [file paths]
-- Test results: [pass/fail]
-- Quality status: [clean/needs review]
-- Lint status: [pass/fail]
+- Test results: pass/fail
+- Quality status: clean/needs review
+- Lint status: pass/fail
 
-### Next Steps:
-[If quality loop maxed out, recommend manual review. Otherwise, work is complete.]
+### Next Steps
+- If clean: work complete
+- If max quality iterations reached: manual review required
 ```
-
-## Example Usage
-
-```bash
-# Default: 3 groups with conservative/aggressive/balanced strategies
-/dev:parallel-team "Implement user authentication API"
-
-# 5 groups for larger work
-/dev:parallel-team "Build payment processing system" --groups=5
-
-# Custom strategies
-/dev:parallel-team "Optimize database queries" --strategy=minimal,cached,indexed
-
-# From plan file
-/dev:parallel-team thoughts/plans/auth-implementation.md
-```
-
-## Edge Cases
-
-### All Strategies in a Group Fail
-If all 3 developers in a group fail to produce passing tests:
-- Quality-reviewer marks group as FAILED
-- Other groups continue
-- Integration phase works with remaining successful groups
-- Report includes failed group analysis
-
-### Quality Reviewer Cannot Decide
-If quality-reviewer cannot select a clear winner:
-- Request brief justification for top 2 choices
-- Select based on project priorities (maintainability > performance for most projects)
-- Log ambiguity for post-execution review
-
-### Integration Conflicts
-If selected implementations have irreconcilable conflicts:
-- Document conflicts
-- Spawn emergency integration review with quality-reviewer
-- May require re-running specific groups with adjusted strategies
 
 ## Safety Limits
 
-- Max groups: 5 (resource constraint)
-- Max quality loop iterations: 5 (prevents infinite loops)
-- All implementations must pass red tests to be considered
-- Zero linting tolerance across all code
+- Max groups: 5
+- Max quality loop iterations: 5
+- All implementations must pass the red tests to be eligible for selection
+- Zero linting tolerance across all selected and integrated code

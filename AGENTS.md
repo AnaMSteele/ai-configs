@@ -1,8 +1,15 @@
 # Agent Catalog
 
-Current roster of bespoke Claude and Codex agents defined in this repository. All briefs live under `_claude/agents/`, and templates for new roles live in `_claude/agents/templates/` (if applicable).
+Current roster of bespoke Claude, Codex, and Pi agents defined in this repository.
 
-## Implementation & Architecture
+## Pi Subagents (Implementation)
+Located under `_pi/agents/` and invoked via Pi subagent system:
+
+- `developer-mid` (gpt-5.4-mini; `_pi/agents/developer-mid.md`) — Default implementation agent for standard complexity work. Cost-effective for most tasks.
+- `developer-high` (gpt-5.4; `_pi/agents/developer-high.md`) — High-capability implementation agent for complex scenarios (multi-file refactoring, algorithmic challenges, concurrent systems, complex domain logic).
+- `developer-mm` (MiniMax; `_pi/agents/developer-mm.md`) — Alternative implementation agent using MiniMax model.
+
+## Implementation & Architecture (Claude/Codex)
 - `developer` (sonnet; `_claude/agents/developer.md`) — Implements specs with tests and enforces zero linting violations.
 - `developer` (sonnet; `_opencode/agents/developer.md`) — Architectural specification implementation with tests and zero linting violations.
 - `developer-fidelity` (sonnet; `_claude/agents/developer-fidelity.md`) — Implements specifications with absolute fidelity—no extra tests, features, or safeguards.

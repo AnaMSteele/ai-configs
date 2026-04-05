@@ -1,11 +1,19 @@
 ---
-description: Execute a plan with quality-gated phases - each phase gets 1 implementation pass and repeated review/fix passes until only low-risk items remain
+description: Execute a complex plan with high-capability developer agent - each phase gets 1 implementation pass and repeated review/fix passes until only low-risk items remain
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 ---
 
-# Run Plan (Quality-Gated Loop)
+# Run Plan with High-Capability Developer (Quality-Gated Loop)
 
-Execute a plan document phase-by-phase: do 1 implementation pass, then repeat review/fix passes until the reviewer finds zero issues or explicitly confirms that only low-risk deferred items remain. Do not advance with unresolved substantive issues.
+Execute a complex plan document phase-by-phase using the high-capability `developer-high` agent. Use this for:
+- Complex multi-file refactoring
+- Algorithmic challenges requiring deep reasoning
+- Performance-critical implementations
+- Concurrent/distributed systems
+- Complex domain logic with many edge cases
+- Integration across multiple services/APIs
+
+Do 1 implementation pass, then repeat review/fix passes until the reviewer finds zero issues or explicitly confirms that only low-risk deferred items remain. Do not advance with unresolved substantive issues.
 
 ## Inputs
 
@@ -73,7 +81,7 @@ For each phase (tracked by `## Progress`), run 1 implementation pass followed by
 
 #### Iteration 1: Implement
 
-Delegate to the `developer-mm` agent with this prompt:
+Delegate to the `developer-high` agent with this prompt:
 
 > Implement phase N of this plan: `<plan_path>`
 >
@@ -97,11 +105,11 @@ Delegate to the `developer-mm` agent with this prompt:
 >
 > After implementation, run the phase's `### Verify` steps if they exist.
 
-After the developer-mm agent completes, proceed immediately to the first review pass - do not pause.
+After the developer-high agent completes, proceed immediately to the first review pass - do not pause.
 
 #### Review Passes: Review and Fix
 
-Delegate to the `quality-reviewer-k2.5` agent with this prompt:
+Delegate to the `quality-reviewer` agent with this prompt:
 
 > Review the implementation of phase N of this plan: `<plan_path>`
 >

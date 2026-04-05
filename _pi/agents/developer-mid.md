@@ -1,6 +1,6 @@
 ---
-name: developer
-description: Implements your specifications with tests - delegate for writing code
+name: developer-mid
+description: Implements standard specifications with tests - default delegate for writing code
 mode: subagent
 model: openai-codex/gpt-5.4-mini
 color: '#3498db'
