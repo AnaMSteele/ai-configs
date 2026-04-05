@@ -138,13 +138,17 @@ export default function (pi: ExtensionAPI) {
 		name: "todo",
 		label: "Todo",
 		description:
-			"Track and manage a persistent todo list within the session. Use this instead of conversational lists when the user wants trackable, actionable items that persist across the conversation.",
-		promptSnippet: "Track todos within the session (add, toggle, clear, list)",
+			"Track and manage a persistent todo list within the session. Use this proactively for comprehensive planning BEFORE beginning substantive work. The todo tool is for trackable, actionable items that persist across the conversation.",
+		promptSnippet: "Create comprehensive phased todo list BEFORE beginning work, then update as you progress",
 		promptGuidelines: [
+			"BEFORE doing substantive work on the upcoming user request, create a comprehensive phased todo list first. You MUST call todo with action: 'add' to initialize the full plan in this turn.",
+			"You MUST cover the entire request from investigation through implementation and verification — not just the next immediate step.",
+			"You MUST make todo descriptions specific enough that a future turn can execute them without re-planning. Keep task text to a short label (5-10 words). Put file paths, implementation steps, and specifics in mental context, not the todo text.",
+			"You MUST keep tasks ordered: exactly one active task (not marked done) and all later tasks not done. Toggle tasks to done as you complete them.",
+			"After the initial todo list is created, continue with the user's request in the same turn. Do not emit additional todo calls unless task state materially changed (completions, new discoveries requiring tasks).",
 			"When the user asks to track tasks, create a todo list, or manage action items, use the todo tool instead of conversational responses.",
 			"When the user mentions 'todo', 'tasks', or asks to see their todos, call todo with action: 'list'.",
 			"After completing work, offer to update or clear the todo list using the todo tool.",
-			"Prefer the todo tool over conversational lists when the user wants persistent, trackable items.",
 		],
 		parameters: TodoParams,
 
