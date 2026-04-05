@@ -12,6 +12,7 @@ const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
 const STANDARD_PLAN_REVIEW_COMMAND = "review:plan";
 const ADVERSARIAL_PLAN_REVIEW_COMMAND = "review:plan-adversarial";
+const CHANGE_REVIEW_INTEGRATE_COMMAND = "review:change-integrate";
 const CLAUDE_REVIEW_COMMAND = "review:change-claude-code";
 const MAX_REVIEW_CYCLES = 3;
 
@@ -609,6 +610,25 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		await startReviewCycle(ctx, ADVERSARIAL_PLAN_REVIEW_COMMAND);
 	}
 
+	async function startReviewIntegration(ctx: ExtensionContext, options?: { automatic?: boolean }): Promise<void> {
+		if (!currentPlanPath) return;
+		reviewInFlight = true;
+		pendingAutoReviewCommand = false;
+		reviewSawReviewActivity = false;
+		reviewClaudeFallbackAttempted = false;
+		lastReviewCommand = CHANGE_REVIEW_INTEGRATE_COMMAND;
+		applyPlanTools(false);
+		updateUi(ctx);
+		persistState();
+		if (options?.automatic) {
+			ctx.ui.notify(
+				`/${STANDARD_PLAN_REVIEW_COMMAND} completed for ${currentPlanPath}. Automatically running /${CHANGE_REVIEW_INTEGRATE_COMMAND}.`,
+				"info",
+			);
+		}
+		await dispatchSlashCommandPrompt(ctx, `/${CHANGE_REVIEW_INTEGRATE_COMMAND} ${formatCommandArg(currentPlanPath)}`);
+	}
+
 	async function offerPostReviewAction(ctx: ExtensionContext, reason: string): Promise<void> {
 		if (!planModeEnabled || !ctx.hasUI || !currentPlanPath) return;
 
@@ -617,7 +637,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			"Start fresh /ralph:run session",
 			"Keep editing in plan mode",
 		];
-		if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND) {
+		if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND || lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND) {
 			choices.splice(2, 0, `Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`);
 		}
 		if (reviewCycles < MAX_REVIEW_CYCLES) {
@@ -731,8 +751,9 @@ Constraints:
 - Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/.
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
 - After creating or materially updating a plan, expect to be offered /review:plan <path>.
-- After a standard review completes, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
-- After review completes, expect to be offered both /dev:run <path> and /ralph:run <path> as exit paths from the reviewed plan.
+- After a standard review completes with inline comments, expect /review:change-integrate <path> to run automatically so review feedback is resolved back into the same plan file before any exit prompt.
+- After standard review integration, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
+- After an integrated review completes, expect to be offered both /dev:run <path> and /ralph:run <path> as exit paths from the reviewed plan.
 - In Pi, those exit choices route through /cmd:execute-plan <path> --target ... so execution starts from a fresh session instead of staying in planning context.
 - Review feedback should be integrated back into the same plan file.
 - Automatic review looping is capped at ${MAX_REVIEW_CYCLES} cycles before stopping.
@@ -818,10 +839,22 @@ ${currentPlanInstruction}`,
 			applyPlanTools(false);
 			updateUi(ctx);
 			persistState();
-			await offerPostReviewAction(
-				ctx,
-				turnTouchedPlan ? `review cycle ${reviewCycles} integrated` : `review cycle ${reviewCycles} completed`,
-			);
+			if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND && turnTouchedPlan) {
+				await startReviewIntegration(ctx, { automatic: true });
+				turnTouchedPlan = false;
+				return;
+			}
+
+			const reviewReason = lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND
+				? turnTouchedPlan
+					? `review cycle ${reviewCycles} integrated`
+					: `review cycle ${reviewCycles} integration completed`
+				: lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND
+					? `review cycle ${reviewCycles} completed`
+					: turnTouchedPlan
+						? `review cycle ${reviewCycles} updated the plan`
+						: `review cycle ${reviewCycles} completed`;
+			await offerPostReviewAction(ctx, reviewReason);
 			turnTouchedPlan = false;
 			return;
 		}
