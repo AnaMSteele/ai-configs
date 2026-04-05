@@ -5,7 +5,7 @@ description: Execute a plan with quality-gated phases - developer implements, re
 
 # Ralph Run - Quality-Gated Plan Execution
 
-Execute a plan document phase-by-phase. For each phase, do 1 implementation pass, then repeat review/fix passes until the reviewer finds zero issues or explicitly confirms that only low-risk deferred items remain.
+Execute a reviewed plan document phase-by-phase. For each phase, do 1 implementation pass, then repeat review/fix passes until the reviewer finds zero issues or explicitly confirms that only low-risk deferred items remain.
 
 ## Overview
 
@@ -69,6 +69,8 @@ Read `plan_path` fully. Confirm:
 - `Resume Instructions (Agent)` exists
 - Each phase has `### End State`, `### Tests first`, `### Work`, `### Verify`
 - No unresolved `Open Questions` or `Decision Points`
+- No unresolved inline `[REVIEW:...]` comments remain unless the user explicitly approved executing with them present
+- If this repo uses the Pi reviewed-plan flow, the plan reached execution through an explicit handoff such as `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan`, not through an implicit fallback reviewer
 - Verify commands match repo reality
 
 If not ready, STOP and ask user to fix the plan.

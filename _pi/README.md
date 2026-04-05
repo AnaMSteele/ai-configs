@@ -101,8 +101,11 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - powers `/plan` mode for `thoughts/` planning workflows,
 - keeps planning-mode file writes scoped to `thoughts/`,
 - offers `/review:plan` after plan edits,
+- automatically follows a standard review with `/review:change-integrate` before any execution handoff,
+- optionally offers `/review:plan-adversarial` as a second-pass challenge review after integration,
 - offers both `/dev:run <plan>` and `/ralph:run <plan>` as post-review exit paths,
 - stages those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can launch execution from a fresh session,
+- keeps alternate review commands such as `/review:change-claude-code` as explicit opt-ins rather than hidden plan-mode fallbacks,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
 This repo also ships a maintained `pi-prd-mode` extension that:
@@ -249,12 +252,23 @@ Prompt templates:
 
 Use `/cmd:execute-plan <plan>` after a reviewed plan is ready to continue.
 
-Optional second pass: run `/review:plan-adversarial <plan>` after `/review:plan <plan>` when you want an explicit challenge review before execution.
+Canonical reviewed-plan flow:
+
+```text
+/dev:plan <plan>
+/review:plan <plan>
+/review:change-integrate <plan>
+/review:plan-adversarial <plan>   # optional
+/cmd:execute-plan <plan>
+```
+
+Optional second pass: run `/review:plan-adversarial <plan>` after `/review:change-integrate <plan>` when you want an explicit challenge review before execution.
 
 - It is the canonical wrapper for choosing between `/dev:run <plan>` and `/ralph:run <plan>`.
 - In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
 - When that extension path is used, `/plan` mode is disabled before execution so planning-only tool restrictions do not leak into implementation.
 - In Pi, the handoff command starts a fresh session and then launches the selected execution flow from that clean context.
+- `/review:change-claude-code` remains available for an explicit manual review request, but it is not part of the automatic `/plan`-mode review-to-execution path.
 
 Use `/dev:plan-from-prd <prd>` after a reviewed PRD delta is ready to become an execution plan.
 

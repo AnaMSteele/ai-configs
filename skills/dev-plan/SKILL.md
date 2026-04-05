@@ -86,6 +86,7 @@ Non-negotiable requirements:
 - `### Verify` steps are copy/paste ready and match actual repo reality
 - The plan is resumable by another agent without inventing missing semantics
 - For product-facing work, the plan explicitly documents the default workflow, inferred defaults, self-healing expectations, fail-closed boundaries, actionable agent-legible error guidance, and any repo-doc/test updates needed to stay aligned
+- When this repo uses the Pi reviewed-plan flow, the plan assumes explicit handoff commands rather than hidden recovery paths: `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan`
 - The plan does not normalize routine "run this other command to inspect/fix it" operator loops unless the work is explicitly about a high-risk or ambiguous exception path
 
 ### 6) Consistency Pass
@@ -109,5 +110,7 @@ Before finishing:
 ## Suggested Next Steps
 
 After this skill completes, the user may:
-- Review the plan: `/skill:review-change thoughts/plans/<slug>.md`
-- Execute: Run implementation commands or use task processing skills
+- Review the plan: `/review:plan thoughts/plans/<slug>.md`
+- Integrate review feedback: `/review:change-integrate thoughts/plans/<slug>.md`
+- Optionally run an adversarial second pass: `/review:plan-adversarial thoughts/plans/<slug>.md`
+- Hand off to execution: `/cmd:execute-plan thoughts/plans/<slug>.md`

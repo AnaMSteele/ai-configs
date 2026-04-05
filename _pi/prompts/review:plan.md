@@ -17,6 +17,7 @@ Documents to review: $ARGUMENTS
 - Do not perform any reviews directly in the primary agent.
 - Do not rely on a nonexistent `subagent(...)` runner or on slash-command chaining.
 - This command is review-only. Do not integrate or clean up review comments here.
+- Do not trigger or imply an automatic fallback to `/review:change-claude-code`; Claude Code review remains a separate explicit opt-in command.
 
 ## Phase 1: Parallel Review (2 Reviewers)
 

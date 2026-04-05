@@ -41,6 +41,8 @@ Codify the planning and execution boundaries:
 - `plan mode` is for read-only discovery and research.
 - `dev:plan` is the plan-materialization step and may write the plan artifact only.
 - `ralph:run` (or repo equivalent) executes the plan with the repo's real quality gates.
+- If the repo uses Pi-style reviewed-plan handoff, codify it explicitly: `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan` -> `/dev:run` or `/ralph:run`.
+- Keep alternate reviewers such as Claude Code explicit and manual; do not describe them as hidden fallbacks inside plan mode or execution.
 
 Add the shared fail-closed ready bar:
 

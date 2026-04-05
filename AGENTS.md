@@ -197,7 +197,7 @@ Pi now supports both:
 # Development
 /skill:cmd-research "how does X work"
 /skill:cmd-debug "issue description"
-/skill:review-change <plan.md>
+/review:plan thoughts/plans/<plan>.md
 
 # Context
 /skill:cmd-create-handoff "pausing work"
@@ -205,6 +205,15 @@ Pi now supports both:
 ```
 
 See `_pi/README.md` for complete documentation.
+
+Expected Pi reviewed-plan flow in this repo:
+- `/dev:plan <plan>`
+- `/review:plan <plan>`
+- `/review:change-integrate <plan>`
+- optional `/review:plan-adversarial <plan>`
+- `/cmd:execute-plan <plan>` -> `/dev:run <plan>` or `/ralph:run <plan>`
+
+`/review:change-claude-code` remains an explicit opt-in review command, not a hidden fallback inside plan mode or execution.
 
 ## Linear Integration (ltui)
 

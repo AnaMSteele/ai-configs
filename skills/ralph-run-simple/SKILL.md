@@ -13,6 +13,14 @@ Execute a plan with one implementation pass and one review pass per phase. No lo
 /skill:ralph-run-simple <slug | path/to/plan.md>
 ```
 
+## Prerequisites
+
+Start from a reviewed plan, not a draft plan.
+
+- No unresolved inline `[REVIEW:...]` comments should remain unless the user explicitly approved executing with them present.
+- If this repo uses the Pi reviewed-plan flow, expect an explicit handoff such as `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan` before running this skill.
+- This skill does not replace plan review and must not invent a hidden fallback reviewer.
+
 ## Process
 
 ### 1) Resolve and Read Plan

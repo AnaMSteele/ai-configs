@@ -34,6 +34,7 @@ Capture these behaviors as defaults:
 - `dev:plan` must fail closed on `low-confidence` foundational decisions: it only hands off an `execution-ready` plan when those decisions are resolved, and otherwise asks the user or writes exactly one non-ready `research-ready` plan artifact with the exact next research action.
 - Root `AGENTS.md` tells agents to use the shared planning skill and names any repo-specific planning inputs or overrides.
 - Plan-first execution with phase checkpoints (`Implement phase N` -> `Review/Re-review`) under the shared verdict-based `ralph:run` gate.
+- In Pi-style reviewed-plan repos, the handoff stays explicit: `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan` -> execution. Alternate reviewers such as `/review:change-claude-code` remain explicit opt-ins, not hidden fallbacks.
 - Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each deferred low-risk item is logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`.
 - Resumability: `Progress` with stable IDs, explicit `Resume Instructions`, and append-only decision/deviation logs.
 - Evidence-first validation: lint, unit, build, e2e (and contract tests if applicable) before claiming done.
@@ -72,6 +73,7 @@ Bootstrap repos around these responsibilities:
 - Optional repo-local planning deviations -> `thoughts/plans/AGENTS.md`
 - Read-only research/discovery -> `plan mode`
 - Plan materialization -> `dev:plan`
+- Explicit reviewed-plan handoff -> `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan`
 - Quality-gated execution -> `ralph:run`
 
 Do not make a repo-local planning overrides file the default source of truth when root `AGENTS.md` plus the shared planning skill are sufficient.
@@ -154,6 +156,7 @@ Required outcomes:
 - Planning boundary rules:
   - `plan mode` is read-only discovery
   - `dev:plan` writes the plan only
+  - reviewed-plan handoff stays explicit and does not rely on hidden fallback reviewers
   - `ralph:run` executes the plan
 - Instruction to use the shared `planning-workflow` skill for plan creation.
 - The shared fail-closed ready bar: only `execution-ready` plans hand off to implementation, while unresolved `low-confidence` decisions stay in discovery or move into a single `research-ready` artifact.

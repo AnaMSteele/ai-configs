@@ -12,6 +12,7 @@ Use this skill as the canonical source of truth for plan-writing methodology acr
 - `plan mode` is for discovery only: inspect the codebase, validate assumptions, gather evidence, and identify ambiguities.
 - `dev:plan` (or equivalent plan-materialization step) writes the actual plan file once discovery has produced enough evidence to choose the correct readiness state: `execution-ready` when foundational decisions are resolved, or a single non-ready `research-ready` artifact when further research is the next handoff. Before that handoff point, the work remains `discovery`.
 - `dev:plan` ends when the plan artifact is written or updated; execution starts only after a separate explicit execution command or a new user instruction.
+- In Pi-style reviewed-plan workflows, keep the handoff explicit: `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan` -> `/dev:run` or `/ralph:run`. Do not assume a hidden fallback to Claude Code or any other alternate review surface.
 - During plan writing, edit only the target plan artifact unless the repo's `AGENTS.md` explicitly allows another planning-side file.
 - Do not change product code, tests, app config, docs, generated files, or environment files while planning.
 - Avoid side effects: no installs, codegen, migrations, formatting runs, commits, rebases, resets, or destructive commands.
