@@ -17,7 +17,7 @@ These resources are installed by `install.sh` to Pi's global agent directory. Th
 - repo-managed extensions: copied from this repo into `~/.pi/agent/extensions/`
 - package-managed Pi installs: registered via `pi install` / `pi update` and visible in `pi list`
 
-`pi list` only shows the package-managed set; it does not list repo-managed files like `todo.ts`, `simple-multi-status.ts`, or `pi-plan-mode`. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
+`pi list` only shows the package-managed set; it does not list repo-managed files like `todo.ts` or `pi-plan-mode`. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
 
 ```bash
 ./install.sh --pi      # Install Pi prompt templates + subagents + extensions and sync shared skills
@@ -46,7 +46,6 @@ Installed layout:
 └── extensions/
     ├── pi-plan-mode/
     │   └── index.ts
-    ├── simple-multi-status.ts
     └── todo.ts
 ```
 
@@ -97,14 +96,6 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - offers both `/dev:run <plan>` and `/ralph:run <plan>` as post-review exit paths,
 - stages those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can launch execution from a fresh session,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
-
-This repo also ships `simple-multi-status.ts`, a lightweight multi-line status widget that auto-loads on install and shows:
-
-- the active model,
-- token, cache, and cost totals,
-- multi-pass / multicodex status when present,
-- current context-window usage,
-- the current working directory.
 
 This repo also vendors Pi's `todo.ts` example extension, which auto-loads on install and provides:
 
