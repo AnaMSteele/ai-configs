@@ -16,7 +16,6 @@ EXPECTED_NPM_PACKAGES=(
   "npm:@tintinweb/pi-subagents"
   "npm:@aliou/pi-processes"
   "npm:pi-web-access"
-  "npm:pi-mcp-adapter"
   "npm:lsp-pi"
   "npm:@fnnm/pi-ast-grep"
   "npm:pi-updater"

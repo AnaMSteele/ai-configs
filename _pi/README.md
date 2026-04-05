@@ -119,7 +119,6 @@ npm-managed packages:
 - `@tintinweb/pi-subagents`
 - `@aliou/pi-processes`
 - `pi-web-access`
-- `pi-mcp-adapter`
 - `lsp-pi`
 - `@fnnm/pi-ast-grep`
 - `pi-updater`
