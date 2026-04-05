@@ -1,11 +1,11 @@
 ---
-description: Canonical reviewed-plan handoff that clears Pi context before dispatching to /dev:run or /ralph:run
+description: Canonical reviewed-plan handoff that dispatches to /dev:run or /ralph:run
 argument-hint: '<plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]'
 ---
 
 # Execute Reviewed Plan
 
-This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` or `/ralph:run`; it validates an explicit reviewed plan argument, optionally accepts a target override, asks the user which of those two commands to run when needed, clears Pi context, and then dispatches using the same normalized plan argument.
+This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` or `/ralph:run`; it validates an explicit reviewed plan argument, optionally accepts a target override, asks the user which of those two commands to run when needed, and then dispatches using the same normalized plan argument.
 
 **Arguments**: `$ARGUMENTS`
 
@@ -16,8 +16,6 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 - Accept an optional target suffix: `--target dev:run` or `--target ralph:run`.
 - Present exactly two execution choices: `/dev:run` and `/ralph:run`.
 - Preserve the same normalized plan argument when dispatching.
-- Pi must clear context before dispatch.
-- If Pi context-management tools are unavailable, fail closed instead of silently skipping context reset.
 
 ## Instructions
 
@@ -71,38 +69,7 @@ Determine `TARGET_COMMAND`:
 
 Do not offer a planning pass here. Do not offer a third option.
 
-### 4) Pi-only Context Reset Before Dispatch (Required)
-
-Before running the chosen command:
-
-1. Read the `context-management` skill instructions from:
-   - `/opt/homebrew/lib/node_modules/pi-context/skills/context-management/SKILL.md`
-2. Verify that both `context_tag` and `context_checkout` are available in the current Pi runtime.
-3. If either tool is unavailable, fail closed with a user-visible message such as:
-
-```text
-Cannot continue with /cmd:execute-plan because Pi context-management tools are unavailable. This handoff promises context cleanup before dispatch, so it is failing closed instead of skipping that step. Re-run in a Pi runtime with context_tag and context_checkout available, or invoke /dev:run <plan> or /ralph:run <plan> manually.
-```
-
-4. Create a stable pre-handoff tag, for example:
-
-```text
-context_tag({ name: "execute-plan-handoff-start" })
-```
-
-5. Squash/clear context with a summary that names the reviewed plan and chosen target command, while preserving a backup tag, for example:
-
-```text
-context_checkout({
-  target: "execute-plan-handoff-start",
-  message: "Reviewed plan handoff prepared. Plan: ${PLAN_PATH}. Dispatch: ${TARGET_COMMAND} ${PLAN_DISPATCH_ARGUMENT}. Reason: context cleanup before execution handoff. Important Changes: none on disk from the checkout itself. Next Step: resume directly into ${TARGET_COMMAND} ${PLAN_DISPATCH_ARGUMENT}.",
-  backupTag: "execute-plan-handoff-raw-history"
-})
-```
-
-6. After `context_checkout`, immediately continue into the selected command from the cleaned context.
-
-### 5) Dispatch
+### 4) Dispatch
 
 Run exactly one of the following and then stop:
 

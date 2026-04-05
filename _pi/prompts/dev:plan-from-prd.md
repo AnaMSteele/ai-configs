@@ -67,25 +67,7 @@ Required checks:
 
 If any of these checks fail, stop and tell the user to rerun `/review:prd <prd-path>` before planning.
 
-## 3) Pi-only Context Reset Before Planning (Required)
-
-Before continuing into planning:
-
-1. Read the `context-management` skill instructions from the installed Pi runtime path that exists on the current host. Common locations include:
-   - `/opt/homebrew/lib/node_modules/pi-context/skills/context-management/SKILL.md`
-   - `/home/linuxbrew/.linuxbrew/lib/node_modules/pi-context/skills/context-management/SKILL.md`
-2. Verify that both `context_tag` and `context_checkout` are available in the current Pi runtime.
-3. If either tool is unavailable, fail closed with a user-visible message explaining that this handoff promises context cleanup before planning and therefore cannot proceed safely.
-4. Create a stable pre-handoff tag, for example:
-
-```text
-context_tag({ name: "dev-plan-from-prd-handoff-start" })
-```
-
-5. Squash/clear context with a summary that names the reviewed PRD, review status file, and target plan path, while preserving a backup tag.
-6. After `context_checkout`, immediately continue the planning work from the cleaned context using the reviewed PRD as the source artifact.
-
-## 4) Plan Creation Contract
+## 3) Plan Creation Contract
 
 Use the reviewed PRD as the source of truth for the plan.
 
@@ -109,7 +91,7 @@ Planning requirements:
 - If the PRD is ambiguous, resolve it by inspecting the repo and the reviewed PRD before asking the user.
 - Ask the user only if a decision remains genuinely unresolvable.
 
-## 5) Completion
+## 4) Completion
 
 When the plan is complete:
 
