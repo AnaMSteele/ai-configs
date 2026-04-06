@@ -22,7 +22,7 @@ This command is review-only.
 
 ## Your Identity
 
-If you selected a reviewer subagent, use its friendly name for comment attribution (e.g., `[REVIEW:SecurityBot]`). If no subagent is selected, use OPENCODE.
+If you selected a reviewer subagent, use its friendly name for comment attribution (e.g., `[REVIEW:SecurityBot]`). If no subagent is selected, use CLAUDE.
 
 ## Process
 

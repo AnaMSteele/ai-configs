@@ -82,7 +82,7 @@ After successful fetch, update CLAUDE.md's "Available Documentation" section to 
 
 ## Context7 Integration
 
-**REQUIREMENT**: The Context7 MCP server must be configured in your OPENCODE environment to use this method. If not available, the command will automatically fall back to URL-based fetching.
+**REQUIREMENT**: The Context7 MCP server must be configured in your CLAUDE environment to use this method. If not available, the command will automatically fall back to URL-based fetching.
 
 Context7 MCP provides:
 
@@ -103,7 +103,7 @@ Context7 supports most popular libraries. To check if a library is available:
 
 ### Installation
 
-To enable Context7 MCP, install and configure it in your OPENCODE environment:
+To enable Context7 MCP, install and configure it in your CLAUDE environment:
 
 ```bash
 npx @upstash/context7-mcp
