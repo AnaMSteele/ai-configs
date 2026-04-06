@@ -79,7 +79,7 @@ export default function (pi: ExtensionAPI) {
     const usage = ctx.getContextUsage();
     if (!usage || usage.percent === null) return;
 
-    const manualPiVccBypass = event.customInstructions === PI_VCC_MANUAL_BYPASS_MARKER;
+    const manualPiVccBypass = event.customInstructions?.startsWith(PI_VCC_MANUAL_BYPASS_MARKER) ?? false;
     if (allowNextManualCompaction || manualPiVccBypass) {
       allowNextManualCompaction = false;
       ctx.ui.notify(

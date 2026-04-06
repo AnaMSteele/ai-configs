@@ -1768,6 +1768,68 @@ install_pi_rlm_package() {
     fi
 }
 
+patch_pi_vcc_manual_bypass() {
+    local npm_root
+    npm_root="$(npm root -g 2>/dev/null)"
+    if [ -z "$npm_root" ]; then
+        echo -e "    ${YELLOW}⚠ Could not determine global npm root; skipping pi-vcc manual bypass patch${NC}"
+        return 0
+    fi
+
+    local pi_vcc_command="$npm_root/@sting8k/pi-vcc/src/commands/pi-vcc.ts"
+    if [ ! -f "$pi_vcc_command" ]; then
+        echo "    - pi-vcc command source not found; skipping manual bypass patch"
+        return 0
+    fi
+
+    if grep -Fq '__PI_VCC_MANUAL_BYPASS__' "$pi_vcc_command"; then
+        echo "    - pi-vcc manual bypass patch already applied"
+        return 0
+    fi
+
+    if python3 - "$pi_vcc_command" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text()
+old = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+export const registerPiVccCommand = (pi: ExtensionAPI) => {
+  pi.registerCommand("pi-vcc", {
+    description: "Compact conversation with pi-vcc structured summary",
+    handler: async (_args, ctx) => {
+      ctx.compact();
+      ctx.ui.notify("Compacted with pi-vcc", "info");
+    },
+  });
+};
+'''
+new = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
+
+export const registerPiVccCommand = (pi: ExtensionAPI) => {
+  pi.registerCommand("pi-vcc", {
+    description: "Compact conversation with pi-vcc structured summary",
+    handler: async (_args, ctx) => {
+      ctx.compact({ customInstructions: PI_VCC_MANUAL_BYPASS_MARKER });
+      ctx.ui.notify("Compacted with pi-vcc", "info");
+    },
+  });
+};
+'''
+if old not in text:
+    raise SystemExit(1)
+path.write_text(text.replace(old, new, 1))
+PY
+    then
+        echo -e "    ${GREEN}✓ patched pi-vcc manual compaction bypass${NC}"
+    else
+        echo -e "    ${YELLOW}⚠ Failed to patch pi-vcc manual compaction bypass${NC}"
+    fi
+}
+
 # Install npm-based pi extensions
 install_pi_npm_packages() {
     echo ""
@@ -1851,6 +1913,9 @@ install_pi_npm_packages() {
             fi
         fi
     done
+
+    echo "  - Ensuring manual /pi-vcc bypasses the percentage gate..."
+    patch_pi_vcc_manual_bypass
 
     echo -e "${GREEN}  ✓ npm-based extensions processed${NC}"
 }

@@ -139,7 +139,7 @@ This repo also ships `percentage-compaction.ts`, which gives you percentage-base
 To adjust the threshold, edit `COMPACTION_THRESHOLD_PERCENT` in the extension file (default is 60).
 To use with pi-vcc, ensure pi-vcc is installed (`pi list` should show `npm:@sting8k/pi-vcc`).
 
-**Note:** With pi-vcc installed, no additional compaction configuration is needed. The extension gates compaction at the percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered.
+**Note:** With pi-vcc installed, no additional compaction configuration is needed. The extension gates auto-compaction at the percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered. This repo's installer also patches the `/pi-vcc` command so manual compaction bypasses the percentage gate even when usage is below threshold.
 
 This repo also vendors Pi's `todo.ts` extension, which auto-loads on install and provides:
 
