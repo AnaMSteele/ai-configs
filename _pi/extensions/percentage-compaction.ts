@@ -1,20 +1,34 @@
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext, SessionBeforeCompactEvent } from "@mariozechner/pi-coding-agent";
 
 // Configure your threshold here (0-100)
 const COMPACTION_THRESHOLD_PERCENT = 60;
+const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
 let warnedAtThreshold = false;
+let allowNextManualCompaction = false;
 
 export default function (pi: ExtensionAPI) {
+  const triggerManualCompaction = (ctx: ExtensionContext, customInstructions?: string) => {
+    allowNextManualCompaction = true;
+    ctx.ui.notify("Compacting context...", "info");
+    ctx.compact({
+      customInstructions,
+      onComplete: () => {
+        allowNextManualCompaction = false;
+        ctx.ui.notify("Compaction complete", "info");
+      },
+      onError: (err: Error) => {
+        allowNextManualCompaction = false;
+        ctx.ui.notify(`Compaction failed: ${err.message}`, "error");
+      },
+    });
+  };
+
   // Register /compact-now command for manual triggering
   pi.registerCommand("compact-now", {
     description: "Trigger compaction immediately with optional custom instructions",
     handler: async (args, ctx: ExtensionContext) => {
-      ctx.ui.notify("Compacting context...", "info");
-      ctx.compact({
-        customInstructions: args.join(" ") || undefined,
-        onComplete: () => ctx.ui.notify("Compaction complete", "info"),
-        onError: (err: Error) => ctx.ui.notify(`Compaction failed: ${err.message}`, "error"),
-      });
+      const customInstructions = args.trim() || undefined;
+      triggerManualCompaction(ctx, customInstructions);
     },
   });
 
@@ -61,9 +75,19 @@ export default function (pi: ExtensionAPI) {
 
   // Intercept auto-compaction - gate by threshold
   // Let pi-vcc handle the actual compaction when threshold is reached
-  pi.on("session_before_compact", async (_event, ctx: ExtensionContext) => {
+  pi.on("session_before_compact", async (event: SessionBeforeCompactEvent, ctx: ExtensionContext) => {
     const usage = ctx.getContextUsage();
     if (!usage || usage.percent === null) return;
+
+    const manualPiVccBypass = event.customInstructions === PI_VCC_MANUAL_BYPASS_MARKER;
+    if (allowNextManualCompaction || manualPiVccBypass) {
+      allowNextManualCompaction = false;
+      ctx.ui.notify(
+        `✓ Manual compaction bypassed ${COMPACTION_THRESHOLD_PERCENT}% threshold at ${Math.floor(usage.percent)}%`,
+        "info"
+      );
+      return;
+    }
     
     // If below threshold, cancel and wait
     if (usage.percent < COMPACTION_THRESHOLD_PERCENT) {
