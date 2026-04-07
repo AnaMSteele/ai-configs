@@ -1302,8 +1302,20 @@ install_codex() {
 }
 
 
-# Install shared appended system guidance
-install_append_system_file() {
+# Install shared system guidance for OMP.
+install_omp_system_file() {
+    local agent_target="$1"
+    local append_system_source="$REPO_ROOT/APPEND_SYSTEM.md"
+    local system_target="$agent_target/SYSTEM.md"
+
+    if [ -f "$append_system_source" ]; then
+        cp "$append_system_source" "$system_target"
+        echo "  - Installed SYSTEM.md from repo APPEND_SYSTEM.md"
+    fi
+}
+
+# Install shared appended system guidance for Pi.
+install_pi_append_system_file() {
     local agent_target="$1"
     local append_system_source="$REPO_ROOT/APPEND_SYSTEM.md"
     local append_system_target="$agent_target/APPEND_SYSTEM.md"
@@ -1368,7 +1380,7 @@ install_omp() {
         cp -r "$omp_source_dir/extensions/." "$omp_extensions_dir/"
     fi
 
-    install_append_system_file "$omp_agent_dir"
+    install_omp_system_file "$omp_agent_dir"
 
     if [ "$is_update" = true ]; then
         echo -e "${GREEN}✓ Oh My Pi update complete${NC}"
@@ -1677,7 +1689,7 @@ install_pi() {
         cp "$pi_source_dir/README.md" "$pi_agent_dir/README.md"
     fi
 
-    install_append_system_file "$pi_agent_dir"
+    install_pi_append_system_file "$pi_agent_dir"
 
     if [ "$is_update" = true ]; then
         echo -e "${GREEN}✓ Pi update complete${NC}"

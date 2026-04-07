@@ -79,7 +79,7 @@ bash ~/ai-configs/install.sh --all ~
 - copies repo-managed Pi extensions into `~/.pi/agent/extensions/` (these do not appear in `pi list`)
 - installs OpenCode resources to `~/.config/opencode/`
 - syncs shared skills into `~/.agents/skills` from `skills/install-matrix.json`
-- copies `APPEND_SYSTEM.md` into Pi and OMP runtime locations
+- installs the shared repo-root `APPEND_SYSTEM.md` to Pi as `~/.pi/agent/APPEND_SYSTEM.md` and to OMP as `~/.omp/agent/SYSTEM.md`
 - preserves local settings files where appropriate
 
 To update an existing install, run the same `install.sh` command again.

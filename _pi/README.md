@@ -54,7 +54,7 @@ Installed layout:
     └── todo.ts
 ```
 
-The installer copies the repo-root `APPEND_SYSTEM.md` into `~/.pi/agent/APPEND_SYSTEM.md`. The same shared file is also installed to `~/.omp/agent/APPEND_SYSTEM.md` so Pi and OMP receive the same appended system guidance.
+The installer copies the repo-root `APPEND_SYSTEM.md` into `~/.pi/agent/APPEND_SYSTEM.md`. For OMP, that same shared source file is installed as `~/.omp/agent/SYSTEM.md`, matching OMP's `SYSTEM.md` additive-system semantics.
 
 ## Structure
 
@@ -304,7 +304,7 @@ Skills:
 
 - Pi global resources live under `~/.pi/agent/`, not `~/.pi/`.
 - Repo-managed extensions live in `~/.pi/agent/extensions/`; package-managed installs are reported by `pi list`.
-- `~/.pi/agent/APPEND_SYSTEM.md` is installed from the repo-root `APPEND_SYSTEM.md` shared with OMP.
+- `~/.pi/agent/APPEND_SYSTEM.md` is installed from the repo-root `APPEND_SYSTEM.md`; OMP receives that same shared source as `~/.omp/agent/SYSTEM.md`.
 - Project-local Pi resources can also live under `.pi/prompts/`, `.pi/skills/`, `.pi/agents/`, and `.pi/extensions/`.
 - Pi natively auto-discovers both `~/.agents/skills/` and `~/.pi/agent/skills/`; this repo uses `~/.agents/skills/` as the canonical shared runtime location and reserves `~/.pi/agent/skills/` for Pi-local-only entries. Repo-owned skill payloads come from `skills/`, while package-backed entries are fetched per `skills/install-matrix.json`.
 - `@tintinweb/pi-subagents`-compatible agent definitions install to `~/.pi/agent/agents/`.
