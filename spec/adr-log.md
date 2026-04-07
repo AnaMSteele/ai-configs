@@ -2,6 +2,33 @@
 
 This document captures key architectural decisions and their rationale.
 
+## ADR 0002: Add an OpenCode-native `review:plan` wrapper on top of existing reviewer surfaces
+**Status:** Accepted (implemented and verified)
+**Date:** 2026-04
+
+**Context:** OpenCode already had stronger single-reviewer review commands (`review:change-gpt5.4` and `review:change-k2.5`) but lacked an explicit `review:plan` entrypoint. Pi had a reviewed-plan wrapper, but its prompt depended on Pi-specific reviewer agents, model strings, and transport assumptions that should not be copied into OpenCode unchanged.
+
+**Decision:**
+- Add `_opencode/commands/review:plan.md` as a review-only wrapper command instead of replacing the existing `review:change*` commands.
+- Reuse the existing OpenCode reviewer agents `reviewer-gpt5.4` and `reviewer-kimi` plus their current provider/model configuration.
+- Normalize the reviewed plan path once, launch both reviewer legs in parallel with `Task`, wait for both results, and stop before `/review:change-integrate`.
+- Report reviewer-leg failures explicitly instead of silently falling back to another reviewer.
+
+**Alternatives considered:**
+- Copy `_pi/prompts/review:plan.md` literally, including Pi-only `reviewer-plan-*` agents and Pi model/provider strings.
+- Add compatibility aliases such as `review:change-kimi.md` as part of the same change.
+- Expand the change to include adversarial review, PRD workflow parity, or Pi interactive review transports.
+
+**Current state:**
+- `_opencode/commands/review:plan.md`
+- `_opencode/commands/review:change-gpt5.4.md`
+- `_opencode/commands/review:change-k2.5.md`
+- `_opencode/agents/reviewer-gpt5.4.md`
+- `_opencode/agents/reviewer-kimi.md`
+- `install.sh`
+
+---
+
 ## ADR 0001: Add first-class issue attachment retrieval to ltui
 **Status:** Accepted (implemented and verified)
 **Date:** 2026-04
