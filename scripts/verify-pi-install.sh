@@ -134,3 +134,14 @@ compare_lists "  Comparison:" "$ALL_EXPECTED_PACKAGES" "$INSTALLED_PI_PACKAGES"
 print_section "Quick checks"
 echo "  Repo-managed extensions: find ~/.pi/agent/extensions -mindepth 1 -maxdepth 1 -exec basename {} \\; | sort"
 echo "  Package-managed installs: pi list"
+
+PI_VCC_COMMAND="$(npm root -g 2>/dev/null)/@sting8k/pi-vcc/src/commands/pi-vcc.ts"
+if [ -f "$PI_VCC_COMMAND" ]; then
+  if grep -Fq '__PI_VCC_MANUAL_BYPASS__' "$PI_VCC_COMMAND"; then
+    echo "  pi-vcc manual bypass patch: present"
+  else
+    echo "  pi-vcc manual bypass patch: missing"
+  fi
+else
+  echo "  pi-vcc manual bypass patch: command file not found"
+fi

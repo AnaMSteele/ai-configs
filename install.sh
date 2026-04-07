@@ -1793,7 +1793,55 @@ import sys
 
 path = Path(sys.argv[1])
 text = path.read_text()
-old = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+marker = 'const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";'
+if marker in text:
+    raise SystemExit(0)
+
+current = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+export const registerPiVccCommand = (pi: ExtensionAPI) => {
+  pi.registerCommand("pi-vcc", {
+    description: "Compact conversation with pi-vcc structured summary",
+    handler: async (_args, ctx) => {
+      ctx.compact({
+        onComplete: () => ctx.ui.notify("Compacted with pi-vcc", "info"),
+        onError: (err) => {
+          if (err.message === "Compaction cancelled" || err.message === "Already compacted") {
+            ctx.ui.notify("Nothing to compact", "info");
+          } else {
+            ctx.ui.notify(`Compaction failed: ${err.message}`, "error");
+          }
+        },
+      });
+    },
+  });
+};
+'''
+current_new = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
+
+export const registerPiVccCommand = (pi: ExtensionAPI) => {
+  pi.registerCommand("pi-vcc", {
+    description: "Compact conversation with pi-vcc structured summary",
+    handler: async (_args, ctx) => {
+      ctx.compact({
+        customInstructions: PI_VCC_MANUAL_BYPASS_MARKER,
+        onComplete: () => ctx.ui.notify("Compacted with pi-vcc", "info"),
+        onError: (err) => {
+          if (err.message === "Compaction cancelled" || err.message === "Already compacted") {
+            ctx.ui.notify("Nothing to compact", "info");
+          } else {
+            ctx.ui.notify(`Compaction failed: ${err.message}`, "error");
+          }
+        },
+      });
+    },
+  });
+};
+'''
+
+legacy = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 export const registerPiVccCommand = (pi: ExtensionAPI) => {
   pi.registerCommand("pi-vcc", {
@@ -1805,7 +1853,7 @@ export const registerPiVccCommand = (pi: ExtensionAPI) => {
   });
 };
 '''
-new = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+legacy_new = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
 
@@ -1819,9 +1867,13 @@ export const registerPiVccCommand = (pi: ExtensionAPI) => {
   });
 };
 '''
-if old not in text:
+
+if current in text:
+    path.write_text(text.replace(current, current_new, 1))
+elif legacy in text:
+    path.write_text(text.replace(legacy, legacy_new, 1))
+else:
     raise SystemExit(1)
-path.write_text(text.replace(old, new, 1))
 PY
     then
         echo -e "    ${GREEN}✓ patched pi-vcc manual compaction bypass${NC}"
