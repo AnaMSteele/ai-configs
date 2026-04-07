@@ -21,7 +21,6 @@ EXPECTED_NPM_PACKAGES=(
   "npm:pi-updater"
   "npm:pi-interactive-shell"
   "npm:pi-powerline-footer"
-  "npm:@marckrenn/pi-sub-bar"
   "npm:pi-side-agents"
   "npm:pi-multi-pass"
   "npm:pi-no-soft-cursor"

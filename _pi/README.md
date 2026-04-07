@@ -170,7 +170,6 @@ npm-managed packages:
 - `pi-updater`
 - `pi-interactive-shell`
 - `pi-powerline-footer`
-- `@marckrenn/pi-sub-bar`
 - `pi-side-agents`
 - `pi-multi-pass`
 - `pi-no-soft-cursor`
