@@ -429,6 +429,10 @@ Add entry (newest first, after header):
 Remove all artifacts (both verifiable and removable):
 
 ```bash
+# Graduated source artifact (delete the completed plan/spec/PRD used as input once
+# permanent docs and changelog/ADR updates are written and verified)
+rm thoughts/plans/[completed-plan].md
+
 # Verifiable artifacts (specs, research) - now verified
 rm thoughts/specs/spec-[feature].md
 rm thoughts/research/*-[feature].md
@@ -440,6 +444,10 @@ rm -rf thoughts/handoffs/[feature]/
 rm thoughts/validation/*-[feature].md
 rm thoughts/debug/*-[feature].md
 ```
+
+Rules:
+- If the command input resolves to a completed plan/PRD/task artifact under `thoughts/`, delete that source artifact as part of graduation once the permanent docs are verified.
+- Keep only unresolved discovery ledgers or other still-active working artifacts. Do not keep the graduated source plan sitting beside its permanent replacement.
 
 ## Phase 8: Commit Changes
 
@@ -494,6 +502,7 @@ Permanent Documentation Updated:
   [x] CHANGELOG.md                        - Implementation summary
 
 Artifacts Cleaned Up:
+  - thoughts/plans/[completed-plan].md
   - thoughts/specs/spec-[feature].md
   - thoughts/plans/tasks-*-[feature].md
   - thoughts/research/*-[feature].md
