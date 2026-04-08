@@ -19,7 +19,9 @@ Documents to review: $ARGUMENTS
 - If needed, prepend `export PATH="$HOME/.local/bin:$PATH"` before invoking `codex`.
 - Use `mode: "hands-free"`, not `dispatch`, so the launch creates a real Codex TUI session that can then be backgrounded.
 - Set `handsFree.autoExitOnQuiet: false` because interactive Codex may remain open after answering.
-- Do not pass Codex sandbox flags in the interactive shell.
+- Do not pass Codex `-s/--sandbox` flags in the interactive shell.
+- Do explicitly pass `--dangerously-bypass-approvals-and-sandbox`. In PTY-driven review sessions, Codex's default `workspace-write` sandbox can fail before any real work starts (`bwrap: loopback: Failed RTM_NEWADDR: Operation not permitted`), which prevents local plan-file access. Do not rely on repo trust config or default CLI flags to disable that sandbox implicitly.
+- Do not combine `--dangerously-bypass-approvals-and-sandbox` with `-a/--ask-for-approval`; Codex rejects that flag combination with exit code 2.
 - Do not inline the full Codex review prompt directly inside shell quotes. Instead, write the prompt body to `/tmp/pi-codex-review-prompt.txt`, write the exact Python wrapper below to `/tmp/pi-codex-review-wrapper.py`, and launch that wrapper through `interactive_shell`.
 - Immediately move the launched Codex session to the background.
 - Run a single Codex session that:
@@ -103,9 +105,9 @@ with open(prompt_path, 'r', encoding='utf-8') as fh:
 
 cmd = [
     'codex',
+    '--dangerously-bypass-approvals-and-sandbox',
     '-m', 'gpt-5.4',
     '-c', 'model_reasoning_effort="high"',
-    '-a', 'never',
     '--no-alt-screen',
     prompt,
 ]
