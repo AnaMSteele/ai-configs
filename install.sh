@@ -1894,6 +1894,258 @@ PY
     fi
 }
 
+resolve_npm_global_prefix() {
+    local prefix
+
+    if prefix="$(npm prefix -g 2>/dev/null)" && [ -n "$prefix" ] && [ "$prefix" != "undefined" ] && [ "$prefix" != "null" ]; then
+        printf '%s\n' "$prefix"
+        return 0
+    fi
+
+    if prefix="$(npm config get prefix 2>/dev/null)" && [ -n "$prefix" ] && [ "$prefix" != "undefined" ] && [ "$prefix" != "null" ]; then
+        printf '%s\n' "$prefix"
+        return 0
+    fi
+
+    return 1
+}
+
+resolve_npm_global_bin_dir() {
+    local prefix="$1"
+
+    if [ -z "$prefix" ]; then
+        return 1
+    fi
+
+    case "$(uname -s 2>/dev/null || echo unknown)" in
+        CYGWIN*|MINGW*|MSYS*)
+            printf '%s\n' "$prefix"
+            ;;
+        *)
+            printf '%s\n' "$prefix/bin"
+            ;;
+    esac
+}
+
+resolve_npm_global_root_dir() {
+    local root
+
+    if root="$(npm root -g 2>/dev/null)" && [ -n "$root" ] && [ "$root" != "undefined" ] && [ "$root" != "null" ]; then
+        printf '%s\n' "$root"
+        return 0
+    fi
+
+    return 1
+}
+
+npm_global_prefix_is_writable() {
+    local prefix="$1"
+    [ -n "$prefix" ] && [ -d "$prefix" ] && [ -w "$prefix" ]
+}
+
+path_includes_dir() {
+    local dir="$1"
+
+    case ":$PATH:" in
+        *":$dir:"*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+lsp_pi_knows_bin_dir() {
+    local bin_dir="$1"
+
+    case "$bin_dir" in
+        /usr/local/bin|/opt/homebrew/bin)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+lsp_pi_find_command() {
+    local command_name="$1"
+    local resolved
+    local extra_dir
+
+    if resolved="$(command -v "$command_name" 2>/dev/null)" && [ -n "$resolved" ] && [ -x "$resolved" ]; then
+        printf '%s\n' "$resolved"
+        return 0
+    fi
+
+    for extra_dir in \
+        "/usr/local/bin" \
+        "/opt/homebrew/bin" \
+        "$HOME/.pub-cache/bin" \
+        "$HOME/fvm/default/bin" \
+        "$HOME/go/bin" \
+        "$HOME/.cargo/bin"; do
+        if [ -x "$extra_dir/$command_name" ]; then
+            printf '%s\n' "$extra_dir/$command_name"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+npm_global_package_installed() {
+    local npm_root="$1"
+    local package_name="$2"
+    [ -n "$npm_root" ] && [ -f "$npm_root/$package_name/package.json" ]
+}
+
+ensure_curated_lsp_server_package() {
+    local label="$1"
+    local package_name="$2"
+    local command_name="$3"
+    local preflight_ok="$4"
+    local resolved_command=""
+    local install_output=""
+
+    if resolved_command="$(lsp_pi_find_command "$command_name")"; then
+        echo "    - $label ($command_name): already available at $resolved_command"
+        return 0
+    fi
+
+    if [ "$preflight_ok" != true ]; then
+        echo "    - $label ($command_name): skipped: preflight failed"
+        return 0
+    fi
+
+    if install_output="$(npm install -g "$package_name" 2>&1)"; then
+        if resolved_command="$(lsp_pi_find_command "$command_name")"; then
+            echo "    - $label ($command_name): installed at $resolved_command"
+        else
+            echo -e "    ${YELLOW}- $label ($command_name): failed${NC}"
+            echo "      npm reported success, but '$command_name' is still not discoverable by current lsp-pi search rules."
+            echo "      npm package: $package_name"
+        fi
+        return 0
+    fi
+
+    echo -e "    ${YELLOW}- $label ($command_name): failed${NC}"
+    echo "      npm package: $package_name"
+    printf '%s\n' "$install_output" | tail -n 10 | sed 's/^/      /'
+    return 0
+}
+
+ensure_curated_typescript_runtime_package() {
+    local npm_root="$1"
+    local preflight_ok="$2"
+    local install_output=""
+
+    if npm_global_package_installed "$npm_root" "typescript"; then
+        echo "    - TypeScript runtime fallback (typescript): already available"
+        return 0
+    fi
+
+    if [ "$preflight_ok" != true ]; then
+        echo "    - TypeScript runtime fallback (typescript): skipped: preflight failed"
+        return 0
+    fi
+
+    if install_output="$(npm install -g typescript 2>&1)"; then
+        if npm_global_package_installed "$npm_root" "typescript"; then
+            echo "    - TypeScript runtime fallback (typescript): installed"
+        else
+            echo -e "    ${YELLOW}- TypeScript runtime fallback (typescript): failed${NC}"
+            echo "      npm reported success, but the global 'typescript' package is still missing."
+            echo "      TypeScript-family projects that lack a local workspace TypeScript install may have degraded fallback support."
+        fi
+        return 0
+    fi
+
+    echo -e "    ${YELLOW}- TypeScript runtime fallback (typescript): failed${NC}"
+    echo "      TypeScript-family projects that lack a local workspace TypeScript install may have degraded fallback support."
+    printf '%s\n' "$install_output" | tail -n 10 | sed 's/^/      /'
+    return 0
+}
+
+provision_curated_lsp_servers() {
+    echo ""
+    echo -e "${GREEN}  Provisioning curated LSP servers consumed by lsp-pi...${NC}"
+
+    if ! command -v npm >/dev/null 2>&1; then
+        echo -e "    ${YELLOW}⚠ npm not found in PATH; skipping curated LSP provisioning${NC}"
+        echo "    - TypeScript language server (typescript-language-server): skipped: preflight failed"
+        echo "    - TypeScript runtime fallback (typescript): skipped: preflight failed"
+        echo "    - Vue language server (vue-language-server): skipped: preflight failed"
+        echo "    - Svelte language server (svelteserver): skipped: preflight failed"
+        echo "    - Pyright language server (pyright-langserver): skipped: preflight failed"
+        return 0
+    fi
+
+    local npm_prefix=""
+    local npm_bin=""
+    local npm_root=""
+    local preflight_ok=true
+
+    if npm_prefix="$(resolve_npm_global_prefix)"; then
+        echo "    - npm global prefix: $npm_prefix"
+    else
+        echo -e "    ${YELLOW}- preflight failed: could not resolve npm global prefix${NC}"
+        preflight_ok=false
+    fi
+
+    if npm_root="$(resolve_npm_global_root_dir)"; then
+        echo "    - npm global root: $npm_root"
+    else
+        echo -e "    ${YELLOW}- preflight failed: could not resolve npm global node_modules directory${NC}"
+        preflight_ok=false
+    fi
+
+    if [ -n "$npm_prefix" ] && npm_bin="$(resolve_npm_global_bin_dir "$npm_prefix")"; then
+        echo "    - npm global bin: $npm_bin"
+    else
+        echo -e "    ${YELLOW}- preflight failed: could not resolve npm global bin directory${NC}"
+        preflight_ok=false
+    fi
+
+    if [ "$preflight_ok" = true ]; then
+        if npm_global_prefix_is_writable "$npm_prefix"; then
+            echo "    - preflight: npm global prefix is writable without sudo"
+        else
+            echo -e "    ${YELLOW}- preflight failed: npm global prefix is not writable without sudo: $npm_prefix${NC}"
+            preflight_ok=false
+        fi
+    fi
+
+    if [ "$preflight_ok" = true ]; then
+        if path_includes_dir "$npm_bin"; then
+            echo "    - preflight: npm global bin is already on PATH"
+        elif lsp_pi_knows_bin_dir "$npm_bin"; then
+            echo "    - preflight: npm global bin is not on PATH, but current lsp-pi searches it explicitly"
+        else
+            echo -e "    ${YELLOW}- preflight failed: npm global bin is not discoverable by current lsp-pi search rules${NC}"
+            echo "      bin dir: $npm_bin"
+            echo "      lsp-pi fallback search dirs: /usr/local/bin, /opt/homebrew/bin"
+            preflight_ok=false
+        fi
+    fi
+
+    if [ "$preflight_ok" != true ]; then
+        echo -e "    ${YELLOW}⚠ Curated LSP provisioning will skip missing packages until npm prefix/PATH issues are fixed${NC}"
+        if [ -n "$npm_bin" ]; then
+            echo "      Remediation: ensure '$npm_bin' is on PATH or matches /usr/local/bin or /opt/homebrew/bin, then rerun ./install.sh --pi"
+        else
+            echo "      Remediation: fix npm global prefix/bin resolution, then rerun ./install.sh --pi"
+        fi
+    fi
+
+    ensure_curated_lsp_server_package "TypeScript language server" "typescript-language-server" "typescript-language-server" "$preflight_ok"
+    ensure_curated_typescript_runtime_package "$npm_root" "$preflight_ok"
+    ensure_curated_lsp_server_package "Vue language server" "@vue/language-server" "vue-language-server" "$preflight_ok"
+    ensure_curated_lsp_server_package "Svelte language server" "svelte-language-server" "svelteserver" "$preflight_ok"
+    ensure_curated_lsp_server_package "Pyright language server" "pyright" "pyright-langserver" "$preflight_ok"
+}
+
 # Install npm-based pi extensions
 install_pi_npm_packages() {
     echo ""
@@ -1979,6 +2231,8 @@ install_pi_npm_packages() {
 
     echo "  - Ensuring manual /pi-vcc bypasses the percentage gate..."
     patch_pi_vcc_manual_bypass
+
+    provision_curated_lsp_servers
 
     echo -e "${GREEN}  ✓ npm-based extensions processed${NC}"
 }

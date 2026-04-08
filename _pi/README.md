@@ -24,6 +24,47 @@ These resources are installed by `install.sh` to Pi's global agent directory. Th
 ./install.sh --all     # Install everything, including Pi
 ```
 
+## `lsp-pi` provisioning
+
+`install.sh --pi` now handles two separate LSP concerns:
+
+- registering `npm:lsp-pi` with Pi so the `lsp` tool exists
+- best-effort provisioning of the curated server subset that current `lsp-pi` actually knows how to spawn
+
+Phase 1's curated npm-managed subset is:
+
+- `typescript-language-server` → `typescript-language-server`
+- `@vue/language-server` → `vue-language-server`
+- `svelte-language-server` → `svelteserver`
+- `pyright` → `pyright-langserver`
+- `typescript` as a runtime fallback package for TypeScript-family workspaces that do not provide a local `typescript` dependency
+
+Curated provisioning only runs when all of the following are true:
+
+- `npm` is available
+- the resolved npm global prefix is writable without `sudo`
+- the resolved npm global bin directory is already on `PATH`, or it is one of the hardcoded fallback directories current `lsp-pi` already searches (`/usr/local/bin` or `/opt/homebrew/bin`)
+
+`typescript` is installed as runtime support, not as a separate LSP server. If that package cannot be installed, the installer and verification script report degraded TypeScript-family fallback support rather than claiming total curated-provisioning failure.
+
+Phase 1 deliberately leaves these surfaces unmanaged and informational-only:
+
+- `gopls`
+- `rust-analyzer`
+- `dart`
+- `sourcekit-lsp`
+- Kotlin servers (`kotlin-lsp`, `kotlin-language-server`)
+
+Phase 1 also deliberately does **not** claim support for Astro, YAML, Bash, or Dockerfile language servers, because current `lsp-pi` does not spawn them.
+
+To verify both Pi package registration and curated binary usability, run:
+
+```bash
+bash scripts/verify-pi-install.sh
+```
+
+The canonical smoke fixture for end-to-end TypeScript `lsp` checks lives at `thoughts/fixtures/lsp/typescript-smoke/index.ts`.
+
 Installed layout:
 
 ```text
@@ -164,7 +205,6 @@ npm-managed packages:
 - `@tintinweb/pi-subagents`
 - `@aliou/pi-processes`
 - `pi-web-access`
-- `pi-mcp-adapter`
 - `lsp-pi`
 - `@fnnm/pi-ast-grep`
 - `pi-updater`
