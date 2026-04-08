@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Pi LSP provisioning strategy] - 2026-04-08
+
+### Added
+
+- Added installer-side curated `lsp-pi` provisioning in `install.sh` for TypeScript, Vue, Svelte, Pyright, and a global `typescript` runtime fallback.
+- Added `thoughts/fixtures/lsp/typescript-smoke/` as the canonical end-to-end Pi `lsp` smoke fixture.
+- Added `spec/architecture/pi-lsp-provisioning-strategy.md` as the permanent architecture record for this work.
+
+### Changed
+
+- `scripts/verify-pi-install.sh` now distinguishes Pi package registration, curated LSP preflight/probes, and unmanaged informational server surfaces.
+- Pi installation docs now describe the curated subset, npm prefix/PATH prerequisites, degraded TypeScript fallback semantics, and explicit Phase 1 non-goals.
+
+### Technical Notes
+
+- npm prefix/bin detection now uses `npm prefix -g` with `npm config get prefix` fallback because npm 11 on the execution host no longer supports `npm bin -g`.
+- Verified with repeated `bash install.sh --pi` reruns, explicit preflight-failure simulation, `bash scripts/verify-pi-install.sh`, and a live Pi `lsp` smoke test against the TypeScript fixture.
+- The implementation deliberately keeps `lsp-pi` unforked and leaves runtime-managed/private-bin provisioning as a future opt-in decision.
+
 ## [OpenCode `review:plan` wrapper] - 2026-04-06
 
 ### Added

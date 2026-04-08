@@ -2,6 +2,37 @@
 
 This document captures key architectural decisions and their rationale.
 
+## ADR 0003: Provision the curated `lsp-pi` server subset in the installer instead of forking `lsp-pi`
+**Status:** Accepted (implemented and verified)
+**Date:** 2026-04
+
+**Context:** The repo already installed `npm:lsp-pi`, but it did not provision the language-server binaries that current `lsp-pi` expects to find on `PATH` or in its small set of hardcoded search directories. That left Pi's `lsp` tool present but inconsistently useful across hosts. The open question was whether to copy OpenCode's more expansive provisioning model immediately, which would likely require extending or forking `lsp-pi`.
+
+**Decision:**
+- Add installer-side curated provisioning in `install.sh` for only the npm-manageable server subset that current `lsp-pi` already knows how to spawn: TypeScript, Vue, Svelte, and Pyright.
+- Install global `typescript` as a runtime fallback package for TypeScript-family workspaces that do not provide a local `typescript` dependency.
+- Gate curated provisioning on npm preflight proving that the resulting global binaries will already be discoverable by current `lsp-pi` search rules.
+- Extend `scripts/verify-pi-install.sh` so it separately verifies Pi package registration, curated preflight/binary usability, and unmanaged informational server surfaces.
+- Add a canonical TypeScript smoke fixture for end-to-end Pi `lsp` validation.
+- Stop after the installer-first solution; do not add a private managed LSP directory, lazy runtime installs, or a vendored/forked `lsp-pi` in Phase 1.
+
+**Alternatives considered:**
+- Vendor or fork `lsp-pi` immediately so the repo can manage a private `~/.pi/.../lsp/bin` directory.
+- Expand Phase 1 to include Astro, YAML, Bash, Dockerfile, or more toolchain-backed servers.
+- Mutate user shell startup files so npm global bins become discoverable automatically.
+- Treat `lsp-pi` package registration alone as sufficient verification.
+
+**Current state:**
+- `install.sh`
+- `scripts/verify-pi-install.sh`
+- `README.md`
+- `_pi/README.md`
+- `thoughts/fixtures/lsp/typescript-smoke/index.ts`
+- `thoughts/fixtures/lsp/typescript-smoke/tsconfig.json`
+- `spec/architecture/pi-lsp-provisioning-strategy.md`
+
+---
+
 ## ADR 0002: Add an OpenCode-native `review:plan` wrapper on top of existing reviewer surfaces
 **Status:** Accepted (implemented and verified)
 **Date:** 2026-04

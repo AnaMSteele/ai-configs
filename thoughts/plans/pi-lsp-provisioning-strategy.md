@@ -2,7 +2,7 @@
 
 ## Status
 
-execution-ready
+graduated
 
 ## Goal
 
