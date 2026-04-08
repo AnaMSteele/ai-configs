@@ -13,6 +13,14 @@ Inputs: $ARGUMENTS
 
 The plan is the authority. Integrate feedback into the plan while preserving progress state.
 
+## Tooling Discipline
+
+- Use `edit` for targeted plan mutations.
+- Use `write` only for an intentional whole-file rewrite after reading the full plan, and only when `edit` is genuinely impractical.
+- Treat `bash` as read-only in this workflow.
+- Do not modify the plan via mutation scripts (`python`, `python3`, `node`, `perl`, `ruby`, `sed -i`, `awk`, heredoc rewrites, or similar).
+- If an `edit` call fails, reread the relevant span and retry with a more specific `oldText`; do not fall back to a mutation script.
+
 ## Process
 
 ### 0) Resolve Inputs
@@ -62,7 +70,7 @@ Use the available repo exploration tools in this session.
 
 ### 4) Integrate Updates
 
-- Apply edits directly to the plan.
+- Apply edits directly to the plan with `edit` unless a deliberate full-file rewrite is required.
 - Remove each resolved inline review comment.
 - If feedback implies adding or changing requirements, update:
   - Goal/Non-goals / Acceptance Criteria
