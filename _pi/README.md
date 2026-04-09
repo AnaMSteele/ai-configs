@@ -242,8 +242,11 @@ Example installed agents:
 ## Skills Overview
 
 ### Ralph / execution
-- `ralph-run` — quality-gated execution loop
+- `ralph-run` — repeated quality-gated review loop after each phase
 - `ralph-run-simple` — simpler single-pass execution
+
+### Dev / execution
+- `dev:run*` — direct execution with one `quality-reviewer` pass after each phase
 
 ### Git / workflow
 - `cmd-create-pr`
@@ -307,6 +310,7 @@ Canonical reviewed-plan flow:
 Optional second pass: run `/review:plan-adversarial <plan>` after `/review:change-integrate <plan>` when you want an explicit challenge review before execution.
 
 - It is the canonical wrapper for choosing between `/dev:run <plan>` and `/ralph:run <plan>`.
+- `/dev:run` applies one `quality-reviewer` pass after each phase; `/ralph:run` keeps looping review/fix passes until the phase is clean.
 - In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
 - When that extension path is used, `/plan` mode is disabled before execution so planning-only tool restrictions do not leak into implementation.
 - In Pi, the handoff command starts a fresh session and then launches the selected execution flow from that clean context.

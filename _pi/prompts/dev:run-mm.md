@@ -1,5 +1,5 @@
 ---
-description: Execute a single-file plan with resumable progress tracking using developer-mm subagent (MiniMax)
+description: Execute a single-file plan with resumable progress tracking using developer-mm plus one post-phase quality review
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 ---
 
@@ -10,6 +10,7 @@ Execute a single plan document (spec + phases + progress) using the `developer-m
 - Follow the plan using MiniMax model implementation.
 - Track progress by updating `## Progress` in the plan file.
 - Use the `developer-mm` (MiniMax) subagent for implementation.
+- Run exactly one `quality-reviewer` pass after each phase before marking it complete.
 - Allow same-scope dynamic re-chunking when a phase is too large to execute safely in one pass.
 
 ## Inputs
@@ -107,11 +108,14 @@ For each phase in order:
 1. Launch the phase implementation with `Agent` using `subagent_type: "developer-mm"`.
 2. Wait for the result with `get_subagent_result(..., wait: true)`.
 3. Inspect the returned summary and verification evidence before changing the plan file.
-4. Run the phase `### Verify` steps yourself if the subagent did not clearly complete them.
-5. Mark the phase complete only after implementation and verification are both actually complete.
-6. After handling that phase, re-read `## Progress`; if another unchecked item remains and you are not blocked, immediately start the next phase instead of returning a progress summary.
+4. If the implementation result shows the phase should be split into smaller same-scope slices, update the plan accordingly, log the split, and continue with the first new child phase.
+5. Run the phase `### Verify` steps yourself if the subagent did not clearly complete them.
+6. Delegate exactly one post-implementation review pass to `quality-reviewer`.
+7. Run any missing `### Verify` steps again after the review pass.
+8. Mark the phase complete only after implementation, the single review pass, and verification are all actually complete.
+9. After handling that phase, re-read `## Progress`; if another unchecked item remains and you are not blocked, immediately start the next phase instead of returning a progress summary.
 
-Use a prompt in this shape:
+Use an implementation prompt in this shape:
 
 > Implement phase N of this plan: `<plan_path>`
 >
@@ -136,54 +140,49 @@ Use a prompt in this shape:
 > - recommended same-scope chunks, if any
 > - blockers or failed verification, if any
 
-#### Required subagent handling
+#### Required post-implementation review pass
 
-Treat the subagent result as one of three cases:
+After the implementation pass, delegate exactly one `quality-reviewer` pass with this prompt:
 
-##### Case A: `complete`
+> Review the implementation of phase N of this plan: `<plan_path>`
+>
+> Read the plan file fully. Find phase N and its `### Tests first`, `### Work`, `### End State`, and `### Verify` sections. Review the implementation for gaps, regressions, plan fidelity issues, missing counterexample/boundary/parity coverage, stale verify commands, stale fixtures/contracts, unresolved evidence-source mismatches, or phase-sizing defects that would make the phase unsafe to advance.
+>
+> Do NOT flag style preferences, speculative enhancements, or test coverage beyond what the plan specifies or clearly implies.
+>
+> Fix every non-low-risk issue directly during this pass. Do not just report issues.
+>
+> If the real problem is that the phase bundles too much work to converge safely as one slice, say so plainly instead of brute-forcing more edits.
+>
+> Start the final summary with exactly one of:
+> - `No issues found.`
+> - `Only low-risk items remain.`
+> - `Phase needs same-scope split.`
+>
+> If only low-risk items remain, list them briefly.
 
-If the subagent completed the phase and verification passed:
+#### Review pass handling
 
-- run any missing verification yourself
-- immediately flip that phase checkbox from `- [ ]` to `- [x]` in `## Progress`
-- append any material decision or deviation to `## Decisions / Deviations Log`
-- continue to the next phase without pausing
-
-##### Case B: `partial`
-
-If the subagent reports partial implementation, incomplete verification, or “tests still failing”:
-
-- **do not** mark the phase complete
-- inspect the returned evidence
-- if the evidence shows the phase should be split into smaller same-scope slices, update the plan accordingly, log the split, and continue with the first new child phase
-- otherwise perform one focused retry/fix pass using the failure details as input
-- rerun verification
-- only mark the phase complete if the retry actually succeeds
-
-##### Case C: `blocked`
-
-If the subagent reports a blocker or an unresolvable decision:
-
-- **do not** mark the phase complete
-- first verify whether the blocker can be resolved from the repo or plan by doing your own quick investigation
-- if you can resolve it, redelegate once with the new evidence
-- if you cannot resolve it but a same-scope split would solve the problem without changing semantics, re-chunk and continue
-- otherwise ask exactly one blocking question to the user
+- `No issues found.` -> the phase may advance after any missing verification is run.
+- `Only low-risk items remain.` -> log each deferred low-risk item in `## Decisions / Deviations Log`, then the phase may advance after any missing verification is run.
+- `Phase needs same-scope split.` -> re-chunk the phase, log the split, and restart at the first new child phase.
+- Any other review result or failed verification -> keep the phase unchecked, investigate whether a same-scope split resolves it, and otherwise ask exactly one blocking question.
 
 #### Hard rule: never mark a failed phase complete
 
 If any of the following is true, the checkbox must stay unchecked:
 
 - verification failed
-- the subagent reported `partial`
-- the subagent reported `blocked`
+- the implementation result reported `partial`
+- the implementation result reported `blocked`
+- the review pass did not clear the phase
 - you do not have evidence that the plan's `### End State` was reached
 
 #### Autonomy / Do Not Pause
 
 - Proceed autonomously through phases.
 - If you are not blocked, do not hand control back to the user.
-- If a phase fails once, prefer one focused repair/retry cycle or a same-scope split before asking the user.
+- Prefer same-scope re-chunking before escalating.
 - Ask the user only when the remaining blocker is genuinely unresolvable from the plan and codebase.
 
 When you must ask:
