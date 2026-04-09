@@ -9,5 +9,5 @@ Vendored from `joelhooks/pi-tools`.
 This local package exists so `ai-configs` can install the extension via a stable local path:
 
 ```bash
-pi install /home/anichols/code/ai-configs/_pi/packages/mcp-bridge
+pi install ./_pi/packages/mcp-bridge
 ```

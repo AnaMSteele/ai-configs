@@ -2,6 +2,14 @@
 
 # Installation script for Claude Code, Codex, Gemini, Oh My Pi, and optional OpenCode
 
+if [ -z "${BASH_VERSION:-}" ]; then
+    if command -v bash >/dev/null 2>&1; then
+        exec bash "$0" "$@"
+    fi
+    echo "Error: install.sh requires bash" >&2
+    exit 1
+fi
+
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -54,7 +62,7 @@ print_usage() {
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
     echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-rlm"
-    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, @sting8k/pi-vcc"
+    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, and vendored pi-vcc from _pi/packages/pi-vcc"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1712,6 +1720,9 @@ install_pi() {
     # Install npm-based pi extensions
     install_pi_npm_packages
 
+    # Install vendored pi-vcc through Pi so compaction behavior is pinned to this repo.
+    install_vendored_pi_vcc_package
+
     # Reinstall repo-managed subagent overrides after package installs so they win
     # over plugin defaults and stay under version control.
     echo "  - Re-installing Pi subagent overrides after Pi package installs..."
@@ -1780,118 +1791,90 @@ install_pi_rlm_package() {
     fi
 }
 
-patch_pi_vcc_manual_bypass() {
-    local npm_root
-    npm_root="$(npm root -g 2>/dev/null)"
-    if [ -z "$npm_root" ]; then
-        echo -e "    ${YELLOW}⚠ Could not determine global npm root; skipping pi-vcc manual bypass patch${NC}"
+report_pi_vcc_upstream_status() {
+    local check_script="$REPO_ROOT/scripts/check-pi-vcc-upstream.sh"
+    local output
+    local status
+
+    if [ ! -f "$check_script" ]; then
+        echo -e "    ${YELLOW}⚠ Upstream check script missing: ./scripts/check-pi-vcc-upstream.sh${NC}"
         return 0
     fi
 
-    local pi_vcc_command="$npm_root/@sting8k/pi-vcc/src/commands/pi-vcc.ts"
-    if [ ! -f "$pi_vcc_command" ]; then
-        echo "    - pi-vcc command source not found; skipping manual bypass patch"
-        return 0
+    echo "  - Checking vendored pi-vcc against upstream..."
+    set +e
+    output="$($check_script 2>&1)"
+    status=$?
+    set -e
+
+    case "$status" in
+        0)
+            echo "    - vendored pi-vcc is current with upstream"
+            ;;
+        2)
+            echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "    ${BLUE}ℹ vendored pi-vcc has upstream updates available${NC}"
+            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p' | sed 's/^/      /'
+            echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh"
+            echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            ;;
+        *)
+            echo -e "    ${YELLOW}⚠ Unable to verify vendored pi-vcc upstream status automatically${NC}"
+            printf '%s\n' "$output" | sed 's/^/      /'
+            ;;
+    esac
+
+    return 0
+}
+
+install_vendored_pi_vcc_package() {
+    local source_rel="./_pi/packages/pi-vcc"
+    local source_abs="$REPO_ROOT/_pi/packages/pi-vcc"
+    local normalized_source
+
+    echo ""
+    echo -e "${GREEN}  Installing vendored pi-vcc via pi package manager...${NC}"
+
+    if [ ! -d "$source_abs" ]; then
+        echo -e "    ${YELLOW}⚠ Vendored pi-vcc package not found at $source_rel${NC}"
+        return 1
     fi
 
-    if grep -Fq '__PI_VCC_MANUAL_BYPASS__' "$pi_vcc_command"; then
-        echo "    - pi-vcc manual bypass patch already applied"
-        return 0
-    fi
+    normalized_source="$(cd "$source_abs" && pwd)"
 
-    if python3 - "$pi_vcc_command" <<'PY'
-from pathlib import Path
-import sys
+    local existing_source
+    while IFS= read -r existing_source; do
+        [ -n "$existing_source" ] || continue
+        if [ "$existing_source" = "$normalized_source" ]; then
+            continue
+        fi
 
-path = Path(sys.argv[1])
-text = path.read_text()
-marker = 'const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";'
-if marker in text:
-    raise SystemExit(0)
+        echo "  - Removing legacy pi-vcc package $existing_source..."
+        if pi remove "$existing_source" 2>/dev/null; then
+            echo -e "    ${GREEN}✓ removed $existing_source${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ Failed to remove legacy pi-vcc package $existing_source${NC}"
+            echo "      To remove manually, run:"
+            echo "        pi remove $existing_source"
+        fi
+    done < <(pi list 2>/dev/null | awk '/^  [^ ]/ && /pi-vcc/ { sub(/^  /, ""); print }')
 
-current = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-export const registerPiVccCommand = (pi: ExtensionAPI) => {
-  pi.registerCommand("pi-vcc", {
-    description: "Compact conversation with pi-vcc structured summary",
-    handler: async (_args, ctx) => {
-      ctx.compact({
-        onComplete: () => ctx.ui.notify("Compacted with pi-vcc", "info"),
-        onError: (err) => {
-          if (err.message === "Compaction cancelled" || err.message === "Already compacted") {
-            ctx.ui.notify("Nothing to compact", "info");
-          } else {
-            ctx.ui.notify(`Compaction failed: ${err.message}`, "error");
-          }
-        },
-      });
-    },
-  });
-};
-'''
-current_new = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
-
-export const registerPiVccCommand = (pi: ExtensionAPI) => {
-  pi.registerCommand("pi-vcc", {
-    description: "Compact conversation with pi-vcc structured summary",
-    handler: async (_args, ctx) => {
-      ctx.compact({
-        customInstructions: PI_VCC_MANUAL_BYPASS_MARKER,
-        onComplete: () => ctx.ui.notify("Compacted with pi-vcc", "info"),
-        onError: (err) => {
-          if (err.message === "Compaction cancelled" || err.message === "Already compacted") {
-            ctx.ui.notify("Nothing to compact", "info");
-          } else {
-            ctx.ui.notify(`Compaction failed: ${err.message}`, "error");
-          }
-        },
-      });
-    },
-  });
-};
-'''
-
-legacy = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-export const registerPiVccCommand = (pi: ExtensionAPI) => {
-  pi.registerCommand("pi-vcc", {
-    description: "Compact conversation with pi-vcc structured summary",
-    handler: async (_args, ctx) => {
-      ctx.compact();
-      ctx.ui.notify("Compacted with pi-vcc", "info");
-    },
-  });
-};
-'''
-legacy_new = '''import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-
-const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
-
-export const registerPiVccCommand = (pi: ExtensionAPI) => {
-  pi.registerCommand("pi-vcc", {
-    description: "Compact conversation with pi-vcc structured summary",
-    handler: async (_args, ctx) => {
-      ctx.compact({ customInstructions: PI_VCC_MANUAL_BYPASS_MARKER });
-      ctx.ui.notify("Compacted with pi-vcc", "info");
-    },
-  });
-};
-'''
-
-if current in text:
-    path.write_text(text.replace(current, current_new, 1))
-elif legacy in text:
-    path.write_text(text.replace(legacy, legacy_new, 1))
-else:
-    raise SystemExit(1)
-PY
-    then
-        echo -e "    ${GREEN}✓ patched pi-vcc manual compaction bypass${NC}"
+    if pi list 2>/dev/null | grep -Fq "$normalized_source"; then
+        echo "  - Vendored pi-vcc already registered with Pi, updating..."
+        pi update "$normalized_source" 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
     else
-        echo -e "    ${YELLOW}⚠ Failed to patch pi-vcc manual compaction bypass${NC}"
+        echo "  - Installing vendored pi-vcc from local path ($source_rel)..."
+        if (cd "$REPO_ROOT" && pi install "$source_rel" 2>/dev/null); then
+            echo -e "    ${GREEN}✓ vendored pi-vcc installed${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ Failed to install vendored pi-vcc via pi package manager${NC}"
+            echo "      To install manually, run from the repo root:"
+            echo "        pi install $source_rel"
+            return 1
+        fi
     fi
+
+    report_pi_vcc_upstream_status
 }
 
 resolve_npm_global_prefix() {
@@ -2166,11 +2149,11 @@ install_pi_npm_packages() {
         "pi-no-soft-cursor"
         "@tmustier/pi-files-widget"
         "@tmustier/pi-raw-paste"
-        "@sting8k/pi-vcc"
     )
     local deprecated_npm_packages=(
         "pi-subagents"
         "pi-mcp-adapter"
+        "@sting8k/pi-vcc"
     )
     local deprecated_git_packages=(
         "git:github.com/adnichols/pi-codex-conversion"
@@ -2228,9 +2211,6 @@ install_pi_npm_packages() {
             fi
         fi
     done
-
-    echo "  - Ensuring manual /pi-vcc bypasses the percentage gate..."
-    patch_pi_vcc_manual_bypass
 
     provision_curated_lsp_servers
 

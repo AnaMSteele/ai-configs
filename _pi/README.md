@@ -178,9 +178,9 @@ This repo also ships `percentage-compaction.ts`, which gives you percentage-base
 - **integrates with pi-vcc** for algorithmic (non-LLM) compaction when threshold is reached
 
 To adjust the threshold, edit `COMPACTION_THRESHOLD_PERCENT` in the extension file (default is 60).
-To use with pi-vcc, ensure pi-vcc is installed (`pi list` should show `npm:@sting8k/pi-vcc`).
+To use with pi-vcc, ensure the vendored local package is installed (`pi list` should show the local `_pi/packages/pi-vcc` package path).
 
-**Note:** With pi-vcc installed, no additional compaction configuration is needed. The extension gates auto-compaction at the percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered. This repo's installer also patches the `/pi-vcc` command so manual compaction bypasses the percentage gate even when usage is below threshold. If you already had pi-vcc installed before updating this repo, rerun `./install.sh --pi` so the patch is refreshed.
+**Note:** With the vendored pi-vcc installed, no additional compaction configuration is needed. The extension gates auto-compaction at the percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered. This repo now ships the `/pi-vcc` manual-bypass marker and the agent-only-tail fallback directly in the vendored package, so rerunning `./install.sh --pi` refreshes both behaviors without patching global npm files.
 
 This repo also vendors Pi's `todo.ts` extension, which auto-loads on install and provides:
 
@@ -215,7 +215,9 @@ npm-managed packages:
 - `pi-no-soft-cursor`
 - `@tmustier/pi-files-widget`
 - `@tmustier/pi-raw-paste`
-- `@sting8k/pi-vcc`
+
+local path package:
+- `./_pi/packages/pi-vcc`
 
 Use `pi list` on a host to verify what is currently registered. To verify both surfaces together, run `scripts/verify-pi-install.sh` from this repo.
 

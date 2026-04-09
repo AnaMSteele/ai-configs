@@ -26,7 +26,6 @@ EXPECTED_NPM_PACKAGES=(
   "npm:pi-no-soft-cursor"
   "npm:@tmustier/pi-files-widget"
   "npm:@tmustier/pi-raw-paste"
-  "npm:@sting8k/pi-vcc"
 )
 
 FAILURES=0
@@ -315,6 +314,7 @@ print_unmanaged_status() {
 }
 
 EXPECTED_REPO_EXTENSIONS="$(cd "$REPO_ROOT" && list_find_entries "_pi/extensions")"
+EXPECTED_LOCAL_PACKAGES="$(cd "$REPO_ROOT" && pwd)/_pi/packages/pi-vcc"
 INSTALLED_REPO_EXTENSIONS="$(list_find_entries "$PI_EXT_DIR")"
 INSTALLED_PI_PACKAGES=""
 
@@ -323,6 +323,21 @@ if command -v pi >/dev/null 2>&1; then
     pi list 2>/dev/null |
       sed -n 's/^  \([^[:space:]].*\)$/\1/p' |
       sed -E 's#^(git:[^@[:space:]]+)@.*#\1#' |
+      while IFS= read -r source; do
+        [ -n "$source" ] || continue
+        case "$source" in
+          npm:*|git:*)
+            printf '%s\n' "$source"
+            ;;
+          *)
+            python3 - "$source" <<'PY'
+import os
+import sys
+print(os.path.realpath(sys.argv[1]))
+PY
+            ;;
+        esac
+      done |
       sort -u
   } || true)"
 else
@@ -341,8 +356,10 @@ report_expected_vs_actual "  Comparison:" "$EXPECTED_REPO_EXTENSIONS" "$INSTALLE
 print_section "2) Package-managed Pi installs (registered via 'pi install'; these DO appear in 'pi list')"
 print_list "expected git: " "$(printf '%s\n' "${EXPECTED_GIT_PACKAGES[@]}")"
 print_list "expected npm: " "$(printf '%s\n' "${EXPECTED_NPM_PACKAGES[@]}")"
+print_list "expected local: " "$EXPECTED_LOCAL_PACKAGES"
 print_list "registered: " "$INSTALLED_PI_PACKAGES"
 ALL_EXPECTED_PACKAGES="$(printf '%s\n' "${EXPECTED_GIT_PACKAGES[@]}" "${EXPECTED_NPM_PACKAGES[@]}")"
+ALL_EXPECTED_PACKAGES="$(printf '%s\n%s\n' "$ALL_EXPECTED_PACKAGES" "$EXPECTED_LOCAL_PACKAGES")"
 report_expected_vs_actual "  Comparison:" "$ALL_EXPECTED_PACKAGES" "$INSTALLED_PI_PACKAGES" true
 
 print_section "3) Curated lsp-pi provisioning preflight + curated binary probes"
@@ -426,15 +443,10 @@ print_section "Quick checks"
 echo "  Repo-managed extensions: find ~/.pi/agent/extensions -mindepth 1 -maxdepth 1 -exec basename {} \\; | sort"
 echo "  Package-managed installs: pi list"
 
-PI_VCC_COMMAND="$(npm root -g 2>/dev/null)/@sting8k/pi-vcc/src/commands/pi-vcc.ts"
-if [ -f "$PI_VCC_COMMAND" ]; then
-  if grep -Fq '__PI_VCC_MANUAL_BYPASS__' "$PI_VCC_COMMAND"; then
-    echo "  pi-vcc manual bypass patch: present"
-  else
-    echo "  pi-vcc manual bypass patch: missing"
-  fi
+if [ -f "$REPO_ROOT/_pi/packages/pi-vcc/src/commands/pi-vcc.ts" ]; then
+  echo "  vendored pi-vcc command source: present"
 else
-  echo "  pi-vcc manual bypass patch: command file not found"
+  echo "  vendored pi-vcc command source: missing"
 fi
 
 if [ "$FAILURES" -gt 0 ]; then
