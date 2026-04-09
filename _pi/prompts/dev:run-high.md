@@ -30,7 +30,11 @@ Use this for:
 ### 0) Autopilot Rules
 
 - Execute continuously; do not pause between phases.
+- A phase boundary is not a stopping point; if unchecked `## Progress` items remain, immediately continue to the next one.
+- Interpret repo guidance like "advance one phase at a time" as serial execution order within this run: complete one phase, then start the next. It does **not** mean stop and wait after each phase.
 - Do not stop after a status update (e.g., "I'm starting Phase 1" or "gathering context").
+- Do not stop after completing a phase unless you are genuinely blocked.
+- Do not hand control back merely because the plan is now in a resumable state; keep executing until all `## Progress` items are complete or a real blocker requires one targeted question.
 - Every response must either (a) take the next concrete action by actually invoking a tool (read/search/edit/run) or updating the plan file, or (b) ask for user input due to an unresolvable decision. Narration is not an action.
 - If unsure, investigate and retry until evidence supports a decision; do not ask the user just for uncertainty.
 - Use `question` only when a decision between viable options requires user input due to insufficient evidence.
@@ -65,6 +69,7 @@ Immediately begin execution:
 
 - Identify the first unchecked item in `## Progress`.
 - Find the corresponding phase section and delegate to the subagent.
+- After each phase, loop back to `## Progress` and continue until no unchecked items remain.
 
 ### 3) Execute Phase-by-Phase
 
@@ -89,6 +94,7 @@ For each phase in order (as tracked by `## Progress`):
 2. After the subagent completes, run the phase `### Verify` steps if not already done.
 3. After the phase is complete (including verification), immediately flip its checkbox from `- [ ]` to `- [x]` in `## Progress`.
 4. If implementation required a decision or revealed a constraint, append a structured entry to `## Decisions / Deviations Log` in the plan file.
+5. Re-read `## Progress`; if another unchecked item remains and you are not blocked, immediately start the next phase instead of returning a progress summary.
 
 #### Autonomy / Do Not Pause
 
@@ -108,7 +114,8 @@ When you do not need to ask:
 
 ### 4) Completion
 
-When all items in `## Progress` are complete:
+Only enter this section when all items in `## Progress` are complete.
 
 - Ensure the plan file reflects completion accurately.
 - Run any verification commands listed in the plan's `Verification Strategy` and/or phase `### Verify` sections.
+- Only now return a final summary of completed phases, final verification, and any logged deviations.

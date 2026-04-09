@@ -23,7 +23,11 @@ Execute a single plan document (spec + phases + progress) using the `developer-m
 ### 0) Autopilot Rules
 
 - Execute continuously; do not pause between phases.
+- A phase boundary is not a stopping point; if unchecked `## Progress` items remain, immediately continue to the next one.
+- Interpret repo guidance like "advance one phase at a time" as serial execution order within this run: complete one phase, then start the next. It does **not** mean stop and wait after each phase.
 - Do not stop after a status update.
+- Do not stop after completing a phase unless you are genuinely blocked.
+- Do not hand control back merely because the plan is now in a resumable state; keep executing until all `## Progress` items are complete or a real blocker requires one targeted question.
 - Every response must either take the next concrete action or ask exactly one blocking question.
 - If unsure, investigate and retry until evidence supports a decision.
 - Use `question` only when a decision between viable options requires user input.
@@ -57,6 +61,7 @@ Immediately begin execution:
 - Identify the first unchecked item in `## Progress`.
 - Find the corresponding phase section.
 - Delegate that phase to `developer-mid`.
+- After each phase, loop back to `## Progress` and continue until no unchecked items remain.
 
 ### 3) Execute Phase-by-Phase
 
@@ -67,6 +72,7 @@ For each phase in order:
 3. Inspect the returned summary and verification evidence before changing the plan file.
 4. Run the phase `### Verify` steps yourself if the subagent did not clearly complete them.
 5. Mark the phase complete only after implementation and verification are both actually complete.
+6. After handling that phase, re-read `## Progress`; if another unchecked item remains and you are not blocked, immediately start the next phase instead of returning a progress summary.
 
 Use a prompt in this shape:
 
@@ -149,8 +155,8 @@ When you do not need to ask:
 
 ### 4) Completion
 
-When all items in `## Progress` are complete:
+Only enter this section when all items in `## Progress` are complete.
 
 - Ensure the plan file reflects completion accurately.
 - Run any verification commands listed in the plan’s `Verification Strategy` and/or phase `### Verify` sections.
-- Summarize completed phases, final verification, and any logged deviations.
+- Only now return a final summary of completed phases, final verification, and any logged deviations.
