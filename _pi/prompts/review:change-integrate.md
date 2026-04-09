@@ -74,15 +74,19 @@ Use the available repo exploration tools in this session.
 - Remove each resolved inline review comment.
 - If feedback implies adding or changing requirements, update:
   - Goal/Non-goals / Acceptance Criteria
-  - The impacted phase(s) `### End State` / `### Work` / `### Verify`
+  - The impacted phase(s) `### Tests first` / `### End State` / `### Work` / `### Verify`
+  - `## Progress` if a review finding requires splitting an oversized unchecked phase into smaller same-scope slices
   - `Resume Instructions (Agent)` if needed
+- Preserve scope when integrating chunking feedback: reviewers may tighten or split the plan, but must not expand the work.
 - Append a new entry to `## Plan Changelog` describing what changed.
 
 ### 5) Final Validation
 
 - No `[REVIEW:...]` comments remain.
 - `## Progress` still corresponds to the phase headers.
+- Each phase still includes `### Tests first`, `### End State`, `### Work`, and `### Verify`.
 - Each acceptance criterion has at least one verification step.
+- No unresolved `[REVIEW:...]` comments remain.
 
 ### 6) Overall Plan State
 

@@ -9,6 +9,7 @@ Execute a single plan document (spec + phases + progress) in a straightforward, 
 
 - Follow the plan, but keep implementation flexibility.
 - Track progress by updating `## Progress` in the plan file.
+- Allow same-scope dynamic re-chunking when a phase is too large to execute safely in one pass.
 
 ## Inputs
 
@@ -30,6 +31,7 @@ Execute a single plan document (spec + phases + progress) in a straightforward, 
 - Every response must either (a) take the next concrete action by actually invoking a tool (read/search/edit/run) or updating the plan file, or (b) ask for user input due to an unresolvable decision. Narration is not an action.
 - If unsure, investigate and retry until evidence supports a decision; do not ask the user just for uncertainty.
 - Use `question` only when a decision between viable options requires user input due to insufficient evidence.
+- You may re-chunk work only when the split preserves the plan's scope, acceptance criteria, locked decisions, and overall end state.
 
 Unresolvable decision examples:
 
@@ -57,11 +59,47 @@ Legacy migration support (do not delete legacy files):
 
 Read `plan_path` fully.
 
+Before execution, confirm the plan is actually executable:
+
+- `## Progress` exists and has at least one unchecked item or all items are already complete.
+- `Resume Instructions (Agent)` exists.
+- Each active phase includes `### Tests first`, `### End State`, `### Work`, and `### Verify`.
+- If the plan declares `Status: research-ready` or equivalent non-ready status, do not start implementation.
+- The plan does not contain unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections when it is intended for execution.
+
 Immediately begin execution:
 
 - Identify the first unchecked item in `## Progress`.
 - Find the corresponding phase section and start implementing it right away; do not pause to recap the plan.
+- If that phase is obviously too large for one safe execution pass, re-chunk it before making code changes.
 - After each phase, loop back to `## Progress` and continue until no unchecked items remain.
+
+### 2.5) Same-Scope Re-Chunking Protocol
+
+A phase may be re-chunked only when the split preserves:
+
+- scope,
+- acceptance criteria,
+- locked decisions and externally visible semantics,
+- and the parent phase's overall end state.
+
+Use same-scope re-chunking when a phase shows one or more of these signals:
+
+- multiple independently verifiable outcomes are bundled into one checkbox,
+- materially different verification stories are mixed together,
+- the likely work spans too many loosely related files, surfaces, or contracts for one safe pass,
+- execution would require broad rediscovery just to decide how to proceed,
+- a prior implementation attempt showed the slice was too large rather than blocked on one specific issue.
+
+When re-chunking:
+
+1. Change only the current unchecked phase and the unchecked progress bookkeeping that must correspond to it.
+2. Replace the current progress item with smaller child items using stable suffixes such as `P2a`, `P2b`, `P2c`.
+3. Replace the parent phase with matching child phases, each with `### Tests first`, `### End State`, `### Work`, and `### Verify`.
+4. Preserve completed phase IDs and append a structured note to `## Decisions / Deviations Log` explaining why the split was needed.
+5. Continue immediately with the first new child phase.
+
+If a safe split would require changing scope, acceptance criteria, or missing semantics, do not re-chunk. Ask exactly one blocking question instead.
 
 ### 3) Execute Phase-by-Phase
 
@@ -79,6 +117,7 @@ For each phase in order (as tracked by `## Progress`):
 - If you are not blocked, do not hand control back to the user; take the next concrete action (run commands, edit files, update progress) until you either finish or hit an unresolvable decision.
 - Do not stop after announcing intent, listing next steps, or completing "context gathering".
 - Only stop to ask the user when you hit an unresolvable decision that cannot be answered from the plan or codebase.
+- If execution reveals that the current phase should be split, prefer a same-scope re-chunk before escalating to the user.
 
 When you must ask:
 

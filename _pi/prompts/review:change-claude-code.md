@@ -140,7 +140,10 @@ Lifecycle rules:
 The launched Claude Code prompt should:
 
 - inspect the target plan,
-- look for gaps, risks, ambiguity, incorrect references, and scope drift,
+- look for gaps, risks, ambiguity, incorrect references, scope drift, and execution-readiness defects,
+- explicitly check that each unchecked phase is a bounded execution slice with `### Tests first`, `### End State`, `### Work`, and `### Verify`,
+- flag unresolved `Open Questions` / `Decision Points` in any execution-ready plan,
+- flag phases that are too large and would likely require same-scope subdivision during execution,
 - write inline review comments only where they improve the final plan,
 - preserve the plan structure and progress state,
 - not rewrite or resolve existing review comments,
