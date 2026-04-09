@@ -200,6 +200,7 @@ In addition to the repo-managed files under `~/.pi/agent/extensions/`, `install.
 Git-managed packages:
 - `chrome-cdp-skill`
 - `pi-rlm`
+- `pi-gpt-config`
 
 npm-managed packages:
 - `@tintinweb/pi-subagents`

@@ -61,7 +61,7 @@ print_usage() {
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
-    echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-rlm"
+    echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-rlm, pi-gpt-config"
     echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, and vendored pi-vcc from _pi/packages/pi-vcc"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
@@ -1717,6 +1717,9 @@ install_pi() {
     # Install pi-rlm extension via pi package manager
     install_pi_rlm_package
 
+    # Install pi-gpt-config extension via pi package manager
+    install_pi_gpt_config_package
+
     # Install npm-based pi extensions
     install_pi_npm_packages
 
@@ -1786,6 +1789,27 @@ install_pi_rlm_package() {
             echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
             echo "      To install manually, run:"
             echo "        pi install git:github.com/adnichols/pi-rlm"
+            return 1
+        fi
+    fi
+}
+
+# Install pi-gpt-config extension via pi package manager
+install_pi_gpt_config_package() {
+    echo ""
+    echo -e "${GREEN}  Installing pi-gpt-config extension via pi package manager...${NC}"
+
+    if pi list 2>/dev/null | grep -q "pi-gpt-config"; then
+        echo "  - pi-gpt-config already installed, updating..."
+        pi update pi-gpt-config 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
+    else
+        echo "  - Installing pi-gpt-config from git repository..."
+        if pi install git:github.com/edxeth/pi-gpt-config 2>/dev/null; then
+            echo -e "    ${GREEN}✓ pi-gpt-config installed${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
+            echo "      To install manually, run:"
+            echo "        pi install git:github.com/edxeth/pi-gpt-config"
             return 1
         fi
     fi

@@ -10,6 +10,7 @@ PI_EXT_DIR="$PI_AGENT_DIR/extensions"
 EXPECTED_GIT_PACKAGES=(
   "git:github.com/pasky/chrome-cdp-skill"
   "git:github.com/adnichols/pi-rlm"
+  "git:github.com/edxeth/pi-gpt-config"
 )
 
 EXPECTED_NPM_PACKAGES=(
