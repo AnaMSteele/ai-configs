@@ -90,6 +90,7 @@ Verify the plan is runnable and resumable:
 
 - Phases are present (`## Phase N: ...`) and ordered.
 - Each phase has:
+  - `### Tests first` (behavioral evidence strong enough to catch partial implementation)
   - `### End State` (observable outcomes)
   - `### Work` (high-level guidance)
   - `### Verify` (explicit commands and/or manual checks)
@@ -97,6 +98,14 @@ Verify the plan is runnable and resumable:
 - `## Progress` items correspond to phase headers.
 - Only `## Progress` contains checkboxes.
 - `Resume Instructions (Agent)` avoids stop points and enables continuous execution.
+- `## Decisions / Deviations Log` exists.
+- If the plan is execution-ready, it does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
+- Each unchecked phase is still a **bounded execution slice**:
+  - one coherent outcome,
+  - one primary verification story,
+  - limited enough coupling and affected surfaces for one safe execution pass,
+  - little enough remaining discovery that execution should not need semantic replanning.
+- If a phase would likely require same-scope subdivision during execution just to finish safely, treat that as a plan defect to flag now.
 
 ### 4) Cross-Verification
 
@@ -105,6 +114,8 @@ Ensure internal consistency:
 - Acceptance criteria have corresponding verification steps.
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
+- The plan does not rely on executors making outcome-shaping chunking or design decisions later.
+- Phase sizing matches likely effort, coupling, and verification breadth rather than bundling multiple independently verifiable outcomes behind one checkbox.
 
 ## Comment Guidelines
 

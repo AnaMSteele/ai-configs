@@ -7,6 +7,8 @@ argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 
 Execute a plan document phase-by-phase. For each phase, do 1 implementation pass, then repeat review/fix passes until the reviewer finds zero issues or explicitly confirms that only low-risk deferred items remain. Do not advance with unresolved substantive issues. Capture low-risk deferred discoveries and out-of-scope follow-up opportunities in a discovery ledger so they can be triaged later without derailing execution.
 
+Same-scope dynamic re-chunking is allowed when a planned phase is too large to execute safely in one pass, but execution must not change scope or redefine the work.
+
 ## Inputs
 
 `$ARGUMENTS` may be:
@@ -24,6 +26,7 @@ Execute a plan document phase-by-phase. For each phase, do 1 implementation pass
 - If unsure, investigate and retry until evidence supports a decision; do not ask the user just for uncertainty.
 - Use `question` only when a decision between viable options requires user input due to insufficient evidence.
 - Do NOT stop to summarize what you just did or what you plan to do next. Act.
+- You may re-chunk work only when the split preserves the plan's scope, acceptance criteria, locked decisions, and overall end state.
 
 Unresolvable decision examples:
 
@@ -53,6 +56,7 @@ Before execution, confirm the plan is actually executable:
 - `## Progress` exists and has at least one unchecked item or all items are already complete.
 - `Resume Instructions (Agent)` exists.
 - Each active phase includes `### End State`, `### Tests first`, `### Work`, and `### Verify`.
+- If the plan declares `Status: research-ready` or equivalent non-ready status, do not start implementation.
 - The plan does not contain unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 - Each active phase's `### Verify` steps are concrete and current for the repository's actual targets, package names, paths, and commands.
 - If a phase spans multiple required public surfaces (for example HTTP/CLI/MCP/UI), the plan makes parity expectations explicit in `### Tests first`, `### Work`, or `### Expected files`.
@@ -63,7 +67,34 @@ If a `### Verify` command or obvious plan reference is stale but the correction 
 
 Identify the first unchecked item in `## Progress` and begin execution immediately - do not pause to recap the plan.
 
-### 2.5) Discovery Protocol
+### 2.5) Same-Scope Re-Chunking Protocol
+
+A phase may be re-chunked only when the split preserves:
+
+- scope,
+- acceptance criteria,
+- locked decisions and externally visible semantics,
+- and the parent phase's overall end state.
+
+Use same-scope re-chunking when a phase shows one or more of these signals:
+
+- multiple independently verifiable outcomes are bundled into one checkbox,
+- materially different verification stories are mixed together,
+- the likely work spans too many loosely related files, surfaces, or contracts for one safe pass,
+- execution would require broad rediscovery just to decide how to proceed,
+- a developer or reviewer pass indicates the slice is too large rather than blocked on one specific semantic issue.
+
+When re-chunking:
+
+1. Change only the current unchecked phase and the unchecked progress bookkeeping that must correspond to it.
+2. Replace the current progress item with smaller child items using stable suffixes such as `P2a`, `P2b`, `P2c`.
+3. Replace the parent phase with matching child phases, each with `### Tests first`, `### End State`, `### Work`, and `### Verify`.
+4. Preserve completed phase IDs and append a structured note to `## Decisions / Deviations Log` explaining why the split was needed.
+5. Restart execution at the first new child phase.
+
+If a safe split would require changing scope, acceptance criteria, or missing semantics, do not re-chunk. Ask exactly one blocking question instead.
+
+### 2.6) Discovery Protocol
 
 Use this protocol whenever implementation or review reveals work beyond the current phase's required outcome:
 
@@ -105,7 +136,7 @@ Record each deferred discovery as:
 - External scope impact: none | internal only | user-visible | unclear
 ```
 
-### 2.6) Low-Risk Deferral Bar
+### 2.7) Low-Risk Deferral Bar
 
 A phase may advance with deferred items only if every remaining item is low risk.
 
@@ -158,9 +189,14 @@ Delegate to the `developer-mm` agent with this prompt:
 >
 > When you encounter ambiguity, resolve it by examining existing code patterns and the source documents referenced by the plan. Only ask the user if the decision is truly unresolvable.
 >
+> If the phase proves too large for one safe pass but can be subdivided without changing scope or semantics, stop and report a concise same-scope chunking recommendation instead of inventing new behavior.
+>
 > After implementation, run the phase's `### Verify` steps if they exist.
 
-After the developer agent completes, proceed immediately to the first review pass - do not pause.
+After the developer agent completes, inspect its output before starting review:
+
+- If it clearly reports the phase should be split into smaller same-scope slices, re-chunk the plan, log the split, and restart at the first new child phase.
+- Otherwise proceed immediately to the first review pass.
 
 #### Review Passes: Review and Fix
 
@@ -181,7 +217,7 @@ Delegate to the `quality-reviewer-k2.5` agent with this prompt:
 > 3. Problems - regressions, inconsistencies with the rest of the codebase, violations of existing patterns
 > 4. TDD/plan fidelity issues - cases where the implementation skipped the planned tests-first approach without justification, or where the passing tests do not actually prove the intended behavior
 > 5. Test-strength issues - missing counterexamples, ambiguity checks, boundary checks, parity checks, or contract-drift coverage that the phase clearly needs to prevent misleading passes
-> 6. Phase-gate issues - stale verify commands, missing required-surface parity, stale fixtures/contracts, or unresolved evidence-source mismatches that would make the phase unsafe to advance
+> 6. Phase-gate issues - stale verify commands, missing required-surface parity, stale fixtures/contracts, unresolved evidence-source mismatches, or phase-sizing defects that would make the phase unsafe to advance
 > 7. Feedback-loop issues - whether a substantive miss shows the original test scope or original plan was too narrow, including same-class reappearing findings or cross-surface recurrences compared with the prior review pass in this phase
 >
 > Do NOT flag:
@@ -191,6 +227,8 @@ Delegate to the `quality-reviewer-k2.5` agent with this prompt:
 > - Test coverage beyond what the plan specifies or clearly implies
 >
 > Fix every non-low-risk issue directly. Do not just report issues - fix them.
+>
+> If the real problem is that the phase bundles too much work to converge safely as one slice, say so plainly instead of brute-forcing more edits.
 >
 > If you find an item that is truly low risk under the phase gate rules and should not be fixed in the current phase, record it in `<discovery_path>` as a Deferred Discovery instead of expanding scope. Mention each deferred item in your summary.
 >
@@ -227,6 +265,7 @@ Delegate to the `quality-reviewer-k2.5` agent with this prompt:
 
 - `VERDICT: PASS_NO_ISSUES` -> the phase quality gate is passed
 - `VERDICT: PASS_LOW_RISK_ONLY` -> the phase quality gate is passed only after each low-risk item is recorded in `discovery_path` and referenced in the plan's `## Decisions / Deviations Log`
+- If the output or surrounding evidence shows the phase should be split into same-scope child phases -> re-chunk, log the split, and restart at the first child phase
 - `VERDICT: RE_REVIEW_REQUIRED` -> run another review pass
 - `VERDICT: BLOCKED` -> stop and ask the user the blocking decision question
 - Any missing, malformed, or contradictory verdict -> treat as `VERDICT: RE_REVIEW_REQUIRED` and run another review pass with an instruction to follow the verdict format exactly
@@ -245,7 +284,7 @@ If the loop stops converging because the same substantive issue keeps reappearin
 Once the phase is ready to advance (either zero issues found, or only low-risk deferred items remain):
 
 1. Flip the phase's checkbox from `- [ ]` to `- [x]` in `## Progress`.
-2. If implementation required a decision, revealed a constraint, created a Deferred Discovery, corrected stale verify guidance, required contract/evidence-source drift cleanup, or triggered any test-scope or plan-scope reassessment during implementation or review, ensure `## Decisions / Deviations Log` already contains a structured entry recorded when the event happened; if it does not, append one now, including any test-scope or plan-scope reassessment triggered during implementation or review.
+2. If implementation required a decision, revealed a constraint, created a Deferred Discovery, corrected stale verify guidance, required contract/evidence-source drift cleanup, triggered any test-scope or plan-scope reassessment during implementation or review, or split a phase into same-scope child slices, ensure `## Decisions / Deviations Log` already contains a structured entry recorded when the event happened; if it does not, append one now, including any test-scope or plan-scope reassessment triggered during implementation or review.
 3. Proceed immediately to the next phase - do not pause.
 
 ### 4) Tests Policy

@@ -130,6 +130,8 @@ Before writing `plan_path`, explicitly choose the correct readiness state.
 - If research still remains the next handoff after that validation, write a non-ready `research-ready` plan artifact whose next handoff is that research.
 - Do not end `dev:plan` by delegating or suggesting follow-up research without writing `plan_path` when research is still the next handoff.
 - Never bury a low-confidence decision inside a later execution phase just to keep the plan moving.
+- Treat uncertainty about how the work should be chunked into bounded execution slices as a foundational planning problem, not something to defer into execution.
+- If you cannot mostly accurately estimate how much effort a phase involves from repo evidence, the planning is not deep enough yet.
 
 ### 6) Write `plan_path`
 
@@ -142,6 +144,9 @@ Complexity and completeness rules:
 - Keep simple local wiring or narrow refactor work `lightweight`; do not force heavyweight schema, protocol, or rollout sections when they do not improve confidence.
 - Require complete contracts and a `test coverage matrix` only for non-trivial, migration-heavy, compatibility-sensitive, or multi-surface work before calling the plan `execution-ready`.
 - For non-trivial ready plans, map acceptance criteria and BDD scenarios to intended test layers, planned suites or files, and `### Verify` commands strong enough to catch partial implementations.
+- Each phase must be a **bounded execution slice**: one coherent outcome, one primary verification story, limited enough coupling and affected surfaces that execution should usually finish without semantic replanning.
+- Break phases by effort, coupling, uncertainty, and verification breadth — not by work-type labels.
+- If a phase contains multiple independently verifiable outcomes, materially different verification stories, or broad repo rediscovery, split it during planning instead of relying on execution-time chunking.
 
 Non-negotiable compatibility requirements:
 
@@ -149,6 +154,7 @@ Non-negotiable compatibility requirements:
 - Preserve prior progress and append-only logs when regenerating.
 - `## Progress` contains the only checkboxes and uses stable IDs (`P1`, `P2`, ...).
 - Each phase includes `### End State`, `### Tests first`, `### Expected files`, `### Work`, and `### Verify`.
+- `Resume Instructions (Agent)` should explicitly allow same-scope re-chunking during execution only when it preserves scope, acceptance criteria, and locked decisions.
 - Ready plans do not leave unresolved `Open Questions` or equivalent unresolved-decision sections.
 - `### Verify` steps are copy/paste ready and match actual repo reality.
 - The plan is resumable by another agent without inventing missing semantics.
@@ -184,6 +190,7 @@ Before finishing:
 - `### Verify` commands are copy/paste ready and match current repo/package/target names.
 - There are no unresolved foundational decisions hiding inside later execution phases.
 - There are no unresolved decision points left in an `execution-ready` plan; a `research-ready` artifact keeps them explicit as unresolved next-handoff items.
+- Each unchecked phase still looks like one bounded execution slice rather than a bundle of separate deliverables.
 - If non-trivial build-vs-buy choices are in scope, the dependency/library evaluation checkpoint is present; otherwise the plan briefly states why no scan was needed.
 - No non-plan file was modified.
 

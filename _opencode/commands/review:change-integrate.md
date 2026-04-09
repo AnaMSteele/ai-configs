@@ -68,9 +68,10 @@ Use the Task tool with `subagent_type=Explore`.
   - Locked Decisions
   - Goal/Non-goals / Acceptance Criteria
   - `## Progress` if phase structure changes
-  - The impacted phase(s) `### End State` / `### Work` / `### Verify`
-  - `### Tests first` sections so they still describe the intended user-visible behavior
+  - The impacted phase(s) `### Tests first` / `### End State` / `### Work` / `### Verify`
   - `Resume Instructions (Agent)` if needed
+- If review feedback shows an unchecked phase is oversized, split it into smaller same-scope slices without expanding scope.
+- Preserve same-scope chunking discipline: tighten or split the plan, but do not broaden the work.
 - If review feedback establishes that a dependency/library evaluation checkpoint was missing or under-specified, preserve or add that decision explicitly in the cleaned plan.
 - If a review comment shows that custom implementation was proposed without adequate library research, integrate the requirement to evaluate official SDKs / well-maintained libraries instead of silently resolving or deleting the issue.
 - Append a new entry to `## Plan Changelog` describing what changed.
@@ -81,6 +82,7 @@ Use the Task tool with `subagent_type=Explore`.
 - `## Progress` still corresponds to the phase headers.
 - Each acceptance criterion has at least one verification step.
 - Each phase has `### End State`, `### Tests first`, `### Work`, and `### Verify`.
+- Each unchecked phase still reads as one bounded execution slice rather than a bundle of separate deliverables.
 - The plan has `Resume Instructions (Agent)` and `## Decisions / Deviations Log`.
 - Required dependency/library evaluation decisions established during review remain present in the final clean plan.
 - The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.

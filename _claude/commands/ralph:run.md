@@ -7,6 +7,8 @@ argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
 
 Execute a plan document phase-by-phase: do 1 implementation pass, then repeat review/fix passes until the reviewer finds zero issues or explicitly confirms that only low-risk deferred items remain. Do not advance with unresolved substantive issues.
 
+Same-scope dynamic re-chunking is allowed when a planned phase is too large to execute safely in one pass, but execution must not change scope or redefine the work.
+
 ## Inputs
 
 `$ARGUMENTS` may be:
@@ -24,6 +26,7 @@ Execute a plan document phase-by-phase: do 1 implementation pass, then repeat re
 - If unsure, investigate and retry until evidence supports a decision; do not ask the user just for uncertainty.
 - Use `question` only when a decision between viable options requires user input due to insufficient evidence.
 - Do NOT stop to summarize what you just did or what you plan to do next. Act.
+- You may re-chunk work only when the split preserves the plan's scope, acceptance criteria, locked decisions, and overall end state.
 
 Unresolvable decision examples:
 
@@ -48,6 +51,7 @@ Before execution, confirm the plan is actually executable:
 - `## Progress` exists and has at least one unchecked item or all items are already complete.
 - `Resume Instructions (Agent)` exists.
 - Each active phase includes `### End State`, `### Tests first`, `### Work`, and `### Verify`.
+- If the plan declares `Status: research-ready` or equivalent non-ready status, do not start implementation.
 - The plan does not contain unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 - Each active phase's `### Verify` steps are concrete and current for the repository's actual targets, package names, paths, and commands.
 
@@ -55,7 +59,34 @@ If important questions remain unresolved, do not start implementation. Ask the u
 
 Identify the first unchecked item in `## Progress` and begin execution immediately - do not pause to recap the plan.
 
-### 2.5) Low-Risk Deferral Bar
+### 2.5) Same-Scope Re-Chunking Protocol
+
+A phase may be re-chunked only when the split preserves:
+
+- scope,
+- acceptance criteria,
+- locked decisions and externally visible semantics,
+- and the parent phase's overall end state.
+
+Use same-scope re-chunking when a phase shows one or more of these signals:
+
+- multiple independently verifiable outcomes are bundled into one checkbox,
+- materially different verification stories are mixed together,
+- the likely work spans too many loosely related files, surfaces, or contracts for one safe pass,
+- execution would require broad rediscovery just to decide how to proceed,
+- a developer or reviewer pass indicates the slice is too large rather than blocked on one specific semantic issue.
+
+When re-chunking:
+
+1. Change only the current unchecked phase and the unchecked progress bookkeeping that must correspond to it.
+2. Replace the current progress item with smaller child items using stable suffixes such as `P2a`, `P2b`, `P2c`.
+3. Replace the parent phase with matching child phases, each with `### Tests first`, `### End State`, `### Work`, and `### Verify`.
+4. Preserve completed phase IDs and append a structured note to `## Decisions / Deviations Log` explaining why the split was needed.
+5. Restart execution at the first new child phase.
+
+If a safe split would require changing scope, acceptance criteria, or missing semantics, do not re-chunk. Ask exactly one blocking question instead.
+
+### 2.6) Low-Risk Deferral Bar
 
 A phase may advance with deferred items only if every remaining item is low risk.
 
@@ -95,9 +126,14 @@ Delegate to the `developer` agent with this prompt:
 >
 > When you encounter ambiguity, resolve it by examining existing code patterns and the source documents referenced by the plan. Only ask the user if the decision is truly unresolvable.
 >
+> If the phase proves too large for one safe pass but can be subdivided without changing scope or semantics, stop and report a concise same-scope chunking recommendation instead of inventing new behavior.
+>
 > After implementation, run the phase's `### Verify` steps if they exist.
 
-After the developer agent completes, proceed immediately to the first review pass - do not pause.
+After the developer agent completes, inspect its output before starting review:
+
+- If it clearly reports the phase should be split into smaller same-scope slices, re-chunk the plan, log the split, and restart at the first new child phase.
+- Otherwise proceed immediately to the first review pass.
 
 #### Review Passes: Review and Fix
 
@@ -105,11 +141,13 @@ Delegate to the `quality-reviewer` agent with this prompt:
 
 > Review the implementation of phase N of this plan: `<plan_path>`
 >
-> Read the plan file fully. Find phase N and its `### Tests first`, `### Work`, `### End State`, and `### Verify` sections. Review the implementation for gaps, quality issues, regressions, TDD/plan fidelity issues, missing counterexample/boundary/parity coverage, stale verify commands, missing required-surface parity, stale fixtures/contracts, or unresolved evidence-source mismatches that would make the phase unsafe to advance.
+> Read the plan file fully. Find phase N and its `### Tests first`, `### Work`, `### End State`, and `### Verify` sections. Review the implementation for gaps, quality issues, regressions, TDD/plan fidelity issues, missing counterexample/boundary/parity coverage, stale verify commands, missing required-surface parity, stale fixtures/contracts, unresolved evidence-source mismatches, or phase-sizing defects that would make the phase unsafe to advance.
 >
 > Do NOT flag style preferences, speculative enhancements, or test coverage beyond what the plan specifies or clearly implies.
 >
 > Fix every non-low-risk issue directly. Do not just report issues - fix them.
+>
+> If the real problem is that the phase bundles too much work to converge safely as one slice, say so plainly instead of brute-forcing more edits.
 >
 > At the end, output one of these exact lead sentences:
 > - `No issues found.`
@@ -119,7 +157,8 @@ Delegate to the `quality-reviewer` agent with this prompt:
 
 - If it found zero issues -> the phase quality gate is passed
 - If it explicitly says only low-risk items remain -> the phase quality gate is passed only after each low-risk item is logged in the plan's `## Decisions / Deviations Log`
-- If it found and fixed any substantive issue -> run another review pass
+- If the output or surrounding evidence shows the phase should be split into same-scope child phases -> re-chunk, log the split, and restart at the first child phase
+- If it found and fixed any other substantive issue -> run another review pass
 - There is no fixed review-pass limit. Keep iterating until the gate passes or a true Blocking Decision is reached.
 
 #### Phase Completion
@@ -127,7 +166,7 @@ Delegate to the `quality-reviewer` agent with this prompt:
 Once the phase is ready to advance (either zero issues found, or only low-risk deferred items remain):
 
 1. Flip the phase's checkbox from `- [ ]` to `- [x]` in `## Progress`.
-2. If implementation required a decision, revealed a constraint, corrected stale verify guidance, or required contract/evidence-source drift cleanup, append a structured entry to `## Decisions / Deviations Log` in the plan file.
+2. If implementation required a decision, revealed a constraint, corrected stale verify guidance, required contract/evidence-source drift cleanup, or split a phase into same-scope child slices, append a structured entry to `## Decisions / Deviations Log` in the plan file.
 3. Proceed immediately to the next phase - do not pause.
 
 ### 4) Tests Policy

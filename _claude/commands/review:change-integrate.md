@@ -66,8 +66,10 @@ Use the Task tool with `subagent_type=Explore`.
 - Remove each resolved inline review comment.
 - If feedback implies adding or changing requirements, update:
   - Goal/Non-goals / Acceptance Criteria
-  - The impacted phase(s) `### End State` / `### Work` / `### Verify`
+  - `## Progress` if an oversized unchecked phase must be split into smaller same-scope slices
+  - The impacted phase(s) `### Tests first` / `### End State` / `### Work` / `### Verify`
   - `Resume Instructions (Agent)` if needed
+- Preserve scope when integrating chunking feedback: reviewers may tighten or split the plan, but must not expand the work.
 - Append a new entry to `## Plan Changelog` describing what changed.
 
 ### 5) Final Validation
@@ -75,6 +77,9 @@ Use the Task tool with `subagent_type=Explore`.
 - No `[REVIEW:...]` comments remain.
 - `## Progress` still corresponds to the phase headers.
 - Each acceptance criterion has at least one verification step.
+- Each phase has `### Tests first`, `### End State`, `### Work`, and `### Verify`.
+- Each unchecked phase still reads as one bounded execution slice rather than a bundle of separate deliverables.
+- The final clean plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 
 ### 6) Overall Plan State
 
