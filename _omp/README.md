@@ -16,6 +16,16 @@ Use `/aplan` for the repo-managed OMP planning workflow in this repository.
 - while `/aplan` is active, plan updates in `thoughts/plans/` can trigger `/review:plan`; if standard review leaves inline `[REVIEW:...]` comments, `/review:change-integrate` is auto-run before any exit prompt, and `/review:plan-adversarial` remains an optional follow-up review pass
 - after review, `/aplan` offers fresh `/dev:run` and `/ralph:run` exit choices and prepares `/cmd:execute-plan <plan> --target ...` so execution starts outside `/aplan` mode
 
+## Compaction entrypoint
+
+Use the vendored `_omp/extensions/pi-vcc/` extension when you want the same VCC compaction behavior this repo ships for Pi.
+
+- `./install.sh --omp` installs it to `~/.omp/agent/extensions/pi-vcc/`
+- it registers the `session_before_compact` hook for algorithmic compaction
+- it adds `/pi-vcc` for manual compaction
+- it adds `vcc_recall` for searching full session history after compaction
+- optional debug config lives at `~/.omp/agent/pi-vcc-config.json`
+
 ## Legacy note about `_omp/agents/aplan-legacy.md`
 
 The legacy shim was renamed off the `/aplan` name so the runtime extension owns `/aplan` unambiguously. Keep `_omp/agents/aplan-legacy.md` only for historical guidance that points users back to the runtime `/aplan`; it is not a command entrypoint.
