@@ -21,7 +21,7 @@ Use it after each meaningful batch of new user answers:
 Required order per round:
 1. Run the critical thinker first on the updated PRD.
 2. Only run the researcher if the critical thinker identifies a decision-relevant gap that needs external defaults, prior art, or precedent.
-3. After those support passes, ask up to 10 clarification questions that would materially help clarify product intent and decisions, or explicitly say no further clarification questions are currently needed.
+3. After those support passes, use the `question` tool to ask the prioritized clarification questions from the critical thinker whenever more clarification is still needed, or explicitly say no further clarification questions are currently needed.
 
 Do not run `/review:prd` from this command.
 Do not launch any of the seven final PRD reviewers from this command.
@@ -47,7 +47,7 @@ Launch the critical thinker first.
 const critic = Agent({
   subagent_type: "prd-critical-thinker",
   description: "Analyze PRD clarification gaps",
-  prompt: "Analyze the current PRD round for $ARGUMENTS. Read the PRD and its selected baseline specs. Follow your prd-critical-thinker instructions exactly and return blockers, missing baseline facts, and whether another clarification question is needed.",
+  prompt: "Analyze the current PRD round for $ARGUMENTS. Read the PRD and its selected baseline specs. Follow your prd-critical-thinker instructions exactly and return blockers, missing baseline facts, prioritized clarification questions with suggested options, and whether clarification is still needed.",
   run_in_background: true,
 });
 
@@ -82,8 +82,11 @@ const researchResult = await get_subagent_result({ agent_id: research.agent_id ?
 
 Using the PRD plus the support-agent outputs:
 
-- If the PRD still has unresolved contradictions, missing required behavior, or unclear intent, ask up to 10 targeted clarification questions that would materially improve product intent clarity or decision quality.
-- Keep the question list prioritized and high-signal; do not pad it just to reach 10.
+- Treat the critical thinker's `## Clarification questions` section as the default source for the next user questions.
+- If the PRD still has unresolved contradictions, missing required behavior, or unclear intent, ask those questions with the `question` tool instead of printing them as plain text.
+- Preserve the critic's priority order. Ask all material questions for the round unless the user cancels or answers make later questions obsolete.
+- For each `question` tool call, use the critic's suggested options when present. If an option set is still missing, synthesize a short high-signal option list from the PRD/baseline and rely on the tool's built-in freeform path for custom answers.
+- Keep the question set high-signal; do not pad it just to reach 10.
 - If the PRD is internally coherent and no further clarification is currently needed, say that explicitly.
 - After the user answers, fold those answers into the PRD and start another clarification round from the critical thinker.
 - If wider review is now worthwhile, say that `/review:prd <prd-path>` is available, but do not run it automatically.
@@ -100,7 +103,7 @@ Using the PRD plus the support-agent outputs:
 - [Finding] or `Skipped — not needed for this round`
 
 ### Next Step
-- [Up to 10 prioritized clarification questions]
+- `Used question tool for the prioritized clarification set.`
 - or `No further clarification questions are currently needed.`
 
 ### Review Gate

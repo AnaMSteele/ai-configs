@@ -90,6 +90,7 @@ Installed layout:
     │   └── index.ts
     ├── pi-prd-mode/
     │   └── index.ts
+    ├── questionnaire.ts
     ├── simple-multi-status.ts
     ├── percentage-compaction.ts
     └── todo.ts
@@ -181,6 +182,13 @@ To adjust the threshold, edit `COMPACTION_THRESHOLD_PERCENT` in the extension fi
 To use with pi-vcc, ensure the vendored local package is installed (`pi list` should show the local `_pi/packages/pi-vcc` package path).
 
 **Note:** With the vendored pi-vcc installed, no additional compaction configuration is needed. The extension gates auto-compaction at the percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered. This repo now ships the `/pi-vcc` manual-bypass marker and the agent-only-tail fallback directly in the vendored package, so rerunning `./install.sh --pi` refreshes both behaviors without patching global npm files.
+
+This repo also vendors Pi's `questionnaire.ts` extension, which auto-loads on install and provides:
+
+- a `questionnaire` tool for asking one or more interactive questions,
+- single-question option picking and multi-question tabbed flows,
+- optional custom typed answers via “Type something”,
+- structured result details for the agent with selected option indices and custom-answer markers.
 
 This repo also vendors Pi's `todo.ts` extension, which auto-loads on install and provides:
 
