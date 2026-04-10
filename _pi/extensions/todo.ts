@@ -26,12 +26,14 @@ interface TodoDetails {
 	action: "list" | "add" | "toggle" | "clear";
 	todos: Todo[];
 	nextId: number;
+	addedIds?: number[];
 	error?: string;
 }
 
 const TodoParams = Type.Object({
 	action: StringEnum(["list", "add", "toggle", "clear"] as const),
-	text: Type.Optional(Type.String({ description: "Todo text (for add)" })),
+	text: Type.Optional(Type.String({ description: "Todo text (single add)" })),
+	texts: Type.Optional(Type.Array(Type.String({ minLength: 1 }), { description: "Todo texts (batch add)" })),
 	id: Type.Optional(Type.Number({ description: "Todo ID (for toggle)" })),
 });
 
@@ -139,9 +141,12 @@ export default function (pi: ExtensionAPI) {
 		label: "Todo",
 		description:
 			"Track and manage a persistent todo list within the session. Use this proactively for comprehensive planning BEFORE beginning substantive work. The todo tool is for trackable, actionable items that persist across the conversation.",
-		promptSnippet: "Create comprehensive phased todo list BEFORE beginning work, then update as you progress",
+		promptSnippet:
+			"Create the initial plan with one todo add call using texts: string[] whenever there is more than one todo, then update progress as you go",
 		promptGuidelines: [
 			"BEFORE doing substantive work on the upcoming user request, create a comprehensive phased todo list first. You MUST call todo with action: 'add' to initialize the full plan in this turn.",
+			"When adding more than one todo, strongly prefer a single todo add call with texts: string[]. Do not emit many separate add calls unless only one item is being added.",
+			"For the initial multi-step plan, default to texts: string[] as the primary form. Use text only when adding exactly one todo item.",
 			"You MUST cover the entire request from investigation through implementation and verification — not just the next immediate step.",
 			"You MUST make todo descriptions specific enough that a future turn can execute them without re-planning. Keep task text to a short label (5-10 words). Put file paths, implementation steps, and specifics in mental context, not the todo text.",
 			"You MUST keep tasks ordered: exactly one active task (not marked done) and all later tasks not done. Toggle tasks to done as you complete them.",
@@ -168,17 +173,34 @@ export default function (pi: ExtensionAPI) {
 					};
 
 				case "add": {
-					if (!params.text) {
+					const items = params.texts?.map((text) => text.trim()).filter((text) => text.length > 0) ?? [];
+					if (items.length === 0 && params.text?.trim()) {
+						items.push(params.text.trim());
+					}
+					if (items.length === 0) {
 						return {
-							content: [{ type: "text", text: "Error: text required for add" }],
-							details: { action: "add", todos: [...todos], nextId, error: "text required" } as TodoDetails,
+							content: [{ type: "text", text: "Error: text or texts required for add" }],
+							details: { action: "add", todos: [...todos], nextId, error: "text or texts required" } as TodoDetails,
 						};
 					}
-					const newTodo: Todo = { id: nextId++, text: params.text, done: false };
-					todos.push(newTodo);
+					const newTodos = items.map((text) => ({ id: nextId++, text, done: false }));
+					todos.push(...newTodos);
 					return {
-						content: [{ type: "text", text: `Added todo #${newTodo.id}: ${newTodo.text}` }],
-						details: { action: "add", todos: [...todos], nextId } as TodoDetails,
+						content: [
+							{
+								type: "text",
+								text:
+									newTodos.length === 1
+										? `Added todo #${newTodos[0].id}: ${newTodos[0].text}`
+										: `Added ${newTodos.length} todos: ${newTodos.map((todo) => `#${todo.id}`).join(", ")}`,
+							},
+						],
+						details: {
+							action: "add",
+							todos: [...todos],
+							nextId,
+							addedIds: newTodos.map((todo) => todo.id),
+						} as TodoDetails,
 					};
 				}
 
@@ -234,6 +256,9 @@ export default function (pi: ExtensionAPI) {
 		renderCall(args, theme, _context) {
 			let text = theme.fg("toolTitle", theme.bold("todo ")) + theme.fg("muted", args.action);
 			if (args.text) text += ` ${theme.fg("dim", `"${args.text}"`)}`;
+			if (Array.isArray(args.texts) && args.texts.length > 0) {
+				text += ` ${theme.fg("dim", `${args.texts.length} items`)}`;
+			}
 			if (args.id !== undefined) text += ` ${theme.fg("accent", `#${args.id}`)}`;
 			return new Text(text, 0, 0);
 		},
@@ -270,12 +295,22 @@ export default function (pi: ExtensionAPI) {
 				}
 
 				case "add": {
-					const added = todoList[todoList.length - 1];
+					const addedIds = details.addedIds ?? [];
+					const addedTodos = todoList.filter((todo) => addedIds.includes(todo.id));
+					if (addedTodos.length <= 1) {
+						const added = addedTodos[0] ?? todoList[todoList.length - 1];
+						return new Text(
+							theme.fg("success", "✓ Added ") +
+								theme.fg("accent", `#${added.id}`) +
+								" " +
+								theme.fg("muted", added.text),
+							0,
+							0,
+						);
+					}
 					return new Text(
-						theme.fg("success", "✓ Added ") +
-							theme.fg("accent", `#${added.id}`) +
-							" " +
-							theme.fg("muted", added.text),
+						theme.fg("success", `✓ Added ${addedTodos.length} todos`) +
+							theme.fg("dim", ` (${addedTodos.map((todo) => `#${todo.id}`).join(", ")})`),
 						0,
 						0,
 					);
