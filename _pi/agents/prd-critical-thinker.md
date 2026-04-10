@@ -4,6 +4,7 @@ description: PRD critical-thinking agent - spots contradictions, missing flows, 
 mode: subagent
 model: openai-codex/gpt-5.4
 provider: openai-codex
+thinking: high
 reasoningEffort: high
 tools: read, grep, find, ls, bash, subagent
 extensions: /home/linuxbrew/.linuxbrew/lib/node_modules/@tintinweb/pi-subagents/index.ts
