@@ -818,7 +818,7 @@ Purpose:
 - Compare each answer round against the current intent and spec baseline.
 - Ask up to 10 targeted clarification questions when needed to clarify product intent and decisions.
 - After a substantive PRD update, run /${PRD_CLARIFY_COMMAND} first so the critical thinker runs before optional research and before the next question is asked.
-- When clarification is still needed, use the `question` tool to ask the critical thinker's prioritized questions instead of printing a plain-text list.
+- When clarification is still needed, use the question tool to ask the critical thinker's prioritized questions instead of printing a plain-text list.
 - Make each question show a recommended choice and why it is recommended.
 - Do not run /${PRD_REVIEW_COMMAND} automatically after edits; use it only when you and the user have clarified the intent and agree a wider review is valuable.
 - Treat /${PRD_REVIEW_COMMAND} as the explicit review gate before handoff.
