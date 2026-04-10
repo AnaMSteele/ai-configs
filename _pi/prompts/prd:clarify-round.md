@@ -47,7 +47,7 @@ Launch the critical thinker first.
 const critic = Agent({
   subagent_type: "prd-critical-thinker",
   description: "Analyze PRD clarification gaps",
-  prompt: "Analyze the current PRD round for $ARGUMENTS. Read the PRD and its selected baseline specs. Follow your prd-critical-thinker instructions exactly and return blockers, missing baseline facts, prioritized clarification questions with suggested options, and whether clarification is still needed.",
+  prompt: "Analyze the current PRD round for $ARGUMENTS. Read the PRD and its selected baseline specs. Follow your prd-critical-thinker instructions exactly and return blockers, missing baseline facts, prioritized clarification questions with suggested options, a recommended option plus why for each question, and whether clarification is still needed.",
   run_in_background: true,
 });
 
@@ -86,6 +86,8 @@ Using the PRD plus the support-agent outputs:
 - If the PRD still has unresolved contradictions, missing required behavior, or unclear intent, ask those questions with the `question` tool instead of printing them as plain text.
 - Preserve the critic's priority order. Ask all material questions for the round unless the user cancels or answers make later questions obsolete.
 - For each `question` tool call, use the critic's suggested options when present. If an option set is still missing, synthesize a short high-signal option list from the PRD/baseline and rely on the tool's built-in freeform path for custom answers.
+- Make the critic's recommendation visible in the `question` tool: mark the recommended option in its label and use the option description to explain why it is recommended.
+- If the critic recommends a choice that is not already one of the listed options, revise the option list so the recommended choice is present before asking the user.
 - Keep the question set high-signal; do not pad it just to reach 10.
 - If the PRD is internally coherent and no further clarification is currently needed, say that explicitly.
 - After the user answers, fold those answers into the PRD and start another clarification round from the critical thinker.

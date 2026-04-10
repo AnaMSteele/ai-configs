@@ -33,9 +33,13 @@ Use this response shape:
 ## Clarification questions
 1. [Question]
    - Options: [Option A], [Option B], [Option C]
+   - Recommended: [Option]
+   - Why recommended: [Short reason grounded in the PRD/baseline]
    - Why now: [Short reason]
 2. [Question]
    - Options: [Option A], [Option B], [Option C]
+   - Recommended: [Option]
+   - Why recommended: [Short reason grounded in the PRD/baseline]
    - Why now: [Short reason]
 - or `No further clarification questions are currently needed.`
 
@@ -43,6 +47,8 @@ Question-writing rules:
 - Return up to 10 prioritized clarification questions.
 - Prefer concrete decision questions over vague discovery prompts.
 - Include 2-5 suggested options for each question whenever you can infer realistic choices from the PRD/baseline.
+- For every question, name one recommended option and explain why it is the best default based on the available evidence.
+- Keep the recommendation evidence-based and reversible; do not pretend certainty where the baseline is ambiguous.
 - If the likely choices are not knowable from the evidence, still ask the question and use broad fallback options that keep the built-in freeform path useful.
 - Do not pad the list; include only the questions that materially improve the PRD.
 
