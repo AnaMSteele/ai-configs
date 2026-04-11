@@ -14,8 +14,17 @@ EXPECTED_LOCAL_DIFFS=(
   "README.md"
   "package.json"
   "src/commands/pi-vcc.ts"
+  "src/core/format.ts"
+  "src/core/summarize.ts"
   "src/hooks/before-compact.ts"
   "tests/before-compact.test.ts"
+  "tests/brief.test.ts"
+  "tests/compile.test.ts"
+  "tests/content.test.ts"
+  "tests/extract-goals.test.ts"
+  "tests/fixtures.ts"
+  "tests/format.test.ts"
+  "tests/support/load-session.ts"
 )
 
 if [ ! -d "$VENDORED_DIR" ]; then
@@ -150,6 +159,15 @@ while IFS= read -r item; do
 done <<EOF
 $EXPECTED_DIFFS_TEXT
 EOF
+
+if [ -z "$NORMALIZED_DIFFS" ]; then
+  printf '\ndrift status: no local diffs vs upstream clone\n'
+elif [ -n "$UNEXPECTED_DIFFS" ]; then
+  printf '\ndrift status: unexpected local diffs present\n'
+else
+  drift_count="$(printf '%s\n' "$NORMALIZED_DIFFS" | sed '/^$/d' | wc -l | tr -d ' ')"
+  printf '\ndrift status: only expected local diffs present (%s paths)\n' "$drift_count"
+fi
 
 if [ -n "$UNEXPECTED_DIFFS" ]; then
   printf '\nunexpected diffs:\n'

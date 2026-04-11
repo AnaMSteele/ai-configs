@@ -172,16 +172,16 @@ This repo also ships `simple-multi-status.ts`, a lightweight multi-line status w
 This repo also ships `percentage-compaction.ts`, which gives you percentage-based control over context compaction:
 
 - set a custom threshold (default 60%) for when compaction should trigger,
-- warning notification when crossing the threshold,
+- proactively auto-compacts with **pi-vcc** once usage crosses the threshold,
+- waits for the current assistant turn to finish before compacting so tool-driven execution is not interrupted,
 - `/compact-status` to check current context usage,
 - `/compact-now [instructions]` to trigger compaction manually,
-- gates pi's auto-compaction to only occur at or above the threshold,
-- **integrates with pi-vcc** for algorithmic (non-LLM) compaction when threshold is reached
+- gates pi's built-in auto-compaction so it cannot fire below the configured threshold
 
 To adjust the threshold, edit `COMPACTION_THRESHOLD_PERCENT` in the extension file (default is 60).
 To use with pi-vcc, ensure the vendored local package is installed (`pi list` should show the local `_pi/packages/pi-vcc` package path).
 
-**Note:** With the vendored pi-vcc installed, no additional compaction configuration is needed. The extension gates auto-compaction at the percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered. This repo now ships the `/pi-vcc` manual-bypass marker and the agent-only-tail fallback directly in the vendored package, so rerunning `./install.sh --pi` refreshes both behaviors without patching global npm files.
+**Note:** With the vendored pi-vcc installed, no additional compaction configuration is needed. The extension now proactively starts a pi-vcc compaction at the configured percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered. This repo now ships the `/pi-vcc` manual-bypass marker and the agent-only-tail fallback directly in the vendored package, so rerunning `./install.sh --pi` refreshes both behaviors without patching global npm files.
 
 This repo also vendors Pi's `questionnaire.ts` extension, which auto-loads on install and provides:
 
@@ -217,7 +217,6 @@ npm-managed packages:
 - `lsp-pi`
 - `@fnnm/pi-ast-grep`
 - `pi-updater`
-- `pi-interactive-shell`
 - `pi-powerline-footer`
 - `pi-side-agents`
 - `pi-multi-pass`
@@ -225,8 +224,9 @@ npm-managed packages:
 - `@tmustier/pi-files-widget`
 - `@tmustier/pi-raw-paste`
 
-local path package:
+local path packages:
 - `./_pi/packages/pi-vcc`
+- `../3p/pi-interactive-shell` (preferred when present; otherwise `npm:pi-interactive-shell`)
 
 Use `pi list` on a host to verify what is currently registered. To verify both surfaces together, run `scripts/verify-pi-install.sh` from this repo.
 

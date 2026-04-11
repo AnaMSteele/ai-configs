@@ -62,7 +62,7 @@ print_usage() {
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
     echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-rlm, pi-gpt-config"
-    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-interactive-shell, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, and vendored pi-vcc from _pi/packages/pi-vcc"
+    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from _pi/packages/pi-vcc, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise npm:pi-interactive-shell)"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1723,6 +1723,9 @@ install_pi() {
     # Install npm-based pi extensions
     install_pi_npm_packages
 
+    # Install pi-interactive-shell, preferring the sibling local fork when present.
+    install_pi_interactive_shell_package
+
     # Install vendored pi-vcc through Pi so compaction behavior is pinned to this repo.
     install_vendored_pi_vcc_package
 
@@ -1833,12 +1836,16 @@ report_pi_vcc_upstream_status() {
 
     case "$status" in
         0)
-            echo "    - vendored pi-vcc is current with upstream"
+            echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "    ${BLUE}ℹ vendored pi-vcc matches the pinned upstream snapshot with the expected local patch set${NC}"
+            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
+            echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh"
+            echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             ;;
         2)
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             echo -e "    ${BLUE}ℹ vendored pi-vcc has upstream updates available${NC}"
-            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p' | sed 's/^/      /'
+            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
             echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh"
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             ;;
@@ -1849,6 +1856,77 @@ report_pi_vcc_upstream_status() {
     esac
 
     return 0
+}
+
+normalize_pi_package_source() {
+    local source="$1"
+
+    case "$source" in
+        npm:*|git:*)
+            printf '%s\n' "$source"
+            ;;
+        *)
+            python3 - "$source" <<'PY'
+import os
+import sys
+print(os.path.realpath(sys.argv[1]))
+PY
+            ;;
+    esac
+}
+
+install_pi_interactive_shell_package() {
+    local source_rel="../3p/pi-interactive-shell"
+    local source_abs="$REPO_ROOT/../3p/pi-interactive-shell"
+    local desired_source="npm:pi-interactive-shell"
+    local desired_label="npm:pi-interactive-shell"
+    local normalized_desired_source="npm:pi-interactive-shell"
+
+    echo ""
+    echo -e "${GREEN}  Installing pi-interactive-shell via pi package manager...${NC}"
+
+    if [ -f "$source_abs/package.json" ]; then
+        desired_source="$source_rel"
+        desired_label="$source_rel"
+        normalized_desired_source="$(cd "$source_abs" && pwd)"
+        echo "  - Using local pi-interactive-shell fork at $source_rel"
+    else
+        echo "  - Local pi-interactive-shell fork not found; falling back to npm package"
+    fi
+
+    local existing_source normalized_existing_source has_desired=false
+    while IFS= read -r existing_source; do
+        [ -n "$existing_source" ] || continue
+        normalized_existing_source="$(normalize_pi_package_source "$existing_source")"
+        if [ "$normalized_existing_source" = "$normalized_desired_source" ]; then
+            has_desired=true
+            continue
+        fi
+
+        echo "  - Removing legacy pi-interactive-shell package $existing_source..."
+        if pi remove "$existing_source" 2>/dev/null; then
+            echo -e "    ${GREEN}✓ removed $existing_source${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ Failed to remove legacy pi-interactive-shell package $existing_source${NC}"
+            echo "      To remove manually, run:"
+            echo "        pi remove $existing_source"
+        fi
+    done < <(pi list 2>/dev/null | awk '/^  [^ ]/ && /pi-interactive-shell/ { sub(/^  /, ""); print }')
+
+    if [ "$has_desired" = true ]; then
+        echo "  - pi-interactive-shell already registered with Pi, updating..."
+        pi update "$desired_source" 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
+    else
+        echo "  - Installing pi-interactive-shell from $desired_label..."
+        if (cd "$REPO_ROOT" && pi install "$desired_source" 2>/dev/null); then
+            echo -e "    ${GREEN}✓ pi-interactive-shell installed${NC}"
+        else
+            echo -e "    ${YELLOW}⚠ Failed to install pi-interactive-shell via pi package manager${NC}"
+            echo "      To install manually, run from the repo root:"
+            echo "        pi install $desired_source"
+            return 1
+        fi
+    fi
 }
 
 install_vendored_pi_vcc_package() {
@@ -2166,7 +2244,6 @@ install_pi_npm_packages() {
         "lsp-pi"
         "@fnnm/pi-ast-grep"
         "pi-updater"
-        "pi-interactive-shell"
         "pi-powerline-footer"
         "pi-side-agents"
         "pi-multi-pass"

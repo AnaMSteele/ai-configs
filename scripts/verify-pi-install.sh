@@ -20,7 +20,6 @@ EXPECTED_NPM_PACKAGES=(
   "npm:lsp-pi"
   "npm:@fnnm/pi-ast-grep"
   "npm:pi-updater"
-  "npm:pi-interactive-shell"
   "npm:pi-powerline-footer"
   "npm:pi-side-agents"
   "npm:pi-multi-pass"
@@ -316,6 +315,13 @@ print_unmanaged_status() {
 
 EXPECTED_REPO_EXTENSIONS="$(cd "$REPO_ROOT" && list_find_entries "_pi/extensions")"
 EXPECTED_LOCAL_PACKAGES="$(cd "$REPO_ROOT" && pwd)/_pi/packages/pi-vcc"
+LOCAL_PI_INTERACTIVE_SHELL="$(cd "$REPO_ROOT/../3p/pi-interactive-shell" 2>/dev/null && pwd || true)"
+if [ -n "$LOCAL_PI_INTERACTIVE_SHELL" ]; then
+  EXPECTED_LOCAL_PACKAGES="$EXPECTED_LOCAL_PACKAGES
+$LOCAL_PI_INTERACTIVE_SHELL"
+else
+  EXPECTED_NPM_PACKAGES+=("npm:pi-interactive-shell")
+fi
 INSTALLED_REPO_EXTENSIONS="$(list_find_entries "$PI_EXT_DIR")"
 INSTALLED_PI_PACKAGES=""
 

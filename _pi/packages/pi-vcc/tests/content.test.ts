@@ -29,3 +29,19 @@ describe("textOf", () => {
     expect(textOf(undefined as any)).toBe("");
   });
 });
+
+describe("clip", () => {
+  it("prefers a nearby word boundary", () => {
+    expect(clip("alpha beta gamma delta", 12)).toBe("alpha beta");
+  });
+
+  it("avoids splitting a surrogate pair", () => {
+    expect(clip("🙂🙂", 1)).toBe("");
+  });
+});
+
+describe("firstLine", () => {
+  it("clips the first line only", () => {
+    expect(firstLine("hello world\nsecond line", 5)).toBe("hello");
+  });
+});

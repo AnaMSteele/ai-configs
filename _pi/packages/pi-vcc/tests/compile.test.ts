@@ -64,6 +64,69 @@ describe("compile", () => {
     expect(r).not.toContain("old blocker");
   });
 
+  it("sanitizes previous summary skill markup during merge", () => {
+    const previousSummary = [
+      "[Session Goal]",
+      "- Existing goal",
+      "",
+      "---",
+      "",
+      "[user]",
+      '<skill name="debug">',
+      "internal instructions",
+      "</skill>",
+      "Continue debugging.",
+    ].join("\n");
+    const r = compile({
+      previousSummary,
+      messages: [userMsg("Fix auth")],
+    });
+    expect(r).toContain("[skill: debug]");
+    expect(r).not.toContain("internal instructions");
+    expect(r).not.toContain("<skill");
+  });
+
+  it("dedupes files across merged summary categories", () => {
+    const previousSummary = [
+      "[Files And Changes]",
+      "- Created: src/auth.ts, tests/auth.test.ts",
+      "",
+      "---",
+      "",
+      "[assistant]",
+      '* Write "src/auth.ts"',
+    ].join("\n");
+    const r = compile({
+      previousSummary,
+      messages: [assistantWithToolCall("Edit", { file_path: "src/auth.ts" })],
+    });
+    expect(r).toContain("- Modified: src/auth.ts");
+    expect(r).toContain("- Created: tests/auth.test.ts");
+    expect(r).not.toContain("Created: src/auth.ts, tests/auth.test.ts");
+  });
+
+  it("drops previously injected recall notes from merged briefs", () => {
+    const previousSummary = [
+      "[Session Goal]",
+      "- Fix auth",
+      "",
+      "---",
+      "",
+      "[assistant]",
+      "Investigating auth.",
+      "",
+      "---",
+      "",
+      "Note: conversation history before this summary is searchable via `vcc_recall`. Use it to find details, results, or context that may have been truncated above.",
+    ].join("\n");
+    const r = compile({
+      previousSummary,
+      messages: [userMsg("Continue")],
+    });
+    expect(r).toContain("Investigating auth.");
+    expect(r).not.toContain("searchable via `vcc_recall`");
+  });
+
   it("caps long brief transcript with rolling window", () => {
     // Build a very long previous transcript
     const longTranscript = Array.from({ length: 200 }, (_, i) =>

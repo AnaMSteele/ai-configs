@@ -2,9 +2,10 @@ import type { NormalizedBlock } from "../types";
 import { clip, firstLine } from "./content";
 import { redact } from "./redact";
 import { extractPath } from "./tool-args";
+import { collapseSkillText } from "./skill-collapse";
 
 const TRUNCATE_USER = 256;
-const TRUNCATE_ASSISTANT = 128;
+const TRUNCATE_ASSISTANT = 200;
 
 // ── noise filtering ──
 
@@ -14,22 +15,69 @@ const isNoiseUser = (text: string): boolean => {
 
 // ── truncation ──
 
-const TOK_RE = /[a-zA-Z]+|[0-9]+|[^\sa-zA-Z0-9]|\s+/g;
+// Unicode-aware word segmentation via Intl.Segmenter (built-in, zero dependency)
+const segmenter = new Intl.Segmenter(undefined, { granularity: "word" });
+
+/** Check if segment is a word (Bun's isWordLike is unreliable for alphanumeric tokens) */
+const isWord = (seg: { segment: string; isWordLike: boolean }): boolean =>
+  seg.isWordLike || /[\p{L}\p{N}]/u.test(seg.segment);
+
+// Common stop words — don't count toward budget
+const STOP_WORDS = new Set([
+  "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
+  "have", "has", "had", "do", "does", "did", "will", "would", "could",
+  "should", "may", "might", "shall", "can", "need", "must",
+  "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
+  "into", "through", "during", "before", "after", "above", "below",
+  "between", "under", "over",
+  "and", "but", "or", "nor", "not", "so", "yet", "both", "either",
+  "neither", "each", "every", "all", "any", "few", "more", "most",
+  "other", "some", "such", "no",
+  "that", "this", "these", "those", "it", "its",
+  "i", "me", "my", "we", "our", "you", "your", "he", "him", "his",
+  "she", "her", "they", "them", "their", "who", "which", "what",
+  "if", "then", "than", "when", "where", "how", "just", "also",
+]);
 
 const truncateTokens = (text: string, limit: number): string => {
   const flat = text.replace(/\s+/g, " ").trim();
-  const matches = flat.match(TOK_RE);
-  if (!matches) return flat;
   let count = 0;
-  let cut = matches.length;
-  for (let i = 0; i < matches.length; i++) {
-    if (matches[i].trim()) {
-      count++;
-      if (count > limit) { cut = i; break; }
+  let lastEnd = 0;
+  for (const seg of segmenter.segment(flat)) {
+    if (isWord(seg)) {
+      if (!STOP_WORDS.has(seg.segment.toLowerCase())) {
+        count++;
+        if (count > limit) {
+          return flat.slice(0, lastEnd).trimEnd() + "...(truncated)";
+        }
+      }
     }
+    lastEnd = seg.index + seg.segment.length;
   }
-  if (cut >= matches.length) return flat;
-  return matches.slice(0, cut).join("") + "...(truncated)";
+  return flat;
+};
+
+// ── bash command compression ──
+
+const BASH_CAP = 120;
+const PIPE_TAIL_RE = /\s*\|\s*(?:head|tail|sort|wc|column|tr|cut|awk|uniq|python3|node|bun)(?:\s[^|]*)?$/;
+
+/** Semantic compression: strip cd prefix, pipe tail formatting, cap length */
+const compressBash = (raw: string): string => {
+  // Flatten multi-line: take first meaningful line
+  let cmd = raw.split("\n").map(l => l.trim()).filter(Boolean)[0] ?? raw;
+  // Strip cd <path> && prefix
+  cmd = cmd.replace(/^cd\s+\S+\s*&&\s*/, "");
+  // Strip pipe tail formatting commands (up to 3 times)
+  for (let i = 0; i < 3; i++) {
+    const stripped = cmd.replace(PIPE_TAIL_RE, "");
+    if (stripped === cmd) break;
+    cmd = stripped;
+  }
+  if (cmd.length > BASH_CAP) {
+    return cmd.slice(0, BASH_CAP - 3) + "...";
+  }
+  return cmd;
 };
 
 // ── tool summary ──
@@ -48,10 +96,8 @@ const toolOneLiner = (name: string, args: Record<string, unknown>): string => {
   const path = extractPath(args);
   if (path) return `* ${name} "${path}"`;
   if (name === "bash" || name === "Bash") {
-    const cmd = (args.command ?? args.description ?? "") as string;
-    if (cmd.length > 60) {
-      return `* ${name} "${redact(cmd.slice(0, 57))}..."`;
-    }
+    const raw = (args.command ?? args.description ?? "") as string;
+    const cmd = compressBash(raw);
     return `* ${name} "${redact(cmd)}"`;
   }
   if (typeof args.query === "string") {
@@ -96,7 +142,7 @@ export const compileBrief = (blocks: NormalizedBlock[]): string => {
     switch (b.kind) {
       case "user": {
         if (isNoiseUser(b.text)) break;
-        const text = truncateTokens(b.text, TRUNCATE_USER);
+        const text = truncateTokens(collapseSkillText(b.text), TRUNCATE_USER);
         if (text) {
           const ref = b.sourceIndex != null ? ` (#${b.sourceIndex})` : "";
           push("[user]", text + ref);
@@ -132,6 +178,29 @@ export const compileBrief = (blocks: NormalizedBlock[]): string => {
         // Hidden entirely
         break;
     }
+  }
+
+  // Collapse consecutive identical tool lines (same text, different #ref)
+  for (const sec of sections) {
+    if (sec.header !== "[assistant]") continue;
+    const out: string[] = [];
+    for (const line of sec.lines) {
+      if (!line.startsWith("* ")) { out.push(line); continue; }
+      const ref = line.match(/\(#(\d+)\)$/)?.[1] ?? "";
+      const base = ref ? line.slice(0, -(ref.length + 3)).trimEnd() : line;
+      const last = out.length > 0 ? out[out.length - 1] : "";
+      // Already collapsed? e.g. `* bash "x" (#1, #2) x2`
+      const m = last.match(/^(.*) \((#[\d, #]+)\) x(\d+)$/);
+      if (m && m[1] === base) {
+        out[out.length - 1] = `${base} (${m[2]}, #${ref}) x${parseInt(m[3]) + 1}`;
+      } else if (last.match(/\(#\d+\)$/) && last.replace(/\s*\(#\d+\)$/, "") === base) {
+        const prevRef = last.match(/\(#(\d+)\)$/)?.[1];
+        out[out.length - 1] = `${base} (#${prevRef}, #${ref}) x2`;
+      } else {
+        out.push(line);
+      }
+    }
+    sec.lines = out;
   }
 
   // Emit sections — suppress blank lines between consecutive tool summaries

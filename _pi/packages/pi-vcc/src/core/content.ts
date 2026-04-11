@@ -1,7 +1,17 @@
 import type { Message } from "@mariozechner/pi-ai";
 
-export const clip = (text: string, max = 200): string =>
-  text.slice(0, max);
+export const clip = (text: string, max = 200): string => {
+  if (text.length <= max) return text;
+  // Try to cut at a word boundary
+  const cut = text.lastIndexOf(" ", max);
+  let end = cut > max * 0.6 ? cut : max;
+  // Avoid splitting a surrogate pair
+  if (end > 0 && end < text.length) {
+    const code = text.charCodeAt(end - 1);
+    if (code >= 0xd800 && code <= 0xdbff) end--;
+  }
+  return text.slice(0, end);
+};
 
 export const nonEmptyLines = (text: string): string[] =>
   text.split("\n").map((line) => line.trim()).filter(Boolean);

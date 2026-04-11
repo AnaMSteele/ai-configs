@@ -42,6 +42,25 @@ interface EntryWithMessage {
 const MIN_MESSAGES_TO_COMPACT = 3;
 const AGENT_ONLY_FALLBACK_TAIL_MESSAGES = 4;
 
+const hasMatchingToolCall = (message: any, toolCallId: string): boolean => {
+  if (message?.role !== "assistant" || !Array.isArray(message?.content)) return false;
+  return message.content.some((item: any) => item?.type === "toolCall" && item.id === toolCallId);
+};
+
+const adjustCutIdxForToolResult = (liveMessages: EntryWithMessage[], cutIdx: number): number => {
+  if (cutIdx <= 0) return cutIdx;
+
+  const firstKeptMessage = liveMessages[cutIdx]?.message;
+  if (firstKeptMessage?.role !== "toolResult" || !firstKeptMessage.toolCallId) return cutIdx;
+
+  for (let i = cutIdx - 1; i >= 0; i--) {
+    if (hasMatchingToolCall(liveMessages[i]?.message, firstKeptMessage.toolCallId)) return i;
+    if (liveMessages[i]?.message?.role === "user") break;
+  }
+
+  return cutIdx;
+};
+
 function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId: string } | null {
   // Find the last compaction entry and its firstKeptEntryId
   let lastKeptId: string | undefined;
@@ -81,6 +100,7 @@ function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId:
   if (cutIdx <= 0) {
     if (liveMessages.length <= AGENT_ONLY_FALLBACK_TAIL_MESSAGES) return null;
     cutIdx = liveMessages.length - AGENT_ONLY_FALLBACK_TAIL_MESSAGES;
+    cutIdx = adjustCutIdxForToolResult(liveMessages, cutIdx);
   }
 
   if (cutIdx <= 0) return null;

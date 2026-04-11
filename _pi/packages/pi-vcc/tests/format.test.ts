@@ -44,7 +44,6 @@ describe("formatSummary", () => {
     };
     const r = formatSummary(data);
     expect(r).toBe("[user]\nhi\n\n[assistant]\nhello");
-    expect(r).not.toContain("---");
   });
 
   it("joins multiple header sections with blank line", () => {

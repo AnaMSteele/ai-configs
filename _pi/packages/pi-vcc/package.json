@@ -1,8 +1,8 @@
 {
   "name": "@adnichols/pi-vcc",
   "private": true,
-  "version": "0.3.0-ai-configs.1",
-  "description": "Vendored pi-vcc extension for pi with manual bypass support and agent-only tail compaction fallback",
+  "version": "0.3.2-ai-configs.1",
+  "description": "Vendored pi-vcc extension for pi with selective 0.3.2 uptake, manual bypass support, and compaction safety fixes",
   "license": "MIT",
   "main": "index.ts",
   "keywords": [

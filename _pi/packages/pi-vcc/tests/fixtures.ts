@@ -38,9 +38,10 @@ export const assistantWithThinking = (
 export const assistantWithToolCall = (
   name: string,
   args: Record<string, unknown>,
+  toolCallId = "tc_1",
 ): Message => ({
   role: "assistant",
-  content: [{ type: "toolCall", id: "tc_1", name, arguments: args }],
+  content: [{ type: "toolCall", id: toolCallId, name, arguments: args }],
   ...assistBase,
   stopReason: "toolUse",
 });
@@ -49,9 +50,10 @@ export const toolResult = (
   name: string,
   text: string,
   isError = false,
+  toolCallId = "tc_1",
 ): Message => ({
   role: "toolResult",
-  toolCallId: "tc_1",
+  toolCallId,
   toolName: name,
   content: [{ type: "text", text }],
   isError,

@@ -44,11 +44,11 @@ describe("before-compact cut policy", () => {
       branchEntries: [
         messageEntry("1", userMsg("Investigate the compaction bug")),
         messageEntry("2", assistantText("I found the hook.")),
-        messageEntry("3", assistantWithToolCall("Read", { path: "a.ts" })),
-        messageEntry("4", toolResult("Read", "hook source")),
+        messageEntry("3", assistantWithToolCall("Read", { path: "a.ts" }, "tc_a")),
+        messageEntry("4", toolResult("Read", "hook source", false, "tc_a")),
         messageEntry("5", assistantText("The cut policy only keeps a last user boundary.")),
-        messageEntry("6", assistantWithToolCall("Read", { path: "b.ts" })),
-        messageEntry("7", toolResult("Read", "test source")),
+        messageEntry("6", assistantWithToolCall("Read", { path: "b.ts" }, "tc_b")),
+        messageEntry("7", toolResult("Read", "test source", false, "tc_b")),
         messageEntry("8", assistantText("We should keep a recent non-user tail instead.")),
       ],
     });
@@ -59,6 +59,25 @@ describe("before-compact cut policy", () => {
     expect(result.compaction.summary).toContain("I found the hook.");
   });
 
+  it("keeps the matching assistant tool call live when fallback would start at a tool result", async () => {
+    const handler = await getBeforeCompactHandler();
+    const result = handler({
+      preparation: basePreparation,
+      branchEntries: [
+        messageEntry("1", userMsg("Investigate the compaction bug")),
+        messageEntry("2", assistantText("I found the hook.")),
+        messageEntry("3", assistantWithToolCall("Read", { path: "a.ts" }, "tc_a")),
+        messageEntry("4", toolResult("Read", "hook source", false, "tc_a")),
+        messageEntry("5", assistantWithToolCall("Read", { path: "b.ts" }, "tc_b")),
+        messageEntry("6", toolResult("Read", "test source", false, "tc_b")),
+        messageEntry("7", assistantText("The fallback should keep the pair intact.")),
+      ],
+    });
+
+    expect(result.cancel).toBeUndefined();
+    expect(result.compaction.firstKeptEntryId).toBe("3");
+  });
+
   it("still prefers the latest user boundary when one exists", async () => {
     const handler = await getBeforeCompactHandler();
     const result = handler({
@@ -67,8 +86,8 @@ describe("before-compact cut policy", () => {
         messageEntry("1", userMsg("First request")),
         messageEntry("2", assistantText("Handled the first request.")),
         messageEntry("3", userMsg("Follow-up request")),
-        messageEntry("4", assistantWithToolCall("Read", { path: "followup.ts" })),
-        messageEntry("5", toolResult("Read", "followup source")),
+        messageEntry("4", assistantWithToolCall("Read", { path: "followup.ts" }, "tc_followup")),
+        messageEntry("5", toolResult("Read", "followup source", false, "tc_followup")),
         messageEntry("6", assistantText("Working on the follow-up.")),
       ],
     });

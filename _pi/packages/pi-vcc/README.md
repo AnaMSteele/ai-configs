@@ -3,12 +3,15 @@
 Vendored into `ai-configs` from `sting8k/pi-vcc` so this repo can ship a pinned local install plus local compaction behavior fixes.
 
 - Source: `https://github.com/sting8k/pi-vcc`
-- Upstream version: `0.3.0`
-- Upstream commit snapshot: `8487c9d55e119aa3de270cdf552b6b88eb374b39`
+- Upstream version: `0.3.2`
+- Upstream commit snapshot: `82e31a5e4bd22d81bcf08b33750cbcf11e603157`
 - License: MIT
 - Local changes:
   - `/pi-vcc` carries the `__PI_VCC_MANUAL_BYPASS__` marker directly in-source, so `install.sh` no longer patches global npm files after install
-  - the compaction hook now falls back to keeping a recent non-user tail when there is no later user-message boundary
+  - the compaction hook still supports the repo-local agent-only fallback tail, but now shifts the cut backward so a live `toolResult` never outlives its matching assistant tool call
+  - merged summaries additionally collapse raw `<skill>` markup carried forward from prior compactions
+  - this vendored copy intentionally does **not** append the upstream `vcc_recall` reminder note to every summary; this repo kept the pre-existing summary output contract
+  - local tests and harnesses cover the repo-specific compaction safety contract and package-wide verification flow
 
 Install from this repo:
 

@@ -1,5 +1,6 @@
 import type { NormalizedBlock } from "../types";
 import { nonEmptyLines, clip } from "../core/content";
+import { collapseSkillLines } from "../core/skill-collapse";
 
 const SCOPE_CHANGE_RE =
   /\b(instead|actually|change of plan|forget that|new task|switch to|now I want|pivot|let'?s do|stop .* and)\b/i;
@@ -18,7 +19,7 @@ export const extractGoals = (blocks: NormalizedBlock[]): string[] => {
 
   for (const b of blocks) {
     if (b.kind !== "user") continue;
-    const lines = nonEmptyLines(b.text).filter(isSubstantiveGoal);
+    const lines = collapseSkillLines(nonEmptyLines(b.text).filter(isSubstantiveGoal));
     if (lines.length === 0) continue;
 
     if (goals.length === 0) {
