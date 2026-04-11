@@ -226,7 +226,7 @@ npm-managed packages:
 
 local path packages:
 - `./_pi/packages/pi-vcc`
-- `../3p/pi-interactive-shell` (preferred when present; otherwise `npm:pi-interactive-shell`)
+- `../3p/pi-interactive-shell` (preferred when present; otherwise `git:github.com/adnichols/pi-interactive-shell`)
 
 Use `pi list` on a host to verify what is currently registered. To verify both surfaces together, run `scripts/verify-pi-install.sh` from this repo.
 

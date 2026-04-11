@@ -320,7 +320,7 @@ if [ -n "$LOCAL_PI_INTERACTIVE_SHELL" ]; then
   EXPECTED_LOCAL_PACKAGES="$EXPECTED_LOCAL_PACKAGES
 $LOCAL_PI_INTERACTIVE_SHELL"
 else
-  EXPECTED_NPM_PACKAGES+=("npm:pi-interactive-shell")
+  EXPECTED_NPM_PACKAGES+=("git:github.com/adnichols/pi-interactive-shell")
 fi
 INSTALLED_REPO_EXTENSIONS="$(list_find_entries "$PI_EXT_DIR")"
 INSTALLED_PI_PACKAGES=""

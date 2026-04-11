@@ -62,7 +62,7 @@ print_usage() {
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
     echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-rlm, pi-gpt-config"
-    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from _pi/packages/pi-vcc, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise npm:pi-interactive-shell)"
+    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, lsp-pi, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from _pi/packages/pi-vcc, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise git:github.com/adnichols/pi-interactive-shell)"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -1723,7 +1723,8 @@ install_pi() {
     # Install npm-based pi extensions
     install_pi_npm_packages
 
-    # Install pi-interactive-shell, preferring the sibling local fork when present.
+    # Install pi-interactive-shell, preferring the sibling local fork when present,
+    # otherwise install from the GitHub fork.
     install_pi_interactive_shell_package
 
     # Install vendored pi-vcc through Pi so compaction behavior is pinned to this repo.
@@ -1878,9 +1879,9 @@ PY
 install_pi_interactive_shell_package() {
     local source_rel="../3p/pi-interactive-shell"
     local source_abs="$REPO_ROOT/../3p/pi-interactive-shell"
-    local desired_source="npm:pi-interactive-shell"
-    local desired_label="npm:pi-interactive-shell"
-    local normalized_desired_source="npm:pi-interactive-shell"
+    local desired_source="git:github.com/adnichols/pi-interactive-shell"
+    local desired_label="git:github.com/adnichols/pi-interactive-shell"
+    local normalized_desired_source="git:github.com/adnichols/pi-interactive-shell"
 
     echo ""
     echo -e "${GREEN}  Installing pi-interactive-shell via pi package manager...${NC}"
@@ -1891,7 +1892,7 @@ install_pi_interactive_shell_package() {
         normalized_desired_source="$(cd "$source_abs" && pwd)"
         echo "  - Using local pi-interactive-shell fork at $source_rel"
     else
-        echo "  - Local pi-interactive-shell fork not found; falling back to npm package"
+        echo "  - Local pi-interactive-shell fork not found; falling back to GitHub fork"
     fi
 
     local existing_source normalized_existing_source has_desired=false
