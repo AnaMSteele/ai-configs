@@ -12,6 +12,7 @@ const PLAN_PROMPTS_DIRECTORIES = ["_pi/prompts", ".pi/prompts"] as const;
 const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
 const STANDARD_PLAN_REVIEW_COMMAND = "review:plan";
+const CHANGE_REVIEW_COMMAND = "review:change";
 const ADVERSARIAL_PLAN_REVIEW_COMMAND = "review:plan-adversarial";
 const CHANGE_REVIEW_INTEGRATE_COMMAND = "review:change-integrate";
 const MAX_REVIEW_CYCLES = 3;
@@ -139,6 +140,7 @@ interface PlanModeState {
 	savedActiveTools?: string[];
 	reviewCycles: number;
 	lastReviewCommand?: string;
+	preferredStandardReviewCommand?: string;
 }
 
 function isPrdModeActive(
@@ -275,6 +277,10 @@ function formatCommandArg(arg: string): string {
 	return /\s/.test(arg) ? JSON.stringify(arg) : arg;
 }
 
+function isStandardReviewCommand(command: string | undefined): command is typeof STANDARD_PLAN_REVIEW_COMMAND | typeof CHANGE_REVIEW_COMMAND {
+	return command === STANDARD_PLAN_REVIEW_COMMAND || command === CHANGE_REVIEW_COMMAND;
+}
+
 function getExecutePlanUsage(): string {
 	return `Usage: /${EXECUTE_PLAN_COMMAND} <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]`;
 }
@@ -376,7 +382,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let reviewInFlight = false;
 	let pendingAutoReviewCommand = false;
 	let lastReviewCommand: string | undefined;
+	let preferredStandardReviewCommand: typeof STANDARD_PLAN_REVIEW_COMMAND | typeof CHANGE_REVIEW_COMMAND | undefined;
 	let turnTouchedPlan = false;
+
+	function getPreferredStandardReviewCommand(): typeof STANDARD_PLAN_REVIEW_COMMAND | typeof CHANGE_REVIEW_COMMAND {
+		return preferredStandardReviewCommand ?? STANDARD_PLAN_REVIEW_COMMAND;
+	}
 
 	function getAllToolNames(): string[] {
 		return pi.getAllTools().map((tool) => tool.name);
@@ -389,6 +400,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			savedActiveTools,
 			reviewCycles,
 			lastReviewCommand,
+			preferredStandardReviewCommand,
 		} satisfies PlanModeState);
 	}
 
@@ -521,6 +533,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		reviewInFlight = true;
 		pendingAutoReviewCommand = true;
 		lastReviewCommand = command;
+		if (isStandardReviewCommand(command)) {
+			preferredStandardReviewCommand = command;
+		}
 		reviewCycles += 1;
 		applyPlanTools(true);
 		updateUi(ctx);
@@ -536,6 +551,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		savedActiveTools = undefined;
 		reviewCycles = 0;
 		lastReviewCommand = undefined;
+		preferredStandardReviewCommand = undefined;
 		turnTouchedPlan = false;
 
 		const stateEntry = ctx.sessionManager
@@ -549,6 +565,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			savedActiveTools = stateEntry.data.savedActiveTools;
 			reviewCycles = stateEntry.data.reviewCycles ?? 0;
 			lastReviewCommand = stateEntry.data.lastReviewCommand;
+			preferredStandardReviewCommand = isStandardReviewCommand(stateEntry.data.preferredStandardReviewCommand)
+				? stateEntry.data.preferredStandardReviewCommand
+				: undefined;
 		}
 
 		if (pi.getFlag("plan") === true) {
@@ -562,6 +581,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				currentPlanPath = undefined;
 				reviewCycles = 0;
 				lastReviewCommand = undefined;
+				preferredStandardReviewCommand = undefined;
 			}
 		}
 
@@ -599,16 +619,18 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return;
 		}
 
-		const choice = await ctx.ui.select(`Plan updated (${reason}). Run /${STANDARD_PLAN_REVIEW_COMMAND} for ${currentPlanPath}?`, [
-			"Run standard multi-agent plan review",
+		const standardReviewCommand = getPreferredStandardReviewCommand();
+		const reviewChoice = `Run /${standardReviewCommand}`;
+		const choice = await ctx.ui.select(`Plan updated (${reason}). Run /${standardReviewCommand} for ${currentPlanPath}?`, [
+			reviewChoice,
 			"Keep editing in plan mode",
 		]);
 
-		if (choice !== "Run standard multi-agent plan review") {
+		if (choice !== reviewChoice) {
 			return;
 		}
 
-		await startReviewCycle(ctx, STANDARD_PLAN_REVIEW_COMMAND);
+		await startReviewCycle(ctx, standardReviewCommand);
 	}
 
 	async function startAdversarialReviewCycle(ctx: ExtensionContext): Promise<void> {
@@ -617,6 +639,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 	async function startReviewIntegration(ctx: ExtensionContext, options?: { automatic?: boolean }): Promise<void> {
 		if (!currentPlanPath) return;
+		const completedReviewCommand = isStandardReviewCommand(lastReviewCommand)
+			? lastReviewCommand
+			: getPreferredStandardReviewCommand();
 		reviewInFlight = true;
 		pendingAutoReviewCommand = false;
 		lastReviewCommand = CHANGE_REVIEW_INTEGRATE_COMMAND;
@@ -625,7 +650,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		persistState();
 		if (options?.automatic) {
 			ctx.ui.notify(
-				`/${STANDARD_PLAN_REVIEW_COMMAND} completed for ${currentPlanPath}. Automatically running /${CHANGE_REVIEW_INTEGRATE_COMMAND}.`,
+				`/${completedReviewCommand} completed for ${currentPlanPath}. Automatically running /${CHANGE_REVIEW_INTEGRATE_COMMAND}.`,
 				"info",
 			);
 		}
@@ -635,19 +660,39 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	async function offerPostReviewAction(ctx: ExtensionContext, reason: string): Promise<void> {
 		if (!planModeEnabled || !ctx.hasUI || !currentPlanPath) return;
 
-		const choices = [
-			"Start fresh /dev:run session",
-			"Start fresh /ralph:run session",
-			"Keep editing in plan mode",
-		];
-		if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND || lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND) {
-			choices.splice(2, 0, `Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`);
-		}
-		if (reviewCycles < MAX_REVIEW_CYCLES) {
-			choices.splice(choices.length - 1, 0, "Run another standard review cycle");
+		const standardReviewCommand = getPreferredStandardReviewCommand();
+		const integrateChoice = `Run /${CHANGE_REVIEW_INTEGRATE_COMMAND}`;
+		const standardReviewChoice = `Run /${standardReviewCommand}`;
+		const choices = [] as string[];
+
+		if (isStandardReviewCommand(lastReviewCommand)) {
+			choices.push(integrateChoice);
+		} else if (lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND && reviewCycles < MAX_REVIEW_CYCLES) {
+			choices.push(standardReviewChoice);
 		}
 
+		choices.push(
+			"Start fresh /dev:run session",
+			"Start fresh /ralph:run session",
+		);
+
+		if (isStandardReviewCommand(lastReviewCommand) || lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND) {
+			choices.push(`Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`);
+		}
+
+		choices.push("Keep editing in plan mode");
+
 		const choice = await ctx.ui.select(`Plan review complete (${reason}). Choose an exit path for ${currentPlanPath}.`, choices);
+
+		if (choice === integrateChoice) {
+			await startReviewIntegration(ctx);
+			return;
+		}
+
+		if (choice === standardReviewChoice) {
+			await startReviewCycle(ctx, standardReviewCommand);
+			return;
+		}
 
 		if (choice === "Start fresh /dev:run session") {
 			disablePlanMode(ctx);
@@ -663,11 +708,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		if (choice === `Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`) {
 			await startAdversarialReviewCycle(ctx);
-			return;
-		}
-
-		if (choice === "Run another standard review cycle") {
-			await startReviewCycle(ctx, STANDARD_PLAN_REVIEW_COMMAND);
 		}
 	}
 
@@ -710,11 +750,33 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return { action: "continue" };
 		}
 
-		if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`) || text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)) {
+		if (text.startsWith(`/${CHANGE_REVIEW_INTEGRATE_COMMAND}`)) {
 			reviewInFlight = true;
-			lastReviewCommand = text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
-				? ADVERSARIAL_PLAN_REVIEW_COMMAND
-				: STANDARD_PLAN_REVIEW_COMMAND;
+			lastReviewCommand = CHANGE_REVIEW_INTEGRATE_COMMAND;
+			if (!savedActiveTools || savedActiveTools.length === 0) {
+				savedActiveTools = pi.getActiveTools();
+			}
+			applyPlanTools(true);
+			updateUi(ctx);
+			persistState();
+			return { action: "continue" };
+		}
+
+		if (
+			text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
+			|| text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)
+			|| text.startsWith(`/${CHANGE_REVIEW_COMMAND}`)
+		) {
+			reviewInFlight = true;
+			if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)) {
+				lastReviewCommand = ADVERSARIAL_PLAN_REVIEW_COMMAND;
+			} else {
+				const standardReviewCommand = text.startsWith(`/${CHANGE_REVIEW_COMMAND}`)
+					? CHANGE_REVIEW_COMMAND
+					: STANDARD_PLAN_REVIEW_COMMAND;
+				lastReviewCommand = standardReviewCommand;
+				preferredStandardReviewCommand = standardReviewCommand;
+			}
 			if (pendingAutoReviewCommand) {
 				pendingAutoReviewCommand = false;
 			} else {
@@ -815,7 +877,7 @@ ${currentPlanInstruction}`,
 			applyPlanTools(false);
 			updateUi(ctx);
 			persistState();
-			if (lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND && turnTouchedPlan) {
+			if (isStandardReviewCommand(lastReviewCommand) && turnTouchedPlan) {
 				await startReviewIntegration(ctx, { automatic: true });
 				turnTouchedPlan = false;
 				return;
@@ -825,7 +887,7 @@ ${currentPlanInstruction}`,
 				? turnTouchedPlan
 					? `review cycle ${reviewCycles} integrated`
 					: `review cycle ${reviewCycles} integration completed`
-				: lastReviewCommand === STANDARD_PLAN_REVIEW_COMMAND
+				: isStandardReviewCommand(lastReviewCommand)
 					? `review cycle ${reviewCycles} completed`
 					: turnTouchedPlan
 						? `review cycle ${reviewCycles} updated the plan`
