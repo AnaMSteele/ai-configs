@@ -65,6 +65,10 @@ Use targeted `Glob`, `Grep`, and `Read` first. Delegate broad codebase discovery
 
 Write plans as execution artifacts, not brainstorming notes. A ready plan must be executable by another agent without inventing missing semantics.
 
+- Preserve the validated source scope. A ready plan should include only work that is critical to achieving the stated goal and verifying it.
+- When the requested scope is vague, tighten it by sharpening the Goal / Non-goals or other scoped language instead of widening the phase list to absorb adjacent surfaces.
+- Do not promote adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence into required plan work unless source requirements or validated repo evidence show they are necessary for success.
+
 Required sections for new plans unless repo-local overrides say otherwise:
 
 1. Title
@@ -140,6 +144,7 @@ Phase guidance:
 An `execution-ready` plan is ready only when all of the following are true:
 
 - important questions are resolved,
+- required plan work stays faithful to the validated source scope, with optional adjacent improvements excluded or called out as non-goals rather than required phases,
 - acceptance criteria and BDD scenarios are concrete,
 - phase `### Verify` steps are executable and current for the real repo,
 - product-intent alignment is explicit when required,

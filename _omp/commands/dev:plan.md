@@ -104,7 +104,9 @@ Write (or update) `plan_path` with:
 - Open Questions / Decision Points
 - Plan Changelog (append-only; add a new entry when regenerating)
 
-Keep scope flexible: there are no special restrictions beyond the repository's existing guardrails and the user's stated intent.
+Keep the plan faithful to the validated source scope and repo evidence. Include only work that is critical to achieving the stated goal and verifying it.
+If the requested scope is vague, narrow it by sharpening Goal / Non-goals or other scoped language instead of widening the phase list.
+Do not add adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence unless validated repo evidence shows they are necessary for success.
 
 For product-facing work, make the plan explicit about the default workflow, inferred defaults, self-healing behavior, actionable error guidance, and any repo-doc/test updates required to stay aligned.
 

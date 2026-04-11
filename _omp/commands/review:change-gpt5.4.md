@@ -73,7 +73,13 @@ Use the Task tool with `subagent_type=Explore` to efficiently gather context.
 
 ### 2) Review Specification (Critical Spec Review)
 
-Read the plan. Apply a critical mindset. Don't validate; look for problems.
+Read the plan. Apply a critical, materiality-first mindset. Don't validate; look for problems that would block execution, create a material risk, or force an unresolved decision within the plan's stated goal and non-goals.
+
+Apply a materiality filter:
+
+- Only flag blockers, material risks, or missing decisions required to execute the plan's stated goal while preserving its non-goals.
+- Do not comment on nice-to-haves, opportunistic cleanup, adjacent surfaces outside the requested scope, or extra detail that would not change readiness.
+- If an observation would not change execution readiness, leave it out instead of expanding required scope.
 
 Look for:
 
@@ -109,6 +115,7 @@ Ensure internal consistency:
 - Acceptance criteria have corresponding verification steps.
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
+- Comments stay within the requested source scope and only raise material blockers or readiness risks.
 
 ## Comment Guidelines
 
@@ -131,8 +138,8 @@ Usage:
 
 After adding comments to the plan, provide a single summary:
 
-- Plan status: solid or needs rework?
-- Critical issues: list the most important blockers.
+- Plan status: solid as scoped or needs rework?
+- Critical issues: list only blockers, material risks, or missing decisions that would change execution readiness.
 - Recommendation: "Proceed with caution" or "Major revision needed".
 
 ---

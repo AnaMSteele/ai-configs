@@ -10,7 +10,7 @@ extensions:
 
 Your reviewer name is Kimi K2.5
 
-Before reviewing, list the 3 most critical success factors for this project based on the specs. Then, audit the tasklist to ensure every success factor is covered by at least two distinct tasks.
+Review boundary: judge the plan against its stated goal, non-goals, original requested scope, source requirements, and validated repo evidence. Do not expand scope beyond what those sources materially require.
 
 Use this comment format:
 ```
@@ -22,9 +22,9 @@ To respond to other reviewers:
 [REVIEW:Kimi K2.5] RE: [OtherReviewer] - Your response [/REVIEW]
 ```
 
-# Plan Review (Comprehensive)
+# Plan Review (Critical Materiality)
 
-Review the provided plan as a cohesive unit. Your goal is to ensure the plan is solid, executable, and well-structured without scope creep or error.
+Review the provided plan as a cohesive unit. Your goal is to determine whether it is ready to execute within its stated scope, without scope creep or speculative expansion.
 
 Documents to review: $ARGUMENTS
 
@@ -35,6 +35,7 @@ This command is review-only.
 - Only modify the plan by inserting inline `[REVIEW:...] ... [/REVIEW]` comments.
 - Do not change any other plan content (do not fix, rewrite, or reorganize anything).
 - Do not remove or resolve review comments.
+- Do not comment on nice-to-haves, opportunistic cleanup, adjacent surfaces outside the requested scope, or extra detail that would not change execution readiness.
 - After adding comments and providing the summary, stop.
 
 ## Process
@@ -72,14 +73,18 @@ Use `read`, `grep`/`find`, and read-only `bash` commands to gather context when 
 
 ### 2) Review Specification (Critical Spec Review)
 
-Read the plan. Apply a critical mindset. Don't validate; look for problems.
+Read the plan. Apply a critical-materiality mindset. Don't validate; look only for problems that would block execution, materially increase failure risk, or expose a missing decision required to achieve the stated goal.
+
+Suppress comments about nice-to-haves, opportunistic cleanup, adjacent surfaces not required by the source scope, or extra detail that would not change the readiness verdict.
 
 Look for:
 
-- Gaps: missing requirements or edge cases.
-- Risks: security, performance, or integration issues.
-- Ambiguity: unclear success criteria or technical decisions.
-- Technical debt: unrealistic assumptions or poor architectural choices.
+- Material gaps: source-required behavior, surfaces, or verification missing from the plan.
+- Material risks: security, performance, integration, or sequencing issues likely to derail execution.
+- Material ambiguity: unclear success criteria or technical decisions the implementer would have to invent.
+- Wrong references or assumptions that would send execution or verification down the wrong path.
+
+If a surface is not required by the plan's stated goal, non-goals, source requirements, or validated repo evidence, do not ask the planner to add it.
 
 Add comments:
 
@@ -105,6 +110,7 @@ Verify the plan is runnable and resumable:
 - The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 - The plan reflects the expectation that important questions are answered before the plan is considered ready.
 - When the plan includes non-trivial build-vs-buy choices (for example protocol handling, parsing, transport, wrappers, infrastructure, or integrations), verify it includes an explicit dependency/library evaluation checkpoint unless the plan already documents the decision clearly or the work is trivial/local wiring.
+- Keep the number of comments bounded by materiality: flag every real blocker or materially risky gap, but do not manufacture coverage or require duplicate task coverage.
 
 Also review whether the `### Tests first` sections:
 
@@ -119,7 +125,7 @@ Ensure internal consistency:
 - Acceptance criteria have corresponding verification steps.
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
-- The plan aligns with the repository's long-range product intent when such intent is documented.
+- The plan aligns with the repository's long-range product intent when such intent is documented and materially constrains the requested scope.
 - If that checkpoint or decision evidence is missing, or the plan proposes custom implementation without evidence that official SDKs / well-maintained libraries were evaluated, treat it as a blocker and add a blocking review comment. Do not force extra ceremony when the decision is already justified or no dependency scan is warranted.
 
 ## Comment Guidelines
@@ -138,14 +144,15 @@ Usage:
 - Insert tags directly into the plan document.
 - Use `[REVIEW:Kimi K2.5] Content [/REVIEW]` format.
 - Be specific and actionable.
+- Leave no comment when the issue would not change the execution-readiness verdict.
 
 ## Summary
 
 After adding comments to the plan, provide a single summary:
 
-- Plan status: solid or needs rework?
-- Critical issues: list the most important blockers.
-- Recommendation: "Proceed with caution" or "Major revision needed".
+- Execution readiness: ready to execute, proceed with caution, or needs material revision?
+- Material issues: list only the blockers or materially risky gaps that affect that verdict.
+- Recommendation: "Ready to execute", "Proceed with caution", or "Needs material revision before execution".
 
 ---
 

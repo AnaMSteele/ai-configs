@@ -25,7 +25,7 @@ Documents to review: $ARGUMENTS
 - Run a single Claude Code session that:
   1. resolves the target plan file,
   2. reviews the plan as a cohesive unit,
-  3. adds inline review comments using the `[REVIEW:CLAUDE] ... [/REVIEW]` format for issues it finds,
+  3. adds inline review comments using the `[REVIEW:CLAUDE] ... [/REVIEW]` format only for blockers, material risks, or missing decisions it finds,
   4. does not rewrite or integrate the plan, and
   5. stops after the review summary.
 - Do not delegate the review to a `reviewer-*` subagent.
@@ -45,7 +45,7 @@ To respond to other reviewers:
 
 # Change Review (Single Plan File)
 
-Review the provided plan as a cohesive unit. Your goal is to ensure the plan is solid and executable without scope creep or error.
+Review the provided plan as a cohesive unit. Your goal is to decide whether it is ready to execute within its stated goal and non-goals, flagging only blockers, material risks, or missing decisions that would change that readiness.
 
 Documents to review: $ARGUMENTS
 
@@ -57,6 +57,8 @@ This command is review-only.
 - Do not change any other plan content (do not fix, rewrite, or reorganize anything).
 - Do not remove or resolve review comments.
 - Do not run follow-up commands (including `/review:change-integrate`).
+- Only add a comment for blockers, material risks, or missing decisions required to execute the plan's stated goal while honoring its non-goals.
+- Do not comment on nice-to-haves, opportunistic cleanup, adjacent surfaces not required by the requested scope, or extra detail that would not change execution readiness.
 - After adding comments and providing the summary, stop.
 
 ## Process
@@ -140,11 +142,12 @@ Lifecycle rules:
 The launched Claude Code prompt should:
 
 - inspect the target plan,
-- look for gaps, risks, ambiguity, incorrect references, scope drift, and execution-readiness defects,
+- look only for blockers, material risks, missing decisions, incorrect references, scope drift, or execution-readiness defects that would change readiness for the stated goal and non-goals,
 - explicitly check that each unchecked phase is a bounded execution slice with `### Tests first`, `### End State`, `### Work`, and `### Verify`,
 - flag unresolved `Open Questions` / `Decision Points` in any execution-ready plan,
 - flag phases that are too large and would likely require same-scope subdivision during execution,
-- write inline review comments only where they improve the final plan,
+- write inline review comments only where they materially change whether the plan is ready as scoped,
+- skip nice-to-haves, opportunistic cleanup, adjacent surfaces not required by the source scope, and extra detail that would not change readiness,
 - preserve the plan structure and progress state,
 - not rewrite or resolve existing review comments,
 - and stop after the review summary.
@@ -162,19 +165,19 @@ After the Claude Code session completes:
 
 ### 3) Summary
 
-After verification, provide a concise review summary.
+After verification, provide a concise review summary focused on blockers and readiness.
 
 ## Summary Format
 
 ```
 ## Review Complete
 
-### Claude Findings:
-- [List of the most important Claude review findings, or say none]
+### Claude Material Findings:
+- [List only the blocker-level or readiness-changing Claude review findings, or say none]
 
 ### Plan Status:
-[Solid / Needs rework]
+[Ready as scoped / Needs rework]
 
 ### Recommendation:
-[Proceed with caution / Major revision needed]
+[Proceed as scoped / Major revision needed]
 ```

@@ -11,7 +11,7 @@ Inputs: $ARGUMENTS
 
 ## Core Rule
 
-The plan is the authority. Integrate feedback into the plan while preserving progress state.
+The plan is the authority. Integrate only material review feedback needed to execute the stated goal while preserving non-goals and progress state.
 
 ## Process
 
@@ -62,9 +62,12 @@ Use the Task tool with `subagent_type=Explore`.
 
 ### 4) Integrate Updates
 
-- Apply edits directly to the plan.
+- Apply edits directly to the plan with `edit` unless a deliberate full-file rewrite is required.
 - Remove each resolved inline review comment.
-- If feedback implies adding or changing requirements, update:
+- Only incorporate review findings that expose blockers, material risks, or missing decisions required for the plan's stated goal and non-goals.
+- Do not expand required scope for nice-to-haves, opportunistic cleanup, adjacent surfaces, or extra detail that does not change readiness.
+- If an optional comment is worth preserving, record it as explicit non-goal or follow-up context rather than new required plan scope.
+- If material feedback implies adding or changing requirements, update:
   - Goal/Non-goals / Acceptance Criteria
   - The impacted phase(s) `### End State` / `### Work` / `### Verify`
   - `Resume Instructions (Agent)` if needed
@@ -75,12 +78,13 @@ Use the Task tool with `subagent_type=Explore`.
 - No `[REVIEW:...]` comments remain.
 - `## Progress` still corresponds to the phase headers.
 - Each acceptance criterion has at least one verification step.
+- Any new required scope is justified by a material review finding that changes readiness.
 
 ### 6) Overall Plan State
 
-- Identify any open questions or decisions that need input from the user.
-- Provide the user with any low-confidence suggestions or decisions that are being made which they might want to change.
-- If you have specific issues you know, with high confidence that you need input from the user on, then ask those using the question tool. 
+- Identify only open questions or decisions that materially block execution or readiness.
+- Do not surface low-confidence suggestions or optional improvements as required plan changes.
+- If you have specific issues you know, with high confidence that you need input from the user on, then ask those using the question tool.
 - If you've asked questions with the question tool, incorporate those answers into the final plan and re-assess whether there are more open questions.
 ---
 

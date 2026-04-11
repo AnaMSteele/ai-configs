@@ -133,6 +133,10 @@ Write (or update) `plan_path` with:
 - Decisions / Deviations Log (append-only)
 - Plan Changelog (append-only; add a new entry when regenerating)
 
+Keep the plan faithful to the validated source scope and repo evidence. Include only work that is critical to achieving the stated goal and verifying it.
+If the requested scope is vague, narrow it by sharpening Goal / Non-goals or other scoped language instead of widening the phase list.
+Do not add adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence unless validated repo evidence shows they are necessary for success.
+
 `Open Questions / Decision Points` guidance:
 
 - Include this section only when `Status: research-ready`.

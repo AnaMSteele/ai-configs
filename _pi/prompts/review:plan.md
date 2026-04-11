@@ -1,11 +1,10 @@
----
-description: Run comprehensive review-only plan review using GPT5.4 and Kimi K2.5 in parallel
+description: Run blocker-focused review-only plan review using GPT5.4 and Kimi K2.5 in parallel
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Multi-Model Plan Review Process
 
-This command orchestrates a comprehensive review-only plan review using two independent reviewers in parallel: GPT5.4 and Kimi K2.5.
+This command orchestrates a blocker-focused review-only plan review using two independent reviewers in parallel: GPT5.4 and Kimi K2.5.
 
 Documents to review: $ARGUMENTS
 
@@ -14,6 +13,8 @@ Documents to review: $ARGUMENTS
 - Use the actual Pi subagent tool surface: launch two background agents with `Agent`.
 - Each reviewer runs independently without seeing the other's work.
 - Both reviewers must be launched before waiting for completions.
+- Review against the plan's stated goal, non-goals, original requested scope, and validated repo evidence; comment only on blockers, materially risky gaps, or missing decisions required to execute that scope.
+- Do not use this command as a broad idea-generation pass or an excuse to expand the plan into adjacent nice-to-haves.
 - Do not perform any reviews directly in the primary agent.
 - Do not rely on a nonexistent `subagent(...)` runner or on slash-command chaining.
 - This command is review-only. Do not integrate or clean up review comments here.
@@ -27,14 +28,14 @@ Launch both reviews before waiting for either of them to finish.
 - **Agent:** `reviewer-plan-gpt5.4`
 - **Model:** `openai-codex/gpt-5.4`
 - **Reasoning:** High
-- **Task:** Perform comprehensive plan review per reviewer-plan-gpt5.4 instructions
+- **Task:** Perform blocker-only plan review per reviewer-plan-gpt5.4 instructions
 - **Output:** Plan file with `[REVIEW:GPT5.4]` comments + summary
 
 ### Subagent 2: Kimi K2.5 Review
 - **Agent:** `reviewer-plan-kimi`
 - **Model:** `opencode/kimi-k2.5`
 - **Reasoning:** High
-- **Task:** Perform comprehensive plan review per reviewer-plan-kimi instructions
+- **Task:** Perform blocker-only plan review per reviewer-plan-kimi instructions
 - **Output:** Plan file with `[REVIEW:Kimi K2.5]` comments + summary
 
 ### Parallel Execution
@@ -45,14 +46,14 @@ Launch two background `Agent` calls so Pi actually runs both reviewers concurren
 const gpt54 = Agent({
   subagent_type: "reviewer-plan-gpt5.4",
   description: "Review plan with GPT5.4",
-  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.4 instructions exactly. Add [REVIEW:GPT5.4] comments to the plan file and provide a summary.",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.4 instructions exactly. Add [REVIEW:GPT5.4] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
   run_in_background: true,
 });
 
 const kimi = Agent({
   subagent_type: "reviewer-plan-kimi",
   description: "Review plan with Kimi K2.5",
-  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Add [REVIEW:Kimi K2.5] comments to the plan file and provide a summary.",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Add [REVIEW:Kimi K2.5] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
   run_in_background: true,
 });
 
@@ -77,17 +78,17 @@ After completing all reviews, provide:
 - ✅ GPT5.4 (openai-codex/gpt-5.4, high reasoning)
 - ✅ Kimi K2.5 (opencode/kimi-k2.5, high reasoning)
 
-### Consensus Areas:
-[List issues multiple reviewers flagged]
+### Consensus Blockers:
+[List issues multiple reviewers flagged that materially affect execution readiness]
 
-### Divergent Views:
-[List any disagreements between GPT5.4 and Kimi, if present]
+### Divergent Material Risks:
+[List any material disagreements between GPT5.4 and Kimi, if present]
 
-### Unique Insights:
-[List issues caught by only one reviewer]
+### Unique Material Risks:
+[List blocker-level or materially risky issues caught by only one reviewer]
 
-### Final Recommendation:
-[Major revision needed / Proceed with caution / Ready to execute]
+### Final Readiness:
+[Needs material revision before execution / Proceed with caution / Ready to execute]
 ```
 
 ## Scope
@@ -138,10 +139,10 @@ Agent: Delegate to /review:plan <plan-path>
 
 ### Benefits:
 
-- **Multiple perspectives:** Two different model architectures catch different issue types
+- **Multiple perspectives:** Two different model architectures stress-test execution readiness from different angles
 - **High reasoning mode:** All reviewers use a strong review pass
 - **Parallel efficiency:** Both reviews run simultaneously for faster turnaround
-- **Consistency:** Standardized review format and process across all plans
+- **Consistency:** Standardized blocker-focused review format across all plans
 
 ### Do NOT:
 

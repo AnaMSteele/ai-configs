@@ -24,7 +24,7 @@ To respond to other reviewers:
 
 # Change Review (Single Plan File)
 
-Review the provided change plan as a cohesive unit. Your goal is to ensure the plan is solid and executable without scope creep or error.
+Review the provided change plan as a cohesive unit. Your goal is to ensure the plan is solid and executable without scope creep or error. Flag only blockers, material risks, or missing decisions required to execute the plan's stated goal and non-goals.
 
 Documents to review: $ARGUMENTS
 
@@ -36,6 +36,7 @@ This command is review-only.
 - Do not change any other plan content (do not fix, rewrite, or reorganize anything).
 - Do not remove or resolve review comments.
 - Do not run follow-up commands (including `/review:change-integrate`).
+- Do not leave comments for nice-to-haves, opportunistic cleanup, adjacent surfaces not required by the requested scope, or extra detail that would not change execution readiness.
 - After adding comments and providing the summary, stop.
 
 
@@ -73,14 +74,14 @@ Use the Task tool with `subagent_type=Explore` to efficiently gather context.
 
 ### 2) Review Specification (Critical Spec Review)
 
-Read the plan. Apply a critical mindset. Don't validate; look for problems.
+Read the plan. Apply a critical, materiality-first mindset. Don't validate; look for problems that would block execution, create a material risk, or force an unresolved decision within the plan's stated goal and non-goals.
 
-Look for:
+Look for, but only when they materially affect readiness for the requested scope:
 
-- Gaps: missing requirements or edge cases.
-- Risks: security, performance, or integration issues.
-- Ambiguity: unclear success criteria or technical decisions.
-- Technical debt: unrealistic assumptions or poor architectural choices.
+- Gaps: missing requirements or edge cases required for the stated scope.
+- Risks: security, performance, or integration issues that would materially change readiness.
+- Ambiguity: unclear success criteria or technical decisions that must be resolved before execution.
+- Technical debt: unrealistic assumptions or poor architectural choices only when they would prevent or materially distort the requested change.
 
 Add comments:
 
@@ -126,14 +127,16 @@ Usage:
 - Insert tags directly into the plan document.
 - Use `[REVIEW:Name] Content [/REVIEW]` format.
 - Be specific and actionable.
+- Do not flag nice-to-haves, opportunistic cleanup, adjacent surfaces outside the stated scope, or extra detail that would not change readiness.
 
 ## Summary
 
 After adding comments to the plan, provide a single summary:
 
-- Plan status: solid or needs rework?
-- Critical issues: list the most important blockers.
+- Plan status: solid or needs rework for the requested scope?
+- Critical issues: list only the blockers, material risks, or missing decisions required before execution.
 - Recommendation: "Proceed with caution" or "Major revision needed".
+- Keep the summary focused on readiness for the requested scope, not optional improvements or broader idea generation.
 
 ---
 

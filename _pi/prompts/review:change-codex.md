@@ -24,7 +24,7 @@ To respond to other reviewers:
 
 # Change Review (Single Plan File)
 
-Review the provided change plan as a cohesive unit. Your goal is to ensure the plan is solid and executable without scope creep or error.
+Review the provided change plan as a cohesive unit. Your goal is to decide whether it is ready to execute within its stated goal and non-goals, flagging only blockers, material risks, or missing decisions that would change that readiness.
 
 Documents to review: $ARGUMENTS
 
@@ -36,6 +36,8 @@ This command is review-only.
 - Do not change any other plan content (do not fix, rewrite, or reorganize anything).
 - Do not remove or resolve review comments.
 - Do not run follow-up commands (including `/review:change-integrate`).
+- Only add a comment for blockers, material risks, or missing decisions required to execute the plan's stated goal while honoring its non-goals.
+- Do not comment on nice-to-haves, opportunistic cleanup, adjacent surfaces not required by the requested scope, or extra detail that would not change execution readiness.
 - After adding comments and providing the summary, stop.
 
 
@@ -73,7 +75,7 @@ Use the available repo exploration tools in this session to gather context.
 
 ### 2) Review Specification (Critical Spec Review)
 
-Read the plan. Apply a critical mindset. Don't validate; look for problems.
+Read the plan. Apply a critical mindset. Don't validate; look for material problems that would change whether the requested scope is ready to execute.
 
 Look for:
 
@@ -142,9 +144,10 @@ Usage:
 
 After adding comments to the plan, provide a single summary:
 
-- Plan status: solid or needs rework?
-- Critical issues: list the most important blockers.
-- Recommendation: "Proceed with caution" or "Major revision needed".
+- Plan status: ready as scoped or needs rework?
+- Material blockers or readiness risks: list only the issues that would change whether execution should proceed as scoped.
+- Recommendation: "Proceed as scoped" or "Major revision needed".
+- Do not include brainstorming, nice-to-haves, or adjacent cleanup ideas.
 
 ---
 
