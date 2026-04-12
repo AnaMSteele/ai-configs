@@ -15,6 +15,127 @@
       "sourceType": "external-package",
       "packageSource": "anthropics/skills"
     },
+    "appkit-interop": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/appkit-interop",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "build-run-debug": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/build-run-debug",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`, with Pi-safe wording for optional Codex integration.",
+      "sourceType": "repo"
+    },
+    "liquid-glass": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/liquid-glass",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "packaging-notarization": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/packaging-notarization",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "signing-entitlements": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/signing-entitlements",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "swiftpm-macos": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/swiftpm-macos",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "swiftui-patterns": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/swiftui-patterns",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`, with Pi-safe wording for optional Codex integration.",
+      "sourceType": "repo"
+    },
+    "telemetry": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/telemetry",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "test-triage": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/test-triage",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "view-refactor": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/view-refactor",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "window-management": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/window-management",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
     "brand-guidelines": {
       "class": "universal-installable",
       "allowedConsumers": [
