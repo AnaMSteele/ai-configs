@@ -187,6 +187,20 @@
       "notes": "Pi-only: launches Claude Code via interactive_shell for background plan/code reviews.",
       "sourceType": "repo"
     },
+    "codex-review-partner": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/codex-review-partner",
+      "legacySources": [
+        "opencode/skills/claude-review-partner"
+      ],
+      "notes": "Promoted from an older repo-local review-partner skill and normalized to launch the real `codex` CLI in exec mode.",
+      "sourceType": "repo"
+    },
     "cmd-create-handoff": {
       "class": "universal-installable",
       "allowedConsumers": [
