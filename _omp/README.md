@@ -13,8 +13,8 @@ Use `/aplan` for the repo-managed OMP planning workflow in this repository.
 - `/aplan` is provided by `_omp/extensions/aplan/index.ts`
 - interactive `/aplan` enters built-in `/plan` mode and queues the repo-managed planning workflow guidance for the next planning turn
 - built-in `/plan` remains untouched; `/aplan` is the repo-managed entrypoint layered on top of it
-- while `/aplan` is active, plan updates in `thoughts/plans/` can trigger `/review:plan`; if standard review leaves inline `[REVIEW:...]` comments, `/review:change-integrate` is auto-run before any exit prompt, and `/review:plan-adversarial` remains an optional follow-up review pass
-- after review, `/aplan` offers fresh `/dev:run` and `/ralph:run` exit choices and prepares `/cmd:execute-plan <plan> --target ...` so execution starts outside `/aplan` mode
+- while `/aplan` is active, plan updates in `thoughts/plans/` surface `/review:plan` as a non-blocking next step; if standard review leaves inline `[REVIEW:...]` comments, `/review:change-integrate` is auto-run before any manual handoff, and `/review:plan-adversarial` remains an optional follow-up review pass
+- after review, `/aplan` leaves execution handoff manual via `/cmd:execute-plan <plan> --target ...` so execution starts outside `/aplan` mode without popping a menu
 
 ## Compaction entrypoint
 

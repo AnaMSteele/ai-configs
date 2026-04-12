@@ -480,13 +480,6 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		pi.sendUserMessage(expandedPrompt ?? commandText);
 	}
 
-	function prepareFreshExecutionCommand(ctx: ExtensionContext, target: "dev:run" | "ralph:run"): void {
-		if (!currentPlanPath) return;
-		const command = `/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target ${target}`;
-		ctx.ui.setEditorText(command);
-		ctx.ui.notify(`Prepared ${command}. Press Enter to start a fresh execution session.`, "info");
-	}
-
 	async function handleExecutePlanCommand(args: string, ctx: ExtensionCommandContext): Promise<void> {
 		const request = await resolveExecutePlanRequest(ctx.cwd, args);
 		if ("error" in request) {
@@ -620,21 +613,10 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		const standardReviewCommand = getPreferredStandardReviewCommand();
-		const reviewChoice = `Run /${standardReviewCommand}`;
-		const choice = await ctx.ui.select(`Plan updated (${reason}). Run /${standardReviewCommand} for ${currentPlanPath}?`, [
-			reviewChoice,
-			"Keep editing in plan mode",
-		]);
-
-		if (choice !== reviewChoice) {
-			return;
-		}
-
-		await startReviewCycle(ctx, standardReviewCommand);
-	}
-
-	async function startAdversarialReviewCycle(ctx: ExtensionContext): Promise<void> {
-		await startReviewCycle(ctx, ADVERSARIAL_PLAN_REVIEW_COMMAND);
+		ctx.ui.notify(
+			`Plan updated (${reason}). Run /${standardReviewCommand} ${formatCommandArg(currentPlanPath)} when ready.`,
+			"info",
+		);
 	}
 
 	async function startReviewIntegration(ctx: ExtensionContext, options?: { automatic?: boolean }): Promise<void> {
@@ -661,54 +643,24 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (!planModeEnabled || !ctx.hasUI || !currentPlanPath) return;
 
 		const standardReviewCommand = getPreferredStandardReviewCommand();
-		const integrateChoice = `Run /${CHANGE_REVIEW_INTEGRATE_COMMAND}`;
-		const standardReviewChoice = `Run /${standardReviewCommand}`;
-		const choices = [] as string[];
+		const nextSteps = [] as string[];
 
 		if (isStandardReviewCommand(lastReviewCommand)) {
-			choices.push(integrateChoice);
+			nextSteps.push(`/${CHANGE_REVIEW_INTEGRATE_COMMAND} ${formatCommandArg(currentPlanPath)}`);
 		} else if (lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND && reviewCycles < MAX_REVIEW_CYCLES) {
-			choices.push(standardReviewChoice);
+			nextSteps.push(`/${standardReviewCommand} ${formatCommandArg(currentPlanPath)}`);
 		}
-
-		choices.push(
-			"Start fresh /dev:run session",
-			"Start fresh /ralph:run session",
-		);
 
 		if (isStandardReviewCommand(lastReviewCommand) || lastReviewCommand === CHANGE_REVIEW_INTEGRATE_COMMAND) {
-			choices.push(`Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`);
+			nextSteps.push(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND} ${formatCommandArg(currentPlanPath)}`);
 		}
 
-		choices.push("Keep editing in plan mode");
+		nextSteps.push(
+			`/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target dev:run`,
+			`/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target ralph:run`,
+		);
 
-		const choice = await ctx.ui.select(`Plan review complete (${reason}). Choose an exit path for ${currentPlanPath}.`, choices);
-
-		if (choice === integrateChoice) {
-			await startReviewIntegration(ctx);
-			return;
-		}
-
-		if (choice === standardReviewChoice) {
-			await startReviewCycle(ctx, standardReviewCommand);
-			return;
-		}
-
-		if (choice === "Start fresh /dev:run session") {
-			disablePlanMode(ctx);
-			prepareFreshExecutionCommand(ctx, "dev:run");
-			return;
-		}
-
-		if (choice === "Start fresh /ralph:run session") {
-			disablePlanMode(ctx);
-			prepareFreshExecutionCommand(ctx, "ralph:run");
-			return;
-		}
-
-		if (choice === `Run /${ADVERSARIAL_PLAN_REVIEW_COMMAND} pass`) {
-			await startAdversarialReviewCycle(ctx);
-		}
+		ctx.ui.notify(`Plan review complete (${reason}). Available next steps: ${nextSteps.join(" · ")}`, "info");
 	}
 
 	pi.registerFlag("plan", {
@@ -813,11 +765,10 @@ Constraints:
 - Do not make implementation changes outside ${PLAN_ROOT}/.
 - Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/.
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
-- After creating or materially updating a plan, expect to be offered /review:plan <path>.
-- After a standard review completes with inline comments, expect /review:change-integrate <path> to run automatically so review feedback is resolved back into the same plan file before any exit prompt.
+- After creating or materially updating a plan, /review:plan <path> is available when you want review.
+- After a standard review completes with inline comments, /review:change-integrate <path> runs automatically so review feedback is resolved back into the same plan file before any manual execution handoff.
 - After standard review integration, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
-- After an integrated review completes, expect to be offered both /dev:run <path> and /ralph:run <path> as exit paths from the reviewed plan.
-- In Pi, those exit choices route through /cmd:execute-plan <path> --target ... so execution starts from a fresh session instead of staying in planning context.
+- After an integrated review completes, you may manually run /cmd:execute-plan <path> --target dev:run or --target ralph:run to start a fresh execution session.
 - Review feedback should be integrated back into the same plan file.
 - Automatic review looping is capped at ${MAX_REVIEW_CYCLES} cycles before stopping.
 

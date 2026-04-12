@@ -142,11 +142,10 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 
 - powers `/plan` mode for `thoughts/` planning workflows,
 - keeps planning-mode file writes scoped to `thoughts/`,
-- offers `/review:plan` after plan edits,
+- surfaces `/review:plan` after plan edits as a non-blocking next step,
 - automatically follows a standard review with `/review:change-integrate` before any execution handoff,
-- optionally offers `/review:plan-adversarial` as a second-pass challenge review after integration,
-- offers both `/dev:run <plan>` and `/ralph:run <plan>` as post-review exit paths,
-- stages those exit choices through `/cmd:execute-plan <plan> --target ...` so Pi can launch execution from a fresh session,
+- keeps `/review:plan-adversarial` available as an optional second-pass challenge review after integration,
+- leaves execution handoff manual via `/cmd:execute-plan <plan> --target ...` so Pi can launch from a fresh session without popping a menu,
 - keeps alternate review commands such as `/review:change-claude-code` as explicit opt-ins rather than hidden plan-mode fallbacks,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
