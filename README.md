@@ -77,7 +77,6 @@ bash ~/ai-configs/install.sh --all ~
 - copies repo-managed OMP extensions into `~/.omp/agent/extensions/`
 - installs Pi to `~/.pi/agent/`
 - copies repo-managed Pi extensions into `~/.pi/agent/extensions/` (these do not appear in `pi list`)
-- best-effort provisions the curated `lsp-pi` server subset (TypeScript, Vue, Svelte, Pyright, plus a global `typescript` fallback runtime) when the npm global prefix/bin are compatible with current `lsp-pi` discovery rules
 - installs OpenCode resources to `~/.config/opencode/`
 - syncs shared skills into `~/.agents/skills` from `skills/install-matrix.json`
 - installs the shared repo-root `APPEND_SYSTEM.md` to Pi as `~/.pi/agent/APPEND_SYSTEM.md` and to OMP as `~/.omp/agent/SYSTEM.md`

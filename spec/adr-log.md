@@ -3,7 +3,7 @@
 This document captures key architectural decisions and their rationale.
 
 ## ADR 0003: Provision the curated `lsp-pi` server subset in the installer instead of forking `lsp-pi`
-**Status:** Accepted (implemented and verified)
+**Status:** Superseded (removed from setup 2026-04-12)
 **Date:** 2026-04
 
 **Context:** The repo already installed `npm:lsp-pi`, but it did not provision the language-server binaries that current `lsp-pi` expects to find on `PATH` or in its small set of hardcoded search directories. That left Pi's `lsp` tool present but inconsistently useful across hosts. The open question was whether to copy OpenCode's more expansive provisioning model immediately, which would likely require extending or forking `lsp-pi`.
@@ -23,10 +23,7 @@ This document captures key architectural decisions and their rationale.
 - Treat `lsp-pi` package registration alone as sufficient verification.
 
 **Current state:**
-- `install.sh`
-- `scripts/verify-pi-install.sh`
-- `README.md`
-- `_pi/README.md`
+- Historical record only; the active installer and verification flow no longer install or validate `lsp-pi`.
 - `thoughts/fixtures/lsp/typescript-smoke/index.ts`
 - `thoughts/fixtures/lsp/typescript-smoke/tsconfig.json`
 - `spec/architecture/pi-lsp-provisioning-strategy.md`
