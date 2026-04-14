@@ -9,8 +9,8 @@ VENDORED_DIR="$REPO_ROOT/_pi/packages/pi-vcc"
 README_PATH="$VENDORED_DIR/README.md"
 PACKAGE_JSON="$VENDORED_DIR/package.json"
 UPSTREAM_REPO_URL="https://github.com/sting8k/pi-vcc.git"
+VERBOSE=0
 EXPECTED_LOCAL_DIFFS=(
-  ".gitignore"
   "README.md"
   "package.json"
   "src/commands/pi-vcc.ts"
@@ -18,14 +18,25 @@ EXPECTED_LOCAL_DIFFS=(
   "src/core/summarize.ts"
   "src/hooks/before-compact.ts"
   "tests/before-compact.test.ts"
-  "tests/brief.test.ts"
   "tests/compile.test.ts"
-  "tests/content.test.ts"
-  "tests/extract-goals.test.ts"
   "tests/fixtures.ts"
   "tests/format.test.ts"
   "tests/support/load-session.ts"
 )
+
+for arg in "$@"; do
+  case "$arg" in
+    --verbose|-v)
+      VERBOSE=1
+      ;;
+    --summary)
+      ;;
+    *)
+      echo "Usage: $0 [--verbose]" >&2
+      exit 1
+      ;;
+  esac
+done
 
 if [ ! -d "$VENDORED_DIR" ]; then
   echo "Vendored pi-vcc directory not found: $VENDORED_DIR_REL" >&2
@@ -69,45 +80,43 @@ trap cleanup EXIT
 
 git clone --depth 1 "$UPSTREAM_REPO_URL" "$TMP_DIR/upstream" >/dev/null 2>&1
 
-RAW_DIFF_LINES="$({
-  diff -qr \
-    --exclude node_modules \
-    --exclude package-lock.json \
-    --exclude .git \
-    "$TMP_DIR/upstream" "$VENDORED_DIR" || true
-} | sed '/^$/d')"
+NORMALIZED_DIFFS="$(python3 - "$TMP_DIR/upstream" "$VENDORED_DIR" <<'PY'
+from pathlib import Path
+import os, sys
 
-NORMALIZED_DIFFS="$({
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    case "$line" in
-      "Only in $TMP_DIR/upstream:"*)
-        path="${line#Only in $TMP_DIR/upstream: }"
-        printf '%s\n' "$path"
-        ;;
-      "Only in $VENDORED_DIR:"*)
-        path="${line#Only in $VENDORED_DIR: }"
-        printf '%s\n' "$path"
-        ;;
-      "Only in $VENDORED_DIR/"*)
-        path="${line#Only in $VENDORED_DIR/}"
-        dir="${path%%:*}"
-        file="${line##*: }"
-        printf '%s/%s\n' "$dir" "$file"
-        ;;
-      Files\ "$TMP_DIR/upstream/"*\ and\ "$VENDORED_DIR/"*\ differ)
-        path="${line#Files $TMP_DIR/upstream/}"
-        path="${path%% and $VENDORED_DIR/*}"
-        printf '%s\n' "$path"
-        ;;
-      *)
-        printf 'UNPARSED: %s\n' "$line"
-        ;;
-    esac
-  done <<EOF
-$RAW_DIFF_LINES
-EOF
-} | sort -u)"
+upstream = Path(sys.argv[1])
+vendored = Path(sys.argv[2])
+ignore_dirs = {'.git', 'node_modules'}
+ignore_files = {'package-lock.json'}
+
+def collect(root: Path):
+    files = {}
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in ignore_dirs]
+        base = Path(dirpath)
+        for filename in filenames:
+            if filename in ignore_files:
+                continue
+            path = base / filename
+            rel = path.relative_to(root).as_posix()
+            files[rel] = path
+    return files
+
+left = collect(upstream)
+right = collect(vendored)
+all_paths = sorted(set(left) | set(right))
+diffs = []
+for rel in all_paths:
+    l = left.get(rel)
+    r = right.get(rel)
+    if l is None or r is None:
+        diffs.append(rel)
+        continue
+    if l.read_bytes() != r.read_bytes():
+        diffs.append(rel)
+print('\n'.join(diffs))
+PY
+)"
 
 EXPECTED_DIFFS_TEXT="$(printf '%s\n' "${EXPECTED_LOCAL_DIFFS[@]}" | sort -u)"
 UNEXPECTED_DIFFS="$({
@@ -120,6 +129,10 @@ MISSING_EXPECTED_DIFFS="$({
     <(printf '%s\n' "$EXPECTED_DIFFS_TEXT" | sed '/^$/d' | sort -u) \
     <(printf '%s\n' "$NORMALIZED_DIFFS" | sed '/^$/d' | sort -u)
 } || true)"
+
+DRIFT_COUNT="$(printf '%s\n' "$NORMALIZED_DIFFS" | sed '/^$/d' | wc -l | tr -d ' ')"
+UNEXPECTED_COUNT="$(printf '%s\n' "$UNEXPECTED_DIFFS" | sed '/^$/d' | wc -l | tr -d ' ')"
+MISSING_COUNT="$(printf '%s\n' "$MISSING_EXPECTED_DIFFS" | sed '/^$/d' | wc -l | tr -d ' ')"
 
 printf 'pi-vcc upstream check\n'
 printf 'vendored path: %s\n' "$VENDORED_DIR_REL"
@@ -140,54 +153,68 @@ else
   printf 'commit status: recorded commit matches upstream head\n'
 fi
 
-printf '\nlocal drift vs upstream clone:\n'
 if [ -z "$NORMALIZED_DIFFS" ]; then
-  printf '  none\n'
+  printf 'drift status: no local diffs vs upstream clone\n'
+elif [ -n "$UNEXPECTED_DIFFS" ]; then
+  printf 'drift status: unexpected local diffs present\n'
 else
+  printf 'drift status: only expected local diffs present (%s paths)\n' "$DRIFT_COUNT"
+fi
+
+if [ "$UNEXPECTED_COUNT" -gt 0 ]; then
+  printf 'unexpected diff count: %s\n' "$UNEXPECTED_COUNT"
+fi
+
+if [ "$MISSING_COUNT" -gt 0 ]; then
+  printf 'missing expected diff count: %s\n' "$MISSING_COUNT"
+fi
+
+if [ "$VERBOSE" -eq 1 ]; then
+  printf '\nlocal drift vs upstream clone:\n'
+  if [ -z "$NORMALIZED_DIFFS" ]; then
+    printf '  none\n'
+  else
+    while IFS= read -r item; do
+      [ -n "$item" ] || continue
+      printf '  %s\n' "$item"
+    done <<EOF
+$NORMALIZED_DIFFS
+EOF
+  fi
+
+  printf '\nexpected local diffs:\n'
   while IFS= read -r item; do
     [ -n "$item" ] || continue
     printf '  %s\n' "$item"
   done <<EOF
-$NORMALIZED_DIFFS
-EOF
-fi
-
-printf '\nexpected local diffs:\n'
-while IFS= read -r item; do
-  [ -n "$item" ] || continue
-  printf '  %s\n' "$item"
-done <<EOF
 $EXPECTED_DIFFS_TEXT
 EOF
 
-if [ -z "$NORMALIZED_DIFFS" ]; then
-  printf '\ndrift status: no local diffs vs upstream clone\n'
-elif [ -n "$UNEXPECTED_DIFFS" ]; then
-  printf '\ndrift status: unexpected local diffs present\n'
-else
-  drift_count="$(printf '%s\n' "$NORMALIZED_DIFFS" | sed '/^$/d' | wc -l | tr -d ' ')"
-  printf '\ndrift status: only expected local diffs present (%s paths)\n' "$drift_count"
+  if [ -n "$UNEXPECTED_DIFFS" ]; then
+    printf '\nunexpected diffs:\n'
+    while IFS= read -r item; do
+      [ -n "$item" ] || continue
+      printf '  %s\n' "$item"
+    done <<EOF
+$UNEXPECTED_DIFFS
+EOF
+  fi
+
+  if [ -n "$MISSING_EXPECTED_DIFFS" ]; then
+    printf '\nmissing expected local diffs:\n'
+    while IFS= read -r item; do
+      [ -n "$item" ] || continue
+      printf '  %s\n' "$item"
+    done <<EOF
+$MISSING_EXPECTED_DIFFS
+EOF
+  fi
+elif [ "$UNEXPECTED_COUNT" -gt 0 ] || [ "$MISSING_COUNT" -gt 0 ]; then
+  printf 'review details with: ./scripts/check-pi-vcc-upstream.sh --verbose\n'
 fi
 
 if [ -n "$UNEXPECTED_DIFFS" ]; then
-  printf '\nunexpected diffs:\n'
-  while IFS= read -r item; do
-    [ -n "$item" ] || continue
-    printf '  %s\n' "$item"
-  done <<EOF
-$UNEXPECTED_DIFFS
-EOF
   exit 1
-fi
-
-if [ -n "$MISSING_EXPECTED_DIFFS" ]; then
-  printf '\nmissing expected local diffs:\n'
-  while IFS= read -r item; do
-    [ -n "$item" ] || continue
-    printf '  %s\n' "$item"
-  done <<EOF
-$MISSING_EXPECTED_DIFFS
-EOF
 fi
 
 if [ -n "$RECORDED_COMMIT" ] && [ "$RECORDED_COMMIT" != "$UPSTREAM_HEAD" ]; then

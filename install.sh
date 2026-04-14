@@ -61,7 +61,7 @@ print_usage() {
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
-    echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-rlm, pi-gpt-config"
+    echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-gpt-config"
     echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-multi-pass, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from _pi/packages/pi-vcc, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise git:github.com/adnichols/pi-interactive-shell)"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
@@ -1714,9 +1714,6 @@ install_pi() {
     # Install chrome-cdp-skill extension via pi package manager
     install_chrome_cdp_skill
 
-    # Install pi-rlm extension via pi package manager
-    install_pi_rlm_package
-
     # Install pi-gpt-config extension via pi package manager
     install_pi_gpt_config_package
 
@@ -1739,6 +1736,7 @@ install_pi() {
 remove_deprecated_pi_git_packages() {
     local deprecated_git_packages=(
         "git:github.com/adnichols/pi-dcp"
+        "git:github.com/adnichols/pi-rlm"
     )
 
     for source in "${deprecated_git_packages[@]}"; do
@@ -1772,27 +1770,6 @@ install_chrome_cdp_skill() {
             echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
             echo "      To install manually, run:"
             echo "        pi install git:github.com/pasky/chrome-cdp-skill"
-            return 1
-        fi
-    fi
-}
-
-# Install pi-rlm extension via pi package manager
-install_pi_rlm_package() {
-    echo ""
-    echo -e "${GREEN}  Installing pi-rlm extension via pi package manager...${NC}"
-
-    if pi list 2>/dev/null | grep -q "pi-rlm"; then
-        echo "  - pi-rlm already installed, updating..."
-        pi update pi-rlm 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
-    else
-        echo "  - Installing pi-rlm from git repository..."
-        if pi install git:github.com/adnichols/pi-rlm 2>/dev/null; then
-            echo -e "    ${GREEN}✓ pi-rlm installed${NC}"
-        else
-            echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
-            echo "      To install manually, run:"
-            echo "        pi install git:github.com/adnichols/pi-rlm"
             return 1
         fi
     fi
@@ -1840,14 +1817,20 @@ report_pi_vcc_upstream_status() {
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             echo -e "    ${BLUE}ℹ vendored pi-vcc matches the pinned upstream snapshot with the expected local patch set${NC}"
             printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
-            echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh"
+            echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh --verbose"
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            ;;
+        1)
+            echo -e "    ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            echo -e "    ${YELLOW}⚠ vendored pi-vcc has unexpected local drift${NC}"
+            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p;/^unexpected diff count:/p;/^missing expected diff count:/p;/^review details with:/p' | sed 's/^/      /'
+            echo -e "    ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             ;;
         2)
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             echo -e "    ${BLUE}ℹ vendored pi-vcc has upstream updates available${NC}"
             printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
-            echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh"
+            echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh --verbose"
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             ;;
         *)

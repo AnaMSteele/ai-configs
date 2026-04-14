@@ -138,31 +138,15 @@ describe("compileBrief", () => {
     expect(r).not.toContain("All tests passed");
   });
 
-  it("collapses repeated identical tool lines with refs", () => {
-    const blocks: NormalizedBlock[] = [
-      { kind: "tool_call", name: "Read", args: { file_path: "auth.ts" }, sourceIndex: 12 },
-      { kind: "tool_call", name: "Read", args: { file_path: "auth.ts" }, sourceIndex: 13 },
-      { kind: "tool_call", name: "Read", args: { file_path: "auth.ts" }, sourceIndex: 14 },
-    ];
-    const r = compileBrief(blocks);
-    expect(r).toContain('* Read "auth.ts" (#12, #13, #14) x3');
-  });
-
-  it("collapses skill markup in user text", () => {
-    const blocks: NormalizedBlock[] = [
-      {
-        kind: "user",
-        text: 'Use this skill:\n<skill name="debug">\nlong embedded instructions\n</skill>\nThen fix auth.',
-      },
-    ];
-    const r = compileBrief(blocks);
-    expect(r).toContain("[skill: debug]");
-    expect(r).toContain("Then fix auth.");
-    expect(r).not.toContain("long embedded instructions");
-    expect(r).not.toContain("<skill");
-  });
-
   // ── noise filtering tests (aligned with VCC) ──
+
+
+
+
+
+
+
+
 
   it("suppresses blank lines between consecutive tool-only sections", () => {
     const blocks: NormalizedBlock[] = [

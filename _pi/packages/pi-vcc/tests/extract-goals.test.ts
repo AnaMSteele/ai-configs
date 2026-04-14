@@ -83,15 +83,4 @@ describe("extractGoals", () => {
     expect(goals[0]).toContain("Fix the authentication");
     expect(goals.some((g) => g === "ok")).toBe(false);
   });
-
-  it("collapses skill blocks in goals", () => {
-    const blocks: NormalizedBlock[] = [
-      {
-        kind: "user",
-        text: 'Fix auth\n<skill name="debug">\ninternal detail\n</skill>\nRun tests',
-      },
-    ];
-    const goals = extractGoals(blocks);
-    expect(goals).toEqual(["Fix auth", "[skill: debug]", "Run tests"]);
-  });
 });

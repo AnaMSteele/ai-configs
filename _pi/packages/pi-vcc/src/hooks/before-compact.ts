@@ -7,13 +7,28 @@ import { compile } from "../core/summarize";
 import type { PiVccCompactionDetails } from "../details";
 
 const CONFIG_PATH = join(homedir(), ".pi", "agent", "pi-vcc-config.json");
+const MIN_MESSAGES_TO_COMPACT = 3;
+const AGENT_ONLY_FALLBACK_TAIL_MESSAGES = 4;
 
-const loadConfig = (): { debug?: boolean } => {
+export interface CompactionStats {
+  summarized: number;
+  kept: number;
+  keptTokensEst: number;
+}
+
+let lastStats: CompactionStats | null = null;
+export const getLastCompactionStats = () => lastStats;
+
+export interface PiVccConfig {
+  debug?: boolean;
+}
+
+const loadConfig = (): PiVccConfig => {
   try { return JSON.parse(readFileSync(CONFIG_PATH, "utf-8")); } catch { return {}; }
 };
 
-const dbg = (data: Record<string, unknown>) => {
-  if (!loadConfig().debug) return;
+const dbg = (config: PiVccConfig, data: Record<string, unknown>) => {
+  if (!config.debug) return;
   try { writeFileSync("/tmp/pi-vcc-debug.json", JSON.stringify(data, null, 2)); } catch {}
 };
 
@@ -36,11 +51,8 @@ const previewContent = (content: unknown): string => {
 
 interface EntryWithMessage {
   entry: { id: string; type: string };
-  message: { role: string; content: unknown };
+  message: { role: string; content: unknown; toolCallId?: string };
 }
-
-const MIN_MESSAGES_TO_COMPACT = 3;
-const AGENT_ONLY_FALLBACK_TAIL_MESSAGES = 4;
 
 const hasMatchingToolCall = (message: any, toolCallId: string): boolean => {
   if (message?.role !== "assistant" || !Array.isArray(message?.content)) return false;
@@ -62,7 +74,6 @@ const adjustCutIdxForToolResult = (liveMessages: EntryWithMessage[], cutIdx: num
 };
 
 function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId: string } | null {
-  // Find the last compaction entry and its firstKeptEntryId
   let lastKeptId: string | undefined;
   for (let i = branchEntries.length - 1; i >= 0; i--) {
     if (branchEntries[i].type === "compaction") {
@@ -71,14 +82,12 @@ function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId:
     }
   }
 
-  // Collect live messages: either from firstKeptEntryId (if prev compaction exists)
-  // or all messages (no prior compaction)
   const liveMessages: EntryWithMessage[] = [];
-  let foundKept = !lastKeptId; // if no prior compaction, start collecting immediately
+  let foundKept = !lastKeptId;
   for (const e of branchEntries) {
     if (!foundKept && e.id === lastKeptId) foundKept = true;
     if (!foundKept) continue;
-    if (e.type === "compaction") continue; // skip the compaction entry itself
+    if (e.type === "compaction") continue;
     if (e.type === "message" && e.message) {
       liveMessages.push({ entry: e, message: e.message });
     }
@@ -86,7 +95,6 @@ function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId:
 
   if (liveMessages.length < MIN_MESSAGES_TO_COMPACT) return null;
 
-  // Prefer cutting at the latest user boundary so the newest user request stays live.
   let cutIdx = -1;
   for (let i = liveMessages.length - 1; i > 0; i--) {
     if (liveMessages[i].message.role === "user") {
@@ -95,8 +103,6 @@ function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId:
     }
   }
 
-  // Long agent-only/tool-heavy stretches after a single user message are still safe to
-  // compact. Keep a recent live tail so the current execution context survives.
   if (cutIdx <= 0) {
     if (liveMessages.length <= AGENT_ONLY_FALLBACK_TAIL_MESSAGES) return null;
     cutIdx = liveMessages.length - AGENT_ONLY_FALLBACK_TAIL_MESSAGES;
@@ -122,6 +128,30 @@ export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
     const firstKeptEntryId = ownCut.firstKeptEntryId;
     const messages = convertToLlm(agentMessages);
 
+    const keptIdx = (branchEntries as any[]).findIndex((e: any) => e.id === firstKeptEntryId);
+    const keptEntries = keptIdx >= 0
+      ? (branchEntries as any[]).slice(keptIdx).filter((e: any) => e.type === "message")
+      : [];
+    const keptChars = keptEntries.reduce((sum: number, e: any) => {
+      const c = e.message?.content;
+      if (typeof c === "string") return sum + c.length;
+      if (Array.isArray(c)) {
+        return sum + c.reduce((s: number, p: any) => {
+          if (p.text) return s + p.text.length;
+          if (p.type === "toolCall") return s + (p.name?.length ?? 0) + (typeof p.input === "string" ? p.input.length : JSON.stringify(p.input ?? "").length);
+          if (p.type === "toolResult") return s + (typeof p.content === "string" ? p.content.length : JSON.stringify(p.content ?? "").length);
+          return s;
+        }, 0);
+      }
+      return sum;
+    }, 0);
+    lastStats = {
+      summarized: agentMessages.length,
+      kept: keptEntries.length,
+      keptTokensEst: Math.round(keptChars / 4),
+    };
+
+    const config = loadConfig();
     const summary = compile({
       messages,
       previousSummary: preparation.previousSummary,
@@ -142,7 +172,7 @@ export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
         }))
       : [];
 
-    dbg({
+    dbg(config, {
       usedOwnCut: true,
       messagesToSummarize: agentMessages.length,
       messagesPreviewHead: agentMessages.slice(0, 3).map((m: any) => ({ role: m.role, preview: previewContent(m.content) })),

@@ -13,7 +13,6 @@ export const capBrief = (text: string): string => {
   if (lines.length <= BRIEF_MAX_LINES) return text;
   const omitted = lines.length - BRIEF_MAX_LINES;
   const kept = lines.slice(-BRIEF_MAX_LINES);
-  // Find first section header to avoid cutting mid-section
   const firstHeader = kept.findIndex((l) => /^\[.+\]/.test(l));
   const clean = firstHeader > 0 ? kept.slice(firstHeader) : kept;
   return `...(${omitted} earlier lines omitted)\n\n${clean.join("\n")}`;

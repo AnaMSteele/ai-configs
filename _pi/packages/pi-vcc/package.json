@@ -1,9 +1,8 @@
 {
   "name": "@adnichols/pi-vcc",
   "private": true,
-  "version": "0.3.2-ai-configs.1",
-  "description": "Vendored pi-vcc extension for pi with selective 0.3.2 uptake, manual bypass support, and compaction safety fixes",
-  "license": "MIT",
+  "version": "0.3.6-ai-configs.1",
+  "description": "Vendored pi-vcc extension for pi with upstream 0.3.6 plus repo-specific compaction fixes",
   "main": "index.ts",
   "keywords": [
     "pi-package",

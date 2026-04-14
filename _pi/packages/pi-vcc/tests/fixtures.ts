@@ -59,5 +59,3 @@ export const toolResult = (
   isError,
   timestamp: ts,
 });
-
-

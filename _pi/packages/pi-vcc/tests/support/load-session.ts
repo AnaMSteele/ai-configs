@@ -5,6 +5,7 @@ import type { Message } from "@mariozechner/pi-ai";
 const sessionManagerCandidates = [
   process.env.PI_VCC_SESSION_MANAGER_PATH,
   new URL("../../../../../node_modules/@mariozechner/pi-coding-agent/dist/core/session-manager.js", import.meta.url).pathname,
+  "/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/session-manager.js",
   "/home/linuxbrew/.linuxbrew/lib/node_modules/@mariozechner/pi-coding-agent/dist/core/session-manager.js",
 ].filter((value): value is string => Boolean(value));
 

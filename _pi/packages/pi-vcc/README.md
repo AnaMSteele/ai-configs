@@ -1,23 +1,16 @@
 # pi-vcc (vendored)
 
-Vendored into `ai-configs` from `sting8k/pi-vcc` so this repo can ship a pinned local install plus local compaction behavior fixes.
+Vendored into `ai-configs` from `sting8k/pi-vcc` so this repo can ship a pinned local install plus repo-specific compaction behavior.
 
 - Source: `https://github.com/sting8k/pi-vcc`
-- Upstream version: `0.3.2`
-- Upstream commit snapshot: `82e31a5e4bd22d81bcf08b33750cbcf11e603157`
+- Upstream version: `0.3.6`
+- Upstream commit snapshot: `5c50dfc20189ddbc1459b911ead00e31d2c408dd`
 - License: MIT
 - Local changes:
-  - `/pi-vcc` carries the `__PI_VCC_MANUAL_BYPASS__` marker directly in-source, so `install.sh` no longer patches global npm files after install
-  - the compaction hook still supports the repo-local agent-only fallback tail, but now shifts the cut backward so a live `toolResult` never outlives its matching assistant tool call
-  - merged summaries additionally collapse raw `<skill>` markup carried forward from prior compactions
-  - this vendored copy intentionally does **not** append the upstream `vcc_recall` reminder note to every summary; this repo kept the pre-existing summary output contract
+  - `/pi-vcc` carries the `__PI_VCC_MANUAL_BYPASS__` marker directly in-source so repo-managed auto-compaction and manual compaction both use pi-vcc without global patching
+  - the compaction hook keeps the repo-local agent-only fallback tail and shifts the cut backward so a live `toolResult` never outlives its matching assistant tool call
+  - this vendored copy intentionally does **not** append the upstream `vcc_recall` reminder note to every summary; this repo keeps the pre-existing summary output contract while still stripping older injected note lines during merge
   - local tests and harnesses cover the repo-specific compaction safety contract and package-wide verification flow
-
-Install from this repo:
-
-```bash
-pi install ./_pi/packages/pi-vcc
-```
 
 Algorithmic conversation compactor for [Pi](https://github.com/badlogic/pi-mono). No LLM calls — produces a brief transcript via extraction and formatting.
 
@@ -58,20 +51,26 @@ Measured on real session JSONLs under `~/.pi/agent/sessions` (chars = rendered m
 - **Bounded merge** — rolling sections re-capped after merge instead of growing unbounded
 - **Lossless recall** — `vcc_recall` reads raw session JSONL, so old history stays searchable across compactions
 - **Regex search** — `vcc_recall` supports regex patterns (`hook|inject`, `fail.*build`) and OR-ranked multi-word queries
+- **Result ranking** — search results ranked by term relevance, rare terms weighted higher than common ones
+- **`/pi-vcc-recall`** — slash command to search history directly, results shown as collapsible message and auto-fed to agent as context
 - **Fallback cut** — still works when Pi core returns nothing to summarize
 - **Redaction** — strips passwords, API keys, secrets
 - **`/pi-vcc`** — manual compaction on demand
 
 ## Install
 
+From this repo:
+
 ```bash
 pi install ./_pi/packages/pi-vcc
 ```
 
-If you want the upstream package instead of the vendored repo copy:
+Upstream alternatives:
 
 ```bash
 pi install npm:@sting8k/pi-vcc
+pi install https://github.com/sting8k/pi-vcc
+pi -e https://github.com/sting8k/pi-vcc
 ```
 
 ## Usage
@@ -81,6 +80,8 @@ Once installed, pi-vcc registers a `session_before_compact` hook.
 - When Pi triggers a compaction, pi-vcc supplies the summary.
 - To trigger compaction manually, run `/pi-vcc`.
 - To search older history after compaction, use `vcc_recall`.
+- To search and feed results to agent yourself, run `/pi-vcc-recall <query> [page:N]`.
+  - Tip: type `/recall` and Pi will autocomplete to `/pi-vcc-recall`.
 
 ### Compacted message structure
 
@@ -149,6 +150,7 @@ Queries support **regex** and **multi-word OR logic** ranked by relevance:
 
 ```
 vcc_recall({ query: "auth token" })           // OR search, ranked
+vcc_recall({ query: "auth token", page: 2 })  // paginated (5 results/page)
 vcc_recall({ query: "hook|inject" })           // regex pattern
 vcc_recall({ query: "fail.*build" })           // regex pattern
 ```

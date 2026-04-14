@@ -4,7 +4,6 @@ import {
   userMsg,
   assistantText,
   assistantWithToolCall,
-  toolResult,
 } from "./fixtures";
 
 describe("compile", () => {
@@ -128,7 +127,6 @@ describe("compile", () => {
   });
 
   it("caps long brief transcript with rolling window", () => {
-    // Build a very long previous transcript
     const longTranscript = Array.from({ length: 200 }, (_, i) =>
       `[user]\nmessage ${i}`
     ).join("\n\n");
