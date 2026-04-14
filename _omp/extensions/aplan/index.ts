@@ -318,6 +318,10 @@ function formatCommandArg(arg: string): string {
 	return /\s/.test(arg) ? JSON.stringify(arg) : arg;
 }
 
+function formatNextSteps(commands: readonly string[]): string {
+	return commands.join("\n");
+}
+
 function getThoughtsRoot(cwd: string): string {
 	return resolve(cwd, PLAN_ROOT);
 }
@@ -625,7 +629,7 @@ export default function aplanModeExtension(pi: ExtensionAPI): void {
 			`/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target ralph:run`,
 		);
 
-		ctx.ui.notify(`Plan review complete (${reason}). Available next steps: ${nextSteps.join(" · ")}`, "info");
+		ctx.ui.notify(`Plan review complete (${reason}). Available next steps:\n${formatNextSteps(nextSteps)}`, "info");
 	}
 
 	pi.registerCommand("aplan", {
