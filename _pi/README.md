@@ -91,6 +91,7 @@ Each Markdown file becomes a slash command using the filename:
 - `cmd:execute-plan.md` → `/cmd:execute-plan`
 - `dev:plan.md` → `/dev:plan`
 - `dev:plan-from-prd.md` → `/dev:plan-from-prd`
+- `dev:pm-review.md` → `/dev:pm-review`
 - `prd:clarify-round.md` → `/prd:clarify-round`
 - `review:change.md` → `/review:change`
 - `review:prd.md` → `/review:prd`
@@ -171,8 +172,8 @@ In addition to the repo-managed files under `~/.pi/agent/extensions/`, `install.
 
 Git-managed packages:
 - `chrome-cdp-skill`
-- `pi-rlm`
 - `pi-gpt-config`
+- `pi-multi-pass`
 
 npm-managed packages:
 - `@tintinweb/pi-subagents`
@@ -182,7 +183,6 @@ npm-managed packages:
 - `pi-updater`
 - `pi-powerline-footer`
 - `pi-side-agents`
-- `pi-multi-pass`
 - `pi-no-soft-cursor`
 - `@tmustier/pi-files-widget`
 - `@tmustier/pi-raw-paste`
@@ -228,6 +228,7 @@ Example installed agents:
 - `cmd-research`
 - `cmd-debug`
 - `dev-plan`
+- `dev:pm-review` — adversarial PM review that reshapes plans against intended outcomes, product principles, and early-stage scope fit
 - `cmd-graduate`
 - `doct-document-ops` — doct document operations, including publishing coding plans under personal `Coding Plans`
 - `sentry-cli` — investigate Sentry orgs, projects, issues, and recent events; optionally mute/resolve/unresolve issues after confirmation
@@ -250,6 +251,8 @@ Prompt templates:
 ```text
 /cmd:debug login flake in CI
 /dev:plan feature-name
+/dev:pm-review thoughts/plans/my-plan.md
+/dev:pm-review thoughts/plans/my-plan.md implementation
 /prd
 /prd:clarify-round thoughts/plans/prd-my-feature.md
 /review:plan thoughts/plans/my-plan.md
@@ -272,6 +275,7 @@ Canonical reviewed-plan flow:
 
 ```text
 /dev:plan <plan>
+/dev:pm-review <plan> plan        # optional corrective PM reshaping pass before execution
 /review:plan <plan>
 /review:change-integrate <plan>
 /review:plan-adversarial <plan>   # optional
@@ -279,6 +283,8 @@ Canonical reviewed-plan flow:
 ```
 
 Optional second pass: run `/review:plan-adversarial <plan>` after `/review:change-integrate <plan>` when you want an explicit challenge review before execution.
+
+Use `/dev:pm-review <plan> implementation` after execution when you want a corrective PM pass that checks whether the intended user outcome was actually realized and, if not, reshapes the plan with the missing completion work instead of stopping at findings.
 
 - It is the canonical wrapper for choosing between `/dev:run <plan>` and `/ralph:run <plan>`.
 - `/dev:run` applies one `quality-reviewer` pass after each phase; `/ralph:run` keeps looping review/fix passes until the phase is clean.

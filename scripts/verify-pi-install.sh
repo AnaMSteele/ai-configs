@@ -9,8 +9,8 @@ PI_EXT_DIR="$PI_AGENT_DIR/extensions"
 
 EXPECTED_GIT_PACKAGES=(
   "git:github.com/pasky/chrome-cdp-skill"
-  "git:github.com/adnichols/pi-rlm"
   "git:github.com/edxeth/pi-gpt-config"
+  "git:github.com/adnichols/pi-multi-pass"
 )
 
 EXPECTED_NPM_PACKAGES=(
@@ -21,7 +21,6 @@ EXPECTED_NPM_PACKAGES=(
   "npm:pi-updater"
   "npm:pi-powerline-footer"
   "npm:pi-side-agents"
-  "npm:pi-multi-pass"
   "npm:pi-no-soft-cursor"
   "npm:@tmustier/pi-files-widget"
   "npm:@tmustier/pi-raw-paste"
@@ -131,18 +130,11 @@ if command -v pi >/dev/null 2>&1; then
       sed -E 's#^(git:[^@[:space:]]+)@.*#\1#' |
       while IFS= read -r source; do
         [ -n "$source" ] || continue
-        case "$source" in
-          npm:*|git:*)
-            printf '%s\n' "$source"
-            ;;
-          *)
-            python3 - "$source" <<'PY'
-import os
-import sys
-print(os.path.realpath(sys.argv[1]))
-PY
-            ;;
-        esac
+        if [[ "$source" == npm:* || "$source" == git:* ]]; then
+          printf '%s\n' "$source"
+        else
+          python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$source"
+        fi
       done |
       sort -u
   } || true)"

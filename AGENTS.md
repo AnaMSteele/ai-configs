@@ -197,6 +197,7 @@ Pi now supports both:
 # Development
 /skill:cmd-research "how does X work"
 /skill:cmd-debug "issue description"
+/dev:pm-review thoughts/plans/<plan>.md
 /review:plan thoughts/plans/<plan>.md
 
 # Context
@@ -208,9 +209,11 @@ See `_pi/README.md` for complete documentation.
 
 Expected Pi reviewed-plan flow in this repo:
 - `/dev:plan <plan>`
+- optional `/dev:pm-review <plan> plan` to reshape the plan against product intent and stage fit before execution
 - `/review:plan <plan>`
 - `/review:change-integrate <plan>`
 - optional `/review:plan-adversarial <plan>`
+- optional `/dev:pm-review <plan> implementation` after execution to reshape any missing completion work
 - `/cmd:execute-plan <plan>` -> `/dev:run <plan>` or `/ralph:run <plan>`
 
 `/review:change-claude-code` remains an explicit opt-in review command, not a hidden fallback inside plan mode or execution.
