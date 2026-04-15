@@ -81,7 +81,7 @@ Determine `TARGET_COMMAND`:
 - If `TARGET_OVERRIDE` is set, honor it without asking a follow-up question.
 - Otherwise ask exactly one targeted question with only these two options:
   1. `/ralph:run <PLAN_DISPATCH_ARGUMENT>` — quality-gated execution with repeated review/fix loops after each phase.
-  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct execution with one `quality-reviewer` pass after each phase.
+  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct high-reasoning execution with one `quality-reviewer` pass after each phase.
 
 Do not offer a planning pass here. Do not offer a third option.
 

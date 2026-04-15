@@ -1,15 +1,16 @@
 ---
-description: Execute a single-file plan with resumable progress tracking using developer-mid plus one post-phase quality review
+description: Execute a single-file plan directly with high reasoning plus one post-phase quality review
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
+model: openai/gpt-5.4
 ---
 
-# Run Plan (Single File with Subagent)
+# Run Plan (Single File)
 
-Execute a single plan document (spec + phases + progress) using the `developer-mid` subagent.
+Execute a single plan document (spec + phases + progress) directly in this session.
 
 - Follow the plan, but keep implementation flexibility.
+- Use high reasoning throughout the run.
 - Track progress by updating `## Progress` in the plan file.
-- Use the cost-effective `developer-mid` (gpt-5.4-mini) subagent for implementation.
 - Run exactly one `quality-reviewer` pass after each phase before marking it complete.
 - Allow same-scope dynamic re-chunking when a phase is too large to execute safely in one pass.
 
@@ -27,12 +28,12 @@ Execute a single plan document (spec + phases + progress) using the `developer-m
 - Execute continuously; do not pause between phases.
 - A phase boundary is not a stopping point; if unchecked `## Progress` items remain, immediately continue to the next one.
 - Interpret repo guidance like "advance one phase at a time" as serial execution order within this run: complete one phase, then start the next. It does **not** mean stop and wait after each phase.
-- Do not stop after a status update.
+- Do not stop after a status update (e.g., "I'm starting Phase 1" or "gathering context").
 - Do not stop after completing a phase unless you are genuinely blocked.
 - Do not hand control back merely because the plan is now in a resumable state; keep executing until all `## Progress` items are complete or a real blocker requires one targeted question.
-- Every response must either take the next concrete action or ask exactly one blocking question.
-- If unsure, investigate and retry until evidence supports a decision.
-- Use `question` only when a decision between viable options requires user input.
+- Every response must either (a) take the next concrete action by actually invoking a tool (read/search/edit/run) or updating the plan file, or (b) ask for user input due to an unresolvable decision. Narration is not an action.
+- If unsure, investigate and retry until evidence supports a decision; do not ask the user just for uncertainty.
+- Use `question` only when a decision between viable options requires user input due to insufficient evidence.
 - You may re-chunk work only when the split preserves the plan's scope, acceptance criteria, locked decisions, and overall end state.
 
 Unresolvable decision examples:
@@ -43,7 +44,9 @@ Unresolvable decision examples:
 
 ### 1) Resolve Plan Path
 
-Resolve to `plan_path`.
+Resolve to:
+
+- `plan_path`
 
 Rules:
 
@@ -70,9 +73,8 @@ Before execution, confirm the plan is actually executable:
 Immediately begin execution:
 
 - Identify the first unchecked item in `## Progress`.
-- Find the corresponding phase section.
-- If that phase is obviously too large for one safe execution pass, re-chunk it before delegating.
-- Otherwise delegate that phase to `developer-mid`.
+- Find the corresponding phase section and start implementing it right away; do not pause to recap the plan.
+- If that phase is obviously too large for one safe execution pass, re-chunk it before making code changes.
 - After each phase, loop back to `## Progress` and continue until no unchecked items remain.
 
 ### 2.5) Same-Scope Re-Chunking Protocol
@@ -90,7 +92,7 @@ Use same-scope re-chunking when a phase shows one or more of these signals:
 - materially different verification stories are mixed together,
 - the likely work spans too many loosely related files, surfaces, or contracts for one safe pass,
 - execution would require broad rediscovery just to decide how to proceed,
-- a prior implementation pass returned `partial` because the slice was too large rather than because of one specific local blocker.
+- a prior implementation attempt showed the slice was too large rather than blocked on one specific issue.
 
 When re-chunking:
 
@@ -104,46 +106,19 @@ If a safe split would require changing scope, acceptance criteria, or missing se
 
 ### 3) Execute Phase-by-Phase
 
-For each phase in order:
+For each phase in order (as tracked by `## Progress`):
 
-1. Launch the phase implementation with `Agent` using `subagent_type: "developer-mid"`.
-2. Wait for the result with `get_subagent_result(..., wait: true)`.
-3. Inspect the returned summary and verification evidence before changing the plan file.
-4. If the implementation result shows the phase should be split into smaller same-scope slices, update the plan accordingly, log the split, and continue with the first new child phase.
-5. Run the phase `### Verify` steps yourself if the subagent did not clearly complete them.
-6. Delegate exactly one post-implementation review pass to `quality-reviewer`.
-7. Run any missing `### Verify` steps again after the review pass.
-8. Mark the phase complete only after implementation, the single review pass, and verification are all actually complete.
-9. After handling that phase, re-read `## Progress`; if another unchecked item remains and you are not blocked, immediately start the next phase instead of returning a progress summary.
-
-Use an implementation prompt in this shape:
-
-> Implement phase N of this plan: `<plan_path>`
->
-> Read the plan file fully. Find phase N and implement the behavior described in its `### Tests first`, `### Work`, and `### End State` sections.
->
-> Treat the plan as the source of truth for intended outcomes, locked constraints, and external scope.
->
-> Start from the behavioral tests described in `### Tests first`. If those tests do not yet exist, write them first unless the plan explicitly explains why TDD is not practical for this phase.
->
-> Confirm that the tests represent the intended user-visible behavior before changing production code.
->
-> If the phase proves too large for one safe pass but can be subdivided without changing scope or semantics, do not invent new behavior. Return `result: partial` together with a concise same-scope chunking recommendation.
->
-> Run the phase's `### Verify` steps if they exist.
->
-> Return a structured summary with:
-> - files changed
-> - tests written or updated
-> - verification commands run
-> - result: `complete`, `partial`, or `blocked`
-> - phase sizing: `bounded`, `needs-same-scope-split`, or `blocked-on-semantics`
-> - recommended same-scope chunks, if any
-> - blockers or failed verification, if any
+1. Implement the phase as written.
+2. Run the phase `### Verify` steps.
+3. Delegate exactly one post-implementation review pass to `quality-reviewer`.
+4. Run any missing `### Verify` steps again after the review pass.
+5. If the review pass clears the phase, immediately flip its checkbox from `- [ ]` to `- [x]` in `## Progress`.
+6. If implementation or review required a decision, revealed a constraint, or deferred low-risk items, append a structured entry to `## Decisions / Deviations Log` in the plan file.
+7. Re-read `## Progress`; if another unchecked item remains and you are not blocked, immediately start the next phase instead of returning a progress summary.
 
 #### Required post-implementation review pass
 
-After the implementation pass, delegate exactly one `quality-reviewer` pass with this prompt:
+After implementing the phase, delegate exactly one `quality-reviewer` pass with this prompt:
 
 > Review the implementation of phase N of this plan: `<plan_path>`
 >
@@ -174,32 +149,38 @@ After the implementation pass, delegate exactly one `quality-reviewer` pass with
 If any of the following is true, the checkbox must stay unchecked:
 
 - verification failed
-- the implementation result reported `partial`
-- the implementation result reported `blocked`
 - the review pass did not clear the phase
 - you do not have evidence that the plan's `### End State` was reached
 
 #### Autonomy / Do Not Pause
 
 - Proceed autonomously through phases.
-- If you are not blocked, do not hand control back to the user.
-- Prefer same-scope re-chunking before escalating.
-- Ask the user only when the remaining blocker is genuinely unresolvable from the plan and codebase.
+- If you are not blocked, do not hand control back to the user; take the next concrete action (run commands, edit files, update progress) until you either finish or hit an unresolvable decision.
+- Do not stop after announcing intent, listing next steps, or completing "context gathering".
+- Only stop to ask the user when you hit an unresolvable decision that cannot be answered from the plan or codebase.
+- If execution reveals that the current phase should be split, prefer a same-scope re-chunk before escalating to the user.
 
 When you must ask:
 
-- Ask exactly one targeted question.
+- Ask exactly one targeted question (batch sub-choices into that one question).
 - Provide a recommended default and say what would change with each option.
 
 When you do not need to ask:
 
 - Choose the most conservative, plan-aligned default.
-- Log the decision in `## Decisions / Deviations Log` with evidence and proceed.
+- Log the decision in `## Decisions / Deviations Log` with evidence (files/commands) and proceed.
+
+#### Tests Policy
+
+- You MAY add/update tests when behavior changes.
+- You MAY refactor for testability.
+- You MUST NOT change product code merely to satisfy a failing test if acceptance criteria + observed behavior indicate the code is correct.
+  - In that case, fix the test or update the test assumptions (and log the decision).
 
 ### 4) Completion
 
 Only enter this section when all items in `## Progress` are complete.
 
 - Ensure the plan file reflects completion accurately.
-- Run any verification commands listed in the plan’s `Verification Strategy` and/or phase `### Verify` sections.
+- Run any verification commands listed in the plan's `Verification Strategy` and/or phase `### Verify` sections.
 - Only now return a final summary of completed phases, final verification, and any logged deviations.
