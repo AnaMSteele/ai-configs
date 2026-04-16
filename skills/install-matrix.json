@@ -668,6 +668,15 @@
       "sourceType": "external-package",
       "packageSource": "vercel-labs/agent-skills"
     },
+    "virsh": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/virsh",
+      "notes": "Portable virsh/libvirt workflow notes for VM inspection and storage discovery; installed for Pi only.",
+      "sourceType": "repo"
+    },
     "web-artifacts-builder": {
       "class": "universal-installable",
       "allowedConsumers": [
