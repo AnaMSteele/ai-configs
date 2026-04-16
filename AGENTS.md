@@ -214,7 +214,7 @@ Expected Pi reviewed-plan flow in this repo:
 - `/review:change-integrate <plan>`
 - optional `/review:plan-adversarial <plan>`
 - optional `/dev:pm-review <plan> implementation` after execution to reshape any missing completion work
-- `/cmd:execute-plan <plan>` -> `/dev:run <plan>` or `/ralph:run <plan>`
+- `/cmd:execute-plan <plan>` -> `/dev:run <plan>` or `/skill:ralph-run <plan>`
 
 `/review:change-claude-code` remains an explicit opt-in review command, not a hidden fallback inside plan mode or execution.
 

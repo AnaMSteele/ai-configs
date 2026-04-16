@@ -1,11 +1,11 @@
 ---
-description: Canonical reviewed-plan handoff that dispatches to /dev:run or /ralph:run
-argument-hint: '<plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]'
+description: Canonical reviewed-plan handoff that dispatches to /dev:run or /skill:ralph-run
+argument-hint: '<plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|skill:ralph-run]'
 ---
 
 # Execute Reviewed Plan
 
-This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` or `/ralph:run`; it validates an explicit reviewed plan argument, optionally accepts a target override, asks the user which of those two commands to run when needed, and then dispatches using the same normalized plan argument.
+This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` or `/skill:ralph-run`; it validates an explicit reviewed plan argument, optionally accepts a target override, asks the user which of those two commands to run when needed, and then dispatches using the same normalized plan argument.
 
 **Arguments**: `$ARGUMENTS`
 
@@ -13,8 +13,8 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 
 - Accept a plan slug or an explicit `.md` plan path.
 - Accept workspace-relative input that starts with `@` by stripping the leading `@`.
-- Accept an optional target suffix: `--target dev:run` or `--target ralph:run`.
-- Present exactly two execution choices: `/dev:run` and `/ralph:run`.
+- Accept an optional target suffix: `--target dev:run` or `--target skill:ralph-run`.
+- Present exactly two execution choices: `/dev:run` and `/skill:ralph-run`.
 - Preserve the same normalized plan argument when dispatching.
 - Refuse handoff when the plan still contains obvious review or readiness blockers.
 
@@ -25,13 +25,14 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 If no argument is provided, respond with:
 
 ```text
-Usage: /cmd:execute-plan <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]
+Usage: /cmd:execute-plan <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|skill:ralph-run]
 
 Examples:
   /cmd:execute-plan review-execution-handoff
   /cmd:execute-plan thoughts/plans/review-execution-handoff.md
   /cmd:execute-plan @thoughts/plans/review-execution-handoff.md
   /cmd:execute-plan thoughts/plans/review-execution-handoff.md --target dev:run
+  /cmd:execute-plan thoughts/plans/review-execution-handoff.md --target skill:ralph-run
 ```
 
 Do not infer “the current plan” from conversation state.
@@ -46,8 +47,9 @@ Do not infer “the current plan” from conversation state.
 4. Normalize `TARGET_OVERRIDE_RAW` only if present:
    - Trim whitespace.
    - Strip one leading `/` if present.
-   - Accept only `dev:run` or `ralph:run`.
-   - If any other target is provided, stop and tell the user the only valid targets are `/dev:run` and `/ralph:run`.
+   - Accept only `dev:run` or `skill:ralph-run`.
+   - Treat legacy `ralph:run` as an alias for `skill:ralph-run`.
+   - If any other target is provided, stop and tell the user the only valid targets are `/dev:run` and `/skill:ralph-run`.
 5. If `PLAN_ARGUMENT` is empty after trimming, show the usage block and stop.
 6. If `PLAN_ARGUMENT` starts with `@`, strip the leading `@`.
 7. Preserve that normalized string as `PLAN_DISPATCH_ARGUMENT`.
@@ -80,7 +82,7 @@ Determine `TARGET_COMMAND`:
 
 - If `TARGET_OVERRIDE` is set, honor it without asking a follow-up question.
 - Otherwise ask exactly one targeted question with only these two options:
-  1. `/ralph:run <PLAN_DISPATCH_ARGUMENT>` — quality-gated execution with repeated review/fix loops after each phase.
+  1. `/skill:ralph-run <PLAN_DISPATCH_ARGUMENT>` — quality-gated execution with repeated review/fix loops after each phase.
   2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct high-reasoning execution with one `quality-reviewer` pass after each phase.
 
 Do not offer a planning pass here. Do not offer a third option.
@@ -94,7 +96,7 @@ Run exactly one of the following and then stop:
 ```
 
 ```text
-/ralph:run <PLAN_DISPATCH_ARGUMENT>
+/skill:ralph-run <PLAN_DISPATCH_ARGUMENT>
 ```
 
-This command is only the reviewed-plan handoff wrapper; `/dev:run` and `/ralph:run` remain distinct execution paths with different behaviors.
+This command is only the reviewed-plan handoff wrapper; `/dev:run` and `/skill:ralph-run` remain distinct execution paths with different behaviors.

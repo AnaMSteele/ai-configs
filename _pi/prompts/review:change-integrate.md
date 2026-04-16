@@ -114,6 +114,6 @@ After successful integration:
 /cmd:execute-plan <plan path | plan slug>
 ```
 
-If the user already knows they want direct execution, both `/dev:run <plan path | plan slug>` and `/ralph:run <plan path | plan slug>` remain valid.
+If the user already knows they want direct execution, both `/dev:run <plan path | plan slug>` and `/skill:ralph-run <plan path | plan slug>` remain valid.
 
 Stop there; do not proceed automatically.

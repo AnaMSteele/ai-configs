@@ -286,8 +286,8 @@ Optional second pass: run `/review:plan-adversarial <plan>` after `/review:chang
 
 Use `/dev:pm-review <plan> implementation` after execution when you want a corrective PM pass that checks whether the intended user outcome was actually realized and, if not, reshapes the plan with the missing completion work instead of stopping at findings.
 
-- It is the canonical wrapper for choosing between `/dev:run <plan>` and `/ralph:run <plan>`.
-- `/dev:run` is the single direct high-reasoning execution path and applies one `quality-reviewer` pass after each phase; `/ralph:run` keeps looping review/fix passes until the phase is clean.
+- It is the canonical wrapper for choosing between `/dev:run <plan>` and `/skill:ralph-run <plan>`.
+- `/dev:run` is the single direct high-reasoning execution path and applies one `quality-reviewer` pass after each phase; `/skill:ralph-run` keeps looping review/fix passes until the phase is clean.
 - In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
 - When that extension path is used, `/plan` mode is disabled before execution so planning-only tool restrictions do not leak into implementation.
 - In Pi, the handoff command starts a fresh session and then launches the selected execution flow from that clean context.
