@@ -17,7 +17,6 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 - Present exactly two execution choices: `/dev:run` and `/ralph:run`.
 - Preserve the same normalized plan argument when dispatching.
 - Refuse handoff when the plan still contains obvious review or readiness blockers.
-- Do not promise Pi-specific context reset behavior on this surface.
 
 ## Instructions
 
@@ -81,8 +80,8 @@ Determine `TARGET_COMMAND`:
 
 - If `TARGET_OVERRIDE` is set, honor it without asking a follow-up question.
 - Otherwise ask exactly one targeted question with only these two options:
-  1. `/ralph:run <PLAN_DISPATCH_ARGUMENT>` — quality-gated, review-loop execution for the reviewed plan.
-  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct single-agent execution with resumable plan progress tracking.
+  1. `/ralph:run <PLAN_DISPATCH_ARGUMENT>` — quality-gated execution with repeated review/fix loops after each phase.
+  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct execution with one `quality-reviewer` pass after each phase.
 
 Do not offer a planning pass here. Do not offer a third option.
 

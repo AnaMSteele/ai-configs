@@ -1,19 +1,15 @@
 ---
-description: Materialize or update the actual single-file plan artifact after discovery, using shared planning doctrine plus repo-specific guidance
-argument-hint: '<slug | "short description" | existing-plan.md>'
+description: Create or update a single-file execution plan (spec + phases + progress) from validated codebase research
+argument-hint: '<slug | "short description" | thoughts/plans/<slug>.md>'
 ---
 
-# Materialize Plan
+# Plan (Single File)
 
-You are leaving read-only discovery mode and entering plan-materialization mode. This is still non-execution work: synthesize validated research into the actual plan artifact.
-
-Treat this command as planning-only work even though normal file writes are available. You may inspect the repo and write the plan artifact, but you must not change product code, tests, app config, docs, generated files, or environment files.
-
-Your job ends after writing or updating the single plan file and reporting the result. If safe plan materialization is blocked on new user intent, ask one targeted question and stop without writing the plan. Do not create execution todos, do not begin implementation, and do not run execution-oriented verification once the plan file is complete.
+Turn the validated research from this conversation into a single resumable plan document that contains both the specification and the execution guidance.
 
 This command produces (or updates):
 
-- `plan_path` (normally `thoughts/plans/<slug>.md` when `$ARGUMENTS` is not an existing plan path)
+- `thoughts/plans/<slug>.md`
 
 ## Inputs
 
@@ -25,35 +21,17 @@ Argument (`$ARGUMENTS`) is either:
 
 ## Output Contract
 
-When plan materialization is safe in this invocation, write exactly one file:
+Write exactly one file:
 
-- `plan_path` (normally `thoughts/plans/<slug>.md` when `$ARGUMENTS` is not an existing plan path)
-- If unresolved foundational decisions remain, still preserve the single-file contract by writing exactly one non-ready `research-ready` plan artifact at `plan_path` instead of pretending the work is `execution-ready`.
-- The written non-ready artifact must set `Status:` to `research-ready`, explicitly list the unresolved decisions, the exact next research action, and the condition for later promotion to `execution-ready`.
-- If a foundational decision needs new user intent before any safe plan can be written, ask exactly one targeted question and stop without writing `plan_path`.
+- `thoughts/plans/<slug>.md`
 
-Do not create `spec.md`, `tasks.md`, per-plan directories, or any non-plan file unless the user explicitly asks.
+Do not create `spec.md`, `tasks.md`, or per-plan directories unless the user explicitly asks.
 
-Completion condition for this command when a plan artifact can be written safely:
+Plan readiness rules:
 
-- Exactly one plan file at `plan_path` is written or updated.
-- No non-plan file is modified.
-- The final response reports the plan path and readiness state, then suggests follow-up work that matches that state without running anything.
-- Only suggest `/cmd:execute-plan <plan_path>` when the written plan is `execution-ready`.
-- For a written `research-ready` artifact, point the user to the exact next research action captured in the plan instead of suggesting execution.
-- Then stop and wait for a new user instruction.
-
-Blocking question behavior:
-
-- If a foundational decision needs new user intent, ask exactly one targeted question, explain why the plan is not yet safe to materialize, and do not write or partially rewrite `plan_path`.
-
-Forbidden transitions for this command:
-
-- Do not create a new execution todo list after the plan is complete.
-- Do not switch into build, run, or implementation mode.
-- Do not edit any file except `plan_path` unless the user explicitly broadens scope.
-- Do not run lint, tests, build, e2e, migrations, or other execution-oriented verification.
-- Do not invoke `/review:change`, `/cmd:execute-plan`, `/ralph:run`, or any other follow-up command from this command; only suggest them.
+- If the work is ready to execute without inventing missing semantics, write `Status: execution-ready`.
+- If foundational questions still remain but the next safe handoff is more research, write `Status: research-ready` and make the next research action explicit.
+- If a foundational decision needs new user intent before any safe plan can be written, ask exactly one targeted question and stop without writing the plan.
 
 Legacy bundles:
 
@@ -67,27 +45,11 @@ Legacy bundles:
 1. If `$ARGUMENTS` looks like a path to an existing `.md` file, treat it as `plan_path`.
 2. Otherwise derive `slug` from `$ARGUMENTS`.
    - Use lowercase, digits, and hyphens only.
-   - If multiple plausible slugs exist, ask the user exactly one targeted question, explain the slug ambiguity, and stop; use the answer on the next invocation.
+   - If multiple plausible slugs exist, ask once with `question` and use the user's choice.
 3. Set `plan_path` to `thoughts/plans/<slug>.md`.
-4. Ensure the parent directory for `plan_path` exists (create it if missing).
+4. Ensure `thoughts/plans/` exists (create it if missing).
 
-### 2) Re-establish Planning Context
-
-Before writing the plan:
-
-1. Read the repo root `AGENTS.md`.
-2. Read `thoughts/specs/product_intent.md` if the repo uses it.
-3. Read `thoughts/plans/AGENTS.md` only if it exists and the repo uses it for local planning overrides.
-4. Load the shared `planning-workflow` skill.
-5. Load the shared `product-principles` skill whenever the plan affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy. Use it to define the golden path, safe defaults, self-healing expectations, actionable error guidance, and a quick dissonance audit against repo guidance/tests.
-6. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
-   - Use `tdd-test-writer` when the phases will depend on tests-first delivery.
-   - When the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, perform an explicit dependency/library evaluation during planning by naming the official SDKs and well-maintained libraries considered, even if no dedicated repo skill covers that check.
-   - Use frontend, React/Next, Rust, MCP, browser, or other domain skills when the work clearly spans those domains.
-
-If required planning guidance is missing and the repo cannot be planned confidently without it, ask the user instead of guessing.
-
-### 3) Read Existing Plan (If Present)
+### 2) Read Existing Plan (If Present)
 
 If `plan_path` exists, read it fully.
 
@@ -104,101 +66,99 @@ Legacy migration support (read-only; do not delete legacy files):
 - If legacy tasks contain completed items, convert that state into coarse phase completion in `## Progress`.
   - Do not copy long checklists into the new plan.
 
-### 4) Validate Repo Reality
+### 3) Deep Research and Validation
 
 Validate key claims from the conversation by directly inspecting the codebase:
 
 - Locate the relevant files and existing patterns
 - Confirm APIs, data shapes, configuration, and constraints
 - Identify integration points and risks
-- Verify actual commands, targets, package names, and paths that the plan will reference
-- Identify the simplest supported workflow and which inputs should be optional because the system can infer or heal them
-- Audit repo guidance (`AGENTS.md`, product-intent docs, onboarding/install docs, config/status surfaces, and tests) for dissonance with that default-path contract
+- Verify commands, paths, targets, and package names that later `### Verify` steps will rely on
 
-Use `Glob`, `Grep`, and `Read` for targeted research. If broad discovery is still needed, continue with additional targeted passes yourself or delegate read-only planning research only through helpers that actually exist in the current runtime.
+Use the available repo exploration tools in this session for targeted research. Use an explore-style subagent only for broad searches.
 
-Do not run side-effecting commands while doing this validation.
+### 4) Choose the Correct Readiness State
 
-### 5) Choose readiness state before writing
+Before writing the plan, decide whether it is actually executable.
 
-Before writing `plan_path`, explicitly choose the correct readiness state.
+Treat these as foundational planning questions:
 
-- Treat unresolved contracts, migrations, rollout semantics, compatibility behavior, safety constraints, and other materially outcome-shaping unknowns as `low-confidence` foundational decisions.
-- Fail closed: do not mark the plan `execution-ready` while any foundational decision remains unresolved.
-- If repo evidence is insufficient and the decision needs user intent, ask the user before finalizing the plan and do not write or update `plan_path` until that decision is resolved.
-- If the gap is researchable without new user intent, continue with targeted planning research yourself or delegate read-only planning research only if it can still resolve the decision in this invocation before writing.
-- If research still remains the next handoff after that validation, write a non-ready `research-ready` plan artifact whose next handoff is that research.
-- Do not end `dev:plan` by delegating or suggesting follow-up research without writing `plan_path` when research is still the next handoff.
-- Never bury a low-confidence decision inside a later execution phase just to keep the plan moving.
-- Treat uncertainty about how the work should be chunked into bounded execution slices as a foundational planning problem, not something to defer into execution.
-- If you cannot mostly accurately estimate how much effort a phase involves from repo evidence, the planning is not deep enough yet.
+- missing contracts, migrations, rollout behavior, or compatibility behavior,
+- unresolved acceptance criteria or externally visible semantics,
+- missing verification commands or targets,
+- uncertainty about how the work should be chunked into bounded execution slices.
 
-### 6) Write `plan_path`
+Do not bury those unknowns in later phases just to keep the plan moving.
 
-Write (or update) `plan_path` by following the shared `planning-workflow` skill, the repo's `AGENTS.md`, and any explicit repo-local planning overrides.
+If you cannot mostly accurately estimate how much effort a phase involves from repo evidence, then the planning is not deep enough yet.
 
-Before any write or side-effecting action, verify it only updates `plan_path` or creates the missing parent directory needed for `plan_path`. If it would touch any other file or begin execution, do not do it under `dev:plan`.
+### 5) Write `plan_path`
 
-Complexity and completeness rules:
+Write (or update) `plan_path` with:
 
-- Keep simple local wiring or narrow refactor work `lightweight`; do not force heavyweight schema, protocol, or rollout sections when they do not improve confidence.
-- Require complete contracts and a `test coverage matrix` only for non-trivial, migration-heavy, compatibility-sensitive, or multi-surface work before calling the plan `execution-ready`.
-- For non-trivial ready plans, map acceptance criteria and BDD scenarios to intended test layers, planned suites or files, and `### Verify` commands strong enough to catch partial implementations.
-- Each phase must be a **bounded execution slice**: one coherent outcome, one primary verification story, limited enough coupling and affected surfaces that execution should usually finish without semantic replanning.
-- Break phases by effort, coupling, uncertainty, and verification breadth — not by work-type labels.
-- If a phase contains multiple independently verifiable outcomes, materially different verification stories, or broad repo rediscovery, split it during planning instead of relying on execution-time chunking.
+- Title
+- Status
+- Goal / Non-goals
+- Current State (Validated)
+- Proposed Approach
+- Acceptance Criteria (observable outcomes)
+- Phases (`## Phase 1: ...`, `## Phase 2: ...`, ...)
+  - Prose-first; do not create per-step checklists inside phases.
+  - Each phase MUST be a **bounded execution slice**:
+    - one coherent outcome,
+    - one primary verification story,
+    - limited enough coupling and affected surfaces that execution should usually finish without semantic replanning,
+    - small enough that an executor should not need to invent missing semantics or split it just to understand what to do.
+  - Break phases by effort, coupling, uncertainty, and verification breadth — not by work type labels.
+  - If a phase contains multiple independently verifiable outcomes, materially different verification stories, or broad repo rediscovery, split it during planning.
+  - Each phase MUST include:
+    - `### Tests first`
+    - `### End State`
+    - `### Work`
+    - `### Verify`
+- Verification Strategy
+  - Tests are supporting evidence, not the definition of correctness.
+  - Do not change product code merely to satisfy a failing test when acceptance criteria + observed behavior indicate correctness.
+- Resume Instructions (Agent)
+  - Read this document fully.
+  - Identify the first unchecked item in `## Progress`.
+  - Proceed autonomously phase-by-phase.
+  - Update `## Progress` only when a phase is complete; do not stop after updating progress.
+  - Same-scope re-chunking is allowed during execution only when it preserves scope, acceptance criteria, and locked decisions.
+  - Ask the user only for an unresolvable decision.
+- Progress
+  - A small checkbox list (4-10 items max).
+  - Stable IDs (`P1`, `P2`, ...) that correspond to phase headers.
+  - Checkboxes MUST appear only in `## Progress`.
+- Decisions / Deviations Log (append-only)
+- Plan Changelog (append-only; add a new entry when regenerating)
 
-Non-negotiable compatibility requirements:
+Keep the plan faithful to the validated source scope and repo evidence. Include only work that is critical to achieving the stated goal and verifying it.
+If the requested scope is vague, narrow it by sharpening Goal / Non-goals or other scoped language instead of widening the phase list.
+Do not add adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence unless validated repo evidence shows they are necessary for success.
 
-- Write exactly one plan file at `plan_path`.
-- Preserve prior progress and append-only logs when regenerating.
-- `## Progress` contains the only checkboxes and uses stable IDs (`P1`, `P2`, ...).
-- Each phase includes `### End State`, `### Tests first`, `### Expected files`, `### Work`, and `### Verify`.
-- `Resume Instructions (Agent)` should explicitly allow same-scope re-chunking during execution only when it preserves scope, acceptance criteria, and locked decisions.
-- Ready plans do not leave unresolved `Open Questions` or equivalent unresolved-decision sections.
-- `### Verify` steps are copy/paste ready and match actual repo reality.
-- The plan is resumable by another agent without inventing missing semantics.
-- When the change introduces or replaces non-trivial functionality, the plan includes a dedicated dependency/library evaluation section or equivalent explicit checkpoint that names the official SDKs and well-maintained libraries considered, records the chosen option and why it is acceptable, or explains why custom implementation is justified.
-- When no dependency/library scan is needed, the plan still includes a brief statement explaining why the work is trivial or purely local wiring.
+`Open Questions / Decision Points` guidance:
 
-Before considering the plan complete:
+- Include this section only when `Status: research-ready`.
+- Do not leave unresolved `Open Questions / Decision Points` in an `execution-ready` plan.
+- A `research-ready` plan must state the exact next research action and the condition for later promotion to `execution-ready`.
 
-- Use product intent if the repo requires it, and make the alignment explicit in the plan.
-- For product-facing work, make the default workflow, inferred defaults, self-healing expectations, actionable error guidance, and any repo-guidance/test updates explicit in the plan.
-- Resolve every important question before finalizing an `execution-ready` plan.
-- If the codebase or docs answer a question with high confidence, answer it directly in the plan.
-- If confidence is not high enough, ask the user when intent is required; otherwise either close the gap with additional targeted planning research in this invocation, delegate read-only planning research that can still close it now, or produce a non-ready `research-ready` artifact instead of forcing an `execution-ready` handoff.
-- Use `tdd-test-writer` when available to improve the `### Tests first` sections.
-- Make `### Tests first` strong enough to catch partial or misleading implementations by covering happy path, guardrail/failure behavior, counterexamples or ambiguity cases, and boundary/scale or parity cases when applicable.
-- Lock canonical contracts, payloads, schemas, or evidence sources in the plan before phases that depend on them.
-- Plans that require dependency/library evaluation are not ready until that checkpoint is documented; a missing official-SDK/library decision keeps the work in a non-ready state rather than silently treating it as `execution-ready`.
+Keep scope faithful to the user's stated intent and the repository's guardrails.
 
-### 7) Consistency Pass
+### 6) Consistency Pass
 
 Before finishing:
 
-- The chosen readiness state is explicit and internally consistent.
-- A research-first handoff uses `Status: research-ready` so the written artifact cannot be mistaken for an `execution-ready` plan.
-- The plan structure follows the shared planning workflow and any repo-local planning overrides.
 - Every acceptance criterion has at least one phase `### Verify` item that provides evidence.
 - Every progress checkbox corresponds to a phase header.
+- Every phase includes `### Tests first`, `### End State`, `### Work`, and `### Verify`.
 - Phase ordering and naming is consistent across phases, progress, and acceptance criteria.
-- Every phase has a `### Tests first` section.
-- The `### Tests first` sections describe user-visible behavioral outcomes, not only implementation mechanics.
-- BDD scenarios or equivalent `Given/When/Then` coverage are explicit when required by repo guidance.
-- Multi-surface phases make parity expectations explicit in `### Tests first`, `### Work`, or `### Expected files`.
-- `### Verify` commands are copy/paste ready and match current repo/package/target names.
-- There are no unresolved foundational decisions hiding inside later execution phases.
-- There are no unresolved decision points left in an `execution-ready` plan; a `research-ready` artifact keeps them explicit as unresolved next-handoff items.
 - Each unchecked phase still looks like one bounded execution slice rather than a bundle of separate deliverables.
-- If non-trivial build-vs-buy choices are in scope, the dependency/library evaluation checkpoint is present; otherwise the plan briefly states why no scan was needed.
-- No non-plan file was modified.
+- If `Status: execution-ready`, there are no unresolved `Open Questions / Decision Points`.
 
-## Next Steps For The User
-
-These are suggestions for the user to run after this command finishes. Do not run them as part of `dev:plan`.
+## Next Steps
 
 - If the written plan is `execution-ready`, suggest:
-  - `/review:change <plan_path>`
-  - `/cmd:execute-plan <plan_path>`
-- If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/cmd:execute-plan`.
+  - `/review:change thoughts/plans/<slug>.md`
+  - `/cmd:execute-plan thoughts/plans/<slug>.md`
+- If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in it instead of executing.

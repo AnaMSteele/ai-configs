@@ -6,6 +6,10 @@ subtask: true
 model: openai/gpt-5.4
 ---
 
+## Execution Mode
+- This prompt already runs inside the `reviewer-gpt5.4` subagent selected by frontmatter.
+- Perform the review directly in this session.
+- Do not try to spawn another `reviewer-gpt5.4` task just to satisfy this prompt.
 Your reviewer name is GPT5.4 
 
 Use this comment format:
@@ -20,7 +24,7 @@ To respond to other reviewers:
 
 # Change Review (Single Plan File)
 
-Review the provided change plan as a cohesive unit. Your goal is to ensure the plan is solid and executable without scope creep or error.
+Review the provided change plan as a cohesive unit. Your goal is to ensure the plan is solid, executable, and faithful to the source plan's stated goal, non-goals, acceptance criteria, and validated scope.
 
 Documents to review: $ARGUMENTS
 
@@ -34,6 +38,14 @@ This command is review-only.
 - Do not run follow-up commands (including `/review:change-integrate`).
 - After adding comments and providing the summary, stop.
 
+## Materiality Filter
+
+Review against the plan's stated goal, non-goals, acceptance criteria, and validated source scope.
+
+- Flag only blockers, material risks, or missing decisions required to execute that stated scope correctly.
+- Flag scope gaps when the plan's own stated scope requires missing work.
+- Do not leave comments for nice-to-haves, opportunistic cleanup, adjacent surfaces outside the stated scope, or extra detail that would not change execution readiness.
+- If an issue would not change readiness, leave it out.
 
 ## Process
 
@@ -64,20 +76,19 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Existing patterns and conventions
 - Feasibility and integration constraints
 - Correct file paths, APIs, and data structures referenced by the plan
-- Alignment with any available `PRODUCT_INTENT.md` or equivalent product-intent documents in the repository
 
-Use the Task tool with `subagent_type=Explore` to efficiently gather context.
+Use the available repo exploration tools in this session to gather context.
 
-### 2) Review Specification (Critical Spec Review)
+### 2) Review Specification (Blocker-Oriented Spec Review)
 
-Read the plan. Apply a critical mindset. Don't validate; look for problems.
+Read the plan with a blocker-oriented mindset. Do not hunt for every possible improvement. Comment only when something would block, materially derail, or wrongly expand execution of the stated scope.
 
 Look for:
 
-- Gaps: missing requirements or edge cases.
-- Risks: security, performance, or integration issues.
-- Ambiguity: unclear success criteria or technical decisions.
-- Technical debt: unrealistic assumptions or poor architectural choices.
+- Gaps: missing required work or edge cases that would break the stated goal or acceptance criteria.
+- Risks: material security, correctness, performance, or integration issues that threaten readiness.
+- Ambiguity: missing success criteria or technical decisions required to execute the plan as written.
+- Scope drift: work that expands beyond the stated goal, non-goals, or validated source scope.
 
 Add comments:
 
@@ -91,8 +102,8 @@ Verify the plan is runnable and resumable:
 
 - Phases are present (`## Phase N: ...`) and ordered.
 - Each phase has:
+  - `### Tests first` (behavioral evidence strong enough to catch partial implementation)
   - `### End State` (observable outcomes)
-  - `### Tests first` (behavioral tests in plain terms; if TDD is not practical, the phase explains why)
   - `### Work` (high-level guidance)
   - `### Verify` (explicit commands and/or manual checks)
 - `## Progress` exists, is coarse (phase-level), and uses stable IDs.
@@ -100,21 +111,13 @@ Verify the plan is runnable and resumable:
 - Only `## Progress` contains checkboxes.
 - `Resume Instructions (Agent)` avoids stop points and enables continuous execution.
 - `## Decisions / Deviations Log` exists.
-- The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
-- The plan reflects the expectation that important questions are answered before the plan is considered ready.
+- If the plan is execution-ready, it does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 - Each unchecked phase is still a **bounded execution slice**:
   - one coherent outcome,
   - one primary verification story,
   - limited enough coupling and affected surfaces for one safe execution pass,
   - little enough remaining discovery that execution should not need semantic replanning.
 - If a phase would likely require same-scope subdivision during execution just to finish safely, treat that as a plan defect to flag now.
-- When the plan includes non-trivial build-vs-buy choices (for example protocol handling, parsing, transport, wrappers, infrastructure, or integrations), verify it includes an explicit dependency/library evaluation checkpoint unless the plan already documents the decision clearly or the work is trivial/local wiring.
-
-Also review whether the `### Tests first` sections:
-
-- describe what a user, operator, or agent will be able to do after the phase,
-- align with the intended product behavior,
-- are strong enough to catch partial or misleading implementation.
 
 ### 4) Cross-Verification
 
@@ -123,10 +126,9 @@ Ensure internal consistency:
 - Acceptance criteria have corresponding verification steps.
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
-- The plan aligns with the repository's long-range product intent when such intent is documented.
 - The plan does not rely on executors making outcome-shaping chunking or design decisions later.
 - Phase sizing matches likely effort, coupling, and verification breadth rather than bundling multiple independently verifiable outcomes behind one checkbox.
-- If that checkpoint or decision evidence is missing, or the plan proposes custom implementation without evidence that official SDKs / well-maintained libraries were evaluated, treat it as a blocker and add a blocking review comment. Do not force extra ceremony when the decision is already justified or no dependency scan is warranted.
+- Optional adjacent work is not promoted into required scope without support from the plan's stated scope.
 
 ## Comment Guidelines
 
@@ -149,9 +151,9 @@ Usage:
 
 After adding comments to the plan, provide a single summary:
 
-- Plan status: solid or needs rework?
-- Critical issues: list the most important blockers.
-- Recommendation: "Proceed with caution" or "Major revision needed".
+- Plan status: ready or needs rework?
+- Material blockers: list only blockers, material risks, or required missing decisions.
+- Recommendation: "Ready to execute" or "Revision required before execution".
 
 ---
 
