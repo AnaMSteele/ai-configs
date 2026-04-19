@@ -11,7 +11,22 @@ Inputs: $ARGUMENTS
 
 ## Core Rule
 
-The plan is the authority. Integrate feedback into the plan while preserving progress state.
+The plan is the authority. Integrate only material feedback into the plan while preserving progress state.
+
+## Materiality Filter
+
+Treat review comments as required only when they identify a blocker, material risk, incorrect assumption, or missing decision/work needed to execute the plan's stated goal, non-goals, acceptance criteria, or validated source scope.
+
+- Do not expand required scope to satisfy optional comments, opportunistic cleanup, adjacent surfaces, or extra detail that would not change readiness.
+- If optional feedback is worth retaining, record it as explicit non-goal or deferred follow-up context instead of turning it into required plan work.
+
+## Tooling Discipline
+
+- Use `edit` for targeted plan mutations.
+- Use `write` only for an intentional whole-file rewrite after reading the full plan, and only when `edit` is genuinely impractical.
+- Treat `bash` as read-only in this workflow.
+- Do not modify the plan via mutation scripts (`python`, `python3`, `node`, `perl`, `ruby`, `sed -i`, `awk`, heredoc rewrites, or similar).
+- If an `edit` call fails, reread the relevant span and retry with a more specific `oldText`; do not fall back to a mutation script.
 
 ## Process
 
@@ -58,24 +73,37 @@ If no inline review comments exist, inform the user and abort (nothing to integr
 
 For any feedback that depends on feasibility or existing patterns, explore the codebase to resolve it.
 
-Use the Task tool with `subagent_type=Explore`.
+Use the available repo exploration tools in this session.
 
 ### 4) Integrate Updates
 
-- Apply edits directly to the plan.
+- Classify each review comment as material or optional before editing the plan.
+- Apply edits directly to the plan with `edit` unless a deliberate full-file rewrite is required.
 - Remove each resolved inline review comment.
-- If feedback implies adding or changing requirements, update:
+- Integrate only material findings that affect readiness for the stated scope.
+- If feedback implies adding or changing requirements, do so only when the plan's stated goal, non-goals, acceptance criteria, or validated source scope require it. Then update:
   - Goal/Non-goals / Acceptance Criteria
-  - The impacted phase(s) `### End State` / `### Work` / `### Verify`
+  - The impacted phase(s) `### Tests first` / `### End State` / `### Work` / `### Verify`
+  - `## Progress` if a review finding requires splitting an oversized unchecked phase into smaller same-scope slices
   - `Resume Instructions (Agent)` if needed
+- Preserve scope when integrating chunking feedback: reviewers may tighten or split the plan, but must not expand the work.
+- For optional or nice-to-have comments, remove the inline comment without expanding plan scope. If preserving the note helps later work, record it as a concise non-goal or deferred follow-up note instead of required work.
 - Append a new entry to `## Plan Changelog` describing what changed.
 
 ### 5) Final Validation
 
 - No `[REVIEW:...]` comments remain.
 - `## Progress` still corresponds to the phase headers.
+- Each phase still includes `### Tests first`, `### End State`, `### Work`, and `### Verify`.
 - Each acceptance criterion has at least one verification step.
+- Optional feedback was not converted into new required scope.
 
+### 6) Overall Plan State
+
+- Identify only open questions or decisions that materially affect readiness for the stated scope.
+- Provide only low-confidence decisions that would change execution readiness, not optional idea backlog.
+- If you have specific issues you know, with high confidence that you need input from the user on, then ask those using the question tool.
+- If you've asked questions with the question tool, incorporate those answers into the final plan and re-assess whether there are more open questions.
 ---
 
 ## Next Step

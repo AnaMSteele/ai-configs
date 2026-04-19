@@ -27,6 +27,12 @@ Write exactly one file:
 
 Do not create `spec.md`, `tasks.md`, or per-plan directories unless the user explicitly asks.
 
+Plan readiness rules:
+
+- If the work is ready to execute without inventing missing semantics, write `Status: execution-ready`.
+- If foundational questions still remain but the next safe handoff is more research, write `Status: research-ready` and make the next research action explicit.
+- If a foundational decision needs new user intent before any safe plan can be written, ask exactly one targeted question and stop without writing the plan.
+
 Legacy bundles:
 
 - If a legacy bundle exists at `thoughts/plans/<slug>/spec.md` and/or `thoughts/plans/<slug>/tasks.md`, you may read it for migration.
@@ -67,26 +73,49 @@ Validate key claims from the conversation by directly inspecting the codebase:
 - Locate the relevant files and existing patterns
 - Confirm APIs, data shapes, configuration, and constraints
 - Identify integration points and risks
-- Load the shared `product-principles` skill when the work affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy
-- Identify the simplest supported workflow and which inputs should be optional because the system can infer or heal them
-- Audit `AGENTS.md`, product-intent docs, onboarding/install docs, config/status surfaces, and tests for dissonance with that default-path contract
+- Verify commands, paths, targets, and package names that later `### Verify` steps will rely on
 
 Use `Glob`, `Grep`, and `Read` for targeted research. Use `Task(subagent_type="explore")` only for broad searches.
 
-### 4) Write `plan_path`
+### 4) Choose the Correct Readiness State
+
+Before writing the plan, decide whether it is actually executable.
+
+Treat these as foundational planning questions:
+
+- missing contracts, migrations, rollout behavior, or compatibility behavior,
+- unresolved acceptance criteria or externally visible semantics,
+- missing verification commands or targets,
+- uncertainty about how the work should be chunked into bounded execution slices.
+
+Do not bury those unknowns in later phases just to keep the plan moving.
+
+If you cannot mostly accurately estimate how much effort a phase involves from repo evidence, then the planning is not deep enough yet.
+
+### 5) Write `plan_path`
 
 Write (or update) `plan_path` with:
 
+- Title
+- Status
 - Goal / Non-goals
 - Current State (Validated)
 - Proposed Approach
+- Acceptance Criteria (observable outcomes)
 - Phases (`## Phase 1: ...`, `## Phase 2: ...`, ...)
   - Prose-first; do not create per-step checklists inside phases.
+  - Each phase MUST be a **bounded execution slice**:
+    - one coherent outcome,
+    - one primary verification story,
+    - limited enough coupling and affected surfaces that execution should usually finish without semantic replanning,
+    - small enough that an executor should not need to invent missing semantics or split it just to understand what to do.
+  - Break phases by effort, coupling, uncertainty, and verification breadth — not by work type labels.
+  - If a phase contains multiple independently verifiable outcomes, materially different verification stories, or broad repo rediscovery, split it during planning.
   - Each phase MUST include:
-    - `### End State` (observable outcomes)
-    - `### Work` (high-level guidance)
-    - `### Verify` (explicit commands and/or manual checks)
-- Acceptance Criteria (observable outcomes)
+    - `### Tests first`
+    - `### End State`
+    - `### Work`
+    - `### Verify`
 - Verification Strategy
   - Tests are supporting evidence, not the definition of correctness.
   - Do not change product code merely to satisfy a failing test when acceptance criteria + observed behavior indicate correctness.
@@ -95,30 +124,41 @@ Write (or update) `plan_path` with:
   - Identify the first unchecked item in `## Progress`.
   - Proceed autonomously phase-by-phase.
   - Update `## Progress` only when a phase is complete; do not stop after updating progress.
+  - Same-scope re-chunking is allowed during execution only when it preserves scope, acceptance criteria, and locked decisions.
   - Ask the user only for an unresolvable decision.
 - Progress
   - A small checkbox list (4-10 items max).
   - Stable IDs (`P1`, `P2`, ...) that correspond to phase headers.
   - Checkboxes MUST appear only in `## Progress`.
 - Decisions / Deviations Log (append-only)
-- Open Questions / Decision Points
 - Plan Changelog (append-only; add a new entry when regenerating)
 
-Keep scope flexible: there are no special restrictions beyond the repository's existing guardrails and the user's stated intent.
+Keep the plan faithful to the validated source scope and repo evidence. Include only work that is critical to achieving the stated goal and verifying it.
+If the requested scope is vague, narrow it by sharpening Goal / Non-goals or other scoped language instead of widening the phase list.
+Do not add adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence unless validated repo evidence shows they are necessary for success.
 
-For product-facing work, make the plan explicit about the default workflow, inferred defaults, self-healing behavior, actionable error guidance, and any repo-doc/test updates required to stay aligned.
+`Open Questions / Decision Points` guidance:
 
-### 5) Consistency Pass
+- Include this section only when `Status: research-ready`.
+- Do not leave unresolved `Open Questions / Decision Points` in an `execution-ready` plan.
+- A `research-ready` plan must state the exact next research action and the condition for later promotion to `execution-ready`.
+
+Keep scope faithful to the user's stated intent and the repository's guardrails.
+
+### 6) Consistency Pass
 
 Before finishing:
 
 - Every acceptance criterion has at least one phase `### Verify` item that provides evidence.
 - Every progress checkbox corresponds to a phase header.
+- Every phase includes `### Tests first`, `### End State`, `### Work`, and `### Verify`.
 - Phase ordering and naming is consistent across phases, progress, and acceptance criteria.
+- Each unchecked phase still looks like one bounded execution slice rather than a bundle of separate deliverables.
+- If `Status: execution-ready`, there are no unresolved `Open Questions / Decision Points`.
 
 ## Next Steps
 
-- Review the plan:
+- If the written plan is `execution-ready`, suggest:
   - `/review:change thoughts/plans/<slug>.md`
-- After the reviewed plan is ready to continue, use the canonical handoff:
   - `/cmd:execute-plan thoughts/plans/<slug>.md`
+- If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in it instead of executing.

@@ -16,7 +16,7 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 - Accept an optional target suffix: `--target dev:run` or `--target ralph:run`.
 - Present exactly two execution choices: `/dev:run` and `/ralph:run`.
 - Preserve the same normalized plan argument when dispatching.
-- Do not promise Pi-specific context reset behavior on this surface.
+- Refuse handoff when the plan still contains obvious review or readiness blockers.
 
 ## Instructions
 
@@ -59,18 +59,33 @@ Do not infer “the current plan” from conversation state.
 
 Do not rewrite a slug into a path for dispatch. Forward the same normalized `PLAN_DISPATCH_ARGUMENT` that the user supplied.
 
-### 3) Choose the Target Command
+### 3) Validate Handoff Readiness
+
+Inspect `PLAN_PATH` for obvious blockers before offering execution.
+
+Stop and tell the user what to fix first if any of these are true:
+
+- unresolved inline review comments remain (for example `[REVIEW:...]`),
+- the plan declares `Status: research-ready` or another explicitly non-ready state,
+- `## Progress` is missing,
+- `Resume Instructions (Agent)` is missing,
+- an active phase is missing `### Tests first`, `### End State`, `### Work`, or `### Verify`,
+- unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections remain in a plan that is otherwise being handed to execution.
+
+This validation is intentionally lightweight: it should catch obvious handoff mistakes, not perform a second full review.
+
+### 4) Choose the Target Command
 
 Determine `TARGET_COMMAND`:
 
 - If `TARGET_OVERRIDE` is set, honor it without asking a follow-up question.
 - Otherwise ask exactly one targeted question with only these two options:
-  1. `/ralph:run <PLAN_DISPATCH_ARGUMENT>` — quality-gated, review-loop execution for the reviewed plan.
-  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct single-agent execution with resumable plan progress tracking.
+  1. `/ralph:run <PLAN_DISPATCH_ARGUMENT>` — quality-gated execution with repeated review/fix loops after each phase.
+  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct high-reasoning execution with one `quality-reviewer` pass after each phase.
 
 Do not offer a planning pass here. Do not offer a third option.
 
-### 4) Dispatch
+### 5) Dispatch
 
 Run exactly one of the following and then stop:
 

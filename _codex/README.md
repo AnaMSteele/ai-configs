@@ -24,3 +24,20 @@ Re-run `install.sh` to refresh an existing installation.
 - Shared helper scripts are maintained once in the repo-level `scripts/` directory and copied into `~/.codex/scripts` by the installer.
 - Prompt files are mirrored to `~/.codex/prompts` because Codex discovers global prompts there.
 - If you already have `~/.codex/config.toml`, merge new settings from `_codex/config.toml` instead of overwriting blindly.
+
+## Canonical reviewed-plan workflow
+
+Codex mirrors the core reviewed-plan flow used in Pi:
+
+```text
+/dev:plan <plan>
+/dev:pm-review <plan> plan        # optional reshaping pass
+/review:plan <plan>
+/review:change-integrate <plan>
+/cmd:execute-plan <plan>
+```
+
+Execution handoff targets:
+
+- `/dev:run <plan>`
+- `/ralph:run <plan>`
