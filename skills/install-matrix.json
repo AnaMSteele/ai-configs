@@ -83,7 +83,7 @@
         "opencode",
         "pi"
       ],
-      "canonicalSource": "skills/ccore",
+      "canonicalSource": "skills/ccore_DONOTUSE",
       "legacySources": [
         "_opencode/skills/ccore"
       ],

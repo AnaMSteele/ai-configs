@@ -242,6 +242,12 @@ assert_shared_skill_install_state() {
   assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"source": "skills/linear"' || return 1
   assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"managed": true' || return 1
 
+  [[ -f "$home/.agents/skills/adn-dev-wf/SKILL.md" ]] || return 1
+  [[ -f "$home/.agents/skills/adn-dev-wf/.ai-configs-managed.json" ]] || return 1
+  assert_file_contains "$home/.agents/skills/adn-dev-wf/.ai-configs-managed.json" '"repo": "ai-configs"' || return 1
+  assert_file_contains "$home/.agents/skills/adn-dev-wf/.ai-configs-managed.json" '"source": "skills/adn-dev-wf"' || return 1
+  assert_file_contains "$home/.agents/skills/adn-dev-wf/.ai-configs-managed.json" '"managed": true' || return 1
+
   [[ -f "$home/.agents/skills/algorithmic-art/SKILL.md" ]] || return 1
   assert_file_contains "$home/.agents/skills/algorithmic-art/SKILL.md" 'external package=anthropics/skills skill=algorithmic-art' || return 1
   [[ -f "$home/.agents/skills/algorithmic-art/.ai-configs-managed.json" ]] || return 1
@@ -265,6 +271,8 @@ assert_shared_skill_install_state() {
 
   assert_symlink_target "$home/.claude/skills/linear" "$home/.agents/skills/linear" || return 1
   assert_symlink_target "$home/.config/opencode/skills/linear" "$home/.agents/skills/linear" || return 1
+  assert_symlink_target "$home/.claude/skills/adn-dev-wf" "$home/.agents/skills/adn-dev-wf" || return 1
+  assert_symlink_target "$home/.config/opencode/skills/adn-dev-wf" "$home/.agents/skills/adn-dev-wf" || return 1
   assert_symlink_target "$home/.claude/skills/algorithmic-art" "$home/.agents/skills/algorithmic-art" || return 1
   assert_symlink_target "$home/.config/opencode/skills/algorithmic-art" "$home/.agents/skills/algorithmic-art" || return 1
   assert_symlink_target "$home/.claude/skills/design-skill" "$home/.agents/skills/design-skill" || return 1
