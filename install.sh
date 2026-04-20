@@ -38,7 +38,7 @@ print_usage() {
     echo ""
     echo "Options:"
     echo "  --claude    Install Claude Code configuration and refresh shared skills for Claude"
-    echo "  --codex     Install Codex configuration only"
+    echo "  --codex     Install Codex configuration and refresh shared skills for Codex"
     echo "  --gemini    Install Gemini CLI configuration only"
     echo "  --opencode  Install OpenCode configuration and refresh shared skills for OpenCode"
     echo "  --pi        Install Pi prompt templates, subagents, and extensions, then refresh shared skills"
@@ -56,6 +56,7 @@ print_usage() {
     echo "Notes:"
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
     echo "  - Shared installable skills are declared in skills/install-matrix.json and synced into ~/.agents/skills"
+    echo "  - Codex discovers shared skills directly from ~/.agents/skills"
     echo "  - Claude/OpenCode consume compatible shared skills via per-skill links into ~/.agents/skills"
     echo "  - When using --omp or --all, commands, agents, and repo-managed extensions are installed to ~/.omp/agent"
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
@@ -2126,6 +2127,8 @@ case "$INSTALL_MODE" in
         ;;
     --codex)
         install_codex "$TARGET_DIR"
+        echo ""
+        sync_shared_skills
         ;;
     --gemini)
         install_gemini "$TARGET_DIR"

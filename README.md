@@ -72,6 +72,7 @@ bash ~/ai-configs/install.sh --all ~
 - installs Gemini config into `.gemini/`
 - installs project Codex config into `.codex/`
 - mirrors Codex prompts into `~/.codex/prompts`
+- refreshes Codex-discoverable shared skills in `~/.agents/skills`
 - mirrors shared helper scripts into the runtime locations that need them
 - installs OMP to `~/.omp/agent/`
 - copies repo-managed OMP extensions into `~/.omp/agent/extensions/`
@@ -127,7 +128,7 @@ Shared skills install to:
 ~/.agents/skills/
 ```
 
-Consumer-specific compatibility links are created where needed, but `~/.agents/skills` is the canonical shared runtime location. Repo-owned payloads come from `skills/`; package-backed payloads are fetched per `skills/install-matrix.json`.
+Consumer-specific compatibility links are created where needed, but `~/.agents/skills` is the canonical shared runtime location. Codex discovers user skills directly from this location. Repo-owned payloads come from `skills/`; package-backed payloads are fetched per `skills/install-matrix.json`.
 
 `ltui` lives under `tools/ltui/` and can be installed with:
 

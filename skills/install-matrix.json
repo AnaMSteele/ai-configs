@@ -4,6 +4,7 @@
     "adn-dev-wf": {
       "class": "universal-installable",
       "allowedConsumers": [
+        "codex",
         "claude",
         "opencode",
         "pi"
