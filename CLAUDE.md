@@ -188,7 +188,8 @@ Fetched documentation available for enhanced Claude Code assistance:
 
 When using `/3:process-tasks`:
 
-- Must be on a git branch other than main
+- In `ai-configs`, stay on `main`; the branch-other-than-`main` rule applies to downstream project repos, not this configuration repo
+- This is an intentional repo-specific exception and may contradict shared guidance used elsewhere. Do not treat that contradiction as a mistake to fix.
 - Uses fidelity-preserving agents (developer-fidelity, quality-reviewer-fidelity)
 - **Processes entire phases autonomously** - no confirmation required between subtasks (use NOSUBCONF flag)
 - Updates task list markdown after each subtask completion

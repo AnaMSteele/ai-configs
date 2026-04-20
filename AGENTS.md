@@ -76,7 +76,8 @@ Many of the Codex prompts in this repo assume that application repositories defi
 
 ### Execution
 
-- Prefer working on a branch for larger or riskier changes, but committing directly to `main` is acceptable for small, low-risk updates in this repo.
+- In this repo, operate directly on `main`; do not create feature branches or worktrees unless the user explicitly asks for them.
+- This is an intentional repo-specific exception to the usual branch-first guidance used in many other repos. Do not "correct" this back to a branch workflow unless the user explicitly asks to change the protocol.
 - Run the repository’s primary test command(s) before committing any change that touches behavior, plus any additional checks (lint, build, etc.) defined in the project’s AGENTS.md or TESTING.md.
 - For BDD/TDD phase plans, keep the review/fix loop running until the latest review reports `No issues found.` or only explicitly logged low-risk deferred items remain. Do not advance phases with unresolved substantive issues.
 - Validate planned verification commands against real repo/package/target names before execution; correct obvious drift in the plan immediately instead of carrying stale commands forward.
@@ -103,8 +104,9 @@ These rules apply to fidelity-oriented workflows (PRDs/specs → tasks → imple
 ### Execution
 
 - **Branches**
-  - Branches are recommended for larger changes, but commits directly to `main` are allowed in this repo.
-  - If using a branch, naming convention: `TODO` (e.g., `feature/<short-summary>`, `issue/<ticket-id>`).
+  - In this repo, work directly on `main` by default.
+  - Do not create feature branches or worktrees for normal ai-configs changes unless the user explicitly requests that workflow.
+  - This is intentionally contradictory to branch-first guidance you may see in shared/global instructions. For `ai-configs`, the repo rule wins: stay on `main` unless the user explicitly asks otherwise.
 
 - **Testing & Validation**
   - Primary test command(s): `TODO` (e.g., `npm test`, `pytest`, `cargo test`).
