@@ -1,6 +1,6 @@
 ---
 name: adn-dev-wf
-description: Canonical end-to-end reviewed-plan development workflow for this repo. Use when the user wants the standard process from a feature request, issue, or existing plan: create or update the single-file plan, optionally reshape it against product intent, run blocker-only inline plan review, integrate the review comments, execute directly phase-by-phase with one post-phase quality review, rerun bounded implementation-stage PM loops, and leave the branch validation-complete.
+description: "Canonical end-to-end reviewed-plan development workflow for this repo. Use when the user wants the standard process from a feature request, issue, or existing plan: create or update the single-file plan, optionally reshape it against product intent, run blocker-only inline plan review, integrate the review comments, execute directly phase-by-phase with one post-phase quality review, rerun bounded implementation-stage PM loops, and leave the branch validation-complete."
 ---
 
 # ADN Dev Workflow
