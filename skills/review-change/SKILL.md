@@ -122,4 +122,4 @@ If issues found, offer to:
 Pairs with:
 - `/skill:review-change-integrate` to apply fixes
 - Your preferred git workflow after fixes
-- Part of `ralph:run` autopilot workflow
+- Can be used after `adn-dev-wf` or as a standalone code-review workflow

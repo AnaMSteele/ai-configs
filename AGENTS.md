@@ -182,13 +182,15 @@ The `_pi/` directory provides Pi prompt templates, subagents, and extensions. Re
 
 Pi now supports both:
 - direct prompt-template commands like `/cmd:debug`, `/dev:plan`, `/review:change`
-- skill commands like `/skill:ralph-run`
+- skill commands like `/skill:adn-dev-wf`
 
 ```bash
-# Plan execution (quality-gated)
-/skill:ralph-run <plan-slug>           # Execute with developer+reviewer loop
-/skill:ralph-run-simple <plan-slug>    # Single-pass execution
-/skill:dev-plan "feature-name"         # Materialize execution plan
+# Canonical reviewed-plan workflow
+/skill:adn-dev-wf <task | plan-slug | thoughts/plans/<plan>.md>
+
+# Planning-only / direct execution-only escape hatches
+/skill:dev-plan "feature-name"
+/dev:run thoughts/plans/<plan>.md
 
 # Git & Linear
 /skill:cmd-start-linear-issue-branch <ISSUE_KEY>
@@ -197,8 +199,6 @@ Pi now supports both:
 # Development
 /skill:cmd-research "how does X work"
 /skill:cmd-debug "issue description"
-/dev:pm-review thoughts/plans/<plan>.md
-/review:plan thoughts/plans/<plan>.md
 
 # Context
 /skill:cmd-create-handoff "pausing work"
@@ -208,13 +208,10 @@ Pi now supports both:
 See `_pi/README.md` for complete documentation.
 
 Expected Pi reviewed-plan flow in this repo:
-- `/dev:plan <plan>`
-- optional `/dev:pm-review <plan> plan` to reshape the plan against product intent and stage fit before execution
-- `/review:plan <plan>`
-- `/review:change-integrate <plan>`
-- optional `/review:plan-adversarial <plan>`
-- optional `/dev:pm-review <plan> implementation` after execution to reshape any missing completion work
-- `/cmd:execute-plan <plan>` -> `/dev:run <plan>` or `/skill:ralph-run <plan>`
+- `/skill:adn-dev-wf <task | plan>` is the canonical single-entry workflow
+- It internally owns plan refresh, blocker-only review, review integration, direct execution, and bounded implementation-stage PM follow-up
+- `/skill:dev-plan <task>` remains available for planning-only work
+- `/dev:run <plan>` remains available when you already have an execution-ready reviewed plan and want execution only
 
 `/review:change-claude-code` remains an explicit opt-in review command, not a hidden fallback inside plan mode or execution.
 
@@ -279,8 +276,9 @@ This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-s
 - `/skill:cmd-resume-handoff` — Resume from handoff
 
 **Reviews:**
-- `/skill:review-change` — Review changes against plan
-- `/skill:review-change-integrate` — Integrate review feedback
+- `/skill:adn-dev-wf` — Canonical reviewed-plan development workflow
+- `/skill:review-change` — Review code changes against plan
+- `/skill:review-change-integrate` — Integrate code-review feedback
 
 ### Configuration
 

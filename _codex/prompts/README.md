@@ -37,8 +37,8 @@ This directory contains a comprehensive set of commands that support a complete 
 16. **`cmd:start-linear-issue-branch.md`** - Start a Linear issue on a new branch (no worktree) and draft a first-pass plan
 17. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
 
-### Autopilot Loop Commands
-18. **`ralph:run.md`** - Execute a plan with a phase-level quality gate loop
+### Workflow Skills
+18. **`adn-dev-wf`** - Canonical reviewed-plan workflow skill that replaces the retired quality-gated execution path
 
 ### Codex Compatibility Notes
 - Codex prompts intentionally include only OpenAI-compatible model commands.
@@ -187,10 +187,10 @@ All commands use consistent:
 - Creates/switches branch from a chosen base without creating a worktree
 - Fetches issue metadata and drafts a first-pass plan under `thoughts/plans/`
 
-**`/ralph:run`**:
-- Execute plan phases continuously with a quality gate loop
-- Alternate implementation and quality review until zero issues remain per phase
-- Update `## Progress` and decisions/deviations logs as phases complete
+**`/skill:adn-dev-wf`**:
+- Continue the canonical reviewed-plan workflow from a task request or an existing plan
+- Create or reshape the plan as needed, integrate review comments, then execute directly
+- Use `quality-reviewer` once per phase and keep `## Progress` truthful
 
 ## Fidelity-Preserving Agents
 
@@ -237,7 +237,7 @@ commands/
 ├── cmd:start-linear-issue.md
 ├── cmd:start-linear-issue-branch.md
 ├── cmd:review-pr-comments.md
-├── ralph:run.md
+├── cmd:execute-plan.md
 └── _lib/ (helper scripts)
 ```
 
@@ -279,7 +279,7 @@ Commands use colon-delimited namespacing:
 - `test:` - Test orchestration commands
 - `simplify:[phase]:` - Code simplification commands (e.g., `simplify:1:create-plan`)
 - `cmd:` - Git and utility commands (e.g., `cmd:commit-push`, `cmd:start-linear-issue`)
-- `ralph:` - Autopilot quality-gated execution commands
+- `skill:` - Repo-owned workflow skills such as `adn-dev-wf`
 - `[number]:` - Cross-workflow phase commands (e.g., `3:process-tasks`)
 
 This flat structure ensures compatibility with all AI coding agents that don't traverse subdirectories.

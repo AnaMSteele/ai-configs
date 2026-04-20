@@ -209,7 +209,7 @@ Use the plan-gpt5.4 subagent to create a plann with slug `plan_slug` and ensure 
 ### 5) Implement + Validate
 
 ```text
-/ralph:run ${plan_slug}
+/skill:adn-dev-wf ${plan_slug}
 /dev:validate ${plan_slug}
 ```
 

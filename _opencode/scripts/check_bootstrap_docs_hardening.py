@@ -72,7 +72,7 @@ def main() -> None:
             "- Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each deferred low-risk item is logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`.",
             "- Review loops are hard gates: reviewer narrative alone never clears a phase; only the verdict-based phase-advance rule above can do that.",
             "- Keep planning depth `complexity-aware`: simple tasks stay lightweight, while non-trivial ready plans need complete contracts plus a `test coverage matrix` strong enough to catch partial implementations.",
-            "- `ralph:run` review loops must reassess the `original test scope` and original plan when substantive misses appear; repeated or cross-surface misses widen coverage or plan scope instead of staying local.",
+            "- Execution feedback loops must reassess the `original test scope` and original plan when substantive misses appear; repeated or cross-surface misses widen coverage or plan scope instead of staying local.",
             "- Repo-local planning overrides stay additive: they can tighten the shared defaults, but they must not replace or relax the central doctrine.",
         ],
     )
@@ -93,7 +93,7 @@ def main() -> None:
         [
             "- The shared fail-closed ready bar: only `execution-ready` plans hand off to implementation, while unresolved `low-confidence` decisions stay in discovery or move into a single `research-ready` artifact.",
             "- The shared expectation that non-trivial ready plans include a `test coverage matrix`.",
-            "- The shared `ralph:run` feedback loop: substantive review misses reassess the `original test scope` and original plan, and repeated or cross-surface misses widen coverage before phase advance.",
+            "- The shared execution feedback loop: substantive review misses reassess the `original test scope` and original plan, and repeated or cross-surface misses widen coverage before phase advance.",
             "- The repo's discovery-ledger destination for deferred low-risk items (for example `thoughts/discoveries/<plan-or-feature>.md`).",
         ],
     )
@@ -105,7 +105,7 @@ def main() -> None:
         "bootstrap skill override guidance",
         add_overrides,
         [
-            "- Keep repo-local overrides additive to the shared `execution-ready` / `research-ready` readiness model, `low-confidence` decision closure, `test coverage matrix` default, and `ralph:run` reassessment loop.",
+            "- Keep repo-local overrides additive to the shared `execution-ready` / `research-ready` readiness model, `low-confidence` decision closure, `test coverage matrix` default, and execution-feedback reassessment loop.",
         ],
     )
 
@@ -145,7 +145,7 @@ def main() -> None:
             "- unresolved `low-confidence` foundational decisions stay in read-only discovery or move into a single non-ready `research-ready` plan artifact with the exact next research action",
             "- only `execution-ready` plans should continue into review/execution commands; `research-ready` artifacts should send the agent to the recorded next research action and then back through `dev:plan`",
             "Require non-trivial ready plans to include a `test coverage matrix` that maps acceptance criteria and scenarios to intended tests and verify commands.",
-            "Codify the `ralph:run` feedback loop: substantive review misses must reassess the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage or plan scope before the phase can advance.",
+            "Codify the execution feedback loop: substantive review misses must reassess the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage or plan scope before the phase can advance.",
             "- re-review until the latest verdict is `VERDICT: PASS_NO_ISSUES` or `VERDICT: PASS_LOW_RISK_ONLY` with every deferred low-risk item logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`",
             "Require the repo guidance to name the canonical discovery-ledger destination explicitly so deferred low-risk findings always have a durable home.",
         ],
@@ -156,7 +156,7 @@ def main() -> None:
         "plan overrides template objective",
         plan_objective,
         [
-            "- Keep repo-local overrides additive to the shared `planning-workflow` doctrine for `execution-ready` versus `research-ready` readiness, `low-confidence` decision handling, the default `test coverage matrix`, and the `ralph:run` review-to-`original test scope` feedback loop.",
+            "- Keep repo-local overrides additive to the shared `planning-workflow` doctrine for `execution-ready` versus `research-ready` readiness, `low-confidence` decision handling, the default `test coverage matrix`, and the execution review-to-`original test scope` feedback loop.",
         ],
     )
 
@@ -167,7 +167,7 @@ def main() -> None:
         "plan overrides template TDD/BDD",
         plan_tdd_bdd,
         [
-            "- Only document repo-local additions here; shared `ralph:run` reassessment of the `original test scope` and shared `test coverage matrix` expectations already come from the global doctrine.",
+            "- Only document repo-local additions here; shared execution-path reassessment of the `original test scope` and shared `test coverage matrix` expectations already come from the global doctrine.",
         ],
     )
 
@@ -187,12 +187,12 @@ def main() -> None:
         "README plan-first workflow",
         planning_workflow,
         [
-            "`[plan mode discovery] → /dev:plan → [execution-ready → /review:change <plan_path> → /cmd:execute-plan <plan_path> → choose /ralph:run <plan_path> or /dev:run <plan_path>] | [research-ready / blocking question → next research or answer → /dev:plan]`",
+            "`[plan mode discovery] → /dev:plan → [execution-ready → /review:change <plan_path> → /cmd:execute-plan <plan_path> → choose /skill:adn-dev-wf <plan_path> or /dev:run <plan_path>] | [research-ready / blocking question → next research or answer → /dev:plan]`",
             "- Read-only plan mode gathers evidence, resolves `low-confidence` decisions, and prepares inputs for plan materialization.",
             "- `/dev:plan` fails closed: it only writes an `execution-ready` plan when foundational decisions are resolved; otherwise it asks the user or writes exactly one non-ready `research-ready` artifact with the next research action.",
-            "- Only `execution-ready` plans move into `/review:change` and then `/cmd:execute-plan`; the handoff preserves the reviewed plan argument and asks whether to continue with `/ralph:run` or `/dev:run`.",
+            "- Only `execution-ready` plans move into `/review:change` and then `/cmd:execute-plan`; the handoff preserves the reviewed plan argument and asks whether to continue with `/skill:adn-dev-wf` or `/dev:run`.",
             "- Keep simple tasks lightweight, but require complete contracts plus a `test coverage matrix` before a non-trivial plan is treated as `execution-ready`.",
-            "- `/ralph:run` uses review findings as feedback on the `original test scope` and original plan; repeated or cross-surface misses widen coverage instead of staying local patches.",
+            "- `/skill:adn-dev-wf` uses review findings and PM follow-up loops to keep the plan and execution aligned when repeated or cross-surface misses appear.",
         ],
     )
 
@@ -205,10 +205,10 @@ def main() -> None:
         [
             "- A plan is only `execution-ready` when important questions and `low-confidence` foundational decisions are resolved with evidence.",
             "- If research is still the next handoff, `/dev:plan` writes one non-ready `research-ready` artifact instead of pretending execution can safely start.",
-            "- Only `execution-ready` plans should proceed into `/review:change` and then `/cmd:execute-plan`; the wrapper keeps `/dev:plan` planning-only while routing into `/ralph:run` or `/dev:run` as distinct execution paths.",
+            "- Only `execution-ready` plans should proceed into `/review:change` and then `/cmd:execute-plan`; the wrapper keeps `/dev:plan` planning-only while routing into `/skill:adn-dev-wf` or `/dev:run` as distinct execution paths.",
             "- Non-trivial ready plans should include a `test coverage matrix` that maps acceptance criteria and BDD scenarios to suites/files and `### Verify` commands.",
-            "- `ralph:run` treats substantive review misses as evidence about the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage before phase advance.",
-            "- A phase only advances after `ralph:run` receives `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` with each deferred low-risk item logged in `thoughts/discoveries/<plan-or-feature>.md` (or the repo's documented equivalent) and the plan's `## Decisions / Deviations Log`.",
+            "- The canonical execution workflow treats substantive review misses as evidence about the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage before phase advance.",
+            "- A phase only advances after verification passes, the reviewer clears the phase, and each deferred low-risk item is logged in the repo's documented location plus the plan's `## Decisions / Deviations Log`.",
         ],
     )
 
@@ -219,7 +219,7 @@ def main() -> None:
             "low-confidence",
             "test coverage matrix",
             "original test scope",
-            "ralph:run",
+            "skill:adn-dev-wf",
         ],
         str(ROOT_TEMPLATE_PATH): [
             "execution-ready",
@@ -227,7 +227,7 @@ def main() -> None:
             "low-confidence",
             "test coverage matrix",
             "original test scope",
-            "ralph:run",
+            "skill:adn-dev-wf",
             "planning-workflow",
         ],
         str(PLAN_TEMPLATE_PATH): [
@@ -236,7 +236,7 @@ def main() -> None:
             "low-confidence",
             "test coverage matrix",
             "original test scope",
-            "ralph:run",
+            "skill:adn-dev-wf",
             "planning-workflow",
         ],
         str(README_PATH): [
@@ -246,7 +246,7 @@ def main() -> None:
             "low-confidence",
             "test coverage matrix",
             "original test scope",
-            "ralph:run",
+            "skill:adn-dev-wf",
             "TDD",
         ],
     }

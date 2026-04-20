@@ -35,27 +35,27 @@ This directory contains a comprehensive set of commands that support a complete 
 14. **`cmd:create-pr.md`** - Create a pull request
 15. **`cmd:start-linear-issue.md`** - Start work on a Linear issue with branch management
 16. **`cmd:start-linear-issue-branch.md`** - Start a Linear issue on a new branch (no worktree) and draft a first-pass plan
-17. **`cmd:execute-plan.md`** - Canonical reviewed-plan handoff that routes into `/dev:run` or `/ralph:run`
+17. **`cmd:execute-plan.md`** - Canonical reviewed-plan handoff that routes into `/skill:adn-dev-wf` or `/dev:run`
 18. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
 
-### Autopilot Loop Commands
-19. **`ralph:run.md`** - Execute a plan with a phase-level quality gate loop
+### Workflow Skills
+19. **`adn-dev-wf`** - Canonical reviewed-plan workflow skill that replaces the retired quality-gated execution path
 20. **`ralph:review-gpt5.4.md`** - Run `/review` in a loop (GPT-5.4), apply quick fixes, stop when no straightforward fixes remain
 21. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
 
 ## Command Workflows
 
 ### Workflow 0: Plan-First Execution (Shared Default)
-`[plan mode discovery] → /dev:plan → [execution-ready → optional /dev:pm-review <plan> plan → /review:plan <plan> → /review:change-integrate <plan> → /cmd:execute-plan <plan> → choose /ralph:run <plan> or /dev:run <plan>] | [research-ready / blocking question → next research or answer → /dev:plan]`
+`[plan mode discovery] → /dev:plan → [execution-ready → optional /dev:pm-review <plan> plan → /review:plan <plan> → /review:change-integrate <plan> → /cmd:execute-plan <plan> → choose /skill:adn-dev-wf <plan> or /dev:run <plan>] | [research-ready / blocking question → next research or answer → /dev:plan]`
 ```
-[plan mode discovery] → /dev:plan → [execution-ready → optional /dev:pm-review <plan> plan → /review:plan <plan> → /review:change-integrate <plan> → /cmd:execute-plan <plan> → choose /ralph:run <plan> or /dev:run <plan>] | [research-ready / blocking question → next research or answer → /dev:plan]
+[plan mode discovery] → /dev:plan → [execution-ready → optional /dev:pm-review <plan> plan → /review:plan <plan> → /review:change-integrate <plan> → /cmd:execute-plan <plan> → choose /skill:adn-dev-wf <plan> or /dev:run <plan>] | [research-ready / blocking question → next research or answer → /dev:plan]
 ```
 - Read-only plan mode gathers evidence, resolves `low-confidence` decisions, and prepares inputs for plan materialization.
 - `/dev:plan` fails closed: it only writes an `execution-ready` plan when foundational decisions are resolved; otherwise it asks the user or writes exactly one non-ready `research-ready` artifact with the next research action.
 - `/dev:pm-review` is the optional corrective PM reshaping pass before execution and may also be used after implementation to reopen missing completion work.
 - `/review:plan` is the standard multi-model review pass for plans, and `/review:change-integrate` resolves those inline comments back into the same plan before execution.
-- Only `execution-ready` reviewed plans move into `/cmd:execute-plan`; the handoff preserves the reviewed plan argument and asks whether to continue with `/ralph:run` or `/dev:run`.
-- `/dev:run` is the direct execution path with one `quality-reviewer` pass after each phase; `/ralph:run` keeps the stronger repeated review/fix loop.
+- Only `execution-ready` reviewed plans move into `/cmd:execute-plan`; the handoff preserves the reviewed plan argument and asks whether to continue with `/skill:adn-dev-wf` or `/dev:run`.
+- `/skill:adn-dev-wf` is the canonical reviewed-plan continuation; `/dev:run` remains the direct execution path with one `quality-reviewer` pass after each phase.
 - Pi is the only maintained surface that promises context cleanup before dispatch; OpenCode shares the wrapper name and choice flow without claiming Pi-only context behavior.
 
 ### Workflow 1: PRD-Based Development (Fidelity-Preserving)
@@ -120,8 +120,7 @@ Plans and specifications should describe behavioral tests in plain terms around 
 - If research is still the next handoff, `/dev:plan` writes one non-ready `research-ready` artifact instead of pretending execution can safely start.
 - `/dev:pm-review <plan> plan` is the optional corrective PM pass before execution; `/dev:pm-review <plan> implementation` is the corrective PM pass after implementation.
 - `/review:plan` is the standard plan review pass, and `/review:change-integrate` should clean those inline comments before `/cmd:execute-plan`.
-- `/dev:run` applies one `quality-reviewer` pass after each phase; `/ralph:run` treats substantive review misses as evidence about the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage before phase advance.
-- A phase only advances after `ralph:run` receives `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` with each deferred low-risk item logged in `thoughts/discoveries/<plan-or-feature>.md` (or the repo's documented equivalent) and the plan's `## Decisions / Deviations Log`.
+- `/dev:run` applies one `quality-reviewer` pass after each phase. The canonical workflow skill `/skill:adn-dev-wf` can resume from a reviewed plan, rerun PM follow-up loops when needed, and keep the plan truthfully aligned with execution.
 
 ### Standardized Format
 All commands use consistent:
@@ -248,7 +247,7 @@ commands/
 ├── cmd:start-linear-issue.md
 ├── cmd:start-linear-issue-branch.md
 ├── cmd:review-pr-comments.md
-├── ralph:run.md
+├── cmd:execute-plan.md
 ├── ralph:review-gpt5.4.md
 ├── ralph:review-opus.md
 └── _lib/ (helper scripts)

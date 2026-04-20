@@ -277,7 +277,7 @@ Phase 2: Synthesis (GPT5.4)
 Phase 3: Auto-Integration
   └─ Applies only material feedback → Clean updated plan
     ↓
-Output: Integrated Plan (ready for /cmd:execute-plan or direct /dev:run or /ralph:run)
+Output: Integrated Plan (ready for /cmd:execute-plan or direct /skill:adn-dev-wf or /dev:run)
 ```
 ---
 

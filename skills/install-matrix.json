@@ -1,6 +1,17 @@
 {
   "version": 3,
   "installableSkills": {
+    "adn-dev-wf": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/adn-dev-wf",
+      "notes": "Canonical reviewed-plan development workflow replacing the older prompt-chained handoff and retired quality-gated execution path.",
+      "sourceType": "repo"
+    },
     "algorithmic-art": {
       "class": "universal-installable",
       "allowedConsumers": [
@@ -26,116 +37,6 @@
       "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
       "sourceType": "repo"
     },
-    "build-run-debug": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/build-run-debug",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`, with Pi-safe wording for optional Codex integration.",
-      "sourceType": "repo"
-    },
-    "liquid-glass": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/liquid-glass",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
-    "packaging-notarization": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/packaging-notarization",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
-    "signing-entitlements": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/signing-entitlements",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
-    "swiftpm-macos": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/swiftpm-macos",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
-    "swiftui-patterns": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/swiftui-patterns",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`, with Pi-safe wording for optional Codex integration.",
-      "sourceType": "repo"
-    },
-    "telemetry": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/telemetry",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
-    "test-triage": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/test-triage",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
-    "view-refactor": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/view-refactor",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
-    "window-management": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/macos/window-management",
-      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
-      "sourceType": "repo"
-    },
     "brand-guidelines": {
       "class": "universal-installable",
       "allowedConsumers": [
@@ -149,6 +50,17 @@
       "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
       "sourceType": "external-package",
       "packageSource": "anthropics/skills"
+    },
+    "build-run-debug": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/build-run-debug",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`, with Pi-safe wording for optional Codex integration.",
+      "sourceType": "repo"
     },
     "canvas-design": {
       "class": "universal-installable",
@@ -185,20 +97,6 @@
       ],
       "canonicalSource": "skills/claude-code-review",
       "notes": "Pi-only: launches Claude Code via interactive_shell for background plan/code reviews.",
-      "sourceType": "repo"
-    },
-    "codex-review-partner": {
-      "class": "universal-installable",
-      "allowedConsumers": [
-        "claude",
-        "opencode",
-        "pi"
-      ],
-      "canonicalSource": "skills/codex-review-partner",
-      "legacySources": [
-        "opencode/skills/claude-review-partner"
-      ],
-      "notes": "Promoted from an older repo-local review-partner skill and normalized to launch the real `codex` CLI in exec mode.",
       "sourceType": "repo"
     },
     "cmd-create-handoff": {
@@ -307,6 +205,20 @@
         "_pi/skills/cmd-start-linear-issue-branch"
       ],
       "notes": "Pi-originated workflow skill promoted as a universal installable skill.",
+      "sourceType": "repo"
+    },
+    "codex-review-partner": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/codex-review-partner",
+      "legacySources": [
+        "opencode/skills/claude-review-partner"
+      ],
+      "notes": "Promoted from an older repo-local review-partner skill and normalized to launch the real `codex` CLI in exec mode.",
       "sourceType": "repo"
     },
     "dependency-selection": {
@@ -436,6 +348,17 @@
       "notes": "Existing canonical skill retained; OpenCode copy is identical.",
       "sourceType": "repo"
     },
+    "liquid-glass": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/liquid-glass",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
     "mcp-builder": {
       "class": "universal-installable",
       "allowedConsumers": [
@@ -449,6 +372,17 @@
       "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
       "sourceType": "external-package",
       "packageSource": "anthropics/skills"
+    },
+    "packaging-notarization": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/packaging-notarization",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
     },
     "pdf": {
       "class": "universal-installable",
@@ -522,30 +456,6 @@
       "notes": "Existing canonical skill retained; OpenCode and Pi copies are identical.",
       "sourceType": "repo"
     },
-    "ralph-run": {
-      "class": "consumer-specific-installable",
-      "allowedConsumers": [
-        "pi"
-      ],
-      "canonicalSource": "skills/ralph-run",
-      "legacySources": [
-        "_pi/skills/ralph-run"
-      ],
-      "notes": "Pi-only: requires pi-subagents orchestration.",
-      "sourceType": "repo"
-    },
-    "ralph-run-simple": {
-      "class": "consumer-specific-installable",
-      "allowedConsumers": [
-        "pi"
-      ],
-      "canonicalSource": "skills/ralph-run-simple",
-      "legacySources": [
-        "_pi/skills/ralph-run-simple"
-      ],
-      "notes": "Pi-only: requires Pi subagent orchestration.",
-      "sourceType": "repo"
-    },
     "repo-agents-bootstrap": {
       "class": "universal-installable",
       "allowedConsumers": [
@@ -612,6 +522,17 @@
       "notes": "Repo-owned local skill retained in ai-configs.",
       "sourceType": "repo"
     },
+    "signing-entitlements": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/signing-entitlements",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
     "skill-creator": {
       "class": "universal-installable",
       "allowedConsumers": [
@@ -640,6 +561,50 @@
       "sourceType": "external-package",
       "packageSource": "anthropics/skills"
     },
+    "swiftpm-macos": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/swiftpm-macos",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "swiftui-patterns": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/swiftui-patterns",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`, with Pi-safe wording for optional Codex integration.",
+      "sourceType": "repo"
+    },
+    "telemetry": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/telemetry",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
+    "test-triage": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/test-triage",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
+    },
     "theme-factory": {
       "class": "universal-installable",
       "allowedConsumers": [
@@ -667,6 +632,17 @@
       "notes": "Fetched via `npx skills add vercel-labs/agent-skills`; previously vendored from an upstream package copy in the OpenCode tree.",
       "sourceType": "external-package",
       "packageSource": "vercel-labs/agent-skills"
+    },
+    "view-refactor": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/view-refactor",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
     },
     "virsh": {
       "class": "consumer-specific-installable",
@@ -718,6 +694,17 @@
       "notes": "Fetched via `npx skills add anthropics/skills`; previously vendored from an upstream package copy in the OpenCode tree.",
       "sourceType": "external-package",
       "packageSource": "anthropics/skills"
+    },
+    "window-management": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/macos/window-management",
+      "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`.",
+      "sourceType": "repo"
     },
     "xlsx": {
       "class": "universal-installable",

@@ -38,7 +38,7 @@ This directory contains a comprehensive set of commands that support a complete 
 17. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
 
 ### Autopilot Loop Commands
-18. **`ralph:run.md`** - Execute a plan with a phase-level quality gate loop
+18. **`adn-dev-wf`** - Canonical reviewed-plan workflow skill that replaces the retired quality-gated execution path
 19. **`ralph:review-gpt5.4.md`** - Run `/review` in a loop (GPT-5.4), apply quick fixes, stop when no straightforward fixes remain
 20. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
 
@@ -219,7 +219,7 @@ commands/
 ├── cmd:start-linear-issue.md
 ├── cmd:start-linear-issue-branch.md
 ├── cmd:review-pr-comments.md
-├── ralph:run.md
+├── cmd:execute-plan.md
 ├── ralph:review-gpt5.4.md
 ├── ralph:review-opus.md
 └── _lib/ (helper scripts)

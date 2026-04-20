@@ -33,13 +33,13 @@ Capture these behaviors as defaults:
 - `dev:plan` is the plan-materialization step: it may write the plan artifact, but must not change code or other repo files.
 - `dev:plan` must fail closed on `low-confidence` foundational decisions: it only hands off an `execution-ready` plan when those decisions are resolved, and otherwise asks the user or writes exactly one non-ready `research-ready` plan artifact with the exact next research action.
 - Root `AGENTS.md` tells agents to use the shared planning skill and names any repo-specific planning inputs or overrides.
-- Plan-first execution with phase checkpoints (`Implement phase N` -> `Review/Re-review`) under the shared verdict-based `ralph:run` gate.
+- Plan-first execution with phase checkpoints under the repo's canonical execution workflow.
 - In Pi-style reviewed-plan repos, the handoff stays explicit: `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan` -> execution. Alternate reviewers such as `/review:change-claude-code` remain explicit opt-ins, not hidden fallbacks.
 - Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each deferred low-risk item is logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`.
 - Resumability: `Progress` with stable IDs, explicit `Resume Instructions`, and append-only decision/deviation logs.
 - Evidence-first validation: lint, unit, build, e2e (and contract tests if applicable) before claiming done.
 - Review loops are hard gates: reviewer narrative alone never clears a phase; only the verdict-based phase-advance rule above can do that.
-- `ralph:run` review loops must reassess the `original test scope` and original plan when substantive misses appear; repeated or cross-surface misses widen coverage or plan scope instead of staying local.
+- Execution feedback loops must reassess the `original test scope` and original plan when substantive misses appear; repeated or cross-surface misses widen coverage or plan scope instead of staying local.
 - Commit and push discipline with rationale, not just code diffs.
 - Test-first posture: define behavior before implementation wherever practical.
 - Keep planning depth `complexity-aware`: simple tasks stay lightweight, while non-trivial ready plans need complete contracts plus a `test coverage matrix` strong enough to catch partial implementations.
@@ -74,7 +74,7 @@ Bootstrap repos around these responsibilities:
 - Read-only research/discovery -> `plan mode`
 - Plan materialization -> `dev:plan`
 - Explicit reviewed-plan handoff -> `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan`
-- Quality-gated execution -> `ralph:run`
+- Quality-gated execution -> repo-specific execution workflow
 
 Do not make a repo-local planning overrides file the default source of truth when root `AGENTS.md` plus the shared planning skill are sufficient.
 
@@ -157,11 +157,11 @@ Required outcomes:
   - `plan mode` is read-only discovery
   - `dev:plan` writes the plan only
   - reviewed-plan handoff stays explicit and does not rely on hidden fallback reviewers
-  - `ralph:run` executes the plan
+  - the repo's canonical execution workflow executes the plan
 - Instruction to use the shared `planning-workflow` skill for plan creation.
 - The shared fail-closed ready bar: only `execution-ready` plans hand off to implementation, while unresolved `low-confidence` decisions stay in discovery or move into a single `research-ready` artifact.
 - The shared expectation that non-trivial ready plans include a `test coverage matrix`.
-- The shared `ralph:run` feedback loop: substantive review misses reassess the `original test scope` and original plan, and repeated or cross-surface misses widen coverage before phase advance.
+- The shared execution feedback loop: substantive review misses reassess the `original test scope` and original plan, and repeated or cross-surface misses widen coverage before phase advance.
 - The repo's discovery-ledger destination for deferred low-risk items (for example `thoughts/discoveries/<plan-or-feature>.md`).
 - Repo-specific skill-routing hints for likely work surfaces.
 - Any repo-specific rules that override stale rule files.
@@ -173,7 +173,7 @@ Use `references/plan_agents_template.md` only when the repo truly needs local pl
 Required outcomes:
 
 - Document only repo-local planning differences, not the entire shared doctrine again.
-- Keep repo-local overrides additive to the shared `execution-ready` / `research-ready` readiness model, `low-confidence` decision closure, `test coverage matrix` default, and `ralph:run` reassessment loop.
+- Keep repo-local overrides additive to the shared `execution-ready` / `research-ready` readiness model, `low-confidence` decision closure, `test coverage matrix` default, and execution-feedback reassessment loop.
 - Point back to the shared `planning-workflow` skill as the default authority.
 - Record required local docs, section additions, plan locations, or quality-gate deviations if they exist.
 - Keep product-intent linkage and any repo-specific plan requirements explicit.

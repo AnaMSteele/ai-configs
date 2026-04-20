@@ -276,7 +276,7 @@ Use the plan-k2.5 subagent to create a plan with slug `plan_slug` and ensure the
 ### 5) Implement + Validate
 
 ```text
-/ralph:run-mm ${plan_slug}
+/skill:adn-dev-wf ${plan_slug}
 /dev:validate ${plan_slug}
 ```
 

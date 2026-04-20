@@ -37,7 +37,7 @@ Codex mirrors the core reviewed-plan flow used in Pi:
 /cmd:execute-plan <plan>
 ```
 
-Execution handoff targets:
+Canonical continuation after a reviewed plan is ready:
 
-- `/dev:run <plan>`
-- `/ralph:run <plan>`
+- `/skill:adn-dev-wf <plan>`
+- `/dev:run <plan>` for direct execution-only handoff

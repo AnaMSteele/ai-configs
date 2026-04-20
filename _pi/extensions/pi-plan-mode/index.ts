@@ -266,11 +266,11 @@ async function expandSlashCommandPrompt(cwd: string, commandText: string): Promi
 	return undefined;
 }
 
-function normalizeExecuteTarget(target: string | undefined): "dev:run" | "skill:ralph-run" | undefined {
+function normalizeExecuteTarget(target: string | undefined): "dev:run" | "skill:adn-dev-wf" | undefined {
 	if (!target) return undefined;
 	const normalized = target.trim().replace(/^\//, "");
 	if (normalized === "dev:run") return normalized;
-	if (normalized === "skill:ralph-run" || normalized === "ralph:run") return "skill:ralph-run";
+	if (normalized === "skill:adn-dev-wf" || normalized === "ralph:run") return "skill:adn-dev-wf";
 	return undefined;
 }
 
@@ -287,14 +287,14 @@ function isStandardReviewCommand(command: string | undefined): command is typeof
 }
 
 function getExecutePlanUsage(): string {
-	return `Usage: /${EXECUTE_PLAN_COMMAND} <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|skill:ralph-run]`;
+	return `Usage: /${EXECUTE_PLAN_COMMAND} <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|skill:adn-dev-wf]`;
 }
 
 async function resolveExecutePlanRequest(
 	cwd: string,
 	rawArgs: string,
 ): Promise<
-	| { planDispatchArgument: string; planPath: string; targetOverride?: "dev:run" | "skill:ralph-run" }
+	| { planDispatchArgument: string; planPath: string; targetOverride?: "dev:run" | "skill:adn-dev-wf" }
 	| { error: string }
 > {
 	const tokens = parseCommandArgs(rawArgs.trim());
@@ -304,11 +304,11 @@ async function resolveExecutePlanRequest(
 
 	const targetFlagIndex = tokens.lastIndexOf("--target");
 	let planTokens = tokens;
-	let targetOverride: "dev:run" | "skill:ralph-run" | undefined;
+	let targetOverride: "dev:run" | "skill:adn-dev-wf" | undefined;
 
 	if (targetFlagIndex !== -1) {
 		if (targetFlagIndex === tokens.length - 1) {
-			return { error: "Missing value after --target. Valid targets: /dev:run or /skill:ralph-run." };
+			return { error: "Missing value after --target. Valid targets: /dev:run or /skill:adn-dev-wf." };
 		}
 		if (targetFlagIndex < tokens.length - 2) {
 			return { error: "Unexpected extra arguments after --target. Use exactly one target value." };
@@ -316,7 +316,7 @@ async function resolveExecutePlanRequest(
 
 		targetOverride = normalizeExecuteTarget(tokens[targetFlagIndex + 1]);
 		if (!targetOverride) {
-			return { error: "Invalid --target value. Valid targets: /dev:run or /skill:ralph-run." };
+			return { error: "Invalid --target value. Valid targets: /dev:run or /skill:adn-dev-wf." };
 		}
 		planTokens = tokens.slice(0, targetFlagIndex);
 	}
@@ -495,18 +495,18 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		let target = request.targetOverride;
 		if (!target) {
 			if (!ctx.hasUI) {
-				ctx.ui.notify("No UI available. Re-run with --target dev:run or --target skill:ralph-run.", "warning");
+				ctx.ui.notify("No UI available. Re-run with --target dev:run or --target skill:adn-dev-wf.", "warning");
 				return;
 			}
 
 			const choice = await ctx.ui.select(`Choose execution path for ${request.planDispatchArgument}.`, [
-				`/skill:ralph-run ${request.planDispatchArgument}`,
+				`/skill:adn-dev-wf ${request.planDispatchArgument}`,
 				`/dev:run ${request.planDispatchArgument}`,
 			]);
 			if (!choice) {
 				return;
 			}
-			target = choice.startsWith("/skill:ralph-run") ? "skill:ralph-run" : "dev:run";
+			target = choice.startsWith("/skill:adn-dev-wf") ? "skill:adn-dev-wf" : "dev:run";
 		}
 
 		const commandText = `/${target} ${formatCommandArg(request.planDispatchArgument)}`;
@@ -665,7 +665,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 
 		nextSteps.push(
 			`/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target dev:run`,
-			`/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target skill:ralph-run`,
+			`/${EXECUTE_PLAN_COMMAND} ${formatCommandArg(currentPlanPath)} --target skill:adn-dev-wf`,
 		);
 
 		ctx.ui.notify(`Plan review complete (${reason}). Available next steps:\n${formatNextSteps(nextSteps)}`, "info");
@@ -683,7 +683,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	});
 
 	pi.registerCommand(EXECUTE_PLAN_COMMAND, {
-		description: "Start /dev:run or /skill:ralph-run in a fresh session from a reviewed plan",
+		description: "Start /dev:run or /skill:adn-dev-wf in a fresh session from a reviewed plan",
 		handler: async (args, ctx) => handleExecutePlanCommand(args, ctx),
 	});
 
@@ -705,7 +705,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		const text = event.text.trim();
 		if (!planModeEnabled) return { action: "continue" };
 
-		if (text.startsWith(`/${EXECUTE_PLAN_COMMAND}`) || text.startsWith("/dev:run") || text.startsWith("/skill:ralph-run") || text.startsWith("/ralph:run")) {
+		if (text.startsWith(`/${EXECUTE_PLAN_COMMAND}`) || text.startsWith("/dev:run") || text.startsWith("/skill:adn-dev-wf") || text.startsWith("/ralph:run")) {
 			disablePlanMode(ctx);
 			return { action: "continue" };
 		}
@@ -776,7 +776,7 @@ Constraints:
 - After creating or materially updating a plan, /review:plan <path> is available when you want review.
 - After a standard review completes with inline comments, /review:change-integrate <path> runs automatically so review feedback is resolved back into the same plan file before any manual execution handoff.
 - After standard review integration, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
-- After an integrated review completes, you may manually run /cmd:execute-plan <path> --target dev:run or --target skill:ralph-run to start a fresh execution session.
+- After an integrated review completes, you may manually run /cmd:execute-plan <path> --target dev:run or --target skill:adn-dev-wf to start a fresh execution session.
 - Review feedback should be integrated back into the same plan file.
 - Automatic review looping is capped at ${MAX_REVIEW_CYCLES} cycles before stopping.
 

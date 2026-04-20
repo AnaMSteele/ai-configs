@@ -40,8 +40,8 @@ Codify the planning and execution boundaries:
 
 - `plan mode` is for read-only discovery and research.
 - `dev:plan` is the plan-materialization step and may write the plan artifact only.
-- `ralph:run` (or repo equivalent) executes the plan with the repo's real quality gates.
-- If the repo uses Pi-style reviewed-plan handoff, codify it explicitly: `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan` -> `/dev:run` or `/ralph:run`.
+- The repo's canonical execution workflow executes the plan with the repo's real quality gates.
+- If the repo uses Pi-style reviewed-plan handoff, codify it explicitly and name the canonical continuation. In this repo that is `/skill:adn-dev-wf <plan>` after review integration, with `/dev:run <plan>` reserved for direct execution-only handoff.
 - Keep alternate reviewers such as Claude Code explicit and manual; do not describe them as hidden fallbacks inside plan mode or execution.
 
 Add the shared fail-closed ready bar:
@@ -65,7 +65,7 @@ Require the repo guidance to name the canonical discovery-ledger destination exp
 
 Require non-trivial ready plans to include a `test coverage matrix` that maps acceptance criteria and scenarios to intended tests and verify commands.
 
-Codify the `ralph:run` feedback loop: substantive review misses must reassess the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage or plan scope before the phase can advance.
+Codify the execution feedback loop: substantive review misses must reassess the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage or plan scope before the phase can advance.
 
 Require phase-level progress updates and resumable handoff notes.
 

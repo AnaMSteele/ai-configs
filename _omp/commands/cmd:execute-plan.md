@@ -1,11 +1,11 @@
 ---
-description: Start /dev:run or /ralph:run in a fresh session from a reviewed plan
-argument-hint: '<plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]'
+description: Canonical reviewed-plan handoff that routes an explicit plan into /skill:adn-dev-wf or /dev:run
+argument-hint: '<plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target skill:adn-dev-wf|dev:run]'
 ---
 
 # Execute Reviewed Plan
 
-This command is the reviewed-plan handoff for repo-managed OMP. It does not replace `/dev:run` or `/ralph:run`; it validates an explicit reviewed plan argument, optionally accepts a target override, asks the user which of those two commands to run when needed, and then starts the chosen execution path in a fresh session using the same normalized plan argument.
+This command validates an explicit reviewed plan argument, optionally accepts a target override, and then dispatches the same normalized plan argument into the canonical continuation.
 
 **Arguments**: `$ARGUMENTS`
 
@@ -13,10 +13,10 @@ This command is the reviewed-plan handoff for repo-managed OMP. It does not repl
 
 - Accept a plan slug or an explicit `.md` plan path.
 - Accept workspace-relative input that starts with `@` by stripping the leading `@`.
-- Accept an optional target suffix: `--target dev:run` or `--target ralph:run`.
-- Present exactly two execution choices: `/dev:run` and `/ralph:run`.
+- Accept an optional target suffix: `--target skill:adn-dev-wf` or `--target dev:run`.
+- Present exactly two execution choices: `/skill:adn-dev-wf` and `/dev:run`.
 - Preserve the same normalized plan argument when dispatching.
-- Start execution outside `/aplan` planning context by opening a fresh session before dispatch.
+- Refuse handoff when the plan still contains obvious review or readiness blockers.
 
 ## Instructions
 
@@ -25,13 +25,13 @@ This command is the reviewed-plan handoff for repo-managed OMP. It does not repl
 If no argument is provided, respond with:
 
 ```text
-Usage: /cmd:execute-plan <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]
+Usage: /cmd:execute-plan <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target skill:adn-dev-wf|dev:run]
 
 Examples:
   /cmd:execute-plan review-execution-handoff
   /cmd:execute-plan thoughts/plans/review-execution-handoff.md
   /cmd:execute-plan @thoughts/plans/review-execution-handoff.md
-  /cmd:execute-plan thoughts/plans/review-execution-handoff.md --target dev:run
+  /cmd:execute-plan thoughts/plans/review-execution-handoff.md --target skill:adn-dev-wf
 ```
 
 Do not infer “the current plan” from conversation state.
@@ -46,8 +46,8 @@ Do not infer “the current plan” from conversation state.
 4. Normalize `TARGET_OVERRIDE_RAW` only if present:
    - Trim whitespace.
    - Strip one leading `/` if present.
-   - Accept only `dev:run` or `ralph:run`.
-   - If any other target is provided, stop and tell the user the only valid targets are `/dev:run` and `/ralph:run`.
+   - Accept only `skill:adn-dev-wf` or `dev:run`.
+   - If any other target is provided, stop and tell the user the only valid targets are `/skill:adn-dev-wf` and `/dev:run`.
 5. If `PLAN_ARGUMENT` is empty after trimming, show the usage block and stop.
 6. If `PLAN_ARGUMENT` starts with `@`, strip the leading `@`.
 7. Preserve that normalized string as `PLAN_DISPATCH_ARGUMENT`.
@@ -59,29 +59,40 @@ Do not infer “the current plan” from conversation state.
 
 Do not rewrite a slug into a path for dispatch. Forward the same normalized `PLAN_DISPATCH_ARGUMENT` that the user supplied.
 
-### 3) Choose the Target Command
+### 3) Validate Handoff Readiness
+
+Inspect `PLAN_PATH` for obvious blockers before offering execution.
+
+Stop and tell the user what to fix first if any of these are true:
+
+- unresolved inline review comments remain (for example `[REVIEW:...]`),
+- the plan declares `Status: research-ready` or another explicitly non-ready state,
+- `## Progress` is missing,
+- `Resume Instructions (Agent)` is missing,
+- an active phase is missing `### Tests first`, `### End State`, `### Work`, or `### Verify`,
+- unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections remain in a plan that is otherwise being handed to execution.
+
+This validation is intentionally lightweight: it should catch obvious handoff mistakes, not perform a second full review.
+
+### 4) Choose the Target Command
 
 Determine `TARGET_COMMAND`:
 
 - If `TARGET_OVERRIDE` is set, honor it without asking a follow-up question.
 - Otherwise ask exactly one targeted question with only these two options:
-  1. `/ralph:run <PLAN_DISPATCH_ARGUMENT>` — quality-gated, review-loop execution for the reviewed plan.
-  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct single-agent execution with resumable plan progress tracking.
+  1. `/skill:adn-dev-wf <PLAN_DISPATCH_ARGUMENT>` — canonical reviewed-plan continuation that can resume from this reviewed plan.
+  2. `/dev:run <PLAN_DISPATCH_ARGUMENT>` — direct execution-only path with one `quality-reviewer` pass after each phase.
 
 Do not offer a planning pass here. Do not offer a third option.
 
-### 4) Dispatch in a Fresh Session
+### 5) Dispatch
 
-Open a fresh session, then run exactly one of the following and stop:
+Run exactly one of the following and then stop:
+
+```text
+/skill:adn-dev-wf <PLAN_DISPATCH_ARGUMENT>
+```
 
 ```text
 /dev:run <PLAN_DISPATCH_ARGUMENT>
 ```
-
-```text
-/ralph:run <PLAN_DISPATCH_ARGUMENT>
-```
-
-This command is only the reviewed-plan handoff wrapper; `/dev:run` and `/ralph:run` remain distinct execution paths with different behaviors.
-
-When the `_omp/extensions/aplan` runtime extension is installed, invoking `/cmd:execute-plan` from an `/aplan` workflow disables the planning companion state before that fresh-session handoff so execution does not inherit planning restrictions.

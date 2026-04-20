@@ -34,7 +34,6 @@ Installed layout:
 
 ```text
 ~/.agents/skills/
-├── ralph-run/
 ├── doct-document-ops/
 └── ...
 
@@ -111,7 +110,7 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - surfaces `/review:plan` after plan edits as a non-blocking next step,
 - automatically follows a standard review with `/review:change-integrate` before any execution handoff,
 - keeps `/review:plan-adversarial` available as an optional second-pass challenge review after integration,
-- leaves execution handoff manual via `/cmd:execute-plan <plan> --target ...` so Pi can launch from a fresh session without popping a menu,
+- leaves execution handoff manual via `/skill:adn-dev-wf <plan> --target ...` so Pi can launch from a fresh session without popping a menu,
 - keeps alternate review commands such as `/review:change-claude-code` as explicit opt-ins rather than hidden plan-mode fallbacks,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
@@ -212,9 +211,8 @@ Example installed agents:
 
 ## Skills Overview
 
-### Ralph / execution
-- `ralph-run` — repeated quality-gated review loop after each phase
-- `ralph-run-simple` — simpler single-pass execution
+### Canonical workflow
+- `adn-dev-wf` — end-to-end reviewed-plan workflow from plan creation through direct execution and PM follow-up
 
 ### Dev / execution
 - `dev:run` — direct high-reasoning execution with one `quality-reviewer` pass after each phase
@@ -262,14 +260,14 @@ Prompt templates:
 /review:change-kimi thoughts/plans/my-plan.md
 /review:change-opus thoughts/plans/my-plan.md
 /review:change-claude-code thoughts/plans/my-plan.md
-/cmd:execute-plan thoughts/plans/my-plan.md
+/skill:adn-dev-wf thoughts/plans/my-plan.md
 /dev:plan-from-prd thoughts/plans/prd-my-feature.md
 /cmd:send-plan-to-doct thoughts/plans/my-plan.md
 ```
 
 ## Reviewed-plan handoff
 
-Use `/cmd:execute-plan <plan>` after a reviewed plan is ready to continue.
+Use `/skill:adn-dev-wf <plan>` after a reviewed plan is ready to continue.
 
 Canonical reviewed-plan flow:
 
@@ -286,8 +284,8 @@ Optional second pass: run `/review:plan-adversarial <plan>` after `/review:chang
 
 Use `/dev:pm-review <plan> implementation` after execution when you want a corrective PM pass that checks whether the intended user outcome was actually realized and, if not, reshapes the plan with the missing completion work instead of stopping at findings.
 
-- It is the canonical wrapper for choosing between `/dev:run <plan>` and `/skill:ralph-run <plan>`.
-- `/dev:run` is the single direct high-reasoning execution path and applies one `quality-reviewer` pass after each phase; `/skill:ralph-run` keeps looping review/fix passes until the phase is clean.
+- It is the canonical wrapper for choosing between `/skill:adn-dev-wf <plan>` and `/dev:run <plan>`.
+- `/skill:adn-dev-wf` is the canonical reviewed-plan continuation and can resume from an existing reviewed plan; `/dev:run` remains the direct execution-only path with one `quality-reviewer` pass after each phase.
 - In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
 - When that extension path is used, `/plan` mode is disabled before execution so planning-only tool restrictions do not leak into implementation.
 - In Pi, the handoff command starts a fresh session and then launches the selected execution flow from that clean context.
@@ -318,7 +316,7 @@ The sequence below is the end-to-end reviewed-PRD path from PRD entry through ha
 Skills:
 
 ```text
-/skill:ralph-run user-profile-redesign
+/skill:adn-dev-wf user-profile-redesign
 /skill:cmd-start-linear-issue-branch ENG-123
 /skill:doct-document-ops
 /skill:sentry-cli
