@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scoped Plan Run"
+  short_description: "Execute plans without scope creep"
+  default_prompt: "Use $scoped-plan-run to execute thoughts/plans/example.md through implementation, scoped reviews, fixes, and PR creation."
