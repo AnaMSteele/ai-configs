@@ -209,6 +209,11 @@ Pi now supports both:
 
 See `_pi/README.md` for complete documentation.
 
+When creating a PR for Linear-backed work, the PR title must start with the
+Linear issue key and include the Linear issue title, for example
+`NOD-632: Ccore health auth guidance`. Do not rely on the latest commit subject
+unless it already satisfies that format.
+
 Expected Pi reviewed-plan flow in this repo:
 - `/skill:adn-dev-wf <task | plan>` is the canonical single-entry workflow
 - It internally owns plan refresh, blocker-only review, review integration, direct execution, and bounded implementation-stage PM follow-up

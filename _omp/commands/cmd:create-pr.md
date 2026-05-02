@@ -42,8 +42,29 @@ If a PR already exists, report the URL and STOP.
 
 ### 3) Prepare Title + Evidence
 
+If the current work is tied to a Linear issue, the PR title must start with the
+Linear issue key and include the Linear issue title:
+
+```text
+NOD-632: Ccore health auth guidance
+```
+
+Resolve Linear context from the most reliable available source before falling
+back to commit text:
+
+- current branch name, if it contains a Linear key such as `NOD-632`
+- plan or handoff files that name the Linear issue
+- `thoughts/linear/<KEY>.md`
+- the user request or issue URL used to start the work
+
+Do not create a Linear-backed PR with only the commit subject as the title. If
+you can identify the Linear key but not the issue title locally, inspect the
+available Linear note or ask for the title before creating the PR.
+
 ```bash
-TITLE="$(git log -1 --format=%s)"
+# For Linear-backed work, set TITLE to "<KEY>: <Linear issue title>".
+# For non-Linear work, the latest commit subject is acceptable.
+TITLE="${TITLE:-$(git log -1 --format=%s)}"
 
 git log --oneline "${base_ref}...HEAD"
 git diff --stat "${base_ref}...HEAD"
@@ -63,7 +84,7 @@ fi
 
 BASE_NAME="${base_ref#origin/}"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-TITLE="$(git log -1 --format=%s)"
+# Use the Linear-aware title prepared in step 3.
 
 gh pr create \
   --base "$BASE_NAME" \

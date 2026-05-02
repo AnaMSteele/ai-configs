@@ -291,6 +291,8 @@ Run `/review` against `base_ref...HEAD`, apply fixes, re-run until clean.
 /cmd:create-pr ${base_ref}
 ```
 
+The PR title must start with `${ISSUE_KEY}:` and include the Linear issue title.
+
 Link PR back to Linear:
 
 ```bash
