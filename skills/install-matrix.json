@@ -100,6 +100,15 @@
       "notes": "Pi-only: launches Claude Code through the user-owned codex tmux session for background plan/code reviews.",
       "sourceType": "repo"
     },
+    "claude-review-partner": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "claude"
+      ],
+      "canonicalSource": "skills/claude-review-partner",
+      "notes": "Claude-specific: uses Codex as an independent review partner through the Codex CLI wrapper.",
+      "sourceType": "repo"
+    },
     "cmd-create-handoff": {
       "class": "universal-installable",
       "allowedConsumers": [
