@@ -23,6 +23,7 @@ AI_CONFIGS_MANAGED_MARKER='.ai-configs-managed.json'
 AI_CONFIGS_BACKUP_RUN_ID="$(date +"%Y%m%d-%H%M%S")"
 AI_CONFIGS_REPO_NAME='ai-configs'
 AI_CONFIGS_REPO_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+CENTRAL_ONLY_PROJECT_SKILLS=(ccore todoist-cli)
 
 # Colors for output
 RED='\033[0;31m'
@@ -930,6 +931,72 @@ backup_existing_consumer_entry() {
     local consumer="$2"
     local skill_name="$3"
     backup_existing_path "$entry_path" "consumers/$consumer/$skill_name"
+}
+
+resolve_abs_path() {
+    python3 - "$1" <<'PY'
+import sys
+from pathlib import Path
+
+print(Path(sys.argv[1]).expanduser().resolve(strict=False))
+PY
+}
+
+backup_project_local_skill() {
+    local entry_path="$1"
+    local target_root="$2"
+    local skill_name="$3"
+    local target_hash
+
+    target_hash="$(python3 - "$target_root" <<'PY'
+import hashlib
+import sys
+
+print(hashlib.sha1(sys.argv[1].encode('utf-8')).hexdigest())
+PY
+)"
+    backup_existing_path "$entry_path" "project-local/$target_hash/$skill_name"
+}
+
+enforce_central_project_skills() {
+    local target_root="$1"
+    local resolved_target
+    local resolved_repo
+    local project_skills_dir
+    local skill_name
+    local local_skill_path
+    local central_skill_path
+    local backup_path
+
+    resolved_target="$(resolve_abs_path "$target_root")"
+    resolved_repo="$(resolve_abs_path "$REPO_ROOT")"
+
+    if [ "$resolved_target" = "$resolved_repo" ]; then
+        return 0
+    fi
+
+    project_skills_dir="$resolved_target/.agents/skills"
+    if [ ! -d "$project_skills_dir" ]; then
+        return 0
+    fi
+
+    for skill_name in "${CENTRAL_ONLY_PROJECT_SKILLS[@]}"; do
+        local_skill_path="$project_skills_dir/$skill_name"
+        if [ ! -e "$local_skill_path" ] && [ ! -L "$local_skill_path" ]; then
+            continue
+        fi
+
+        central_skill_path="$HOME/.agents/skills/$skill_name"
+        if [ ! -f "$central_skill_path/SKILL.md" ]; then
+            echo -e "${RED}Error: Project-local skill $skill_name exists at $local_skill_path, but $central_skill_path/SKILL.md is missing.${NC}" >&2
+            echo "  Install the central skill under ~/.agents/skills/$skill_name or remove the project-local copy manually." >&2
+            return 1
+        fi
+
+        backup_path="$(backup_project_local_skill "$local_skill_path" "$resolved_target" "$skill_name")"
+        rm -rf "$local_skill_path"
+        echo "  - Removed project-local $skill_name skill; using ~/.agents/skills/$skill_name (backup: $backup_path)"
+    done
 }
 
 failpoint_matches() {
@@ -2119,34 +2186,46 @@ case "$INSTALL_MODE" in
         install_pi
         echo ""
         sync_shared_skills claude opencode
+        echo ""
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     --claude)
         install_claude "$TARGET_DIR"
         echo ""
         sync_shared_skills claude
+        echo ""
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     --codex)
         install_codex "$TARGET_DIR"
         echo ""
         sync_shared_skills
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     --gemini)
         install_gemini "$TARGET_DIR"
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     --omp)
         install_omp "$TARGET_DIR"
         echo ""
         sync_shared_skills
+        echo ""
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     --opencode)
         install_opencode "$TARGET_DIR"
         echo ""
         sync_shared_skills opencode
+        echo ""
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     --pi)
         install_pi
         echo ""
         sync_shared_skills
+        echo ""
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     --tools)
         install_tools
@@ -2170,6 +2249,8 @@ case "$INSTALL_MODE" in
         install_tools
         echo ""
         sync_shared_skills claude opencode
+        echo ""
+        enforce_central_project_skills "$TARGET_DIR"
         ;;
     *)
         echo -e "${RED}Error: Unknown option $INSTALL_MODE${NC}"

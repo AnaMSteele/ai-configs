@@ -376,6 +376,37 @@ test_single_surface_modes_reuse_shared_sync() {
   [[ ! -e "$home/.omp/agent/skills" ]] || return 1
 }
 
+test_project_local_central_skill_overrides_are_removed() {
+  local home
+  local target
+  local skill
+
+  home="$(new_tmp_dir)"
+  target="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  mkdir -p "$target/.agents/skills/keep-local"
+  printf 'keep local\n' > "$target/.agents/skills/keep-local/SKILL.md"
+
+  for skill in ccore todoist-cli; do
+    mkdir -p "$target/.agents/skills/$skill" "$home/.agents/skills/$skill"
+    printf 'project local %s\n' "$skill" > "$target/.agents/skills/$skill/SKILL.md"
+    printf 'central %s\n' "$skill" > "$home/.agents/skills/$skill/SKILL.md"
+  done
+
+  run_installer "$home" --default "$target" || return 1
+
+  for skill in ccore todoist-cli; do
+    [[ ! -e "$target/.agents/skills/$skill" ]] || return 1
+    [[ -f "$home/.agents/skills/$skill/SKILL.md" ]] || return 1
+  done
+
+  assert_file_contains "$target/.agents/skills/keep-local/SKILL.md" 'keep local' || return 1
+
+  [[ -n "$(find "$home/.agents/skill-backups/ai-configs" -path '*/project-local/*/ccore/SKILL.md' -print -quit 2>/dev/null)" ]] || return 1
+  [[ -n "$(find "$home/.agents/skill-backups/ai-configs" -path '*/project-local/*/todoist-cli/SKILL.md' -print -quit 2>/dev/null)" ]] || return 1
+}
+
 test_failpoint_after_backup_keeps_destination_recoverable() {
   local home
   local output_file
@@ -519,6 +550,7 @@ main() {
   run_test test_skills_mode_installs_additively_and_is_idempotent
   run_test test_default_mode_reuses_shared_sync_without_mutating_repo_root
   run_test test_single_surface_modes_reuse_shared_sync
+  run_test test_project_local_central_skill_overrides_are_removed
   run_test test_failpoint_after_backup_keeps_destination_recoverable
   run_test test_phase_three_docs_use_canonical_shared_skill_paths
   run_test test_phase_three_duplicate_skill_trees_are_removed

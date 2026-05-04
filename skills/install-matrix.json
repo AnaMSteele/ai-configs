@@ -97,7 +97,7 @@
         "pi"
       ],
       "canonicalSource": "skills/claude-code-review",
-      "notes": "Pi-only: launches Claude Code via interactive_shell for background plan/code reviews.",
+      "notes": "Pi-only: launches Claude Code through the user-owned codex tmux session for background plan/code reviews.",
       "sourceType": "repo"
     },
     "cmd-create-handoff": {
