@@ -39,6 +39,20 @@ Before using ltui, ensure authentication is configured:
 
 Switch profiles using `--profile <name>` flag on any command.
 
+## Rate Limits and Request Budget
+
+Linear rate limits apply to the authenticated user, shared across that user's API keys and tools. Check the live response headers when diagnosing limits; common headers include `x-ratelimit-requests-limit`, `x-ratelimit-requests-remaining`, `x-ratelimit-requests-reset`, `x-ratelimit-complexity-limit`, and `x-ratelimit-complexity-remaining`.
+
+For the Nodaste workspace checked on 2026-05-03, the live headers reported a 2,500 requests/hour request bucket and a 3,000,000 complexity/hour bucket for the current API user. Treat this as a live-header fact, not a permanent contract; Linear plan details and limits can change.
+
+Current `ltui` list operations can use more API requests than the row count suggests because the Linear SDK lazily fetches related entities such as team, state, project, assignee, labels, comments, or history. `--fields` reduces output tokens, but in the current implementation it does not necessarily reduce underlying Linear API requests. `--limit` and narrow filters are the best immediate controls for API spend.
+
+Put global options before the subcommand:
+```bash
+ltui --limit 5 --fields id,identifier,title,state issues list --team ENG
+ltui --format json issues view ENG-42
+```
+
 ## Output Formats
 
 ltui supports four output formats via `--format`:
@@ -46,19 +60,19 @@ ltui supports four output formats via `--format`:
 ### TSV (default, most token-efficient)
 Tab-separated values with headers. Use for most operations.
 ```bash
-ltui issues list --format tsv
+ltui --format tsv issues list
 ```
 
 ### Table (human-readable)
 Aligned columns for readability.
 ```bash
-ltui issues list --format table
+ltui --format table issues list
 ```
 
 ### Detail (key-value with sections)
 Structured blocks with explicit markers for descriptions, comments. Use when full context needed.
 ```bash
-ltui issues view ENG-42 --format detail
+ltui --format detail issues view ENG-42
 ```
 Output includes:
 - `ISSUE:` - Issue identifier
@@ -70,7 +84,7 @@ Output includes:
 ### JSON (compact)
 Compact JSON envelope without whitespace.
 ```bash
-ltui issues list --format json
+ltui --format json issues list
 ```
 
 For list commands, JSON is a single envelope object:
@@ -85,12 +99,12 @@ For list commands, JSON is a single envelope object:
 
 **List issues:**
 ```bash
-ltui issues list                              # All issues (paginated)
-ltui issues list --team ENG                   # Filter by team
-ltui issues list --assignee me --state "Todo" # Your todos
-ltui issues list --label bug                  # By label
-ltui issues list --search "login"             # Search
-ltui issues list --fields id,key,title,state  # Specific fields only
+ltui --limit 5 issues list                                  # Small page while exploring
+ltui --limit 10 issues list --team ENG                      # Filter by team
+ltui --limit 10 issues list --assignee me --state "Todo"    # Your todos
+ltui --limit 10 issues list --label bug                     # By label
+ltui --limit 5 issues list --search "login"                 # Search
+ltui --limit 5 --fields id,identifier,title,state issues list # Token-light output
 ```
 
 **View issue:**
@@ -107,7 +121,7 @@ ltui issues view ENG-42 --include-comments --include-history
 
 **Fetch screenshots/images:**
 ```bash
-ltui issues attachments ENG-42 --only-images --format json
+ltui --format json issues attachments ENG-42 --only-images
 ltui issues attachments ENG-42 --only-images --download-dir ./.ltui-attachments/ENG-42
 ```
 
@@ -178,7 +192,7 @@ Always check for `ERROR:` prefix before parsing output.
 
 ### Check your assigned issues
 ```bash
-ltui issues list --assignee me --state "Todo" --format table
+ltui --limit 10 --format table issues list --assignee me --state "Todo"
 ```
 
 ### Create issue in current project context
@@ -197,15 +211,15 @@ ltui issues update ENG-42 --state "In Progress" --assignee me
 
 ### View issue with full context (description, comments)
 ```bash
-ltui issues view ENG-42 --format detail
+ltui --format detail issues view ENG-42
 ```
 
 ### Create parent-child issue relationship
 ```bash
-ltui issues create --team ENG --title "Parent task" --format detail
+ltui --format detail issues create --team ENG --title "Parent task"
 # Output: ISSUE: ENG-42
 
-ltui issues create --team ENG --title "Subtask" --format detail
+ltui --format detail issues create --team ENG --title "Subtask"
 # Output: ISSUE: ENG-43
 
 ltui issues relate ENG-43 --parent ENG-42
@@ -217,23 +231,26 @@ ltui issues relate ENG-43 --parent ENG-42
 2. **Use TSV format by default** - Most token-efficient for parsing
 3. **Use detail format sparingly** - Only when descriptions/comments needed
 4. **Filter early** - Use `--team`, `--project`, `--state` to reduce results
-5. **Use `--fields`** - Select only needed columns to save tokens
-6. **Parse errors first** - Don't proceed if output starts with `ERROR:`
-7. **Respect pagination** - Use `--limit` and `--cursor` for large result sets
-8. **Check for .ltui.json** - May contain project defaults for current directory
-9. **Remember output is deterministic** - Same command = same output (for same Linear state)
-10. **No interactivity** - All inputs must be via flags or environment variables
+5. **Keep list pages small** - Start with `--limit 5` or `--limit 10`; increase only when you truly need more rows
+6. **Use `--fields` for tokens, not API savings** - Select only needed columns to save context, but do not assume it reduces Linear requests in the current implementation
+7. **Avoid broad polling loops** - Do not repeatedly run unfiltered `issues list`, `projects list`, or search commands; reuse IDs and cached context from earlier output
+8. **Operate on many issues only with explicit intent** - Bulk reads or updates should start from a known issue ID list, use narrow filters, and pause/back off when rate headers are low
+9. **Parse errors first** - Don't proceed if output starts with `ERROR:`
+10. **Respect pagination** - Use `--limit` and `--cursor` for large result sets
+11. **Check for .ltui.json** - May contain project defaults for current directory
+12. **Remember output is deterministic** - Same command = same output (for same Linear state)
+13. **No interactivity** - All inputs must be via flags or environment variables
 
 ## Pagination
 
 For large result sets:
 ```bash
-ltui issues list --limit 50
+ltui --limit 50 issues list
 # TSV/table output includes: CURSOR_NEXT: xyz789
 
 # JSON output includes: {"meta":{"cursorNext":"xyz789", ...},"rows":[...]}
 
-ltui issues list --limit 50 --cursor xyz789  # Next page
+ltui --limit 50 --cursor xyz789 issues list  # Next page
 ```
 
 ## Configuration Files

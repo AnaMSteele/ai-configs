@@ -460,7 +460,14 @@ Where the SDK exposes higher‑level helpers (e.g. by key or identifier), prefer
 - Respect Linear API rate limits:
   - Limit concurrency for bulk operations.
   - Surface rate limit errors clearly with `ERROR: api_error rate_limited`.
+  - Read and expose useful response headers where available: `x-ratelimit-requests-limit`, `x-ratelimit-requests-remaining`, `x-ratelimit-requests-reset`, `x-ratelimit-complexity-limit`, and `x-ratelimit-complexity-remaining`.
+  - Treat request limits as per authenticated Linear user, shared across that user's API keys and agent tools.
 - Optionally cache stable lookups (e.g. team key → id, label name → id) in memory per process, and on disk in `~/.config/ltui/cache.json` with short TTL.
+- Avoid N+1 SDK access patterns in list commands. `issues list` should shape its GraphQL selection to the requested columns instead of fetching each issue and then lazily resolving team/state/project/assignee/labels for every row.
+- Make `--fields` an API-efficiency control where practical, not just an output formatter. If the caller requests only `id,identifier,title`, avoid fetching labels, project, assignee, state, or team.
+- Keep default list pages conservative for agent workflows. Large pages should require explicit `--limit`, narrow filters, or a command designed for bulk/export behavior.
+- Prefer explicit bulk commands over loops in agents. Bulk operations should require a known issue ID list or narrow filter preview, apply bounded concurrency, report planned count before mutation, and back off when rate headers are low.
+- Do not encourage agents to operate on many issues at once by default. Many-issue reads or writes are appropriate for audits, migrations, or project hygiene only when the user asks for that scope and the command can make the target set reviewable.
 
 ---
 
@@ -498,36 +505,36 @@ Proposed repository layout:
 
 ```bash
 # List recent issues in the ENGINEERING team labeled "bug"
-ltui issues list --team ENG --label bug --limit 30 --agent
+ltui --limit 10 --agent issues list --team ENG --label bug
 ```
 
 ### 9.2 Inspect a Single Issue with Comments
 
 ```bash
-ltui issues view ENG-123 --include-comments --agent --max-description-chars 2000
+ltui --agent issues view ENG-123 --include-comments --max-description-chars 2000
 ```
 
 ### 9.3 Update Status and Add a Comment
 
 ```bash
-ltui issues update ENG-123 --state "In Progress" --assignee me --agent
-ltui issues comment ENG-123 --body "Working on this as part of bugfix branch feature/fix-ENG-123" --agent
+ltui --agent issues update ENG-123 --state "In Progress" --assignee me
+ltui --agent issues comment ENG-123 --body "Working on this as part of bugfix branch feature/fix-ENG-123"
 ```
 
 ### 9.4 Attach a Pull Request Link
 
 ```bash
-ltui issues link ENG-123 --url "https://github.com/org/repo/pull/456" --title "PR #456" --agent
+ltui --agent issues link ENG-123 --url "https://github.com/org/repo/pull/456" --title "PR #456"
 ```
 
 ### 9.5 Per‑Project Alignment + Issue Creation
 
 ```bash
 # Align the current repo with a Linear project and defaults
-ltui projects align ENG-ROADMAP --team ENG --state "Todo" --label bug --label backend --assignee me --agent
+ltui --agent projects align ENG-ROADMAP --team ENG --state "Todo" --label bug --label backend --assignee me
 
 # Create a new issue in this repo; team/project/state/labels/assignee come from .ltui.json
-ltui issues create --title "Fix crash on startup" --description @docs/crash-notes.md --agent
+ltui --agent issues create --title "Fix crash on startup" --description @docs/crash-notes.md
 ```
 
 ---

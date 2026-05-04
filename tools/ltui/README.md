@@ -176,7 +176,7 @@ ltui projects align
 Now when your agent runs commands from this directory, it automatically uses these defaults:
 ```bash
 # Without .ltui.json - requires many flags
-ltui issues create --team ENG --project "Backend Services" --labels backend,api --title "Fix auth bug"
+ltui issues create --team ENG --project "Backend Services" --label backend --label api --title "Fix auth bug"
 
 # With .ltui.json - just provide the unique bits
 ltui issues create --title "Fix auth bug"
@@ -184,13 +184,42 @@ ltui issues create --title "Fix auth bug"
 
 **💡 Commit `.ltui.json` to your repository** so all agents and developers share the same Linear project alignment.
 
+## API Request Budget
+
+Linear rate limits are attached to the authenticated Linear user and are shared across that user's API keys, agents, and scripts. When diagnosing limit pressure, trust Linear's live response headers over stale assumptions:
+
+- `x-ratelimit-requests-limit`
+- `x-ratelimit-requests-remaining`
+- `x-ratelimit-requests-reset`
+- `x-ratelimit-complexity-limit`
+- `x-ratelimit-complexity-remaining`
+
+As checked against the Nodaste workspace on 2026-05-03, Linear reported a 2,500 requests/hour request bucket and a 3,000,000 complexity/hour bucket for the current API user. Treat those as live-header facts, not permanent product guarantees.
+
+`ltui` is token-efficient, but some commands are not yet API-request-efficient. In particular, `issues list` fetches a page of issues and then may resolve related team, state, project, assignee, and labels for each row through the Linear SDK. That means a small-looking list command can spend many Linear API requests. `--fields` currently trims output only; it should not be treated as an API-request savings control until the implementation is query-shaped by requested fields.
+
+Use global options before the subcommand:
+
+```bash
+ltui --limit 5 --fields id,identifier,title,state issues list --team ENG
+ltui --format detail issues view ENG-123
+```
+
+Operational guidance for agents:
+
+- Start exploration with `--limit 5` or `--limit 10`.
+- Filter by `--team`, `--project`, `--state`, `--assignee`, label, or saved query before increasing limits.
+- Reuse known issue identifiers instead of repeatedly polling broad lists.
+- Avoid many-issue operations unless the user explicitly asks for bulk work and the target set is narrow and auditable.
+- When the remaining request header is low, pause until the reset time instead of retrying in a tight loop.
+
 ## Output Formats
 
 ltui supports four output formats via the `--format` flag:
 
 ### TSV (Default for Agents)
 ```bash
-ltui issues list --format tsv
+ltui --format tsv issues list
 ```
 ```
 ISSUE: id	identifier	title	state	assignee
@@ -202,7 +231,7 @@ ISSUE: id	identifier	title	state	assignee
 
 ### Table (Human-Readable)
 ```bash
-ltui issues list --format table
+ltui --format table issues list
 ```
 ```
 ID                                    IDENTIFIER  TITLE           STATE         ASSIGNEE
@@ -214,7 +243,7 @@ ID                                    IDENTIFIER  TITLE           STATE         
 
 ### Detail (Full Context)
 ```bash
-ltui issues view ENG-123 --format detail
+ltui --format detail issues view ENG-123
 ```
 ```
 ISSUE: ENG-123
@@ -243,7 +272,7 @@ COMMENTS_END
 
 ### JSON (Machine-Readable)
 ```bash
-ltui issues list --format json
+ltui --format json issues list
 ```
 ```json
 {"issues":[{"id":"550e8400-...","identifier":"ENG-123","title":"Fix login bug","state":"In Progress","assignee":"alice@example.com"}]}
@@ -260,7 +289,8 @@ ltui issues list --format json
 ltui issues create \
   --title "Memory leak in background worker" \
   --description "Found while implementing feature X. Worker process grows 10MB/hour." \
-  --labels bug,performance \
+  --label bug \
+  --label performance \
   --priority 2 \
   --state "Backlog"
 
@@ -281,28 +311,28 @@ ltui issues update ENG-123 --state "In Progress"
 ltui issues update ENG-123 --state "In Review"
 
 # Agent adds PR link
-ltui issues comment ENG-123 "Implementation complete in PR #234"
-ltui issues link ENG-123 https://github.com/org/repo/pull/234
+ltui issues comment ENG-123 --body "Implementation complete in PR #234"
+ltui issues link ENG-123 --url "https://github.com/org/repo/pull/234" --title "PR #234"
 ```
 
 ### Workflow 3: Finding Relevant Issues
 
 ```bash
 # Find all "bug" issues in "Todo" state
-ltui issues list --label bug --state Todo --format tsv
+ltui --limit 10 --format tsv issues list --label bug --state Todo
 
 # Find issues assigned to me that are in progress
-ltui issues list --assignee me --state "In Progress" --format tsv
+ltui --limit 10 --format tsv issues list --assignee me --state "In Progress"
 
 # Search issue titles for specific keywords
-ltui issues list --query "authentication" --format tsv
+ltui --limit 5 --format tsv issues list --search "authentication"
 ```
 
 ### Workflow 4: Reading Full Issue Context
 
 ```bash
 # Get complete issue details including description and comments
-ltui issues view ENG-123 --format detail
+ltui --format detail issues view ENG-123
 
 # Agent parses DESCRIPTION_START...DESCRIPTION_END and COMMENTS_START...COMMENTS_END blocks
 ```
@@ -315,6 +345,8 @@ ltui caches Linear entity lookups (teams, projects, labels, users) to minimize A
 - **Cache invalidation:** Automatic based on TTL
 
 When agents repeatedly query the same entities (e.g., "What's the ID of the Engineering team?"), the cache prevents redundant API calls, saving time and respecting rate limits.
+
+The cache does not remove all lazy relation fetches. For large issue lists, prefer smaller pages and narrower filters until list rendering is optimized to avoid N+1 SDK calls.
 
 To clear the cache manually:
 ```bash
@@ -364,9 +396,10 @@ Tests use a mock Linear client (`src/test-utils/mockLinearClient.ts`) to ensure 
 - Check that you're using the correct profile (`--profile` flag)
 
 ### "ERROR: api_error Rate limit exceeded"
-- Linear API has rate limits (check Linear docs for current limits)
-- ltui's cache reduces API calls, but very high-frequency usage may hit limits
-- Wait 60 seconds and retry
+- Linear API has per-user rate limits shared across that user's API keys and tools
+- ltui's cache reduces some lookups, but broad issue lists can still spend many requests
+- Wait until the reset time reported by Linear's rate-limit headers before retrying
+- Rerun with smaller `--limit` values and narrower filters
 
 ### Unexpected Output Format
 - Verify `--format` flag (defaults to `tsv`)
@@ -385,6 +418,7 @@ If you're setting this up for an MCP server integration:
 3. **Use TSV format** in prompts to minimize token usage
 4. **Parse structured errors** to handle failure cases gracefully
 5. **Cache issue IDs** in agent memory to avoid repeated lookups
+6. **Keep pages small** and avoid broad polling loops; Linear request budget is often tighter than LLM context budget
 
 ### For Cursor / Aider / Other Agents
 Same principles apply:
