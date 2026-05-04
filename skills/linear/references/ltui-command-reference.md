@@ -15,7 +15,7 @@ ltui issues list [options]
 Options:
   --team <key>           Filter by team key (e.g., ENG, PROD)
   --project <name|id>    Filter by project name or ID
-  --state <name|id>      Filter by state name or ID
+  --state <name|id>      Filter by state name or ID (repeatable)
   --assignee <email|id>  Filter by assignee (use "me" for yourself)
   --label <name>         Filter by label (can be used multiple times)
   --search <query>       Search issues by text
@@ -23,6 +23,7 @@ Options:
   --cursor <id>          Pagination cursor from previous response
   --fields <list>        Comma-separated field list (e.g., id,key,title,state)
   --format <fmt>         Output format: tsv, table, detail, json (default: tsv)
+  --show-rate-limit      Emit rate-limit metadata when available
   --profile <name>       Use specific profile
 ```
 
@@ -39,6 +40,7 @@ ltui issues list --project "Mobile App"
 
 # Filter by state
 ltui issues list --state "In Progress"
+ltui issues list --state "Todo" --state "In Progress"
 
 # Filter by assignee
 ltui issues list --assignee me
@@ -58,6 +60,7 @@ ltui issues list --limit 10
 
 # Get specific fields only
 ltui issues list --fields id,key,title,state
+ltui --format json --show-rate-limit --fields id,identifier,title issues list
 
 # Pagination
 ltui issues list --limit 50

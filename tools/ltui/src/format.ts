@@ -1,3 +1,5 @@
+import type { RateLimitInfo } from './rateLimit.js';
+
 export type OutputFormat = 'tsv' | 'table' | 'detail' | 'json';
 
 export interface AgentOutputOptions {
@@ -9,6 +11,7 @@ export interface PaginationMeta {
   cursorNext: string;
   cursorPrev: string;
   count: number;
+  rateLimit?: RateLimitInfo;
 }
 
 export interface ColumnDefinition<T> {
@@ -36,7 +39,7 @@ export function emitPaginationMeta(next: string | null, prev: string | null, cou
 export function renderPaginatedList<T>(
   rows: T[],
   columns: ColumnDefinition<T>[],
-  meta: { next: string | null; prev: string | null; count: number },
+  meta: { next: string | null; prev: string | null; count: number; rateLimit?: RateLimitInfo },
   options: AgentOutputOptions & { allowedFormats?: OutputFormat[] }
 ): string {
   const allowedFormats = options.allowedFormats ?? ['tsv', 'table', 'json'];
@@ -58,6 +61,7 @@ export function renderPaginatedList<T>(
         cursorNext: meta.next ?? '',
         cursorPrev: meta.prev ?? '',
         count: meta.count,
+        ...(meta.rateLimit ? { rateLimit: meta.rateLimit } : {}),
       },
       rows: jsonRows,
     };

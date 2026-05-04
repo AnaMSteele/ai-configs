@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import type { ResolvedConfig } from '../config.js';
 
 interface WorkflowState {
@@ -109,6 +110,50 @@ type PageInfo = {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 };
+
+interface MockRequestCounts {
+  rawRequests: number;
+  issues: number;
+  searchIssues: number;
+  issue: number;
+  team: number;
+  state: number;
+  project: number;
+  assignee: number;
+  labels: number;
+  attachments: number;
+  comments: number;
+  history: number;
+}
+
+const RATE_LIMIT_HEADERS: Record<string, string> = {
+  'x-ratelimit-requests-limit': '2500',
+  'x-ratelimit-requests-remaining': '2499',
+  'x-ratelimit-requests-reset': '1714852800',
+  'x-ratelimit-complexity-limit': '3000000',
+  'x-ratelimit-complexity-remaining': '2999000',
+};
+
+function createCounts(): MockRequestCounts {
+  return {
+    rawRequests: 0,
+    issues: 0,
+    searchIssues: 0,
+    issue: 0,
+    team: 0,
+    state: 0,
+    project: 0,
+    assignee: 0,
+    labels: 0,
+    attachments: 0,
+    comments: 0,
+    history: 0,
+  };
+}
+
+function makeHeaders(values: Record<string, string> = RATE_LIMIT_HEADERS): Headers {
+  return new Headers(values);
+}
 
 function parseCursor(cursor: string): number | null {
   const match = /^cursor:(\d+)$/.exec(cursor);
@@ -276,10 +321,34 @@ function buildData() {
 class MockLinearClient {
   private data: ReturnType<typeof buildData>;
   public viewer: any;
+  public client: any;
+  public __ltuiRequestCounts: MockRequestCounts;
+  public __ltuiRawRequests: Array<{ query: string; variables: Record<string, unknown> }>;
 
   constructor(data: ReturnType<typeof buildData>) {
     this.data = data;
+    this.__ltuiRequestCounts = createCounts();
+    this.__ltuiRawRequests = [];
     this.viewer = this.decorateUser(data.users[0]);
+    this.client = {
+      rawRequest: async (query: string, variables?: Record<string, unknown>) =>
+        this.rawRequest(query, variables ?? {}),
+    };
+
+    const logPath = process.env.LTUI_MOCK_REQUEST_LOG;
+    if (logPath) {
+      const writeLog = () => {
+        fs.writeFileSync(
+          logPath,
+          JSON.stringify({
+            counts: this.__ltuiRequestCounts,
+            rawRequests: this.__ltuiRawRequests,
+          })
+        );
+      };
+      process.on('beforeExit', writeLog);
+      process.on('exit', writeLog);
+    }
   }
 
   async teams(variables?: any): Promise<any> {
@@ -300,16 +369,50 @@ class MockLinearClient {
   }
 
   async issues(variables?: any): Promise<any> {
+    this.__ltuiRequestCounts.issues += 1;
     return connection(this.data.issues.map(issue => this.decorateIssue(issue)), variables);
   }
 
   async searchIssues(_term?: string, variables?: any): Promise<any> {
+    this.__ltuiRequestCounts.searchIssues += 1;
     return connection(this.data.issues.map(issue => ({ id: issue.id })), variables);
   }
 
   async issue(ref: string): Promise<any> {
+    this.__ltuiRequestCounts.issue += 1;
     const match = this.data.issues.find(issue => issue.id === ref || issue.identifier === ref);
     return match ? this.decorateIssue(match) : null;
+  }
+
+  async rawRequest(query: string, variables: Record<string, unknown>): Promise<any> {
+    this.__ltuiRequestCounts.rawRequests += 1;
+    this.__ltuiRawRequests.push({ query, variables });
+    if (process.env.LTUI_MOCK_RAW_RATE_LIMIT === '1') {
+      const error = new Error('rate limited') as Error & {
+        type?: string;
+        raw?: { response: { headers: Headers; status: number; error: string } };
+        response?: { headers: Headers; status: number; error: string };
+      };
+      const response = {
+        headers: makeHeaders({ ...RATE_LIMIT_HEADERS, 'x-ratelimit-requests-remaining': '0' }),
+        status: 429,
+        error: 'rate_limited',
+      };
+      error.type = 'Ratelimited';
+      error.raw = { response };
+      error.response = response;
+      throw error;
+    }
+
+    const nodes = this.filterIssues(variables, query).map(issue => this.rawIssue(issue));
+    const page = connection(nodes, variables);
+    const field = query.includes('searchIssues') ? 'searchIssues' : 'issues';
+    return {
+      data: {
+        [field]: page,
+      },
+      headers: makeHeaders(),
+    };
   }
 
   async createIssue(input: Record<string, unknown>): Promise<any> {
@@ -461,6 +564,103 @@ class MockLinearClient {
     );
   }
 
+  private filterIssues(variables: Record<string, unknown>, query: string): IssueData[] {
+    let working = this.data.issues;
+    const filter = variables.filter as any;
+    const term = typeof variables.term === 'string' ? variables.term.toLowerCase() : '';
+    if (term) {
+      working = working.filter(issue =>
+        issue.identifier.toLowerCase().includes(term) || issue.title.toLowerCase().includes(term)
+      );
+    }
+    if (query.includes('searchIssues') && !term) {
+      return working;
+    }
+    if (filter?.team?.or) {
+      const teamRefs = filter.team.or
+        .flatMap((clause: any) => [clause?.id?.eq, clause?.key?.eq, clause?.name?.eq])
+        .filter(Boolean);
+      working = working.filter(issue => {
+        const team = this.data.teams.find(item => item.id === issue.teamId);
+        return teamRefs.some((ref: string) => ref === team?.id || ref === team?.key || ref === team?.name);
+      });
+    }
+    if (filter?.project?.or) {
+      const projectRefs = filter.project.or
+        .flatMap((clause: any) => [clause?.id?.eq, clause?.slugId?.eq, clause?.name?.eq])
+        .filter(Boolean);
+      working = working.filter(issue => {
+        const project = this.data.projects.find(item => item.id === issue.projectId);
+        return projectRefs.some((ref: string) => ref === project?.id || ref === project?.slugId || ref === project?.name);
+      });
+    }
+    if (filter?.state?.or) {
+      const stateRefs = filter.state.or
+        .flatMap((clause: any) => [clause?.id?.eq, clause?.name?.eq])
+        .filter(Boolean);
+      working = working.filter(issue => {
+        const state = this.data.states.find(item => item.id === issue.stateId);
+        return stateRefs.some((ref: string) => ref === state?.id || ref === state?.name);
+      });
+    }
+    if (filter?.assignee?.isMe?.eq === true) {
+      working = working.filter(issue => issue.assigneeId === this.data.users[0]?.id);
+    } else if (filter?.assignee?.email?.eq) {
+      working = working.filter(issue => this.data.users.find(user => user.id === issue.assigneeId)?.email === filter.assignee.email.eq);
+    } else if (filter?.assignee?.or) {
+      const assigneeRefs = filter.assignee.or
+        .flatMap((clause: any) => [clause?.id?.eq, clause?.name?.eq])
+        .filter(Boolean);
+      working = working.filter(issue => {
+        const assignee = this.data.users.find(item => item.id === issue.assigneeId);
+        return assigneeRefs.some((ref: string) => ref === assignee?.id || ref === assignee?.name);
+      });
+    }
+    if (filter?.labels?.and) {
+      const labels = filter.labels.and
+        .map((clause: any) => clause?.some?.name?.eq)
+        .filter(Boolean);
+      working = working.filter(issue => {
+        const issueLabels = issue.labelIds
+          .map(id => this.data.labels.find(label => label.id === id)?.name)
+          .filter(Boolean);
+        return labels.every((label: string) => issueLabels.includes(label));
+      });
+    }
+    if (filter?.updatedAt?.gte) {
+      working = working.filter(issue => issue.updatedAt >= filter.updatedAt.gte);
+    }
+    if (filter?.createdAt?.gte) {
+      working = working.filter(issue => issue.createdAt >= filter.createdAt.gte);
+    }
+    return working;
+  }
+
+  private rawIssue(issue: IssueData): any {
+    const labels = issue.labelIds
+      .map(id => this.data.labels.find(label => label.id === id))
+      .filter(Boolean) as LabelData[];
+    const team = this.data.teams.find(t => t.id === issue.teamId)!;
+    const project = this.data.projects.find(p => p.id === issue.projectId)!;
+    const state = this.data.states.find(s => s.id === issue.stateId)!;
+    const assignee = this.data.users.find(u => u.id === issue.assigneeId)!;
+    return {
+      id: issue.id,
+      identifier: issue.identifier,
+      url: issue.url,
+      number: issue.number,
+      title: issue.title,
+      state: { id: state.id, name: state.name, type: state.type },
+      team: { id: team.id, key: team.key, name: team.name },
+      project: { id: project.id, name: project.name, slugId: project.slugId },
+      priority: issue.priority,
+      assignee: { id: assignee.id, name: assignee.name, email: assignee.email },
+      labels: { nodes: labels.map(label => ({ id: label.id, name: label.name })) },
+      createdAt: issue.createdAt,
+      updatedAt: issue.updatedAt,
+    };
+  }
+
   private decorateTeam(team: TeamData) {
     return {
       ...team,
@@ -486,6 +686,7 @@ class MockLinearClient {
   }
 
   private decorateIssue(issue: IssueData) {
+    const self = this;
     const labels = issue.labelIds
       .map(id => this.data.labels.find(label => label.id === id))
       .filter(Boolean) as LabelData[];
@@ -518,24 +719,31 @@ class MockLinearClient {
           'Looks good. Another screenshot: https://uploads.linear.app/6db02bb9-fba2-473b-8f9d-f38188e84813/d20adbea-186d-4643-ad07-004bda7d099d',
       },
     ];
-    return {
+    const decorated: any = {
       id: issue.id,
       identifier: issue.identifier,
       url: issue.url,
       number: issue.number,
       title: issue.title,
-      state,
-      team: this.decorateTeam(team),
-      project: this.decorateProject(project),
       priority: issue.priority,
-      assignee: this.decorateUser(assignee),
-      labels,
+      labels: async () => {
+        self.__ltuiRequestCounts.labels += 1;
+        return connection(labels.map(label => ({ ...label })));
+      },
       description: issue.description,
       createdAt: new Date(issue.createdAt),
       updatedAt: new Date(issue.updatedAt),
-      attachments: async (variables?: any) => connection(attachmentNodes, variables),
-      comments: async (variables?: any) => connection(commentNodes, variables),
-      history: async () =>
+      attachments: async (variables?: any) => {
+        self.__ltuiRequestCounts.attachments += 1;
+        return connection(attachmentNodes, variables);
+      },
+      comments: async (variables?: any) => {
+        self.__ltuiRequestCounts.comments += 1;
+        return connection(commentNodes, variables);
+      },
+      history: async () => {
+        self.__ltuiRequestCounts.history += 1;
+        return (
         connection([
           {
             id: 'history-1',
@@ -543,8 +751,37 @@ class MockLinearClient {
             createdAt: new Date('2024-01-07T00:00:00Z'),
             toState: this.decorateState('state-2'),
           },
-        ]),
+        ])
+        );
+      },
     };
+    Object.defineProperties(decorated, {
+      state: {
+        get() {
+          self.__ltuiRequestCounts.state += 1;
+          return { ...state };
+        },
+      },
+      team: {
+        get() {
+          self.__ltuiRequestCounts.team += 1;
+          return self.decorateTeam(team);
+        },
+      },
+      project: {
+        get() {
+          self.__ltuiRequestCounts.project += 1;
+          return self.decorateProject(project);
+        },
+      },
+      assignee: {
+        get() {
+          self.__ltuiRequestCounts.assignee += 1;
+          return self.decorateUser(assignee);
+        },
+      },
+    });
+    return decorated;
   }
 
   private decorateUser(user: UserData) {

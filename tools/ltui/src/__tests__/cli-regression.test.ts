@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync, SpawnSyncReturns } from 'node:child_process';
@@ -69,6 +69,10 @@ function expectPureJsonOutput(result: SpawnSyncReturns<string>, commandLabel: st
   const first = trimmed[0];
   assert.ok(first === '{' || first === '[', `${commandLabel}: stdout must start with JSON token`);
   return JSON.parse(trimmed);
+}
+
+function readMockLog(pathName: string): any {
+  return JSON.parse(readFileSync(pathName, 'utf8'));
 }
 
 test('json mode emits pure JSON suitable for jq parsing', () => {
@@ -283,6 +287,151 @@ test('issues commands including relationships succeed', () => {
 
     result = runCli(ctx, ['issues', 'saved', 'remove', '--name', 'default']);
     assertOk(result, 'issues saved remove');
+  } finally {
+    cleanupContext(ctx);
+  }
+});
+
+test('issues list shapes raw GraphQL requests from requested fields', () => {
+  const ctx = createContext();
+  ensureLtuiDefaults(ctx);
+  try {
+    const scalarLog = path.join(ctx.baseDir, 'scalar-log.json');
+    let result = runCli(
+      ctx,
+      ['--format', 'json', '--fields', 'id,identifier,title', 'issues', 'list', '--team', 'ENG'],
+      { LTUI_MOCK_REQUEST_LOG: scalarLog }
+    );
+    const scalarJson = expectPureJsonOutput(result, 'issues list scalar raw graphql') as {
+      rows: Array<Record<string, string>>;
+    };
+    assert.deepEqual(Object.keys(scalarJson.rows[0]).sort(), ['id', 'identifier', 'title']);
+    const scalarRequests = readMockLog(scalarLog);
+    assert.equal(scalarRequests.counts.rawRequests, 1);
+    assert.equal(scalarRequests.counts.issue, 0);
+    assert.equal(scalarRequests.counts.team, 0);
+    assert.equal(scalarRequests.counts.state, 0);
+    assert.equal(scalarRequests.counts.project, 0);
+    assert.equal(scalarRequests.counts.assignee, 0);
+    assert.equal(scalarRequests.counts.labels, 0);
+    assert.ok(!scalarRequests.rawRequests[0].query.includes('labels('));
+    assert.ok(!scalarRequests.rawRequests[0].query.includes('team {'));
+
+    const labelLog = path.join(ctx.baseDir, 'label-log.json');
+    result = runCli(ctx, ['--format', 'json', '--fields', 'labels', 'issues', 'list', '--team', 'ENG'], {
+      LTUI_MOCK_REQUEST_LOG: labelLog,
+    });
+    const labelJson = expectPureJsonOutput(result, 'issues list labels raw graphql') as {
+      rows: Array<Record<string, string>>;
+    };
+    assert.deepEqual(Object.keys(labelJson.rows[0]), ['labels']);
+    assert.ok(readMockLog(labelLog).rawRequests[0].query.includes('labels(first: 25)'));
+
+    const searchLog = path.join(ctx.baseDir, 'search-log.json');
+    result = runCli(
+      ctx,
+      ['--format', 'json', '--fields', 'identifier,title', '--limit', '5', 'issues', 'list', '--search', 'Fix'],
+      { LTUI_MOCK_REQUEST_LOG: searchLog }
+    );
+    expectPureJsonOutput(result, 'issues search raw graphql');
+    const searchRequests = readMockLog(searchLog);
+    assert.equal(searchRequests.counts.rawRequests, 1);
+    assert.equal(searchRequests.counts.issue, 0);
+    assert.ok(searchRequests.rawRequests[0].query.includes('searchIssues'));
+
+    result = runCli(ctx, ['--format', 'json', '--fields', 'notAField', 'issues', 'list']);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ERROR: validation_error Unknown field\(s\): notAField/);
+  } finally {
+    cleanupContext(ctx);
+  }
+});
+
+test('issues list exposes raw GraphQL rate-limit metadata when requested', () => {
+  const ctx = createContext();
+  ensureLtuiDefaults(ctx);
+  try {
+    let result = runCli(ctx, ['--format', 'json', '--show-rate-limit', '--fields', 'id,identifier,title', 'issues', 'list']);
+    const json = expectPureJsonOutput(result, 'issues list json rate limit') as any;
+    assert.equal(json.meta.rateLimit.requests.limit, '2500');
+    assert.equal(json.meta.rateLimit.requests.remaining, '2499');
+    assert.equal(json.meta.rateLimit.complexity.remaining, '2999000');
+
+    result = runCli(ctx, ['--show-rate-limit', '--fields', 'id,identifier,title', 'issues', 'list']);
+    assertOk(result, 'issues list tsv rate limit');
+    assert.match(result.stderr, /^RATE_LIMIT requestsLimit=2500 requestsRemaining=2499 requestsReset=1714852800 complexityLimit=3000000 complexityRemaining=2999000/m);
+
+    result = runCli(ctx, ['--show-rate-limit', 'issues', 'list'], {
+      LTUI_MOCK_RAW_RATE_LIMIT: '1',
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ERROR: api_error rate_limited/);
+    assert.match(result.stderr, /requestsRemaining=0/);
+    assert.match(result.stderr, /wait until reset before retrying/);
+  } finally {
+    cleanupContext(ctx);
+  }
+});
+
+test('issues list supports repeatable state filters and cheap issue views', () => {
+  const ctx = createContext();
+  ensureLtuiDefaults(ctx);
+  try {
+    const stateLog = path.join(ctx.baseDir, 'state-log.json');
+    let result = runCli(
+      ctx,
+      [
+        '--format',
+        'json',
+        '--fields',
+        'identifier,title,state',
+        'issues',
+        'list',
+        '--state',
+        'Todo',
+        '--state',
+        'In Progress',
+      ],
+      { LTUI_MOCK_REQUEST_LOG: stateLog }
+    );
+    const list = expectPureJsonOutput(result, 'issues list repeatable state') as {
+      rows: Array<Record<string, string>>;
+    };
+    assert.ok(list.rows.length >= 1);
+    const stateRequest = readMockLog(stateLog).rawRequests[0];
+    assert.deepEqual(stateRequest.variables.filter.state.or, [
+      { name: { eq: 'Todo' } },
+      { name: { eq: 'In Progress' } },
+    ]);
+
+    const cheapViewLog = path.join(ctx.baseDir, 'cheap-view-log.json');
+    result = runCli(
+      ctx,
+      [
+        '--format',
+        'json',
+        '--fields',
+        'identifier,title,state,url',
+        'issues',
+        'view',
+        'ENG-1',
+        '--no-attachment-probe',
+      ],
+      { LTUI_MOCK_REQUEST_LOG: cheapViewLog }
+    );
+    const cheapView = expectPureJsonOutput(result, 'issues view no attachment probe') as Record<string, unknown>;
+    assert.deepEqual(Object.keys(cheapView).sort(), ['identifier', 'state', 'title', 'url']);
+    const cheapCounts = readMockLog(cheapViewLog).counts;
+    assert.equal(cheapCounts.attachments, 0);
+    assert.equal(cheapCounts.comments, 0);
+
+    const normalViewLog = path.join(ctx.baseDir, 'normal-view-log.json');
+    result = runCli(ctx, ['--format', 'json', 'issues', 'view', 'ENG-1'], {
+      LTUI_MOCK_REQUEST_LOG: normalViewLog,
+    });
+    expectPureJsonOutput(result, 'issues view default attachment probe');
+    const normalCounts = readMockLog(normalViewLog).counts;
+    assert.ok(normalCounts.attachments > 0);
   } finally {
     cleanupContext(ctx);
   }

@@ -196,12 +196,15 @@ Linear rate limits are attached to the authenticated Linear user and are shared 
 
 As checked against the Nodaste workspace on 2026-05-03, Linear reported a 2,500 requests/hour request bucket and a 3,000,000 complexity/hour bucket for the current API user. Treat those as live-header facts, not permanent product guarantees.
 
-`ltui` is token-efficient, but some commands are not yet API-request-efficient. In particular, `issues list` fetches a page of issues and then may resolve related team, state, project, assignee, and labels for each row through the Linear SDK. That means a small-looking list command can spend many Linear API requests. `--fields` currently trims output only; it should not be treated as an API-request savings control until the implementation is query-shaped by requested fields.
+`ltui` is token-efficient, but API request budget still matters. `issues list` is query-shaped by requested fields, so `--fields id,identifier,title` avoids fetching relation-heavy fields such as team, state, project, assignee, and labels. Other commands may still use SDK convenience paths unless their docs say otherwise.
+
+Use `--show-rate-limit` on raw GraphQL-backed list paths when you need live budget visibility. JSON output includes `meta.rateLimit`; TSV/table output keeps normal stdout parseable and emits a `RATE_LIMIT ...` line on stderr.
 
 Use global options before the subcommand:
 
 ```bash
 ltui --limit 5 --fields id,identifier,title,state issues list --team ENG
+ltui --format json --show-rate-limit --fields id,identifier,title issues list --team ENG
 ltui --format detail issues view ENG-123
 ```
 

@@ -34,7 +34,7 @@ function runLtui(args: string[], env?: Record<string, string | undefined>) {
 const globalHelpCase: HelpCase = {
   title: 'global options',
   args: ['--help'],
-  expectOptions: ['--profile <name>', '--format <fmt>', '--fields <fields>', '--limit <n>', '--cursor <cursor>', '--agent', '--no-agent'],
+  expectOptions: ['--profile <name>', '--format <fmt>', '--fields <fields>', '--limit <n>', '--cursor <cursor>', '--show-rate-limit', '--agent', '--no-agent'],
 };
 
 const helpCases: HelpCase[] = [
@@ -46,7 +46,7 @@ const helpCases: HelpCase[] = [
   { title: 'auth test', args: ['auth', 'test', '--help'], expectOptions: ['--profile <name>'] },
   { title: 'issues list', args: ['issues', 'list', '--help'], expectOptions: ['--team <key-or-id>', '--project <key-or-id>', '--state <name-or-id>', '--assignee <me|email|id>', '--label <name-or-id>', '--search <query>', '--updated-since <iso>', '--created-since <iso>', '--saved <name>'] },
   { title: 'issues attachments', args: ['issues', 'attachments', '--help'], expectOptions: ['--only-images', '--download-dir <dir>', '--overwrite', '--no-linear-attachments', '--no-upload-urls', '--no-scan-comments'] },
-  { title: 'issues view', args: ['issues', 'view', '--help'], expectOptions: ['--include-comments', '--include-history', '--max-description-chars <n>', '--max-comment-chars <n>'] },
+  { title: 'issues view', args: ['issues', 'view', '--help'], expectOptions: ['--include-comments', '--include-history', '--no-attachment-probe', '--max-description-chars <n>', '--max-comment-chars <n>'] },
   { title: 'issues create', args: ['issues', 'create', '--help'], expectOptions: ['--team <key>', '--project <key-or-id>', '--title <title>', '--description <text-or-@path>', '--state <name-or-id>', '--label <name-or-id>', '--assignee <me|email|id>', '--priority <0-4>'] },
   { title: 'issues update', args: ['issues', 'update', '--help'], expectOptions: ['--team <key>', '--project <key-or-id>', '--title <title>', '--description <text-or-@path>', '--state <name-or-id>', '--label <name-or-id>', '--add-label <name-or-id>', '--remove-label <name-or-id>', '--assignee <me|email|id>', '--priority <0-4>', '--estimate <number>', '--due <iso>'] },
   { title: 'issues comment', args: ['issues', 'comment', '--help'], expectOptions: ['--body <text-or-@path>'] },

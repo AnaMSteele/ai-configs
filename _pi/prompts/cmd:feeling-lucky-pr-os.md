@@ -118,16 +118,16 @@ If `PROJECT_REF` is empty, ask the user to provide the project id/key (list proj
 2) List issues:
 
 ```bash
-ltui --format json --fields key,title,url,updatedAt \
-  issues list --project "$PROJECT_REF" --state "Ready to pull" --label "Feeling Lucky" --limit 50 \
+ltui --format json --fields identifier,title,updatedAt --limit 25 \
+  issues list --project "$PROJECT_REF" --state "Ready to pull" --label "Feeling Lucky" \
   > "$OPENCODE_TMP/ltui-feeling-lucky-issues-1.json" \
   || python3 - <<'PY' > "$OPENCODE_TMP/ltui-feeling-lucky-issues-1.json"
 import json
 print(json.dumps([]))
 PY
 
-ltui --format json --fields key,title,url,updatedAt \
-  issues list --project "$PROJECT_REF" --state "Ready to pull" --label "FeelingLucky" --limit 50 \
+ltui --format json --fields identifier,title,updatedAt --limit 25 \
+  issues list --project "$PROJECT_REF" --state "Ready to pull" --label "FeelingLucky" \
   > "$OPENCODE_TMP/ltui-feeling-lucky-issues-2.json" \
   || python3 - <<'PY' > "$OPENCODE_TMP/ltui-feeling-lucky-issues-2.json"
 import json
@@ -174,7 +174,7 @@ if not issues:
 random.seed()  # FeelingLucky: non-deterministic is intentional
 pick = random.choice(issues)
 
-print('PICK_KEY=' + (pick.get('key') or ''))
+print('PICK_KEY=' + (pick.get('identifier') or pick.get('key') or ''))
 print('PICK_TITLE=' + (pick.get('title') or ''))
 print('PICK_URL=' + (pick.get('url') or ''))
 PY
@@ -189,7 +189,7 @@ Set:
 Fetch issue metadata in machine format:
 
 ```bash
-ltui --format json --fields key,title,url,project,state issues view "${ISSUE_KEY}" > "$OPENCODE_TMP/ltui-issue.json"
+ltui --format json --fields identifier,title,url,state issues view "${ISSUE_KEY}" --no-attachment-probe > "$OPENCODE_TMP/ltui-issue.json"
 
 ISSUE_TITLE="$(python3 -c 'import json; print(json.load(open(".opencode/tmp/ltui-issue.json")).get("title", ""))')"
 ISSUE_URL="$(python3 -c 'import json; print(json.load(open(".opencode/tmp/ltui-issue.json")).get("url", ""))')"

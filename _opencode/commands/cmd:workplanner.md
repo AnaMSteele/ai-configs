@@ -103,11 +103,12 @@ If `PROJECT_REF` is empty, STOP and report the issue.
 
 ### 1) Select Candidate Issues
 
-List `Feeling Lucky` issues in `Backlog` and `Needs Feedback`:
+List `Feeling Lucky` issues in `Backlog` and `Needs Feedback` with server-side state filters:
 
 ```bash
-ltui --limit 100 --format json --fields identifier,title,state,updatedAt \
+ltui --limit 25 --format json --fields identifier,title,state,updatedAt \
   issues list --project "$PROJECT_REF" --label "Feeling Lucky" \
+  --state Backlog --state "Needs Feedback" \
   > "$OPENCODE_TMP/ltui-feeling-lucky-all.json" \
   || python3 - <<'PY' > "$OPENCODE_TMP/ltui-feeling-lucky-all.json"
 import json
@@ -118,13 +119,7 @@ python3 - <<'PY'
 import json
 
 payload = json.load(open('.opencode/tmp/ltui-feeling-lucky-all.json'))
-issues = payload.get('rows', []) if isinstance(payload, dict) else []
-
-def norm(v):
-    return (v or '').strip().lower()
-
-allowed_states = {'backlog', 'needs feedback'}
-candidates = [i for i in issues if norm(i.get('state')) in allowed_states]
+candidates = payload.get('rows', []) if isinstance(payload, dict) else []
 
 for i in sorted(candidates, key=lambda x: x.get('updatedAt') or ''):
     print(i.get('identifier') or '')
@@ -143,13 +138,7 @@ python3 - <<'PY' > "$OPENCODE_TMP/ltui-feeling-lucky-candidates.txt"
 import json
 
 payload = json.load(open('.opencode/tmp/ltui-feeling-lucky-all.json'))
-issues = payload.get('rows', []) if isinstance(payload, dict) else []
-
-def norm(v):
-    return (v or '').strip().lower()
-
-allowed_states = {'backlog', 'needs feedback'}
-candidates = [i for i in issues if norm(i.get('state')) in allowed_states]
+candidates = payload.get('rows', []) if isinstance(payload, dict) else []
 
 for i in sorted(candidates, key=lambda x: x.get('updatedAt') or ''):
     issue_key = (i.get('identifier') or '').strip()
@@ -178,7 +167,7 @@ Fetch full issue context with comments/history:
 
 ```bash
 ltui issues view "${ISSUE_KEY}" \
-  --include-comments --include-history \
+  --no-attachment-probe --include-comments --include-history \
   --max-description-chars 12000 --max-comment-chars 4000 \
   > "$OPENCODE_TMP/ltui-${ISSUE_KEY}.txt"
 ```
