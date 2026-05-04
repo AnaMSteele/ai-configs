@@ -165,7 +165,7 @@ function parseCursor(cursor: string): number | null {
 function connection<T>(
   allNodes: T[],
   variables?: { first?: number; after?: string; last?: number; before?: string }
-): { nodes: T[]; pageInfo: PageInfo } {
+): { nodes: T[]; edges: Array<{ cursor: string; node: T }>; pageInfo: PageInfo } {
   const first =
     typeof variables?.first === 'number' && !Number.isNaN(variables.first)
       ? variables.first
@@ -178,8 +178,13 @@ function connection<T>(
   const endCursor = nodes.length > 0 ? `cursor:${endIndex}` : null;
   const hasNextPage = endIndex >= 0 ? endIndex < allNodes.length - 1 : false;
   const hasPreviousPage = startIndex > 0;
+  const edges = nodes.map((node, index) => ({
+    cursor: `cursor:${startIndex + index}`,
+    node,
+  }));
   return {
     nodes,
+    edges,
     pageInfo: {
       startCursor,
       endCursor,
@@ -302,7 +307,10 @@ function buildData() {
     { id: 'milestone-1', name: 'Milestone 1', projectId: 'proj-1', targetDate: '2024-10-01' },
   ];
   const notifications: NotificationData[] = [
-    { id: 'notif-1', type: 'issue_created', readAt: null, createdAt: '2024-02-01T00:00:00Z' },
+    { id: 'notif-1', type: 'issue_created', readAt: '2024-02-01T01:00:00Z', createdAt: '2024-02-01T00:00:00Z' },
+    { id: 'notif-2', type: 'issue_updated', readAt: null, createdAt: '2024-02-02T00:00:00Z' },
+    { id: 'notif-3', type: 'issue_commented', readAt: null, createdAt: '2024-02-03T00:00:00Z' },
+    { id: 'notif-4', type: 'issue_updated', readAt: '2024-02-04T01:00:00Z', createdAt: '2024-02-04T00:00:00Z' },
   ];
   return {
     teams,
@@ -402,6 +410,17 @@ class MockLinearClient {
       error.raw = { response };
       error.response = response;
       throw error;
+    }
+
+    if (query.includes('notifications')) {
+      const nodes = this.data.notifications.map(notification => ({ ...notification }));
+      const page = connection(nodes, variables);
+      return {
+        data: {
+          notifications: page,
+        },
+        headers: makeHeaders(),
+      };
     }
 
     const nodes = this.filterIssues(variables, query).map(issue => this.rawIssue(issue));

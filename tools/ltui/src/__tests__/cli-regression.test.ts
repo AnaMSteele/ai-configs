@@ -429,9 +429,22 @@ test('issues list supports repeatable state filters and cheap issue views', () =
     result = runCli(ctx, ['--format', 'json', 'issues', 'view', 'ENG-1'], {
       LTUI_MOCK_REQUEST_LOG: normalViewLog,
     });
-    expectPureJsonOutput(result, 'issues view default attachment probe');
+    const normalView = expectPureJsonOutput(result, 'issues view default attachment probe') as Record<string, unknown>;
+    assert.equal(normalView.imageAttachmentsFetchCmd, 'ltui --format json issues attachments ENG-1 --only-images');
     const normalCounts = readMockLog(normalViewLog).counts;
     assert.ok(normalCounts.attachments > 0);
+
+    const contextViewLog = path.join(ctx.baseDir, 'context-view-log.json');
+    result = runCli(
+      ctx,
+      ['issues', 'view', 'ENG-1', '--no-attachment-probe', '--include-comments', '--include-history'],
+      { LTUI_MOCK_REQUEST_LOG: contextViewLog }
+    );
+    assertOk(result, 'issues view comments and history request counts');
+    const contextCounts = readMockLog(contextViewLog).counts;
+    assert.equal(contextCounts.attachments, 0);
+    assert.equal(contextCounts.comments, 1);
+    assert.equal(contextCounts.history, 1);
   } finally {
     cleanupContext(ctx);
   }
@@ -525,8 +538,39 @@ test('documents, roadmaps, milestones, and notifications', () => {
     result = runCli(ctx, ['milestones', 'view', 'milestone-1']);
     assertOk(result, 'milestones view');
 
-    result = runCli(ctx, ['notifications', '--unread-only']);
+    result = runCli(ctx, [
+      '--format',
+      'json',
+      '--fields',
+      'id,type,read,createdAt',
+      '--limit',
+      '1',
+      'notifications',
+      '--unread-only',
+    ]);
     assertOk(result, 'notifications');
+    const notifications = JSON.parse(result.stdout);
+    assert.equal(notifications.rows.length, 1);
+    assert.equal(notifications.rows[0].id, 'notif-2');
+    assert.equal(notifications.rows[0].read, 'false');
+    assert.equal(notifications.rows[0].createdAt, '2024-02-02T00:00:00Z');
+    const notificationCursor = notifications.meta.cursorNext;
+
+    result = runCli(ctx, [
+      '--format',
+      'json',
+      '--limit',
+      '1',
+      '--cursor',
+      notificationCursor,
+      'notifications',
+      '--unread-only',
+    ]);
+    assertOk(result, 'notifications unread pagination');
+    const nextNotifications = JSON.parse(result.stdout);
+    assert.equal(nextNotifications.rows.length, 1);
+    assert.equal(nextNotifications.rows[0].id, 'notif-3');
+    assert.equal(nextNotifications.meta.cursorNext, '');
   } finally {
     cleanupContext(ctx);
   }

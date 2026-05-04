@@ -323,7 +323,7 @@ export function runIssuesCommands(program: Command): void {
           fields.IMAGE_ATTACHMENTS_PRESENT = probe.imageAttachmentsPresent ? 'true' : 'false';
           if (probe.imageAttachmentsPresent) {
             const issueRef = issue.identifier ?? ref;
-            fields.IMAGE_ATTACHMENTS_FETCH_CMD = `ltui issues attachments ${issueRef} --only-images --format json`;
+            fields.IMAGE_ATTACHMENTS_FETCH_CMD = `ltui --format json issues attachments ${issueRef} --only-images`;
             fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD = `ltui issues attachments ${issueRef} --only-images --download-dir ./.ltui-attachments/${issueRef}`;
           }
         }
@@ -358,9 +358,11 @@ export function runIssuesCommands(program: Command): void {
             : '';
         }
 
+        let comments: any[] = [];
         if (options.includeComments) {
-          const comments = await issue.comments({ first: 50 });
-          jsonPayload.comments = comments.nodes.map((comment: any) => {
+          const commentsConnection = await issue.comments({ first: 50 });
+          comments = commentsConnection.nodes ?? [];
+          jsonPayload.comments = comments.map((comment: any) => {
             const truncated = truncateMultiline(comment.body ?? '', options.maxCommentChars);
             return {
               id: comment.id ?? '',
@@ -372,12 +374,14 @@ export function runIssuesCommands(program: Command): void {
           });
         }
 
+        let historyEntries: any[] = [];
         if (options.includeHistory) {
           const historyConnection = await issue.history({
             first: 50,
             sort: { createdAt: { order: 'Ascending' } },
           });
-          jsonPayload.history = historyConnection.nodes.map((entry: any) => {
+          historyEntries = historyConnection.nodes ?? [];
+          jsonPayload.history = historyEntries.map((entry: any) => {
             const actor = entry.actor?.name ?? entry.actorId ?? '';
             return {
               createdAt: entry.createdAt?.toISOString?.() ?? '',
@@ -408,9 +412,8 @@ export function runIssuesCommands(program: Command): void {
         }
 
         if (options.includeComments) {
-          const comments = await issue.comments({ first: 50 });
           const lines: string[] = ['COMMENTS_START'];
-          for (const comment of comments.nodes) {
+          for (const comment of comments) {
             const truncated = truncateMultiline(comment.body ?? '', options.maxCommentChars);
             const row = [
               comment.id,
@@ -428,12 +431,8 @@ export function runIssuesCommands(program: Command): void {
         }
 
         if (options.includeHistory) {
-          const historyConnection = await issue.history({
-            first: 50,
-            sort: { createdAt: { order: 'Ascending' } },
-          });
           const lines: string[] = ['HISTORY_START'];
-          for (const entry of historyConnection.nodes) {
+          for (const entry of historyEntries) {
             const actor = entry.actor?.name ?? entry.actorId ?? '';
             const changeType = determineHistoryType(entry);
             const fromValue = historyFromValue(entry);
