@@ -1,10 +1,10 @@
-description: Run blocker-focused review-only plan review using GPT5.4 and Kimi K2.5 in parallel
+description: Run blocker-focused review-only plan review using GPT and Kimi K2.5 in parallel
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Multi-Model Plan Review Process
 
-This command orchestrates a blocker-focused review-only plan review using two independent reviewers in parallel: GPT5.4 and Kimi K2.5.
+This command orchestrates a blocker-focused review-only plan review using two independent reviewers in parallel: GPT and Kimi K2.5.
 
 Documents to review: $ARGUMENTS
 
@@ -24,12 +24,12 @@ Documents to review: $ARGUMENTS
 
 Launch both reviews before waiting for either of them to finish.
 
-### Subagent 1: GPT5.4 Review
-- **Agent:** `reviewer-plan-gpt5.4`
-- **Model:** `openai-codex/gpt-5.4`
+### Subagent 1: GPT Review
+- **Agent:** `reviewer-plan-gpt5.5`
+- **Model:** `openai-codex/gpt-5.5`
 - **Reasoning:** High
-- **Task:** Perform blocker-only plan review per reviewer-plan-gpt5.4 instructions
-- **Output:** Plan file with `[REVIEW:GPT5.4]` comments + summary
+- **Task:** Perform blocker-only plan review per reviewer-plan-gpt5.5 instructions
+- **Output:** Plan file with `[REVIEW:GPT]` comments + summary
 
 ### Subagent 2: Kimi K2.5 Review
 - **Agent:** `reviewer-plan-kimi`
@@ -44,9 +44,9 @@ Launch two background `Agent` calls so Pi actually runs both reviewers concurren
 
 ```javascript
 const gpt54 = Agent({
-  subagent_type: "reviewer-plan-gpt5.4",
-  description: "Review plan with GPT5.4",
-  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.4 instructions exactly. Add [REVIEW:GPT5.4] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
+  subagent_type: "reviewer-plan-gpt5.5",
+  description: "Review plan with GPT",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.5 instructions exactly. Add [REVIEW:GPT] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
   run_in_background: true,
 });
 
@@ -65,7 +65,7 @@ Wait for both `get_subagent_result(..., wait: true)` calls to complete before pr
 
 ## Review Output
 
-The final plan file should be an annotated plan containing any `[REVIEW:...]` comments left by GPT5.4 and Kimi K2.5.
+The final plan file should be an annotated plan containing any `[REVIEW:...]` comments left by GPT and Kimi K2.5.
 
 ## Summary Format
 
@@ -75,14 +75,14 @@ After completing all reviews, provide:
 ## Multi-Model Review Complete
 
 ### Reviewers:
-- ✅ GPT5.4 (openai-codex/gpt-5.4, high reasoning)
+- ✅ GPT (openai-codex/gpt-5.5, high reasoning)
 - ✅ Kimi K2.5 (opencode/kimi-k2.5, high reasoning)
 
 ### Consensus Blockers:
 [List issues multiple reviewers flagged that materially affect execution readiness]
 
 ### Divergent Material Risks:
-[List any material disagreements between GPT5.4 and Kimi, if present]
+[List any material disagreements between GPT and Kimi, if present]
 
 ### Unique Material Risks:
 [List blocker-level or materially risky issues caught by only one reviewer]
@@ -95,7 +95,7 @@ After completing all reviews, provide:
 
 This command is review-only:
 
-- Phase 1: GPT5.4 review-only pass
+- Phase 1: GPT review-only pass
 - Phase 1: Kimi K2.5 review-only pass
 - The final output is an annotated plan with review comments left in place
 - If the user wants integration afterward, run `/review:change-integrate <plan>`
@@ -106,7 +106,7 @@ This command is review-only:
 Input Plan
     ↓
 Phase 1: Parallel Reviews (2 reviewers)
-  ├─ GPT5.4 Review → [REVIEW:GPT5.4] comments
+  ├─ GPT Review → [REVIEW:GPT] comments
   ├─ Kimi K2.5 Review → [REVIEW:Kimi K2.5] comments
     ↓
 Output: Annotated Plan (run /review:change-integrate before execution if you want comments resolved)
@@ -124,7 +124,7 @@ Whenever a plan is created or updated and needs review:
 
 1. **Primary agent MUST delegate to this command** instead of performing direct review
 2. **Always use the full multi-model review** - do not skip reviewers or use single-reviewer shortcuts
-3. **Launch both reviewers before waiting** - GPT5.4 and Kimi should both be running in parallel
+3. **Launch both reviewers before waiting** - GPT and Kimi should both be running in parallel
 4. **Keep this command review-only** - it should stop with inline review comments still present in the plan
 
 ### Process Flow:
@@ -132,7 +132,7 @@ Whenever a plan is created or updated and needs review:
 ```text
 User: "Review this plan"
 Agent: Delegate to /review:plan <plan-path>
-  → Agent launches GPT5.4 + Kimi reviewers in parallel
+  → Agent launches GPT + Kimi reviewers in parallel
   → Each adds [REVIEW:Name] comments
   → Returns an annotated plan with review comments left in place
 ```

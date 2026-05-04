@@ -70,7 +70,7 @@ bash ~/ai-configs/install.sh --all ~
 
 - installs Claude config into `.claude/`
 - installs Gemini config into `.gemini/`
-- installs project Codex config into `.codex/`
+- does not create project `.codex/`; Codex uses global `~/.codex/config.toml`
 - mirrors Codex prompts into `~/.codex/prompts`
 - refreshes Codex-discoverable shared skills in `~/.agents/skills`
 - mirrors shared helper scripts into the runtime locations that need them

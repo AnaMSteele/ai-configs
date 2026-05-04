@@ -39,7 +39,7 @@ print_usage() {
     echo ""
     echo "Options:"
     echo "  --claude    Install Claude Code configuration and refresh shared skills for Claude"
-    echo "  --codex     Install Codex configuration and refresh shared skills for Codex"
+    echo "  --codex     Sync global Codex prompts/scripts and refresh shared skills for Codex"
     echo "  --gemini    Install Gemini CLI configuration only"
     echo "  --opencode  Install OpenCode configuration and refresh shared skills for OpenCode"
     echo "  --pi        Install Pi prompt templates, subagents, and extensions, then refresh shared skills"
@@ -70,7 +70,7 @@ print_usage() {
     echo "Examples:"
     echo "  $0                               # Default: install Claude + Codex + Gemini + OMP + OpenCode + Pi + shared skills"
     echo "  $0 --claude                      # Install Claude to current directory"
-    echo "  $0 --codex ~/my-project          # Install Codex to ~/my-project"
+    echo "  $0 --codex                       # Sync global Codex resources"
     echo "  $0 --gemini ~/my-project         # Install Gemini to ~/my-project"
     echo "  $0 --opencode ~/my-project       # Install OpenCode to ~/my-project"
     echo "  $0 --pi                          # Install Pi prompt templates, subagents, extensions, and refresh shared skills"
@@ -78,108 +78,6 @@ print_usage() {
     echo "  $0 --tools                       # Install CLI tools globally"
     echo "  $0 --skills                      # Sync repo-owned and package-managed shared skills into ~/.agents/skills"
     echo "  $0 --all --append-agents         # Install everything and ensure GEMINI.md Personas"
-}
-
-ensure_codex_cli_flags() {
-    local target_dir="$1"
-    local config_path="$target_dir/config.toml"
-
-    if [ ! -f "$config_path" ]; then
-        return
-    fi
-
-    local status
-    status=$(CONFIG_PATH="$config_path" python3 <<'PY'
-import ast
-import os
-import re
-from pathlib import Path
-
-config_file = Path(os.environ["CONFIG_PATH"])
-text = config_file.read_text()
-required_flags = [
-    "--dangerously-bypass-approvals-and-sandbox",
-    "--enable-web-search",
-]
-
-pattern = re.compile(r"default_cli_flags\s*=\s*\[(.*?)\]", re.DOTALL)
-match = pattern.search(text)
-changed = False
-
-
-def format_block(flags):
-    inner = ",\n".join(f'  "{flag}"' for flag in flags)
-    return f"default_cli_flags = [\n{inner}\n]"
-
-
-if match:
-    content = match.group(1)
-    try:
-        existing = ast.literal_eval("[" + content + "]")
-    except Exception:
-        existing = []
-
-    updated = existing[:]
-    for flag in required_flags:
-        if flag not in updated:
-            updated.append(flag)
-
-    if updated != existing:
-        block = format_block(updated)
-        text = text[:match.start()] + block + text[match.end():]
-        changed = True
-else:
-    cli_header = re.compile(r"^\[cli\]\s*$", re.MULTILINE)
-    cli_match = cli_header.search(text)
-    block = format_block(required_flags)
-    insertion = block + "\n"
-
-    if cli_match:
-        block_start = cli_match.end()
-        next_table = re.search(r"^\[.*?\]", text[block_start:], re.MULTILINE)
-        insert_pos = len(text) if not next_table else block_start + next_table.start()
-
-        if block_start < len(text) and text[block_start] != "\n":
-            text = text[:block_start] + "\n" + text[block_start:]
-            insert_pos += 1
-
-        prefix = text[:insert_pos]
-        suffix = text[insert_pos:]
-        if prefix and not prefix.endswith("\n"):
-            prefix += "\n"
-        text = prefix + insertion + suffix
-    else:
-        if text and not text.endswith("\n"):
-            text += "\n"
-        text = text.rstrip() + "\n\n[cli]\n" + block + "\n"
-
-    changed = True
-
-if changed:
-    config_file.write_text(text if text.endswith("\n") else text + "\n")
-    print("updated")
-else:
-    print("unchanged")
-PY
-)
-    local cli_update_status=$?
-
-    if [ $cli_update_status -ne 0 ]; then
-        echo "  - Unable to ensure Codex CLI flags (manual config update required)"
-        return
-    fi
-
-    case "$status" in
-        updated)
-            echo "  - Ensured Codex CLI runs with --dangerously-bypass-approvals-and-sandbox and web search"
-            ;;
-        unchanged)
-            echo "  - Codex CLI flags already configured for dangerous bypass and web search"
-            ;;
-        *)
-            echo "  - Unable to validate Codex CLI flags (manual config update required)"
-            ;;
-    esac
 }
 
 ensure_gemini_personas() {
@@ -1311,35 +1209,45 @@ install_skills() {
 
 install_codex() {
     local target="$1/.codex"
-    local is_update=false
 
-    # Detect if this is an update
+    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Syncing Codex Global Resources${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+    echo ""
+
     if [ -d "$target" ]; then
-        is_update=true
-        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-        echo -e "${GREEN}  Updating Codex Configuration${NC}"
-        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-        echo ""
-        echo -e "${GREEN}Updating Codex configuration at $target${NC}"
-    else
-        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-        echo -e "${GREEN}  Installing Codex Configuration${NC}"
-        echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-        echo ""
-        echo -e "${GREEN}Installing Codex configuration to $target${NC}"
-        mkdir -p "$target"
-    fi
+        echo "  - Found existing project .codex directory; cleaning only legacy generated files..."
 
-    local project_prompts_dir="${target}/prompts"
-    if [ -d "$project_prompts_dir" ]; then
-        echo "  - Removing project prompts (Codex prefers ~/.codex/prompts)..."
-        rm -rf "$project_prompts_dir"
-    fi
+        local project_prompts_dir="${target}/prompts"
+        if [ -d "$project_prompts_dir" ]; then
+            echo "    - Removing project prompts (Codex prefers ~/.codex/prompts)..."
+            rm -rf "$project_prompts_dir"
+        fi
 
-    local project_scripts_dir="${target}/scripts"
-    if [ -d "$project_scripts_dir" ]; then
-        echo "  - Removing project scripts (Codex prefers ~/.codex/scripts)..."
-        rm -rf "$project_scripts_dir"
+        local project_scripts_dir="${target}/scripts"
+        if [ -d "$project_scripts_dir" ]; then
+            echo "    - Removing project scripts (Codex prefers ~/.codex/scripts)..."
+            rm -rf "$project_scripts_dir"
+        fi
+
+        # Do not install or mutate Codex config.toml. Project-local Codex config
+        # overrides ~/.codex/config.toml, including account/model settings.
+        if [ -f "$target/config.toml" ]; then
+            if grep -q '^# Codex Configuration Template$' "$target/config.toml" \
+                && grep -q '^# MCP Servers - see mcp-servers.toml for additional server definitions$' "$target/config.toml"; then
+                echo "    - Removing legacy generated Codex config.toml..."
+                rm -f "$target/config.toml"
+            else
+                echo -e "    ${YELLOW}- Leaving existing Codex config.toml untouched${NC}"
+            fi
+        fi
+
+        if [ -f "$target/mcp-servers.toml" ] && cmp -s "$REPO_ROOT/_codex/mcp-servers.toml" "$target/mcp-servers.toml"; then
+            echo "    - Removing legacy generated mcp-servers.toml..."
+            rm -f "$target/mcp-servers.toml"
+        fi
+
+        rmdir "$target" 2>/dev/null || true
     fi
 
     local global_codex_dir="$HOME/.codex"
@@ -1351,30 +1259,9 @@ install_codex() {
     rm -rf "$global_codex_dir/scripts"
     cp -r "$REPO_ROOT/scripts" "$global_codex_dir/"
 
-    # Merge config.toml if it exists
-    if [ -f "$target/config.toml" ]; then
-        echo -e "  ${YELLOW}- config.toml already exists${NC}"
-        echo "  - Review $REPO_ROOT/_codex/config.toml for settings to merge"
-    else
-        echo "  - Installing config.toml..."
-        cp "$REPO_ROOT/_codex/config.toml" "$target/"
-    fi
-
-    ensure_codex_cli_flags "$target"
-
-    # Copy MCP servers configuration
-    echo "  - Installing mcp-servers.toml..."
-    cp "$REPO_ROOT/_codex/mcp-servers.toml" "$target/"
-
-    if [ "$is_update" = true ]; then
-        echo -e "${GREEN}✓ Codex update complete${NC}"
-    else
-        echo -e "${GREEN}✓ Codex installation complete${NC}"
-    fi
+    echo -e "${GREEN}✓ Codex global resource sync complete${NC}"
     echo ""
-    if [ "$is_update" = false ]; then
-        echo "To add MCP servers to Codex, merge mcp-servers.toml into ~/.codex/config.toml"
-    fi
+    echo "Codex account, model, and MCP settings remain in ~/.codex/config.toml"
 }
 
 

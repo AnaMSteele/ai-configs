@@ -1,11 +1,11 @@
 ---
-description: Run blocker-focused review-only plan review using GPT5.4 and Kimi K2.5 in parallel
+description: Run blocker-focused review-only plan review using GPT and Kimi K2.5 in parallel
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Multi-Model Plan Review Process
 
-This command orchestrates a blocker-focused review-only plan review using two independent reviewers in parallel: GPT5.4 and Kimi K2.5.
+This command orchestrates a blocker-focused review-only plan review using two independent reviewers in parallel: GPT and Kimi K2.5.
 
 Documents to review: $ARGUMENTS
 
@@ -52,21 +52,21 @@ If multiple candidates match or a required file is missing, ask for an explicit 
 
 Use the Task tool to launch both reviewers in parallel. Do not wait for the first task before launching the second.
 
-#### Review leg 1: GPT5.4
+#### Review leg 1: GPT
 
 ```text
 Task(
-  subagent_type="reviewer-gpt5.4",
-  description="Review plan with GPT5.4",
+  subagent_type="reviewer-gpt",
+  description="Review plan with GPT",
   prompt="""Review the single-file change plan at ${plan_path}.
 
-Reuse the existing OpenCode review contract from _opencode/commands/review:change-gpt5.4.md, with the plan path already resolved:
+Reuse the existing OpenCode review contract from _opencode/commands/review:change-gpt.md, with the plan path already resolved:
 - Only modify the plan by inserting inline review comments.
 - Do not change any other plan content.
 - Do not remove or resolve review comments.
 - Do not run follow-up commands, including /review:change-integrate.
 - Explore the codebase for context when needed.
-- Apply the same blocker-only materiality filter, execution-readiness checks, and summary style as review:change-gpt5.4.
+- Apply the same blocker-only materiality filter, execution-readiness checks, and summary style as review:change-gpt.
 - After adding comments and returning the summary, stop."""
 )
 ```
@@ -98,7 +98,7 @@ Reuse the existing OpenCode review contract from _opencode/commands/review:chang
 
 ## Review Output
 
-The final plan file should be an annotated plan containing any `[REVIEW:...]` comments left by GPT5.4 and Kimi.
+The final plan file should be an annotated plan containing any `[REVIEW:...]` comments left by GPT and Kimi.
 
 ## Summary Format
 
@@ -108,14 +108,14 @@ After both review legs finish, provide:
 ## Multi-Model Review Complete
 
 ### Reviewers:
-- ✅ GPT5.4 (openai/gpt-5.4)
+- ✅ GPT (openai/gpt-5.5)
 - ✅ Kimi K2.5 (fireworks kimi-k2p5)
 
 ### Consensus Blockers:
 [List issues multiple reviewers flagged that materially affect execution readiness]
 
 ### Divergent Material Risks:
-[List any material disagreements between GPT5.4 and Kimi, if present]
+[List any material disagreements between GPT and Kimi, if present]
 
 ### Unique Material Risks:
 [List blocker-level or materially risky issues caught by only one reviewer]
@@ -128,7 +128,7 @@ After both review legs finish, provide:
 
 This command is review-only:
 
-- Phase 1: GPT5.4 review-only pass
+- Phase 1: GPT review-only pass
 - Phase 1: Kimi K2.5 review-only pass
 - The final output is an annotated plan with review comments left in place
 - If the user wants integration afterward, run `/review:change-integrate <plan>`
@@ -139,7 +139,7 @@ This command is review-only:
 Input Plan
     ↓
 Phase 1: Parallel Reviews (2 reviewers)
-  ├─ GPT5.4 Review → [REVIEW:GPT5.4] comments
+  ├─ GPT Review → [REVIEW:GPT] comments
   ├─ Kimi Review → [REVIEW:Kimi Reviewer] comments
     ↓
 Output: Annotated Plan (run /review:change-integrate before execution if you want comments resolved)
@@ -157,7 +157,7 @@ Whenever a plan is created or updated and needs review:
 
 1. **Primary agent MUST delegate to this command** instead of performing direct review
 2. **Always use the full multi-model review** — do not skip reviewers or use single-reviewer shortcuts
-3. **Launch both reviewers before waiting** — GPT5.4 and Kimi should both be running in parallel
+3. **Launch both reviewers before waiting** — GPT and Kimi should both be running in parallel
 4. **Keep this command review-only** — it should stop with inline review comments still present in the plan
 
 ### Do NOT

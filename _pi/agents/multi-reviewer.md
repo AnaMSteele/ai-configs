@@ -2,7 +2,7 @@
 name: multi-reviewer
 description: Reviews specifications and writes structured feedback to a file
 mode: subagent
-model: openai-codex/gpt-5.4
+model: openai-codex/gpt-5.5
 color: '#3498db'
 reasoningEffort: high
 ---

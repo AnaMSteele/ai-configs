@@ -59,7 +59,7 @@ Use this only when the wrapper is unnecessary:
 
 ```bash
 codex exec \
-  -m gpt-5.4 \
+  -m gpt-5.5 \
   -c 'model_reasoning_effort="high"' \
   -s read-only \
   -C /path/to/repo \

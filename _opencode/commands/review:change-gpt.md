@@ -1,26 +1,30 @@
 ---
-description: Run a change review using GPT5.4 Codex
+description: Run a change review using GPT
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
-agent: build
+agent: reviewer-gpt
 subtask: true
-model: openai/gpt-5.4-codex
+model: openai/gpt-5.5
 ---
 
-Your reviewer name is CODEX 
+## Execution Mode
+- This prompt already runs inside the `reviewer-gpt` subagent selected by frontmatter.
+- Perform the review directly in this session.
+- Do not try to spawn another `reviewer-gpt` task just to satisfy this prompt.
+Your reviewer name is GPT
 
 Use this comment format:
 ```
-[REVIEW:CODEX] Your critical feedback here [/REVIEW]
+[REVIEW:GPT] Your critical feedback here [/REVIEW]
 ```
 
 To respond to other reviewers:
 ```
-[REVIEW:CODEX] RE: [OtherReviewer] - Your response [/REVIEW]
+[REVIEW:GPT] RE: [OtherReviewer] - Your response [/REVIEW]
 ```
 
 # Change Review (Single Plan File)
 
-Review the provided change plan as a cohesive unit. Your goal is to ensure the plan is solid and executable without scope creep or error.
+Review the provided change plan as a cohesive unit. Your goal is to ensure the plan is solid, executable, and faithful to the source plan's stated goal, non-goals, acceptance criteria, and validated scope.
 
 Documents to review: $ARGUMENTS
 
@@ -34,6 +38,14 @@ This command is review-only.
 - Do not run follow-up commands (including `/review:change-integrate`).
 - After adding comments and providing the summary, stop.
 
+## Materiality Filter
+
+Review against the plan's stated goal, non-goals, acceptance criteria, and validated source scope.
+
+- Flag only blockers, material risks, or missing decisions required to execute that stated scope correctly.
+- Flag scope gaps when the plan's own stated scope requires missing work.
+- Do not leave comments for nice-to-haves, opportunistic cleanup, adjacent surfaces outside the stated scope, or extra detail that would not change execution readiness.
+- If an issue would not change readiness, leave it out.
 
 ## Process
 
@@ -65,18 +77,18 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Feasibility and integration constraints
 - Correct file paths, APIs, and data structures referenced by the plan
 
-Use the Task tool with `subagent_type=Explore` to efficiently gather context.
+Use the available repo exploration tools in this session to gather context.
 
-### 2) Review Specification (Critical Spec Review)
+### 2) Review Specification (Blocker-Oriented Spec Review)
 
-Read the plan. Apply a critical mindset. Don't validate; look for problems.
+Read the plan with a blocker-oriented mindset. Do not hunt for every possible improvement. Comment only when something would block, materially derail, or wrongly expand execution of the stated scope.
 
 Look for:
 
-- Gaps: missing requirements or edge cases.
-- Risks: security, performance, or integration issues.
-- Ambiguity: unclear success criteria or technical decisions.
-- Technical debt: unrealistic assumptions or poor architectural choices.
+- Gaps: missing required work or edge cases that would break the stated goal or acceptance criteria.
+- Risks: material security, correctness, performance, or integration issues that threaten readiness.
+- Ambiguity: missing success criteria or technical decisions required to execute the plan as written.
+- Scope drift: work that expands beyond the stated goal, non-goals, or validated source scope.
 
 Add comments:
 
@@ -116,6 +128,7 @@ Ensure internal consistency:
 - Non-goals are not accidentally reintroduced.
 - The plan does not rely on executors making outcome-shaping chunking or design decisions later.
 - Phase sizing matches likely effort, coupling, and verification breadth rather than bundling multiple independently verifiable outcomes behind one checkbox.
+- Optional adjacent work is not promoted into required scope without support from the plan's stated scope.
 
 ## Comment Guidelines
 
@@ -138,9 +151,9 @@ Usage:
 
 After adding comments to the plan, provide a single summary:
 
-- Plan status: solid or needs rework?
-- Critical issues: list the most important blockers.
-- Recommendation: "Proceed with caution" or "Major revision needed".
+- Plan status: ready or needs rework?
+- Material blockers: list only blockers, material risks, or required missing decisions.
+- Recommendation: "Ready to execute" or "Revision required before execution".
 
 ---
 

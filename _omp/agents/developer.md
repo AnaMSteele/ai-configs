@@ -2,7 +2,7 @@
 name: developer
 description: Implements your specifications with tests - delegate for writing code
 color: "#3498db"
-model: openai-codex/gpt-5.4
+model: openai-codex/gpt-5.5
 reasoningEffort: medium
 mode: subagent
 ---

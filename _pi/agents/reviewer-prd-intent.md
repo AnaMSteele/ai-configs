@@ -2,7 +2,7 @@
 name: reviewer-prd-intent
 description: PRD intent alignment reviewer - checks product intent, invariants, and source-of-truth boundaries
 mode: subagent
-model: openai-codex/gpt-5.4
+model: openai-codex/gpt-5.5
 provider: openai-codex
 reasoningEffort: high
 tools: read, grep, find, ls, bash, write, subagent

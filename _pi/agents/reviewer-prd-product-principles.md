@@ -2,7 +2,7 @@
 name: reviewer-prd-product-principles
 description: PRD product principles reviewer - checks recovery, parity, and operator experience
 mode: subagent
-model: openai-codex/gpt-5.4
+model: openai-codex/gpt-5.5
 provider: openai-codex
 reasoningEffort: high
 tools: read, grep, find, ls, bash, write, subagent

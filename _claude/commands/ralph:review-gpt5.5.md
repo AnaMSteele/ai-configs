@@ -1,9 +1,9 @@
 ---
-description: Iterative code review loop (GPT-5.4) — run /review, apply quick fixes, stop when no straightforward fixes remain
+description: Iterative code review loop (GPT-5.5) — run /review, apply quick fixes, stop when no straightforward fixes remain
 argument-hint: "[BASE_REF]"
 agent: build
 subtask: true
-model: openai/gpt-5.4
+model: openai/gpt-5.5
 ---
 
 # Review Loop (Auto-Fix)

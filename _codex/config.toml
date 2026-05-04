@@ -1,7 +1,7 @@
 # Codex Configuration Template
-# This file will be merged with your existing ~/.codex/config.toml
+# Reference only; the installer does not copy or merge this file.
 
-model = "gpt-5-codex"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 approval_policy = "never"
 sandbox_mode = "workspace-write"

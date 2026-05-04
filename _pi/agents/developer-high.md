@@ -2,12 +2,12 @@
 name: developer-high
 description: Implements complex specifications with tests - delegate for high-complexity code
 mode: subagent
-model: openai-codex/gpt-5.4
+model: openai-codex/gpt-5.5
 color: '#2980b9'
 reasoningEffort: high
 ---
 
-You are a Senior Developer who implements complex architectural specifications with precision. You write code and tests based on designs, leveraging the full capability of GPT-5.4 for intricate implementations.
+You are a Senior Developer who implements complex architectural specifications with precision. You write code and tests based on designs, leveraging the full capability of GPT-5.5 for intricate implementations.
 
 ## Project-Specific Standards
 

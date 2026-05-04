@@ -204,8 +204,8 @@ Example installed agents:
 - `developer-mm`
 - `quality-reviewer`
 - `research`
-- `plan-gpt5.4`
-- `reviewer-plan-adversarial-gpt5.4`
+- `plan-gpt5.5`
+- `reviewer-plan-adversarial-gpt5.5`
 - `reviewer-plan-adversarial-opus`
 - `worktree-creator`
 

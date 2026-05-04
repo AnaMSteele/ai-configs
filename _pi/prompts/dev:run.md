@@ -1,7 +1,7 @@
 ---
 description: Execute a single-file plan directly with high reasoning plus one post-phase quality review
 argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
-model: openai/gpt-5.4
+model: openai/gpt-5.5
 ---
 
 # Run Plan (Single File)

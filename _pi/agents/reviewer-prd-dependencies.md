@@ -2,7 +2,7 @@
 name: reviewer-prd-dependencies
 description: PRD dependencies reviewer - checks build-vs-buy rationale and library selection
 mode: subagent
-model: openai-codex/gpt-5.4
+model: openai-codex/gpt-5.5
 provider: openai-codex
 reasoningEffort: high
 tools: read, grep, find, ls, bash, write, subagent

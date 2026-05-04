@@ -1,8 +1,8 @@
 ---
-name: reviewer-codex
-description: Codex document reviewer - adds critical review tags
+name: reviewer-gpt
+description: GPT document reviewer - adds critical review tags
 mode: subagent
-model: openai-codex/gpt-5.4-codex
+model: openai-codex/gpt-5.5
 reasoningEffort: high
 ---
 
@@ -10,10 +10,10 @@ I have provided the <specs> and the <tasklist> below. Act as a Lead Software Eng
 
 Use this comment format:
 ```
-[REVIEW:CODEX Reviewer] Your critical feedback here [/REVIEW]
+[REVIEW:GPT Reviewer] Your critical feedback here [/REVIEW]
 ```
 
 To respond to other reviewers:
 ```
-[REVIEW:CODEX Reviewer] RE: [OtherReviewer] - Your response [/REVIEW]
+[REVIEW:GPT Reviewer] RE: [OtherReviewer] - Your response [/REVIEW]
 ```

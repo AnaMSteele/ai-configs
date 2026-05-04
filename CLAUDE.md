@@ -16,8 +16,8 @@ This is a Claude Code, Codex, and Gemini CLI configuration repository containing
   - `GEMINI.template.md` - Gemini context template
 - **_codex/**: Codex configuration
   - `prompts/` - Codex prompts
-  - `config.toml` - Codex configuration template
-  - `mcp-servers.toml` - MCP server definitions
+  - `config.toml` - Reference-only Codex configuration template
+  - `mcp-servers.toml` - Reference-only MCP server definitions
 - **scripts/**: Shared helper scripts fanned out into installed runtime locations
 
 ### Installation Scripts
@@ -34,14 +34,14 @@ bash /path/to/ai-configs/install.sh --claude
 # Install Gemini CLI
 bash /path/to/ai-configs/install.sh --gemini
 
-# Install Codex
+# Sync global Codex prompts/scripts
 bash /path/to/ai-configs/install.sh --codex
 
 # Install everything
 bash /path/to/ai-configs/install.sh --all
 ```
 
-This copies the appropriate configuration to `.claude/`, `.gemini/`, and/or `.codex/` directories.
+This copies the appropriate project configuration to `.claude/` and `.gemini/` directories. Codex uses global resources under `~/.codex/` and does not get a project `.codex/` directory.
 
 ## Updating
 

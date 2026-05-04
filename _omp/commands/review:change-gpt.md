@@ -1,20 +1,25 @@
 ---
-description: Run a change review using GPT5.4 Codex
+description: Run a change review using GPT
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
-agent: reviewer-codex
+agent: reviewer-gpt
 subtask: true
+model: openai-codex/gpt-5.5
 ---
 
-Your reviewer name is CODEX 
+## Execution Mode
+- Run this review by delegating to the Task tool with `agent: reviewer-gpt` and exactly one task.
+- Do not perform the review directly in the primary agent.
+- Pass the complete review requirements from this command to that subagent and wait for completion before responding.
+Your reviewer name is GPT
 
 Use this comment format:
 ```
-[REVIEW:CODEX] Your critical feedback here [/REVIEW]
+[REVIEW:GPT] Your critical feedback here [/REVIEW]
 ```
 
 To respond to other reviewers:
 ```
-[REVIEW:CODEX] RE: [OtherReviewer] - Your response [/REVIEW]
+[REVIEW:GPT] RE: [OtherReviewer] - Your response [/REVIEW]
 ```
 
 # Change Review (Single Plan File)
@@ -63,13 +68,18 @@ Before leaving extensive feedback, explore the codebase to confirm:
 - Existing patterns and conventions
 - Feasibility and integration constraints
 - Correct file paths, APIs, and data structures referenced by the plan
-- Alignment with any available `PRODUCT_INTENT.md` or equivalent product-intent documents in the repository
 
 Use the Task tool with `subagent_type=Explore` to efficiently gather context.
 
 ### 2) Review Specification (Critical Spec Review)
 
-Read the plan. Apply a critical mindset. Don't validate; look for problems.
+Read the plan. Apply a critical, materiality-first mindset. Don't validate; look for problems that would block execution, create a material risk, or force an unresolved decision within the plan's stated goal and non-goals.
+
+Apply a materiality filter:
+
+- Only flag blockers, material risks, or missing decisions required to execute the plan's stated goal while preserving its non-goals.
+- Do not comment on nice-to-haves, opportunistic cleanup, adjacent surfaces outside the requested scope, or extra detail that would not change readiness.
+- If an observation would not change execution readiness, leave it out instead of expanding required scope.
 
 Look for:
 
@@ -91,32 +101,12 @@ Verify the plan is runnable and resumable:
 - Phases are present (`## Phase N: ...`) and ordered.
 - Each phase has:
   - `### End State` (observable outcomes)
-  - `### Tests first` (behavioral tests in plain terms; if TDD is not practical, the phase explains why)
   - `### Work` (high-level guidance)
   - `### Verify` (explicit commands and/or manual checks)
 - `## Progress` exists, is coarse (phase-level), and uses stable IDs.
 - `## Progress` items correspond to phase headers.
 - Only `## Progress` contains checkboxes.
 - `Resume Instructions (Agent)` avoids stop points and enables continuous execution.
-- `## Decisions / Deviations Log` exists.
-- The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
-- The plan reflects the expectation that important questions are answered before the plan is considered ready.
-- Each unchecked phase is still a **bounded execution slice**:
-  - one coherent outcome,
-  - one primary verification story,
-  - limited enough coupling and affected surfaces for one safe execution pass,
-  - little enough remaining discovery that execution should not need semantic replanning.
-- If a phase would likely require same-scope subdivision during execution just to finish safely, treat that as a plan defect to flag now.
-
-Also review whether the `### Tests first` sections:
-
-- describe what a user, operator, or agent will be able to do after the phase,
-- align with the intended product behavior,
-- are strong enough to catch partial or misleading implementation.
-
-- When a plan includes a non-trivial build-vs-buy choice (for example protocol handling, parsing, transport, wrappers, infrastructure, or integrations), verify that it includes a dependency/library evaluation checkpoint or equivalent documented decision point.
-- If that evidence is missing, or the plan proposes custom implementation without showing that official SDKs and well-maintained libraries were evaluated, add a blocking review comment.
-- Do not force extra ceremony when the plan already documents the decision clearly or the work is trivial/local wiring.
 
 ### 4) Cross-Verification
 
@@ -125,9 +115,7 @@ Ensure internal consistency:
 - Acceptance criteria have corresponding verification steps.
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
-- The plan aligns with the repository's long-range product intent when such intent is documented.
-- The plan does not rely on executors making outcome-shaping chunking or design decisions later.
-- Phase sizing matches likely effort, coupling, and verification breadth rather than bundling multiple independently verifiable outcomes behind one checkbox.
+- Comments stay within the requested source scope and only raise material blockers or readiness risks.
 
 ## Comment Guidelines
 
@@ -150,8 +138,8 @@ Usage:
 
 After adding comments to the plan, provide a single summary:
 
-- Plan status: solid or needs rework?
-- Critical issues: list the most important blockers.
+- Plan status: solid as scoped or needs rework?
+- Critical issues: list only blockers, material risks, or missing decisions that would change execution readiness.
 - Recommendation: "Proceed with caution" or "Major revision needed".
 
 ---

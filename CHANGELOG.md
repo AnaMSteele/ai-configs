@@ -28,7 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - Added `_opencode/commands/review:plan.md` as a first-class OpenCode reviewed-plan entrypoint.
-- The new wrapper normalizes a single plan path, launches the existing GPT5.4 and Kimi review legs in parallel, and returns a combined review-only summary.
+- The new wrapper normalizes a single plan path, launches the existing GPT and Kimi review legs in parallel, and returns a combined review-only summary.
 
 ### Changed
 
@@ -37,7 +37,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Technical Notes
 
-- The wrapper intentionally reuses `_opencode/commands/review:change-gpt5.4.md`, `_opencode/commands/review:change-k2.5.md`, `reviewer-gpt5.4`, and `reviewer-kimi` instead of adding Pi-specific `reviewer-plan-*` agents.
+- The wrapper intentionally reuses `_opencode/commands/review:change-gpt.md`, `_opencode/commands/review:change-k2.5.md`, `reviewer-gpt`, and `reviewer-kimi` instead of adding Pi-specific `reviewer-plan-*` agents.
 - Verified against the completed plan and live CLI behavior; the wrapper launched both review legs and stopped before integration, while the Kimi leg failed in this environment with `ProviderModelNotFoundError` and is documented as an operational constraint.
 
 ## [ltui image attachments] - 2026-04-03

@@ -40,7 +40,7 @@ This directory contains a comprehensive set of commands that support a complete 
 
 ### Workflow Skills
 19. **`adn-dev-wf`** - Canonical reviewed-plan workflow skill that replaces the retired quality-gated execution path
-20. **`ralph:review-gpt5.4.md`** - Run `/review` in a loop (GPT-5.4), apply quick fixes, stop when no straightforward fixes remain
+20. **`ralph:review-gpt5.5.md`** - Run `/review` in a loop (GPT-5.5), apply quick fixes, stop when no straightforward fixes remain
 21. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
 
 ## Command Workflows
@@ -248,7 +248,7 @@ commands/
 ├── cmd:start-linear-issue-branch.md
 ├── cmd:review-pr-comments.md
 ├── cmd:execute-plan.md
-├── ralph:review-gpt5.4.md
+├── ralph:review-gpt5.5.md
 ├── ralph:review-opus.md
 └── _lib/ (helper scripts)
 ```

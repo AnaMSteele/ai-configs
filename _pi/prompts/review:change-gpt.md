@@ -1,25 +1,25 @@
 ---
-description: Run a change review using GPT5.4
+description: Run a change review using GPT
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
-agent: reviewer-gpt5.4
+agent: reviewer-gpt
 subtask: true
-model: openai-codex/gpt-5.4
+model: openai-codex/gpt-5.5
 ---
 
 ## Execution Mode
-- This prompt already runs inside the `reviewer-gpt5.4` subagent selected by frontmatter.
+- This prompt already runs inside the `reviewer-gpt` subagent selected by frontmatter.
 - Perform the review directly in this session.
-- Do not try to spawn another `reviewer-gpt5.4` task just to satisfy this prompt.
-Your reviewer name is GPT5.4 
+- Do not try to spawn another `reviewer-gpt` task just to satisfy this prompt.
+Your reviewer name is GPT
 
 Use this comment format:
 ```
-[REVIEW:GPT5.4] Your critical feedback here [/REVIEW]
+[REVIEW:GPT] Your critical feedback here [/REVIEW]
 ```
 
 To respond to other reviewers:
 ```
-[REVIEW:GPT5.4] RE: [OtherReviewer] - Your response [/REVIEW]
+[REVIEW:GPT] RE: [OtherReviewer] - Your response [/REVIEW]
 ```
 
 # Change Review (Single Plan File)

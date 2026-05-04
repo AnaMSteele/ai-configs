@@ -1,5 +1,5 @@
 ---
-description: Run adversarial second-pass plan review using GPT5.4 and Opus 4.6 after the standard multi-model review
+description: Run adversarial second-pass plan review using GPT and Opus 4.6 after the standard multi-model review
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
@@ -28,11 +28,11 @@ Use this after the standard multi-model review when you want an explicit challen
 
 ## Phase 1: Parallel Adversarial Review (2 Subagents)
 
-### Subagent 1: Adversarial GPT5.4
-- **Agent:** `reviewer-plan-adversarial-gpt5.4`
-- **Model:** `openai-codex/gpt-5.4`
+### Subagent 1: Adversarial GPT
+- **Agent:** `reviewer-plan-adversarial-gpt5.5`
+- **Model:** `openai-codex/gpt-5.5`
 - **Reasoning:** High
-- **Output:** Plan file with `[REVIEW:Adversarial GPT5.4]` comments + summary
+- **Output:** Plan file with `[REVIEW:Adversarial GPT]` comments + summary
 
 ### Subagent 2: Adversarial Opus 4.6
 - **Agent:** `reviewer-plan-adversarial-opus`
@@ -44,9 +44,9 @@ Use this after the standard multi-model review when you want an explicit challen
 
 ```text
 Task(
-  subagent_type="reviewer-plan-adversarial-gpt5.4",
-  description="Challenge plan with Adversarial GPT5.4",
-  prompt="Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-gpt5.4 instructions exactly. Add [REVIEW:Adversarial GPT5.4] comments to the plan file and provide a summary."
+  subagent_type="reviewer-plan-adversarial-gpt5.5",
+  description="Challenge plan with Adversarial GPT",
+  prompt="Review the plan at $ARGUMENTS. Follow your reviewer-plan-adversarial-gpt5.5 instructions exactly. Add [REVIEW:Adversarial GPT] comments to the plan file and provide a summary."
 )
 
 Task(
@@ -64,7 +64,7 @@ Run the synthesis reviewer after the adversarial reviewers complete.
 
 ```text
 Task(
-  subagent_type="reviewer-plan-gpt5.4",
+  subagent_type="reviewer-plan-gpt5.5",
   description="Synthesize adversarial plan reviews",
   prompt="Read the plan at $ARGUMENTS and synthesize the existing review comments, including any adversarial review comments. Add [REVIEW:Synthesis] comments to the plan file and provide a final consolidated summary."
 )
@@ -76,7 +76,7 @@ After synthesis completes, integrate the review feedback into the plan.
 
 ### Integration requirements
 
-- Read the plan and extract `[REVIEW:Adversarial GPT5.4]`, `[REVIEW:Adversarial Opus 4.6]`, and `[REVIEW:Synthesis]` comments.
+- Read the plan and extract `[REVIEW:Adversarial GPT]`, `[REVIEW:Adversarial Opus 4.6]`, and `[REVIEW:Synthesis]` comments.
 - Apply edits directly to the plan based on the feedback.
 - Remove resolved review comments.
 - Update any affected sections such as Locked Decisions, Acceptance Criteria, BDD scenarios, phase work, verify steps, resume instructions, and changelog.
@@ -91,7 +91,7 @@ After review and integration, provide:
 ## Adversarial Review Complete
 
 ### Reviewers:
-- ✅ Adversarial GPT5.4
+- ✅ Adversarial GPT
 - ✅ Adversarial Opus 4.6
 - ✅ Synthesis
 

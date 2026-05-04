@@ -1,5 +1,5 @@
 ---
-description: Run adversarial second-pass plan review using parallel interactive Claude Code and Codex, then GPT5.4 synthesis and integration
+description: Run adversarial second-pass plan review using parallel Claude Code and GPT review, then GPT synthesis and integration
 argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
@@ -7,11 +7,11 @@ argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: 
 
 This command runs a second-pass adversarial review after the normal `/review:plan` flow.
 
-It uses **two real interactive external reviewers in parallel**:
+It uses **two reviewers in parallel**:
 - Claude Code
-- Codex
+- GPT
 
-After both finish, it runs a **GPT5.4 synthesis pass** and then integrates the review feedback back into the plan.
+After both finish, it runs a **GPT synthesis pass** and then integrates the review feedback back into the plan.
 
 Documents to review: $ARGUMENTS
 
@@ -26,13 +26,11 @@ Use this after the standard `/review:plan` flow when you want an explicit challe
 
 ## Execution Mode
 
-- Launch **two real interactive CLI review sessions** using `interactive_shell` in parallel:
-  - one Claude Code session,
-  - one Codex session.
-- Use `mode: "hands-free"` for both, then immediately background both sessions.
+- Launch the Claude Code review via its interactive prompt template.
+- Launch the GPT review via the canonical `/review:change-gpt` prompt.
 - Do not use the old adversarial reviewer subagents.
 - Do not run the adversarial review directly in the primary agent.
-- After both external reviewers finish, run the GPT5.4 synthesis reviewer.
+- After both reviewers finish, run the GPT synthesis reviewer.
 - Then integrate the feedback into the plan and remove resolved review comments.
 
 ## Reviewer Names and Comment Formats
@@ -47,14 +45,14 @@ Claude comment format:
 [REVIEW:CLAUDE] Your critical feedback here [/REVIEW]
 ```
 
-Codex reviewer name:
+GPT reviewer name:
 ```text
-CODEX
+GPT
 ```
 
-Codex comment format:
+GPT comment format:
 ```text
-[REVIEW:CODEX] Your critical feedback here [/REVIEW]
+[REVIEW:GPT] Your critical feedback here [/REVIEW]
 ```
 
 ## Phase 1: Parallel Interactive Adversarial Reviews
@@ -87,15 +85,15 @@ Do not duplicate launcher mechanics here.
 Use these prompt templates as the canonical transport + lifecycle specs:
 
 - Claude leg: `/review:change-claude-code`
-- Codex leg: `/review:change-codex-cli`
+- GPT leg: `/review:change-gpt`
 
 For each leg:
 
 - follow that prompt template's launcher shape, wrapper transport, shell setup, backgrounding behavior, and lifecycle rules,
-- keep the review **interactive** via `interactive_shell`,
-- run exactly one session per reviewer,
+- keep the Claude Code review **interactive** via `interactive_shell`,
+- run exactly one review per reviewer,
 - do not invent alternate launcher shapes,
-- do not route the work through Pi reviewer subagents.
+- do not route the work through deprecated provider-specific reviewer prompts.
 
 ### Required adversarial reviewer prompt content
 
@@ -125,18 +123,18 @@ Both adversarial prompts must explicitly challenge the plan for:
 - Launch both sessions first, in parallel.
 - Apply the lifecycle and completion handling from the canonical prompt for each reviewer:
   - `/review:change-claude-code` for Claude,
-  - `/review:change-codex-cli` for Codex.
+  - `/review:change-gpt` for GPT.
 - Only inspect failure details if a session exits non-zero or clearly fails to review the plan.
 
-## Phase 2: GPT5.4 Synthesis
+## Phase 2: GPT Synthesis
 
-After both interactive reviewers complete, run the GPT5.4 synthesis reviewer.
+After both interactive reviewers complete, run the GPT synthesis reviewer.
 
 ```javascript
 Agent({
   subagent_type: "reviewer-plan-synthesis",
   description: "Synthesize adversarial review results",
-  prompt: "Synthesize the existing review comments already present in the plan at $ARGUMENTS, including any [REVIEW:CLAUDE] and [REVIEW:CODEX] comments. Add [REVIEW:Synthesis] comments and provide a final consolidated summary.",
+  prompt: "Synthesize the existing review comments already present in the plan at $ARGUMENTS, including any [REVIEW:CLAUDE] and [REVIEW:GPT] comments. Add [REVIEW:Synthesis] comments and provide a final consolidated summary.",
 })
 ```
 
@@ -148,7 +146,7 @@ After synthesis completes, integrate the review feedback into the plan.
 
 ### Integration requirements
 
-- Read the plan and extract `[REVIEW:CLAUDE]`, `[REVIEW:CODEX]`, and `[REVIEW:Synthesis]` comments.
+- Read the plan and extract `[REVIEW:CLAUDE]`, `[REVIEW:GPT]`, and `[REVIEW:Synthesis]` comments.
 - Apply edits directly to the plan based on the feedback.
 - Remove resolved review comments.
 - Update affected sections such as Locked Decisions, Acceptance Criteria, BDD scenarios, phase work, verify steps, resume instructions, and changelog.
@@ -164,14 +162,14 @@ After review and integration, provide:
 
 ### Reviewers:
 - ✅ Claude Code
-- ✅ Codex (GPT-5.4)
-- ✅ GPT5.4 Synthesis
+- ✅ GPT (gpt-5.5)
+- ✅ GPT Synthesis
 
 ### Highest-risk issues:
 [List the most important issues found]
 
 ### Divergent views:
-[List any meaningful differences between Claude and Codex]
+[List any meaningful differences between Claude and GPT]
 
 ### Changes integrated:
 [List the important plan changes made]

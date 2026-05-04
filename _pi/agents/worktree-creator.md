@@ -2,7 +2,7 @@
 name: worktree-creator
 description: Creates git worktrees for Linear issues
 mode: subagent
-model: openai-codex/gpt-5.1-codex-mini
+model: openai-codex/gpt-5.4-mini
 color: '#e74c3c'
 ---
 

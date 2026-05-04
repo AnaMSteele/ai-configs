@@ -1,12 +1,12 @@
 # Codex Configuration
 
-This directory is the repository source for Codex prompts and configuration templates.
+This directory is the repository source for Codex prompts and reference snippets.
 
 ## Contents
 
 - `prompts/` — Codex prompt files
-- `config.toml` — Codex config template
-- `mcp-servers.toml` — MCP server snippets for Codex
+- `config.toml` — reference-only Codex config template
+- `mcp-servers.toml` — reference-only MCP server snippets for Codex
 - `../scripts/` — shared helper scripts installed into `~/.codex/scripts`
 
 ## Install
@@ -20,10 +20,12 @@ Re-run `install.sh` to refresh an existing installation.
 
 ## Notes
 
-- Repo source lives under `_codex/`; installed runtime files live under `.codex/` in target projects and `~/.codex/` for global Codex resources.
+- Repo source lives under `_codex/`; installed runtime files live under `~/.codex/` for global Codex resources.
 - Shared helper scripts are maintained once in the repo-level `scripts/` directory and copied into `~/.codex/scripts` by the installer.
 - Prompt files are mirrored to `~/.codex/prompts` because Codex discovers global prompts there.
-- If you already have `~/.codex/config.toml`, merge new settings from `_codex/config.toml` instead of overwriting blindly.
+- The installer does not create project `.codex/` directories.
+- The installer does not install or mutate `config.toml`; keep account, model, and MCP settings in your global `~/.codex/config.toml`.
+- Existing legacy generated project `.codex` files from this repo are removed during install so they cannot override global settings.
 
 ## Canonical reviewed-plan workflow
 
