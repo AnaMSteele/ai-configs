@@ -8,6 +8,8 @@ This document provides comprehensive command listings for ltui with all availabl
 
 List and filter issues with extensive options.
 
+Global options such as `--format`, `--fields`, `--limit`, `--cursor`, `--profile`, and `--show-rate-limit` must appear before the command path, for example `ltui --format json --fields id,title issues list --team ENG`.
+
 **All filter options:**
 ```bash
 ltui issues list [options]
@@ -15,15 +17,10 @@ ltui issues list [options]
 Options:
   --team <key>           Filter by team key (e.g., ENG, PROD)
   --project <name|id>    Filter by project name or ID
-  --state <name|id>      Filter by state name or ID
+  --state <name|id>      Filter by state name or ID (repeatable)
   --assignee <email|id>  Filter by assignee (use "me" for yourself)
   --label <name>         Filter by label (can be used multiple times)
   --search <query>       Search issues by text
-  --limit <n>            Limit number of results (default: 50)
-  --cursor <id>          Pagination cursor from previous response
-  --fields <list>        Comma-separated field list (e.g., id,key,title,state)
-  --format <fmt>         Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>       Use specific profile
 ```
 
 **Examples:**
@@ -39,6 +36,7 @@ ltui issues list --project "Mobile App"
 
 # Filter by state
 ltui issues list --state "In Progress"
+ltui issues list --state "Todo" --state "In Progress"
 
 # Filter by assignee
 ltui issues list --assignee me
@@ -54,14 +52,15 @@ ltui issues list --search "login"
 ltui issues list --team ENG --state "Todo" --assignee me
 
 # Limit results
-ltui issues list --limit 10
+ltui --limit 10 issues list
 
 # Get specific fields only
-ltui issues list --fields id,key,title,state
+ltui --fields id,key,title,state issues list
+ltui --format json --show-rate-limit --fields id,identifier,title issues list
 
 # Pagination
-ltui issues list --limit 50
-ltui issues list --limit 50 --cursor xyz789
+ltui --limit 50 issues list
+ltui --limit 50 --cursor xyz789 issues list
 ```
 
 ### `ltui issues attachments`
@@ -91,7 +90,7 @@ Options:
 **Examples:**
 ```bash
 # Fetch image-like entries as JSON
-ltui issues attachments ENG-42 --only-images --format json
+ltui --format json issues attachments ENG-42 --only-images
 
 # Download images
 ltui issues attachments ENG-42 --only-images --download-dir ./.ltui-attachments/ENG-42
@@ -113,6 +112,7 @@ Arguments:
 Options:
   --include-comments         Include comments
   --include-history          Include history
+  --no-attachment-probe      Skip default attachment/comment scan for image guidance
   --max-description-chars <n> Max description chars (default: 4000)
   --max-comment-chars <n>     Max comment chars (default: 500)
 ```
@@ -151,8 +151,6 @@ Optional:
   --estimate <n>            Estimate in points
   --parent <identifier>     Parent issue identifier
   --cycle <name|id>         Cycle name or ID
-  --format <fmt>            Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>          Use specific profile
 ```
 
 **Examples:**
@@ -204,8 +202,6 @@ Options:
   --estimate <n>            Update estimate
   --project <name|id>       Move to different project
   --cycle <name|id>         Move to different cycle
-  --format <fmt>            Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>          Use specific profile
 ```
 
 **Examples:**
@@ -251,8 +247,7 @@ Required:
   --body <text|@file>  Comment text (use @file to read from file)
 
 Options:
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
+  (none; use global options before the command path)
 ```
 
 **Examples:**
@@ -285,8 +280,6 @@ Required:
 
 Optional:
   --title <text>      Link title (defaults to URL)
-  --format <fmt>      Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>    Use specific profile
 ```
 
 **Examples:**
@@ -315,8 +308,7 @@ Required:
   --parent <id>       Parent issue identifier (e.g., ENG-42)
 
 Options:
-  --format <fmt>      Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>    Use specific profile
+  (none; use global options before the command path)
 ```
 
 **Examples:**
@@ -340,8 +332,7 @@ Required:
   --blocked-by <id>     Issue that blocks this one (e.g., ENG-40)
 
 Options:
-  --format <fmt>        Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>      Use specific profile
+  (none; use global options before the command path)
 ```
 
 **Examples:**
@@ -391,8 +382,6 @@ ltui projects list [options]
 
 Options:
   --team <key>         Filter by team
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
 ```
 
 **Examples:**
@@ -404,7 +393,7 @@ ltui projects list
 ltui projects list --team ENG
 
 # Human-readable format
-ltui projects list --format table
+ltui --format table projects list
 ```
 
 ### `ltui projects view`
@@ -419,8 +408,7 @@ Arguments:
   <name|id>           Project name or ID
 
 Options:
-  --format <fmt>      Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>    Use specific profile
+  (none; use global options before the command path)
 ```
 
 **Examples:**
@@ -432,7 +420,7 @@ ltui projects view "Mobile App"
 ltui projects view abc123-def-456
 
 # Detail format
-ltui projects view "Mobile App" --format detail
+ltui --format detail projects view "Mobile App"
 ```
 
 ### `ltui projects align`
@@ -480,14 +468,13 @@ List all teams.
 ltui teams list [options]
 
 Options:
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
+  (none; use global options before the command path)
 ```
 
 **Examples:**
 ```bash
 ltui teams list
-ltui teams list --format table
+ltui --format table teams list
 ```
 
 ### `ltui teams view`
@@ -502,14 +489,13 @@ Arguments:
   <key|id>            Team key (e.g., ENG) or ID
 
 Options:
-  --format <fmt>      Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>    Use specific profile
+  (none; use global options before the command path)
 ```
 
 **Examples:**
 ```bash
 ltui teams view ENG
-ltui teams view ENG --format detail
+ltui --format detail teams view ENG
 ```
 
 ## Labels Commands
@@ -524,8 +510,6 @@ ltui labels list [options]
 
 Options:
   --team <key>         Filter by team
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
 ```
 
 **Examples:**
@@ -537,7 +521,7 @@ ltui labels list
 ltui labels list --team ENG
 
 # Human-readable
-ltui labels list --format table
+ltui --format table labels list
 ```
 
 ### `ltui labels create`
@@ -555,8 +539,6 @@ Optional:
   --color <hex>        Hex color code (e.g., #FF5733)
   --description <text> Label description
   --team <key>         Team to create label for
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
 ```
 
 **Examples:**
@@ -586,8 +568,6 @@ ltui users list [options]
 
 Options:
   --search <text>      Search users by name or email
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
 ```
 
 **Examples:**
@@ -599,7 +579,7 @@ ltui users list
 ltui users list --search alice
 
 # Human-readable
-ltui users list --format table
+ltui --format table users list
 ```
 
 ## Cycles Commands
@@ -617,8 +597,6 @@ Required:
 
 Optional:
   --current            Only show current cycle
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
 ```
 
 **Examples:**
@@ -630,7 +608,7 @@ ltui cycles list --team ENG
 ltui cycles list --team ENG --current
 
 # Human-readable
-ltui cycles list --team ENG --format table
+ltui --format table cycles list --team ENG
 ```
 
 ## Documents Commands
@@ -644,8 +622,7 @@ List documents.
 ltui documents list [options]
 
 Options:
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
+  (none; use global options before the command path)
 ```
 
 ### `ltui documents view`
@@ -660,8 +637,7 @@ Arguments:
   <id>                Document ID
 
 Options:
-  --format <fmt>      Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>    Use specific profile
+  (none; use global options before the command path)
 ```
 
 ## Roadmaps Commands
@@ -675,8 +651,7 @@ List roadmaps.
 ltui roadmaps list [options]
 
 Options:
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
+  (none; use global options before the command path)
 ```
 
 ### `ltui roadmaps view`
@@ -691,8 +666,7 @@ Arguments:
   <id>                Roadmap ID
 
 Options:
-  --format <fmt>      Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>    Use specific profile
+  (none; use global options before the command path)
 ```
 
 ## Milestones Commands
@@ -706,8 +680,7 @@ List milestones.
 ltui milestones list [options]
 
 Options:
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
+  (none; use global options before the command path)
 ```
 
 ### `ltui milestones view`
@@ -722,24 +695,21 @@ Arguments:
   <id>                Milestone ID
 
 Options:
-  --format <fmt>      Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>    Use specific profile
+  (none; use global options before the command path)
 ```
 
 ## Notifications Commands
 
-### `ltui notifications list`
+### `ltui notifications`
 
 List notifications.
 
 **Options:**
 ```bash
-ltui notifications list [options]
+ltui notifications [options]
 
 Options:
-  --unread             Only show unread notifications
-  --format <fmt>       Output format: tsv, table, detail, json (default: tsv)
-  --profile <name>     Use specific profile
+  --unread-only        Only show unread notifications
 ```
 
 ## Auth Commands

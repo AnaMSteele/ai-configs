@@ -178,6 +178,7 @@ The CLI is organized by top‑level noun commands. Every command:
 - `--fields <comma-separated>` – limit fields included in output.
 - `--limit <n>` – limit item count for list operations (default 20).
 - `--cursor <cursor>` – pagination cursor for list operations.
+- `--show-rate-limit` – for commands that can access response headers, emit Linear rate-limit metadata on request.
 - `--agent` / `--no-agent` – force agent mode on/off.
 
 ### 5.2 Issues
@@ -190,7 +191,7 @@ The CLI is organized by top‑level noun commands. Every command:
   - Filters (all optional, combinable):
     - `--team <key-or-id>`
     - `--project <key-or-id>`
-    - `--state <name-or-id>` (e.g. `"Todo"`, `"In Progress"`, `"Done"`)
+    - `--state <name-or-id>` (repeatable; e.g. `"Todo"`, `"In Progress"`, `"Done"`)
     - `--assignee <me|email|id>`
     - `--label <name-or-id>` (repeatable)
     - `--search <query>` (Linear search syntax, if available)
@@ -212,7 +213,7 @@ id	key	identifier	title	state	priority	assignee	labels	project	updatedAt
 
 #### 5.2.2 View Issue
 
-- `ltui issues view <issue-id-or-key> [--include-comments] [--include-history]`
+- `ltui issues view <issue-id-or-key> [--include-comments] [--include-history] [--no-attachment-probe]`
 
 **Agent detail format (default in agent mode):**
 
@@ -400,6 +401,7 @@ For `--format json`, output is a single JSON object envelope on `stdout` (no pla
 ### 6.4 Field Selection
 
 - `--fields` applies to `table`, `tsv`, and `json` list formats.
+- For `issues list`, `--fields` shapes the GraphQL selection set for supported fields, so scalar-only requests avoid relation fields.
 - Values outside the supported set are rejected with `validation_error`.
 - Each command defines its own allowed field names (documented in `--help`).
 
@@ -461,6 +463,7 @@ Where the SDK exposes higher‑level helpers (e.g. by key or identifier), prefer
   - Limit concurrency for bulk operations.
   - Surface rate limit errors clearly with `ERROR: api_error rate_limited`.
   - Read and expose useful response headers where available: `x-ratelimit-requests-limit`, `x-ratelimit-requests-remaining`, `x-ratelimit-requests-reset`, `x-ratelimit-complexity-limit`, and `x-ratelimit-complexity-remaining`.
+  - `--show-rate-limit` includes these values as JSON `meta.rateLimit` for JSON output and as a `RATE_LIMIT requestsLimit=...` stderr line for TSV/table output.
   - Treat request limits as per authenticated Linear user, shared across that user's API keys and agent tools.
 - Optionally cache stable lookups (e.g. team key → id, label name → id) in memory per process, and on disk in `~/.config/ltui/cache.json` with short TTL.
 - Avoid N+1 SDK access patterns in list commands. `issues list` should shape its GraphQL selection to the requested columns instead of fetching each issue and then lazily resolving team/state/project/assignee/labels for every row.

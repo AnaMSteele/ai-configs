@@ -23,6 +23,7 @@ export async function main(argv: string[] = process.argv.slice(2)) {
     .option('--fields <fields>', 'comma-separated list of fields')
     .option('--limit <n>', 'limit item count', (value: string) => parseInt(value, 10))
     .option('--cursor <cursor>', 'pagination cursor')
+    .option('--show-rate-limit', 'emit Linear rate-limit metadata when available')
     .option('--agent', 'enable agent mode', true)
     .option('--no-agent', 'disable agent mode');
   program.enablePositionalOptions();

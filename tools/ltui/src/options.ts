@@ -7,6 +7,7 @@ export interface GlobalOptions {
   limit: number;
   cursor: string | null;
   agentMode: boolean;
+  showRateLimit: boolean;
 }
 
 export function getGlobalOptions(program: Command): GlobalOptions {
@@ -16,6 +17,7 @@ export function getGlobalOptions(program: Command): GlobalOptions {
     limit?: number;
     cursor?: string;
     agent?: boolean;
+    showRateLimit?: boolean;
   }>();
 
   const format = (opts.format ?? 'tsv').toLowerCase() as OutputFormat;
@@ -29,6 +31,7 @@ export function getGlobalOptions(program: Command): GlobalOptions {
   const limit = typeof opts.limit === 'number' && !Number.isNaN(opts.limit) ? opts.limit : 20;
   const cursor = opts.cursor ?? null;
   const agentMode = opts.agent !== undefined ? opts.agent : true;
+  const showRateLimit = opts.showRateLimit === true;
 
   return {
     format,
@@ -36,5 +39,6 @@ export function getGlobalOptions(program: Command): GlobalOptions {
     limit,
     cursor,
     agentMode,
+    showRateLimit,
   };
 }

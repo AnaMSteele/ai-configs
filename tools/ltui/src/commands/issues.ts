@@ -20,6 +20,7 @@ import {
   findProjectByKeyOrId,
   findTeamByKeyOrId,
   findWorkflowStateByNameOrId,
+  executeRawGraphQL,
   parseLinearError,
   readTextOrPath,
   resolveAssigneeId,
@@ -28,6 +29,7 @@ import {
   isUuid,
 } from '../linear.js';
 import { getSavedQuery, listSavedQueries, removeQuery, saveQuery, SavedQueryDefinition } from '../queries.js';
+import { extractRateLimitInfo, formatRateLimitLine, RateLimitInfo } from '../rateLimit.js';
 
 interface IssueListRow {
   id: string;
@@ -59,7 +61,7 @@ interface IssueAssetRow {
 interface IssueListCommandOptions {
   team?: string;
   project?: string;
-  state?: string;
+  state?: string | string[];
   assignee?: string;
   label?: string[];
   search?: string;
@@ -67,6 +69,47 @@ interface IssueListCommandOptions {
   updatedSince?: string;
   createdSince?: string;
 }
+
+type IssueListField = keyof IssueListRow;
+
+const ISSUE_LIST_FIELD_ORDER: IssueListField[] = [
+  'id',
+  'key',
+  'identifier',
+  'title',
+  'state',
+  'priority',
+  'assignee',
+  'labels',
+  'project',
+  'updatedAt',
+];
+
+const ISSUE_LIST_COLUMNS: ColumnDefinition<IssueListRow>[] = [
+  { key: 'id', header: 'id', value: row => row.id },
+  { key: 'key', header: 'key', value: row => row.key },
+  { key: 'identifier', header: 'identifier', value: row => row.identifier },
+  { key: 'title', header: 'title', value: row => row.title },
+  { key: 'state', header: 'state', value: row => row.state },
+  { key: 'priority', header: 'priority', value: row => row.priority },
+  { key: 'assignee', header: 'assignee', value: row => row.assignee },
+  { key: 'labels', header: 'labels', value: row => row.labels },
+  { key: 'project', header: 'project', value: row => row.project },
+  { key: 'updatedAt', header: 'updatedAt', value: row => row.updatedAt },
+];
+
+const ISSUE_LIST_SELECTIONS: Record<IssueListField, string[]> = {
+  id: ['id'],
+  key: ['team { key }'],
+  identifier: ['identifier'],
+  title: ['title'],
+  state: ['state { name }'],
+  priority: ['priority'],
+  assignee: ['assignee { name }'],
+  labels: ['labels(first: 25) { nodes { name } }'],
+  project: ['project { name }'],
+  updatedAt: ['updatedAt'],
+};
 
 export function runIssuesCommands(program: Command): void {
   const issues = program.command('issues').description('Issue operations');
@@ -76,7 +119,7 @@ export function runIssuesCommands(program: Command): void {
     .description('List issues')
     .option('--team <key-or-id>', 'Team key or id')
     .option('--project <key-or-id>', 'Project key or id')
-    .option('--state <name-or-id>', 'State name or id')
+    .option('--state <name-or-id>', 'State name or id', collect)
     .option('--assignee <me|email|id>', 'Assignee')
     .option('--label <name-or-id>', 'Label', collect, [])
     .option('--search <query>', 'Search query')
@@ -91,44 +134,20 @@ export function runIssuesCommands(program: Command): void {
 
         const effectiveOptions = mergeSavedQueryOptions(options);
         const filter = await buildIssueFilter(effectiveOptions);
-        const params: Record<string, unknown> = {
-          first: globalOpts.limit,
-          after: globalOpts.cursor,
-          filter,
-          sort: { updatedAt: { order: 'Descending' } },
-        };
-
-        const data = effectiveOptions.search
-          ? await client.searchIssues(effectiveOptions.search, params)
-          : await client.issues(params);
-
-        const issueNodes = effectiveOptions.search
-          ? await Promise.all(data.nodes.map((node: any) => client.issue(node.id)))
-          : data.nodes;
-
-        const rows: IssueListRow[] = await Promise.all(
-          issueNodes.map((node: any) => mapIssueToRow(node))
-        );
-        const columns: ColumnDefinition<IssueListRow>[] = [
-          { key: 'id', header: 'id', value: row => row.id },
-          { key: 'key', header: 'key', value: row => row.key },
-          { key: 'identifier', header: 'identifier', value: row => row.identifier },
-          { key: 'title', header: 'title', value: row => row.title },
-          { key: 'state', header: 'state', value: row => row.state },
-          { key: 'priority', header: 'priority', value: row => row.priority },
-          { key: 'assignee', header: 'assignee', value: row => row.assignee },
-          { key: 'labels', header: 'labels', value: row => row.labels },
-          { key: 'project', header: 'project', value: row => row.project },
-          { key: 'updatedAt', header: 'updatedAt', value: row => row.updatedAt },
-        ];
+        const data = await fetchIssueListRows(client, effectiveOptions, {
+          fields: globalOpts.fields,
+          limit: globalOpts.limit,
+          cursor: globalOpts.cursor,
+        });
 
         const out = renderPaginatedList(
-          rows,
-          columns,
+          data.rows,
+          ISSUE_LIST_COLUMNS,
           {
             next: data.pageInfo?.endCursor ?? null,
             prev: data.pageInfo?.startCursor ?? null,
-            count: rows.length,
+            count: data.rows.length,
+            rateLimit: globalOpts.showRateLimit ? data.rateLimit : undefined,
           },
           {
             format: globalOpts.format,
@@ -136,6 +155,9 @@ export function runIssuesCommands(program: Command): void {
           }
         );
         process.stdout.write(out + '\n');
+        if (globalOpts.showRateLimit && globalOpts.format !== 'json' && data.rateLimit) {
+          process.stderr.write(formatRateLimitLine(data.rateLimit) + '\n');
+        }
       } catch (error) {
         writeError(error);
       }
@@ -252,6 +274,7 @@ export function runIssuesCommands(program: Command): void {
     .argument('<id>', 'Issue id or key')
     .option('--include-comments', 'Include comments')
     .option('--include-history', 'Include history')
+    .option('--no-attachment-probe', 'Skip default attachment/comment scan for image guidance')
     .option('--max-description-chars <n>', 'Max description chars', parseNumber, 4000)
     .option('--max-comment-chars <n>', 'Max comment chars', parseNumber, 500)
     .action(async (ref: string, options) => {
@@ -291,13 +314,18 @@ export function runIssuesCommands(program: Command): void {
           UPDATED_AT: issue.updatedAt?.toISOString?.() ?? '',
         };
 
-        const probe = await probeIssueAssets(issue);
-        fields.ATTACHMENTS_PRESENT = probe.attachmentsPresent ? 'true' : 'false';
-        fields.IMAGE_ATTACHMENTS_PRESENT = probe.imageAttachmentsPresent ? 'true' : 'false';
-        if (probe.imageAttachmentsPresent) {
-          const issueRef = issue.identifier ?? ref;
-          fields.IMAGE_ATTACHMENTS_FETCH_CMD = `ltui issues attachments ${issueRef} --only-images --format json`;
-          fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD = `ltui issues attachments ${issueRef} --only-images --download-dir ./.ltui-attachments/${issueRef}`;
+        const probe =
+          options.attachmentProbe === false
+            ? null
+            : await probeIssueAssets(issue);
+        if (probe) {
+          fields.ATTACHMENTS_PRESENT = probe.attachmentsPresent ? 'true' : 'false';
+          fields.IMAGE_ATTACHMENTS_PRESENT = probe.imageAttachmentsPresent ? 'true' : 'false';
+          if (probe.imageAttachmentsPresent) {
+            const issueRef = issue.identifier ?? ref;
+            fields.IMAGE_ATTACHMENTS_FETCH_CMD = `ltui --format json issues attachments ${issueRef} --only-images`;
+            fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD = `ltui issues attachments ${issueRef} --only-images --download-dir ./.ltui-attachments/${issueRef}`;
+          }
         }
 
         const jsonPayload: Record<string, unknown> = {
@@ -314,23 +342,27 @@ export function runIssuesCommands(program: Command): void {
           labels: extractLabelNames(issue),
           createdAt: issue.createdAt?.toISOString?.() ?? '',
           updatedAt: issue.updatedAt?.toISOString?.() ?? '',
-          attachmentsPresent: probe.attachmentsPresent,
-          imageAttachmentsPresent: probe.imageAttachmentsPresent,
-          imageAttachmentsFetchCmd: probe.imageAttachmentsPresent
-            ? fields.IMAGE_ATTACHMENTS_FETCH_CMD
-            : '',
-          imageAttachmentsDownloadCmd: probe.imageAttachmentsPresent
-            ? fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD
-            : '',
           description: {
             text: descriptionInfo.text,
             truncated: descriptionInfo.truncated,
           },
         };
+        if (probe) {
+          jsonPayload.attachmentsPresent = probe.attachmentsPresent;
+          jsonPayload.imageAttachmentsPresent = probe.imageAttachmentsPresent;
+          jsonPayload.imageAttachmentsFetchCmd = probe.imageAttachmentsPresent
+            ? fields.IMAGE_ATTACHMENTS_FETCH_CMD
+            : '';
+          jsonPayload.imageAttachmentsDownloadCmd = probe.imageAttachmentsPresent
+            ? fields.IMAGE_ATTACHMENTS_DOWNLOAD_CMD
+            : '';
+        }
 
+        let comments: any[] = [];
         if (options.includeComments) {
-          const comments = await issue.comments({ first: 50 });
-          jsonPayload.comments = comments.nodes.map((comment: any) => {
+          const commentsConnection = await issue.comments({ first: 50 });
+          comments = commentsConnection.nodes ?? [];
+          jsonPayload.comments = comments.map((comment: any) => {
             const truncated = truncateMultiline(comment.body ?? '', options.maxCommentChars);
             return {
               id: comment.id ?? '',
@@ -342,12 +374,14 @@ export function runIssuesCommands(program: Command): void {
           });
         }
 
+        let historyEntries: any[] = [];
         if (options.includeHistory) {
           const historyConnection = await issue.history({
             first: 50,
             sort: { createdAt: { order: 'Ascending' } },
           });
-          jsonPayload.history = historyConnection.nodes.map((entry: any) => {
+          historyEntries = historyConnection.nodes ?? [];
+          jsonPayload.history = historyEntries.map((entry: any) => {
             const actor = entry.actor?.name ?? entry.actorId ?? '';
             return {
               createdAt: entry.createdAt?.toISOString?.() ?? '',
@@ -378,9 +412,8 @@ export function runIssuesCommands(program: Command): void {
         }
 
         if (options.includeComments) {
-          const comments = await issue.comments({ first: 50 });
           const lines: string[] = ['COMMENTS_START'];
-          for (const comment of comments.nodes) {
+          for (const comment of comments) {
             const truncated = truncateMultiline(comment.body ?? '', options.maxCommentChars);
             const row = [
               comment.id,
@@ -398,12 +431,8 @@ export function runIssuesCommands(program: Command): void {
         }
 
         if (options.includeHistory) {
-          const historyConnection = await issue.history({
-            first: 50,
-            sort: { createdAt: { order: 'Ascending' } },
-          });
           const lines: string[] = ['HISTORY_START'];
-          for (const entry of historyConnection.nodes) {
+          for (const entry of historyEntries) {
             const actor = entry.actor?.name ?? entry.actorId ?? '';
             const changeType = determineHistoryType(entry);
             const fromValue = historyFromValue(entry);
@@ -1029,17 +1058,104 @@ function mergeSavedQueryOptions(options: IssueListCommandOptions): IssueListComm
     throw new Error(`not_found Saved query '${options.saved}' not found`);
   }
   const labelValues = options.label && options.label.length > 0 ? options.label : saved.labels ?? [];
+  const stateValues = Array.isArray(options.state) && options.state.length === 0 ? undefined : options.state;
   return {
     ...options,
     team: options.team ?? saved.team,
     project: options.project ?? saved.project,
-    state: options.state ?? saved.state,
+    state: stateValues ?? saved.state,
     assignee: options.assignee ?? saved.assignee,
     label: labelValues,
     search: options.search ?? saved.search,
     updatedSince: options.updatedSince ?? saved.updatedSince,
     createdSince: options.createdSince ?? saved.createdSince,
   };
+}
+
+async function fetchIssueListRows(
+  client: any,
+  options: IssueListCommandOptions,
+  queryOptions: { fields?: string[]; limit: number; cursor: string | null }
+): Promise<{ rows: IssueListRow[]; pageInfo: any; rateLimit?: RateLimitInfo }> {
+  const selectedFields = selectIssueListFields(queryOptions.fields);
+  const selection = buildIssueListSelection(selectedFields);
+  const isSearch = !!options.search;
+  const query = isSearch ? buildIssueSearchQuery(selection) : buildIssueListQuery(selection);
+  const variables: Record<string, unknown> = {
+    first: queryOptions.limit,
+    after: queryOptions.cursor,
+    filter: await buildIssueFilter(options),
+  };
+  if (isSearch) {
+    variables.term = options.search;
+  } else {
+    variables.sort = [{ updatedAt: { order: 'Descending' } }];
+  }
+
+  const response = await executeRawGraphQL(client, query, variables);
+  const connection = isSearch ? response.data?.searchIssues : response.data?.issues;
+  const nodes = connection?.nodes ?? [];
+  return {
+    rows: nodes.map(mapRawIssueToRow),
+    pageInfo: connection?.pageInfo ?? {},
+    rateLimit: extractRateLimitInfo(response.headers),
+  };
+}
+
+function selectIssueListFields(fields?: string[]): IssueListField[] {
+  const selected = fields && fields.length > 0 ? fields : ISSUE_LIST_FIELD_ORDER;
+  const available = new Set<string>(ISSUE_LIST_FIELD_ORDER);
+  const missing = selected.filter(field => !available.has(field));
+  if (missing.length > 0) {
+    throw new Error(`validation_error Unknown field(s): ${missing.join(', ')}`);
+  }
+  return selected as IssueListField[];
+}
+
+function buildIssueListSelection(fields: IssueListField[]): string {
+  const selections = new Set<string>();
+  for (const field of fields) {
+    for (const selection of ISSUE_LIST_SELECTIONS[field]) {
+      selections.add(selection);
+    }
+  }
+  return Array.from(selections).join('\n');
+}
+
+function buildIssueListQuery(selection: string): string {
+  return `
+    query LtuiIssueList($first: Int, $after: String, $filter: IssueFilter, $sort: [IssueSortInput!]) {
+      issues(first: $first, after: $after, filter: $filter, sort: $sort) {
+        nodes {
+          ${selection}
+        }
+        pageInfo {
+          endCursor
+          startCursor
+          hasNextPage
+          hasPreviousPage
+        }
+      }
+    }
+  `;
+}
+
+function buildIssueSearchQuery(selection: string): string {
+  return `
+    query LtuiIssueSearch($term: String!, $first: Int, $after: String, $filter: IssueFilter) {
+      searchIssues(term: $term, first: $first, after: $after, filter: $filter) {
+        nodes {
+          ${selection}
+        }
+        pageInfo {
+          endCursor
+          startCursor
+          hasNextPage
+          hasPreviousPage
+        }
+      }
+    }
+  `;
 }
 
 async function buildIssueFilter(options: Record<string, any>): Promise<Record<string, unknown>> {
@@ -1069,11 +1185,19 @@ async function buildIssueFilter(options: Record<string, any>): Promise<Record<st
     filter.project = { or: projectFilters };
   }
 
-  if (options.state) {
-    const stateValue = String(options.state);
-    const stateFilters: any[] = [{ name: { eq: stateValue } }];
-    if (isUuid(stateValue)) {
-      stateFilters.unshift({ id: { eq: stateValue } });
+  const stateValues = Array.isArray(options.state)
+    ? options.state
+    : options.state
+      ? [String(options.state)]
+      : [];
+  if (stateValues.length > 0) {
+    const stateFilters: any[] = [];
+    for (const stateValue of stateValues) {
+      if (isUuid(stateValue)) {
+        stateFilters.push({ id: { eq: stateValue } });
+      } else {
+        stateFilters.push({ name: { eq: stateValue } });
+      }
     }
     filter.state = { or: stateFilters };
   }
@@ -1139,6 +1263,28 @@ async function mapIssueToRow(issue: any): Promise<IssueListRow> {
     assignee: assignee?.name ?? '-',
     labels: labelNames.join(','),
     project: project?.name ?? '-',
+    updatedAt,
+  };
+}
+
+function mapRawIssueToRow(issue: any): IssueListRow {
+  const labels = Array.isArray(issue.labels?.nodes)
+    ? issue.labels.nodes.map((label: any) => label.name).filter(Boolean)
+    : [];
+  const updatedAt =
+    typeof issue.updatedAt?.toISOString === 'function'
+      ? issue.updatedAt.toISOString()
+      : issue.updatedAt ?? '';
+  return {
+    id: issue.id ?? '',
+    key: issue.team?.key ?? '',
+    identifier: issue.identifier ?? '',
+    title: sanitizeSingleLine(issue.title ?? ''),
+    state: issue.state?.name ?? '',
+    priority: issue.priority?.toString() ?? '',
+    assignee: issue.assignee?.name ?? '-',
+    labels: labels.join(','),
+    project: issue.project?.name ?? '-',
     updatedAt,
   };
 }
@@ -1810,7 +1956,7 @@ function parseNumber(value: string): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function collect(value: string, previous: string[]): string[] {
+function collect(value: string, previous: string[] = []): string[] {
   return [...previous, value];
 }
 

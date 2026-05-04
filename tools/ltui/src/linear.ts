@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { getCachedValue, setCachedValue } from './cache.js';
+import { extractRateLimitInfoFromError, formatRateLimitBackoffHint } from './rateLimit.js';
 
 const CACHE_TTL_SECONDS = 300;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -283,10 +284,10 @@ export function parseLinearError(error: unknown): { code: string; message: strin
   const message = err?.message ?? 'Unknown error';
   const linearType = (error as { type?: string })?.type;
   if (linearType && String(linearType).toLowerCase().includes('rate')) {
-    return { code: 'api_error', message: 'rate_limited' };
+    return { code: 'api_error', message: rateLimitedMessage(error) };
   }
   if (/rate.?limit/i.test(message)) {
-    return { code: 'api_error', message: 'rate_limited' };
+    return { code: 'api_error', message: rateLimitedMessage(error) };
   }
   const parts = message.split(' ');
   if (parts.length > 1 && /^[a-z_]+$/i.test(parts[0])) {
@@ -294,4 +295,37 @@ export function parseLinearError(error: unknown): { code: string; message: strin
     return { code, message: parts.join(' ') };
   }
   return { code: 'api_error', message };
+}
+
+export async function executeRawGraphQL(
+  client: any,
+  query: string,
+  variables: Record<string, unknown>
+): Promise<{ data: any; headers?: Headers | Record<string, string> }> {
+  if (typeof client?.client?.rawRequest === 'function') {
+    const response = await client.client.rawRequest(query, variables);
+    if (response?.errors?.length || response?.error) {
+      const error = new Error(response.error ?? response.errors?.[0]?.message ?? 'GraphQL request failed') as Error & {
+        raw?: { response: typeof response };
+        response?: typeof response;
+        type?: string;
+      };
+      error.raw = { response };
+      error.response = response;
+      error.type = response.errors?.[0]?.extensions?.type;
+      throw error;
+    }
+    return { data: response?.data, headers: response?.headers };
+  }
+
+  if (typeof client?.client?.request === 'function') {
+    return { data: await client.client.request(query, variables) };
+  }
+
+  throw new Error('api_error Raw GraphQL request support is unavailable for this Linear client');
+}
+
+function rateLimitedMessage(error: unknown): string {
+  const hint = formatRateLimitBackoffHint(extractRateLimitInfoFromError(error));
+  return hint ? `rate_limited ${hint}` : 'rate_limited';
 }

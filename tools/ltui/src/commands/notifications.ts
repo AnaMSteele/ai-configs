@@ -6,8 +6,8 @@ import {
   emitError,
   renderPaginatedList,
 } from '../format.js';
-import { getGlobalOptions } from '../options.js';
-import { parseLinearError } from '../linear.js';
+import { getGlobalOptions, type GlobalOptions } from '../options.js';
+import { executeRawGraphQL, parseLinearError } from '../linear.js';
 
 interface NotificationRow {
   id: string;
@@ -27,22 +27,13 @@ export function runNotificationsCommands(program: Command): void {
         const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
         const client = createLinearClient(resolved);
 
-        const filter: Record<string, unknown> = {};
-        if (options.unreadOnly) {
-          filter.readAt = { isNull: true };
-        }
-
-        const data = await client.notifications({
-          first: globalOpts.limit,
-          after: globalOpts.cursor,
-          filter,
-        });
+        const data = await fetchNotifications(client, globalOpts, options.unreadOnly === true);
 
         const rows: NotificationRow[] = data.nodes.map((notification: any) => ({
           id: notification.id ?? '',
           type: notification.type ?? '',
           read: notification.readAt ? 'true' : 'false',
-          createdAt: notification.createdAt?.toISOString?.() ?? '',
+          createdAt: formatDateTime(notification.createdAt),
         }));
 
         const columns: ColumnDefinition<NotificationRow>[] = [
@@ -70,4 +61,95 @@ export function runNotificationsCommands(program: Command): void {
         process.exitCode = 1;
       }
     });
+}
+
+async function fetchNotifications(
+  client: any,
+  globalOpts: GlobalOptions,
+  unreadOnly: boolean
+): Promise<{ nodes: any[]; pageInfo: any }> {
+  if (!unreadOnly) {
+    return client.notifications({
+      first: globalOpts.limit,
+      after: globalOpts.cursor,
+    });
+  }
+
+  if (globalOpts.limit <= 0) {
+    return { nodes: [], pageInfo: { endCursor: null, startCursor: null } };
+  }
+
+  const nodes: any[] = [];
+  let cursor = globalOpts.cursor;
+  let pageInfo: any = {};
+  let firstReturnedCursor: string | null = null;
+  let lastReturnedCursor: string | null = null;
+  let nextCursor: string | null = null;
+  const batchSize = Math.max(globalOpts.limit, 25);
+
+  do {
+    const response = await executeRawGraphQL(client, buildNotificationsQuery(), {
+      first: batchSize,
+      after: cursor,
+    });
+    const page = response.data?.notifications ?? {};
+    pageInfo = page.pageInfo ?? {};
+
+    for (const edge of page.edges ?? []) {
+      const notification = edge.node;
+      if (notification?.readAt) {
+        continue;
+      }
+      if (nodes.length < globalOpts.limit) {
+        firstReturnedCursor ??= edge.cursor ?? null;
+        lastReturnedCursor = edge.cursor ?? lastReturnedCursor;
+        nodes.push(notification);
+      } else {
+        nextCursor = lastReturnedCursor;
+        break;
+      }
+    }
+    cursor = pageInfo.endCursor ?? null;
+  } while (!nextCursor && pageInfo.hasNextPage && cursor);
+
+  return {
+    nodes,
+    pageInfo: {
+      ...pageInfo,
+      endCursor: nextCursor,
+      startCursor: firstReturnedCursor,
+    },
+  };
+}
+
+function buildNotificationsQuery(): string {
+  return `
+    query LtuiNotifications($first: Int, $after: String) {
+      notifications(first: $first, after: $after) {
+        edges {
+          cursor
+          node {
+            id
+            type
+            readAt
+            createdAt
+          }
+        }
+        pageInfo {
+          endCursor
+          startCursor
+          hasNextPage
+          hasPreviousPage
+        }
+      }
+    }
+  `;
+}
+
+function formatDateTime(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value && typeof (value as { toISOString?: unknown }).toISOString === 'function') {
+    return (value as { toISOString: () => string }).toISOString();
+  }
+  return '';
 }

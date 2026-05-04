@@ -45,11 +45,12 @@ Linear rate limits apply to the authenticated user, shared across that user's AP
 
 For the Nodaste workspace checked on 2026-05-03, the live headers reported a 2,500 requests/hour request bucket and a 3,000,000 complexity/hour bucket for the current API user. Treat this as a live-header fact, not a permanent contract; Linear plan details and limits can change.
 
-Current `ltui` list operations can use more API requests than the row count suggests because the Linear SDK lazily fetches related entities such as team, state, project, assignee, labels, comments, or history. `--fields` reduces output tokens, but in the current implementation it does not necessarily reduce underlying Linear API requests. `--limit` and narrow filters are the best immediate controls for API spend.
+`ltui issues list` shapes its GraphQL request from `--fields`, so cheap field sets reduce both output tokens and relation fetching. Prefer `id,identifier,title,state,updatedAt` for grooming scans, and include `project`, `assignee`, or `labels` only when needed for the decision. Other commands may still use SDK convenience paths unless documented otherwise. Use `--show-rate-limit` when you need live budget metadata.
 
 Put global options before the subcommand:
 ```bash
 ltui --limit 5 --fields id,identifier,title,state issues list --team ENG
+ltui --format json --show-rate-limit --fields id,identifier,title issues list --team ENG
 ltui --format json issues view ENG-42
 ```
 
@@ -232,7 +233,7 @@ ltui issues relate ENG-43 --parent ENG-42
 3. **Use detail format sparingly** - Only when descriptions/comments needed
 4. **Filter early** - Use `--team`, `--project`, `--state` to reduce results
 5. **Keep list pages small** - Start with `--limit 5` or `--limit 10`; increase only when you truly need more rows
-6. **Use `--fields` for tokens, not API savings** - Select only needed columns to save context, but do not assume it reduces Linear requests in the current implementation
+6. **Use cheap `--fields` for list scans** - `issues list` fetches only supported requested fields; start with `id,identifier,title,state,updatedAt` and add relation fields only when needed
 7. **Avoid broad polling loops** - Do not repeatedly run unfiltered `issues list`, `projects list`, or search commands; reuse IDs and cached context from earlier output
 8. **Operate on many issues only with explicit intent** - Bulk reads or updates should start from a known issue ID list, use narrow filters, and pause/back off when rate headers are low
 9. **Parse errors first** - Don't proceed if output starts with `ERROR:`

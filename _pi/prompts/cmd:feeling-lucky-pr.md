@@ -110,14 +110,15 @@ If `PROJECT_REF` is empty, ask the user to provide the project id/key (list proj
 2) List issues:
 
 ```bash
-ltui --format json --fields key,title,url,updatedAt \
-  issues list --project "$PROJECT_REF" --state "Ready to pull" --label "FeelingLucky" --limit 50 \
+ltui --format json --fields identifier,title,updatedAt --limit 25 \
+  issues list --project "$PROJECT_REF" --state "Ready to pull" --label "FeelingLucky" \
   > /tmp/ltui-feeling-lucky-issues.json
 
 python3 - <<'PY'
 import json, random
 
-issues = json.load(open('/tmp/ltui-feeling-lucky-issues.json'))
+payload = json.load(open('/tmp/ltui-feeling-lucky-issues.json'))
+issues = payload.get('rows', []) if isinstance(payload, dict) else payload
 if not issues:
     print('NO_MATCHES')
     raise SystemExit(2)
@@ -125,7 +126,7 @@ if not issues:
 random.seed()  # FeelingLucky: non-deterministic is intentional
 pick = random.choice(issues)
 
-print('PICK_KEY=' + (pick.get('key') or ''))
+print('PICK_KEY=' + (pick.get('identifier') or pick.get('key') or ''))
 print('PICK_TITLE=' + (pick.get('title') or ''))
 print('PICK_URL=' + (pick.get('url') or ''))
 PY
@@ -140,7 +141,7 @@ Set:
 Fetch issue metadata in machine format:
 
 ```bash
-ltui --format json --fields key,title,url,project,state issues view "${ISSUE_KEY}" > /tmp/ltui-issue.json
+ltui --format json --fields identifier,title,url,state issues view "${ISSUE_KEY}" --no-attachment-probe > /tmp/ltui-issue.json
 
 ISSUE_TITLE="$(python3 -c 'import json; print(json.load(open("/tmp/ltui-issue.json")).get("title", ""))')"
 ISSUE_URL="$(python3 -c 'import json; print(json.load(open("/tmp/ltui-issue.json")).get("url", ""))')"

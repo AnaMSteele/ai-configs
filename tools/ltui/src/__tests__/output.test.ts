@@ -7,6 +7,8 @@ import {
   emitPaginationMeta,
   truncateMultiline,
 } from '../format.js';
+import { extractRateLimitInfo, formatRateLimitLine } from '../rateLimit.js';
+import { createMockLinearClient } from '../test-utils/mockLinearClient.js';
 
 test('auth command emits deterministic list and detail formats', () => {
   const lines = ['id\tworkspace\thasKey', 'default\tworkspace-a\ttrue'];
@@ -179,4 +181,54 @@ test('paginated JSON output is JSON-only envelope', () => {
   const out = renderPaginatedList(rows, columns, { next: 'after', prev: 'before', count: 1 }, { format: 'json' });
   assert.equal(out, '{"meta":{"cursorNext":"after","cursorPrev":"before","count":1},"rows":[{"id":"123"}]}');
   assert.ok(!out.includes('CURSOR_NEXT'));
+});
+
+test('paginated JSON can include rate-limit metadata', () => {
+  const columns = [{ key: 'id', header: 'id', value: (row: any) => row.id }];
+  const rows = [{ id: '123' }];
+  const rateLimit = {
+    requests: { limit: '2500', remaining: '2499', reset: '1714852800' },
+    complexity: { limit: '3000000', remaining: '2999000' },
+  };
+  const out = renderPaginatedList(
+    rows,
+    columns,
+    { next: null, prev: null, count: 1, rateLimit },
+    { format: 'json' }
+  );
+  assert.deepEqual(JSON.parse(out), {
+    meta: {
+      cursorNext: '',
+      cursorPrev: '',
+      count: 1,
+      rateLimit,
+    },
+    rows: [{ id: '123' }],
+  });
+  assert.equal(
+    formatRateLimitLine(rateLimit),
+    'RATE_LIMIT requestsLimit=2500 requestsRemaining=2499 requestsReset=1714852800 complexityLimit=3000000 complexityRemaining=2999000'
+  );
+});
+
+test('mock Linear client records request-shape counters and rate-limit headers', async () => {
+  const client = createMockLinearClient({} as any);
+  const issue = await client.issue('ENG-1');
+  await issue.team;
+  await issue.state;
+  await issue.project;
+  await issue.assignee;
+  await issue.labels();
+  assert.equal(client.__ltuiRequestCounts.issue, 1);
+  assert.equal(client.__ltuiRequestCounts.team, 1);
+  assert.equal(client.__ltuiRequestCounts.state, 1);
+  assert.equal(client.__ltuiRequestCounts.project, 1);
+  assert.equal(client.__ltuiRequestCounts.assignee, 1);
+  assert.equal(client.__ltuiRequestCounts.labels, 1);
+
+  const response = await client.client.rawRequest('query { issues { nodes { id } } }', { first: 1 });
+  const rateLimit = extractRateLimitInfo(response.headers);
+  assert.equal(client.__ltuiRequestCounts.rawRequests, 1);
+  assert.equal(rateLimit?.requests.limit, '2500');
+  assert.equal(rateLimit?.complexity.remaining, '2999000');
 });
