@@ -222,6 +222,15 @@
       "notes": "Promoted from an older repo-local review-partner skill and normalized to launch the real `codex` CLI in exec mode.",
       "sourceType": "repo"
     },
+    "codex-full-build": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "codex"
+      ],
+      "canonicalSource": "skills/codex-full-build",
+      "notes": "Codex-only: orchestrates the full lifecycle from issue or plan intake through reviewed planning, scoped execution, verification, push, and ready-for-review PR creation.",
+      "sourceType": "repo"
+    },
     "dependency-selection": {
       "class": "universal-installable",
       "allowedConsumers": [
