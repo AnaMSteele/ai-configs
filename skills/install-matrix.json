@@ -392,6 +392,17 @@
       "sourceType": "external-package",
       "packageSource": "anthropics/skills"
     },
+    "opencode-safe-restart": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/opencode-safe-restart",
+      "notes": "Conservative detached supervisor for restarting OpenCode services and resuming only sessions that were definitely active immediately before restart.",
+      "sourceType": "repo"
+    },
     "packaging-notarization": {
       "class": "universal-installable",
       "allowedConsumers": [
