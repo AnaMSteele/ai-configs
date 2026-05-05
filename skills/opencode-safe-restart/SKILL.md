@@ -18,7 +18,9 @@ Use the bundled supervisor script. It is intentionally conservative:
 - It requires matching session metadata from `/experimental/session` or `/session`.
 - It records the inventory before restarting anything.
 - It restarts services only after the inventory is safely written.
+- It restarts remote targets before the local/current host so local service restarts do not break SSH-agent access needed for remote restarts.
 - It sends `continue` only to sessions captured in that pre-restart inventory.
+- It does not resume sessions for a target whose restart command failed, even if that server still responds afterward.
 
 This does not preserve an in-flight tool call. It resumes by creating a new turn in the same persisted conversation, which is the expected OpenCode recovery model.
 
@@ -67,7 +69,7 @@ The script has built-in defaults for the current fleet:
 - `mbp`: OpenCode server on port `63333`, launchd service `com.anichols.opencode-web`, default directory `/Users/anichols/code`.
 - `dever`: OpenCode server on port `63333`, user systemd service `opencode-web.service`, default directory `/home/anichols/code`.
 
-If a target is local, the script uses the local service manager. If it is remote, the script uses `ssh <target> ...`.
+If a target is local, the script uses the local service manager. If it is remote, the script uses `ssh -o BatchMode=yes <target> ...` so detached auth failures are immediate and explicit.
 
 For host-specific overrides, create `~/.config/opencode/safe-restart-targets.json`. Keep the same shape as this example:
 
@@ -82,7 +84,7 @@ For host-specific overrides, create `~/.config/opencode/safe-restart-targets.jso
     "dever": {
       "url": "http://dever:63333",
       "directory": "/home/anichols/code",
-      "restart": "ssh dever 'systemctl --user restart opencode-web.service'"
+      "restart": "ssh -o BatchMode=yes dever 'systemctl --user restart opencode-web.service'"
     }
   }
 }
@@ -97,6 +99,8 @@ Each run writes to `~/.cache/opencode-safe-restart/runs/<timestamp>/`:
 - `summary.json`: restart, health-check, and resume results.
 
 Report the run directory to the user. If a server was restarted, remind them that currently running OpenCode clients may need to reconnect.
+
+If `summary.json` shows `restartOk: false` and `healthOk: true`, treat that target as not restarted. It was merely already reachable after a failed restart command. Fix the service-manager or SSH auth issue, then rerun for that target.
 
 ## Race Handling
 

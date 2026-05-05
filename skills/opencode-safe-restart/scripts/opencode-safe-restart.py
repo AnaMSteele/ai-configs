@@ -55,14 +55,14 @@ def default_targets() -> dict[str, dict[str, str]]:
             "directory": "/Users/anichols/code",
             "restart": "launchctl kickstart -k gui/$(id -u)/com.anichols.opencode-web"
             if mbp_local
-            else "ssh mbp 'launchctl kickstart -k gui/$(id -u)/com.anichols.opencode-web'",
+            else "ssh -o BatchMode=yes mbp 'launchctl kickstart -k gui/$(id -u)/com.anichols.opencode-web'",
         },
         "dever": {
             "url": "http://127.0.0.1:63333" if dever_local else "http://dever:63333",
             "directory": "/home/anichols/code",
             "restart": "systemctl --user restart opencode-web.service"
             if dever_local
-            else "ssh dever 'systemctl --user restart opencode-web.service'",
+            else "ssh -o BatchMode=yes dever 'systemctl --user restart opencode-web.service'",
         },
     }
 
@@ -346,6 +346,32 @@ def resume_candidate(candidate: dict[str, Any], target: dict[str, str], args: ar
         }
 
 
+def target_outcomes(summary: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    restarts = {item["targetName"]: item for item in summary.get("restartResults", [])}
+    health = {item["targetName"]: item for item in summary.get("healthResults", [])}
+    names = sorted(set(restarts) | set(health))
+    outcomes: dict[str, dict[str, Any]] = {}
+    for name in names:
+        restart = restarts.get(name, {})
+        health_result = health.get(name, {})
+        restart_ok = restart.get("returncode") == 0
+        health_ok = health_result.get("ok") is True
+        outcomes[name] = {
+            "restartOk": restart_ok,
+            "healthOk": health_ok,
+            "okToResume": restart_ok and health_ok,
+            "restartReturncode": restart.get("returncode"),
+            "restartError": restart.get("error") or restart.get("stderr") or "",
+            "healthError": health_result.get("error") or "",
+        }
+    return outcomes
+
+
+def restart_order(target_names: list[str]) -> list[str]:
+    local = local_host_kind()
+    return sorted(target_names, key=lambda name: (name == local, name))
+
+
 def write_json(path: Path, data: Any) -> None:
     path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
@@ -431,6 +457,7 @@ def main() -> int:
         "resumeCandidateCount": len(candidates),
         "restartResults": [],
         "healthResults": [],
+        "targetOutcomes": {},
         "resumeResults": [],
     }
     if args.dry_run:
@@ -442,8 +469,10 @@ def main() -> int:
         print(f"Inventory written. Waiting {args.grace_seconds:g}s before restart...")
         time.sleep(args.grace_seconds)
 
-    print("Restarting OpenCode services...")
-    for name in target_names:
+    ordered_restart_targets = restart_order(target_names)
+    summary["restartOrder"] = ordered_restart_targets
+    print(f"Restarting OpenCode services in order: {', '.join(ordered_restart_targets)}")
+    for name in ordered_restart_targets:
         result = run_restart(name, targets[name], args.restart_timeout)
         summary["restartResults"].append(result)
         print(f"Restart {name}: returncode={result.get('returncode')} error={result.get('error', '')}")
@@ -453,8 +482,20 @@ def main() -> int:
     for name in target_names:
         result = wait_for_health(name, targets[name], args)
         summary["healthResults"].append(result)
-        healthy[name] = bool(result.get("ok"))
         print(f"Health {name}: ok={result.get('ok')} attempts={result.get('attempts')}")
+
+    outcomes = target_outcomes(summary)
+    summary["targetOutcomes"] = outcomes
+    for name, outcome in outcomes.items():
+        healthy[name] = bool(outcome.get("okToResume"))
+        print(
+            "Outcome {name}: restartOk={restart_ok} healthOk={health_ok} okToResume={ok_to_resume}".format(
+                name=name,
+                restart_ok=outcome.get("restartOk"),
+                health_ok=outcome.get("healthOk"),
+                ok_to_resume=outcome.get("okToResume"),
+            )
+        )
 
     print("Resuming captured sessions...")
     for candidate in candidates:
@@ -465,7 +506,8 @@ def main() -> int:
                 "sessionID": candidate["sessionID"],
                 "title": candidate.get("title"),
                 "ok": False,
-                "error": "target health check failed; resume skipped",
+                "error": "target restart or health check failed; resume skipped",
+                "targetOutcome": outcomes.get(name),
             }
         else:
             result = resume_candidate(candidate, targets[name], args)
