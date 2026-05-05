@@ -12,8 +12,9 @@ Restart OpenCode servers without performing the restart from the foreground sess
 
 Use the bundled supervisor script. It is intentionally conservative:
 
-- It samples `/session/status` twice immediately before restart.
-- It only resumes sessions whose status is `busy` or `retry` in both samples.
+- It samples `/session/status` and recent root sessions twice immediately before restart.
+- It resumes sessions whose status is `busy` or `retry` in both status samples.
+- It also resumes unarchived root sessions that appear in both recent-session samples inside a tight recency window.
 - It requires matching session metadata from `/experimental/session` or `/session`.
 - It records the inventory before restarting anything.
 - It restarts services only after the inventory is safely written.
@@ -45,6 +46,12 @@ Restart both default hosts and resume only definitely-active sessions:
 
 ```bash
 ~/.agents/skills/opencode-safe-restart/scripts/opencode-safe-restart.py --detach --targets mbp,dever
+```
+
+The default recent-session window is 5 minutes. Tune it only when you intentionally want a wider or narrower definition of "in progress":
+
+```bash
+~/.agents/skills/opencode-safe-restart/scripts/opencode-safe-restart.py --detach --recent-minutes 10
 ```
 
 Use a custom resume message:
@@ -93,4 +100,11 @@ Report the run directory to the user. If a server was restarted, remind them tha
 
 ## Race Handling
 
-There is a tiny unavoidable race where a session can complete after the final status sample but before the service restart. The script defends against the practical races by requiring two consecutive active status samples and matching metadata. It deliberately prefers false negatives over false positives: if it is not sure a session was active, it does not resume it.
+OpenCode's `/session/status` endpoint reports live generation state, not every open conversation. A session can be actively in progress from the operator's perspective while status is empty between turns.
+
+The script therefore uses two conservative signals:
+
+- `busy` / `retry` in both `/session/status` samples for live generation.
+- unarchived root session present in both recent-session samples within the recency window for open conversations that are between turns.
+
+There is a tiny unavoidable race where a session can complete after the final sample but before the service restart. The script defends against practical races by requiring two consecutive samples and matching metadata. It deliberately prefers false negatives over broad historical resumes: if it is not sure a session was active, it does not resume it.

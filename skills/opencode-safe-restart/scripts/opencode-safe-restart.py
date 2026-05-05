@@ -128,6 +128,23 @@ def fetch_sessions(target: dict[str, str], timeout: float) -> list[dict[str, Any
     return body if isinstance(body, list) else []
 
 
+def fetch_recent_root_sessions(target: dict[str, str], timeout: float, start_ms: int, limit: int) -> list[dict[str, Any]]:
+    _code, body = http_json(
+        target_url(
+            target,
+            "/experimental/session",
+            {
+                "start": str(start_ms),
+                "roots": "true",
+                "limit": str(limit),
+                "archived": "false",
+            },
+        ),
+        timeout,
+    )
+    return body if isinstance(body, list) else []
+
+
 def fetch_session(target: dict[str, str], session_id: str, timeout: float) -> dict[str, Any] | None:
     try:
         path_id = urllib.parse.quote(session_id, safe="")
@@ -145,6 +162,47 @@ def active_ids(status: dict[str, Any]) -> set[str]:
     return result
 
 
+def session_ids(sessions: list[dict[str, Any]]) -> set[str]:
+    return {item["id"] for item in sessions if isinstance(item, dict) and item.get("id")}
+
+
+def add_candidate(
+    inventory: dict[str, Any],
+    entry: dict[str, Any],
+    name: str,
+    target: dict[str, str],
+    session_id: str,
+    session: dict[str, Any],
+    reason: str,
+    status1: dict[str, Any],
+    status2: dict[str, Any],
+) -> None:
+    existing = next(
+        (item for item in inventory["resumeCandidates"] if item["targetName"] == name and item["sessionID"] == session_id),
+        None,
+    )
+    if existing:
+        reasons = set(existing.get("selectionReasons", []))
+        reasons.add(reason)
+        existing["selectionReasons"] = sorted(reasons)
+        return
+
+    entry["activeSessionMetadata"][session_id] = session
+    inventory["resumeCandidates"].append(
+        {
+            "targetName": name,
+            "serverUrl": target["url"],
+            "sessionID": session_id,
+            "directory": session.get("directory") or target["directory"],
+            "title": session.get("title"),
+            "selectionReasons": [reason],
+            "statusSample1": status1.get(session_id),
+            "statusSample2": status2.get(session_id),
+            "time": session.get("time"),
+        }
+    )
+
+
 def build_inventory(target_names: list[str], targets: dict[str, dict[str, str]], args: argparse.Namespace) -> dict[str, Any]:
     inventory: dict[str, Any] = {
         "createdAt": dt.datetime.now(dt.timezone.utc).isoformat(),
@@ -156,16 +214,26 @@ def build_inventory(target_names: list[str], targets: dict[str, dict[str, str]],
         target = targets[name]
         entry: dict[str, Any] = {"target": target, "errors": [], "skipped": []}
         try:
+            cutoff_ms = int(time.time() * 1000 - args.recent_minutes * 60 * 1000)
             status1 = fetch_status(target, args.http_timeout)
+            recent1 = fetch_recent_root_sessions(target, args.http_timeout, cutoff_ms, args.recent_limit)
             time.sleep(args.sample_interval)
             status2 = fetch_status(target, args.http_timeout)
+            recent2 = fetch_recent_root_sessions(target, args.http_timeout, cutoff_ms, args.recent_limit)
             stable_active = sorted(active_ids(status1) & active_ids(status2))
+            stable_recent = sorted(session_ids(recent1) & session_ids(recent2)) if args.include_recent_roots else []
+            recent_by_id = {item.get("id"): item for item in recent2 if isinstance(item, dict) and item.get("id")}
             active_metadata: dict[str, Any] = {}
             entry.update({
                 "statusSample1": status1,
                 "statusSample2": status2,
+                "recentWindowMinutes": args.recent_minutes,
+                "recentCutoffMs": cutoff_ms,
+                "recentRootSample1IDs": sorted(session_ids(recent1)),
+                "recentRootSample2IDs": sorted(session_ids(recent2)),
                 "sessionMetadataFallbackCount": 0,
                 "stableActiveSessionIDs": stable_active,
+                "stableRecentRootSessionIDs": stable_recent,
                 "activeSessionMetadata": active_metadata,
             })
             by_id: dict[str, Any] = {}
@@ -179,18 +247,13 @@ def build_inventory(target_names: list[str], targets: dict[str, dict[str, str]],
                 if not session:
                     entry["skipped"].append({"sessionID": session_id, "reason": "active-status-without-session-metadata"})
                     continue
-                active_metadata[session_id] = session
-                candidate = {
-                    "targetName": name,
-                    "serverUrl": target["url"],
-                    "sessionID": session_id,
-                    "directory": session.get("directory") or target["directory"],
-                    "title": session.get("title"),
-                    "statusSample1": status1.get(session_id),
-                    "statusSample2": status2.get(session_id),
-                    "time": session.get("time"),
-                }
-                inventory["resumeCandidates"].append(candidate)
+                add_candidate(inventory, entry, name, target, session_id, session, "stable-status", status1, status2)
+            for session_id in stable_recent:
+                session = recent_by_id.get(session_id)
+                if not session:
+                    entry["skipped"].append({"sessionID": session_id, "reason": "recent-root-without-session-metadata"})
+                    continue
+                add_candidate(inventory, entry, name, target, session_id, session, "recent-root", status1, status2)
         except Exception as exc:  # noqa: BLE001 - this is an operator log boundary
             entry["errors"].append(str(exc))
         inventory["targets"][name] = entry
@@ -324,6 +387,10 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
     parser.add_argument("--run-dir", default="")
     parser.add_argument("--resume-message", default="continue")
     parser.add_argument("--sample-interval", type=float, default=1.0)
+    parser.add_argument("--recent-minutes", type=float, default=5.0)
+    parser.add_argument("--recent-limit", type=int, default=50)
+    parser.add_argument("--include-recent-roots", dest="include_recent_roots", action="store_true", default=True)
+    parser.add_argument("--no-recent-roots", dest="include_recent_roots", action="store_false")
     parser.add_argument("--http-timeout", type=float, default=8.0)
     parser.add_argument("--restart-timeout", type=float, default=45.0)
     parser.add_argument("--health-timeout", type=float, default=90.0)
