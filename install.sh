@@ -1477,6 +1477,7 @@ install_opencode() {
 
     # Install documentation to home config (not the repo)
     echo "  - Installing OpenCode documentation..."
+    cp "$REPO_ROOT/_opencode/AGENTS.md" "$opencode_config_dir/AGENTS.md" 2>/dev/null || true
     cp "$REPO_ROOT/_opencode/OPENCODE_ONBOARDING.md" "$opencode_config_dir/OPENCODE_ONBOARDING.md" 2>/dev/null || true
 
     if [ "$is_update" = true ]; then
