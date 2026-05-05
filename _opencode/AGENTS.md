@@ -4,7 +4,7 @@ This directory (`~/.config/opencode`) contains the local configuration, custom c
 
 ## Synchronization & Source of Truth
 
-**Source of Truth:** `~/code/ai-configs/opencode`
+**Source of Truth:** `~/code/ai-configs/_opencode`
 
 While this directory is where the active configuration lives and where you make edits, the persistent version control resides in `~/code/ai-configs`.
 
@@ -12,6 +12,17 @@ While this directory is where the active configuration lives and where you make 
 1. **Edit**: Make changes in `~/.config/opencode`.
 2. **Sync**: Run `./scripts/sync_to_repo.sh` from `~/.config/opencode`.
 3. **Commit**: Go to `~/code/ai-configs` to commit and push the synced changes.
+
+## OpenCode Server Restarts
+
+If you are operating through an active OpenCode server session, do not restart that
+same server from inside the session. Restarting the launchd/systemd service that
+hosts your transport interrupts the current conversation and can strand in-flight
+
+After installing updated commands, agents, skills, or config, report that a server
+restart is needed for long-lived OpenCode processes to pick up the change. Let the
+operator restart it from outside the active session, or restart only a different
+host/server that is not carrying your current transport.
 
 ## Important Context for Agents
 
