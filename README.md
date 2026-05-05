@@ -60,6 +60,13 @@ bash ~/ai-configs/install.sh --skills
 bash ~/ai-configs/install.sh --tools
 ```
 
+Update skills installed through skills.sh before running the normal installer sync:
+
+```bash
+bash ~/ai-configs/install.sh --skills --update
+bash ~/ai-configs/install.sh --all --update
+```
+
 Global install:
 
 ```bash
@@ -80,10 +87,11 @@ bash ~/ai-configs/install.sh --all ~
 - copies repo-managed Pi extensions into `~/.pi/agent/extensions/` (these do not appear in `pi list`)
 - installs OpenCode resources to `~/.config/opencode/`
 - syncs shared skills into `~/.agents/skills` from `skills/install-matrix.json`
+- with `--update`, first runs `npx skills update -g -y` for globally installed skills tracked by skills.sh, then runs the normal ai-configs sync
 - installs the shared repo-root `APPEND_SYSTEM.md` to Pi as `~/.pi/agent/APPEND_SYSTEM.md` and to OMP as `~/.omp/agent/SYSTEM.md`
 - preserves local settings files where appropriate
 
-To update an existing install, run the same `install.sh` command again.
+To update an existing install from this repo, run the same `install.sh` command again. To also refresh skills installed through skills.sh, add `--update`.
 
 ## Key directories
 
@@ -129,6 +137,12 @@ Shared skills install to:
 ```
 
 Consumer-specific compatibility links are created where needed, but `~/.agents/skills` is the canonical shared runtime location. Codex discovers user skills directly from this location. Repo-owned payloads come from `skills/`; package-backed payloads are fetched per `skills/install-matrix.json`.
+
+`--update` updates globally installed skills tracked by skills.sh before ai-configs re-syncs its managed skill set:
+
+```bash
+bash ./install.sh --skills --update
+```
 
 `ltui` lives under `tools/ltui/` and can be installed with:
 

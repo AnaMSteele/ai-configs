@@ -19,6 +19,9 @@ INSTALL_MODE="--default"
 APPEND_AGENTS=false
 INSTALL_TOOLS=false
 INSTALL_SKILLS=false
+UPDATE_SKILLS=false
+SKILLS_SH_UPDATE_RAN=false
+SHARED_SKILLS_SYNCED=false
 AI_CONFIGS_MANAGED_MARKER='.ai-configs-managed.json'
 AI_CONFIGS_BACKUP_RUN_ID="$(date +"%Y%m%d-%H%M%S")"
 AI_CONFIGS_REPO_NAME='ai-configs'
@@ -35,7 +38,7 @@ BOLD='\033[1m'
 NC='\033[0m' # No Color
 
 print_usage() {
-    echo "Usage: $0 [--claude|--codex|--gemini|--omp|--opencode|--pi|--tools|--skills|--all] [--append-agents] [target-directory]"
+    echo "Usage: $0 [--claude|--codex|--gemini|--omp|--opencode|--pi|--tools|--skills|--all] [--update] [--append-agents] [target-directory]"
     echo ""
     echo "Options:"
     echo "  --claude    Install Claude Code configuration and refresh shared skills for Claude"
@@ -47,6 +50,7 @@ print_usage() {
     echo "  --tools     Install CLI tools only (e.g., ltui)"
     echo "  --skills    Sync repo-owned and package-managed shared skills into ~/.agents/skills"
     echo "  --all       Install everything: Claude, Codex, Gemini, Oh My Pi, OpenCode, Pi, tools, and shared skills"
+    echo "  --update    Update globally installed skills tracked by skills.sh before shared-skill sync"
     echo "  --append-agents"
     echo "             Ensure GEMINI.md exists and contains required Personas."
     echo "             If GEMINI.md exists but is missing the Personas section, append it from the template."
@@ -65,6 +69,7 @@ print_usage() {
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
     echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-gpt-config, pi-multi-pass"
     echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from _pi/packages/pi-vcc, pi-multi-pass via git:github.com/adnichols/pi-multi-pass, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise git:github.com/adnichols/pi-interactive-shell)"
+    echo "  - Use --update to run 'npx skills update -g -y' for skills installed through skills.sh before the normal sync"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
     echo "Examples:"
@@ -77,6 +82,7 @@ print_usage() {
     echo "  $0 --omp ~/my-project            # Install Oh My Pi config to ~/.omp/agent"
     echo "  $0 --tools                       # Install CLI tools globally"
     echo "  $0 --skills                      # Sync repo-owned and package-managed shared skills into ~/.agents/skills"
+    echo "  $0 --skills --update             # Update skills.sh-managed global skills, then sync shared skills"
     echo "  $0 --all --append-agents         # Install everything and ensure GEMINI.md Personas"
 }
 
@@ -1176,6 +1182,11 @@ cleanup_pi_shared_skill_mirrors() {
 sync_shared_skills() {
     local shared_skills_dir="$HOME/.agents/skills"
 
+    if [ "$UPDATE_SKILLS" = true ]; then
+        update_installed_skills_from_skills_sh
+        echo ""
+    fi
+
     echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}  Syncing Shared Skills${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
@@ -1198,9 +1209,35 @@ sync_shared_skills() {
     cleanup_pi_shared_skill_mirrors "$HOME/.pi/agent/skills"
 
     echo -e "${GREEN}✓ Shared skills synced successfully${NC}"
+    SHARED_SKILLS_SYNCED=true
     echo ""
     echo "  Shared skills now live in ~/.agents/skills"
     echo "  Repo-owned payloads come from skills/; package-backed payloads are fetched per skills/install-matrix.json"
+}
+
+update_installed_skills_from_skills_sh() {
+    if [ "$SKILLS_SH_UPDATE_RAN" = true ]; then
+        return 0
+    fi
+
+    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}  Updating Installed skills.sh Skills${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
+    echo ""
+
+    if ! command -v npx >/dev/null 2>&1; then
+        echo -e "${RED}Error: npx is required to update skills through skills.sh${NC}" >&2
+        return 1
+    fi
+
+    echo "  - Running npx skills update -g -y..."
+    if ! npx skills update -g -y </dev/null; then
+        echo -e "${RED}Error: skills.sh update failed${NC}" >&2
+        return 1
+    fi
+
+    SKILLS_SH_UPDATE_RAN=true
+    echo -e "${GREEN}✓ skills.sh-managed global skills updated successfully${NC}"
 }
 
 install_skills() {
@@ -2036,6 +2073,10 @@ while [ "$#" -gt 0 ]; do
             INSTALL_MODE="$1"
             shift
             ;;
+        --update)
+            UPDATE_SKILLS=true
+            shift
+            ;;
         --append-agents)
             APPEND_AGENTS=true
             shift
@@ -2146,6 +2187,11 @@ case "$INSTALL_MODE" in
         exit 1
         ;;
 esac
+
+if [ "$UPDATE_SKILLS" = true ] && [ "$SHARED_SKILLS_SYNCED" != true ]; then
+    echo ""
+    sync_shared_skills
+fi
 
 echo ""
 echo -e "${GREEN}Installation complete!${NC}"

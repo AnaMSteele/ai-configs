@@ -22,7 +22,10 @@ These resources are installed by `install.sh` to Pi's global agent directory. Th
 ```bash
 ./install.sh --pi      # Install Pi prompt templates + subagents + extensions and sync shared skills
 ./install.sh --all     # Install everything, including Pi
+./install.sh --pi --update  # Update skills.sh-managed global skills first, then install Pi resources
 ```
+
+`--update` runs `npx skills update -g -y` for globally installed skills tracked by skills.sh before the normal ai-configs sync re-normalizes shared skills in `~/.agents/skills`.
 
 To verify the Pi install surfaces this repo manages, run:
 

@@ -134,6 +134,16 @@ case "$command" in
       printf '%s\t%s\n' "$package" "$skill" >> "$HOME/.agents/fake-npx-skills.log"
     done
     ;;
+  update)
+    mkdir -p "$HOME/.agents"
+    printf 'update %s\n' "$*" >> "$HOME/.agents/fake-npx-skills-update.log"
+
+    if [[ "${AI_CONFIGS_FAKE_SKILLS_UPDATE_MUTATES:-}" == "linear" ]]; then
+      mkdir -p "$HOME/.agents/skills/linear"
+      rm -f "$HOME/.agents/skills/linear/.ai-configs-managed.json"
+      printf 'skills.sh-updated-linear\n' > "$HOME/.agents/skills/linear/SKILL.md"
+    fi
+    ;;
   *)
     exit 0
     ;;
@@ -319,6 +329,57 @@ test_skills_mode_installs_additively_and_is_idempotent() {
   [[ "$backup_count_before" == "$backup_count_after" ]]
 }
 
+test_skills_mode_does_not_update_skills_sh_by_default() {
+  local home
+
+  home="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  run_installer "$home" --skills || return 1
+  [[ ! -f "$home/.agents/fake-npx-skills-update.log" ]]
+}
+
+test_update_modifier_runs_skills_sh_update_before_sync() {
+  local home
+
+  home="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  run_installer "$home" --skills --update || return 1
+  assert_file_contains "$home/.agents/fake-npx-skills-update.log" 'update -g -y' || return 1
+  assert_shared_skill_install_state "$home" || return 1
+}
+
+test_update_modifier_normalizes_skills_sh_mutated_managed_skills() {
+  local home
+
+  home="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  run_installer "$home" --skills || return 1
+  assert_shared_skill_install_state "$home" || return 1
+
+  AI_CONFIGS_FAKE_SKILLS_UPDATE_MUTATES=linear run_installer "$home" --skills --update || return 1
+  assert_file_contains "$home/.agents/fake-npx-skills-update.log" 'update -g -y' || return 1
+  assert_file_not_contains "$home/.agents/skills/linear/SKILL.md" 'skills.sh-updated-linear' || return 1
+  assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"source": "skills/linear"' || return 1
+  assert_symlink_target "$home/.claude/skills/linear" "$home/.agents/skills/linear" || return 1
+}
+
+test_update_modifier_syncs_skills_for_modes_without_normal_skill_sync() {
+  local home
+  local target
+
+  home="$(new_tmp_dir)"
+  target="$(new_tmp_dir)"
+  seed_phase_two_home "$home"
+
+  run_installer "$home" --gemini --update "$target" || return 1
+  assert_file_contains "$home/.agents/fake-npx-skills-update.log" 'update -g -y' || return 1
+  assert_file_contains "$home/.agents/skills/linear/.ai-configs-managed.json" '"source": "skills/linear"' || return 1
+  [[ -d "$target/.gemini" ]] || return 1
+}
+
 test_default_mode_reuses_shared_sync_without_mutating_repo_root() {
   local home
   local target
@@ -338,7 +399,8 @@ test_default_mode_reuses_shared_sync_without_mutating_repo_root() {
   [[ "$backup_count_before" == "$backup_count_after" ]] || return 1
 
   [[ -d "$target/.claude" ]] || return 1
-  [[ -d "$target/.codex" ]] || return 1
+  [[ ! -e "$target/.codex" ]] || return 1
+  [[ -d "$home/.codex/prompts" ]] || return 1
   [[ -d "$target/.gemini" ]] || return 1
 }
 
@@ -548,6 +610,10 @@ test_phase_four_validation_proves_final_alignment() {
 
 main() {
   run_test test_skills_mode_installs_additively_and_is_idempotent
+  run_test test_skills_mode_does_not_update_skills_sh_by_default
+  run_test test_update_modifier_runs_skills_sh_update_before_sync
+  run_test test_update_modifier_normalizes_skills_sh_mutated_managed_skills
+  run_test test_update_modifier_syncs_skills_for_modes_without_normal_skill_sync
   run_test test_default_mode_reuses_shared_sync_without_mutating_repo_root
   run_test test_single_surface_modes_reuse_shared_sync
   run_test test_project_local_central_skill_overrides_are_removed
