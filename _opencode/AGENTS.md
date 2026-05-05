@@ -18,6 +18,7 @@ While this directory is where the active configuration lives and where you make 
 If you are operating through an active OpenCode server session, do not restart that
 same server from inside the session. Restarting the launchd/systemd service that
 hosts your transport interrupts the current conversation and can strand in-flight
+tool calls.
 
 After installing updated commands, agents, skills, or config, report that a server
 restart is needed for long-lived OpenCode processes to pick up the change. Let the
