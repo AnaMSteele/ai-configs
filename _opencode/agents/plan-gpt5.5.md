@@ -2,7 +2,7 @@
 name: plan-gpt5.5
 description: Planning agent using GPT 5.4
 mode: subagent
-model: openai-codex/gpt-5.5
+model: openai/gpt-5.5
 reasoningEffort: high
 permission:
   question: allow

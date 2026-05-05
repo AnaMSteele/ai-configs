@@ -1,7 +1,7 @@
 ---
 description: End-to-end autopilot from a FeelingLucky Linear issue to a pushed PR
 argument-hint: '[ISSUE_KEY] [BASE_REF]'
-model: openai-codex/gpt-5.5
+model: openai/gpt-5.5
 ---
 
 ## Critial Requirement

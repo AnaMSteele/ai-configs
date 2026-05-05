@@ -2,7 +2,7 @@
 description: Run any command file dynamically using GPT-5.5
 argument-hint: '<command-name | @path/to/command.md> [arguments...]'
 subtask: true
-model: openai-codex/gpt-5.5
+model: openai/gpt-5.5
 reasoningEffort: high
 ---
 
