@@ -2,7 +2,7 @@
 name: reviewer-gpt
 description: GPT document reviewer - adds critical review tags
 mode: subagent
-model: openai/gpt-5.5
+model: openai-codex/gpt-5.5
 reasoningEffort: high
 ---
 

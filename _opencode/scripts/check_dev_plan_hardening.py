@@ -100,7 +100,7 @@ def main() -> None:
         [
             "Completion condition for this command when a plan artifact can be written safely:",
             "The final response reports the plan path and readiness state, then suggests follow-up work that matches that state without running anything.",
-            "Only suggest `/cmd:execute-plan <plan_path>` when the written plan is `execution-ready`.",
+            "Only suggest `/ralph:run <plan_path>` when the written plan is `execution-ready`.",
             "For a written `research-ready` artifact, point the user to the exact next research action captured in the plan instead of suggesting execution.",
         ],
     )
@@ -191,8 +191,8 @@ def main() -> None:
         [
             "If the written plan is `execution-ready`, suggest:",
             "`/review:change <plan_path>`",
-            "`/cmd:execute-plan <plan_path>`",
-            "If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/cmd:execute-plan`.",
+            "`/ralph:run <plan_path>`",
+            "If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/ralph:run`.",
         ],
     )
 

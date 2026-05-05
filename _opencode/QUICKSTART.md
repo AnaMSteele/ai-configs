@@ -16,12 +16,12 @@ curl -fsSL https://opencode.ai/install | bash
 
 ```bash
 # Navigate to the repository root
-cd /path/to/ai-configs
+cd /path/to/adn-claude-configs
 
 # Ask your AI agent (Claude Code, OpenCode, etc.) to execute the onboarding
 # Provide this instruction:
 
-"Please follow _opencode/OPENCODE_ONBOARDING.md to set up OpenCode with
+"Please follow opencode/OPENCODE_ONBOARDING.md to set up OpenCode with
 all configurations, MCP servers, and model providers from this repository.
 The document uses relative paths starting from the repository root."
 ```
@@ -32,26 +32,24 @@ If you prefer manual installation or need to troubleshoot:
 
 ```bash
 # 1. Create directories
-mkdir -p ~/.config/opencode/{agents,commands,prompts,skills,plugin} ~/.agents/skills
+mkdir -p ~/.config/opencode/{agents,commands,prompts,skills/playwright-skill/lib,plugin}
 
 # 2. Copy config files
-cp _opencode/config-template.json ~/.config/opencode/opencode.json
-cp _opencode/prompts/glm-reasoning.md ~/.config/opencode/prompts/
-cp -r _opencode/commands/ ~/.config/opencode/commands/
-cp -r _opencode/agents/ ~/.config/opencode/agents/
+cp opencode/config-template.json ~/.config/opencode/opencode.json
+cp opencode/prompts/glm-reasoning.md ~/.config/opencode/prompts/
+cp -r opencode/skills/playwright-skill/ ~/.config/opencode/skills/
+cp -r opencode/commands/ ~/.config/opencode/commands/
+cp -r opencode/agents/ ~/.config/opencode/agents/
 
-# 3. Sync canonical shared skills
-bash ./install.sh --skills
-
-# 4. Install Playwright dependencies
-cd ~/.agents/skills/playwright-skill
+# 3. Install Playwright dependencies
+cd ~/.config/opencode/skills/playwright-skill
 npm run setup
 
-# 5. Configure API keys
+# 4. Configure API keys
 opencode auth add --provider synthetic
 opencode auth add --provider deepinfra
 
-# 6. Verify
+# 5. Verify
 cd /tmp && opencode
 ```
 
@@ -59,27 +57,27 @@ cd /tmp && opencode
 
 - ✅ **MCP Servers**: Playwright (browser automation), Serena (code analysis)
 - ✅ **Model Providers**: Synthetic.new, DeepInfra, Google (via Antigravity)
-- ✅ **Custom Skills**: Playwright browser automation skill (canonically installed in `~/.agents/skills` and exposed to OpenCode via compatibility link)
+- ✅ **Custom Skills**: Playwright browser automation skill
 - ✅ **Custom Prompts**: GLM-4.7 preserved thinking protocol
 
 ## Key Files in this Repository
 
-- `_opencode/OPENCODE_ONBOARDING.md` - Comprehensive onboarding guide (use this!)
-- `_opencode/config-template.json` - OpenCode configuration template
-- `_opencode/prompts/glm-reasoning.md` - GLM thinking prompt
-- `skills/install-matrix.json` - Shared skill inventory, including package-backed Playwright installation metadata
+- `opencode/OPENCODE_ONBOARDING.md` - Comprehensive onboarding guide (use this!)
+- `opencode/config-template.json` - OpenCode configuration template
+- `opencode/prompts/glm-reasoning.md` - GLM thinking prompt
+- `opencode/skills/playwright-skill/` - Browser automation skill
 
 ## For Other Repositories
 
 To use these configurations in any repository:
 
-1. Copy the `_opencode/` directory plus the repo-owned `skills/` directory (and its `install-matrix.json`) from this repo to your target repo
-2. Run the onboarding: "Follow _opencode/OPENCODE_ONBOARDING.md"
+1. Copy the `opencode/` directory from this repo to your target repo
+2. Run the onboarding: "Follow opencode/OPENCODE_ONBOARDING.md"
 3. All paths in the onboarding document are relative to the repository root
 
 ## Need More Details?
 
-See the comprehensive guide: **`_opencode/OPENCODE_ONBOARDING.md`**
+See the comprehensive guide: **`opencode/OPENCODE_ONBOARDING.md`**
 
 It includes:
 - Step-by-step installation instructions

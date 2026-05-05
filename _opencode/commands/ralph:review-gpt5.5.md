@@ -3,7 +3,7 @@ description: Iterative code review loop (GPT-5.5) — run /review, apply quick f
 argument-hint: "[BASE_REF]"
 agent: build
 subtask: true
-model: openai/gpt-5.5
+model: openai-codex/gpt-5.5
 ---
 
 # Review Loop (Auto-Fix)

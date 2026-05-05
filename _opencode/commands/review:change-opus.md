@@ -101,12 +101,6 @@ Verify the plan is runnable and resumable:
 - `## Decisions / Deviations Log` exists.
 - The plan does not leave unresolved `Open Questions`, `Decision Points`, or equivalent unresolved-decision sections.
 - The plan reflects the expectation that important questions are answered before the plan is considered ready.
-- Each unchecked phase is still a **bounded execution slice**:
-  - one coherent outcome,
-  - one primary verification story,
-  - limited enough coupling and affected surfaces for one safe execution pass,
-  - little enough remaining discovery that execution should not need semantic replanning.
-- If a phase would likely require same-scope subdivision during execution just to finish safely, treat that as a plan defect to flag now.
 
 Also review whether the `### Tests first` sections:
 
@@ -126,8 +120,6 @@ Ensure internal consistency:
 - Proposed approach matches the phase work.
 - Non-goals are not accidentally reintroduced.
 - The plan aligns with the repository's long-range product intent when such intent is documented.
-- The plan does not rely on executors making outcome-shaping chunking or design decisions later.
-- Phase sizing matches likely effort, coupling, and verification breadth rather than bundling multiple independently verifiable outcomes behind one checkbox.
 
 ## Comment Guidelines
 

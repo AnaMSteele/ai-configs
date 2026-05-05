@@ -1,0 +1,1 @@
+Use and distribution follow the surrounding ai-configs/OpenCode configuration repository terms.

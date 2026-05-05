@@ -1,6 +1,6 @@
 ---
 description: Review Feeling Lucky issues and promote ready work to Ready to pull
-model: openai/gpt-5.5
+model: openai-codex/gpt-5.5
 ---
 
 ## Critical Requirement

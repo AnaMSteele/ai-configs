@@ -202,14 +202,15 @@ Use the plan-k2.5 subagent to create a plan with slug `plan_slug` and ensure the
 ### 4) Plan Review + Integrate
 
 ```text
-/review:plan ${plan_slug}
+/review:change-gpt5.4 ${plan_slug}
+/review:change-k2.5 ${plan_slug}
 /review:change-integrate ${plan_slug}
 ```
 
 ### 5) Implement + Validate
 
 ```text
-/skill:adn-dev-wf ${plan_slug}
+/ralph:run-mm ${plan_slug}
 /dev:validate ${plan_slug}
 ```
 
@@ -223,8 +224,6 @@ Run `/review` against `base_ref...HEAD`, apply fixes, re-run until clean.
 /cmd:commit-push
 /cmd:create-pr ${base_ref}
 ```
-
-The PR title must start with `${ISSUE_KEY}:` and include the Linear issue title.
 
 Link PR back to Linear:
 

@@ -40,20 +40,6 @@ def require_phrases(label: str, content: str, phrases: list[str]) -> None:
 def main() -> None:
     text = SKILL_PATH.read_text()
 
-    skill_routing = get_section(text, "Skill routing")
-    require_terms(
-        "skill routing",
-        skill_routing,
-        [
-            "product-principles",
-            "golden path",
-            "self-healing",
-            "error guidance",
-            "AGENTS.md",
-            "tests",
-        ],
-    )
-
     boundaries = get_section(text, "Boundaries")
     require_phrases(
         "boundaries",

@@ -6,7 +6,7 @@ steps) in the global workflows directory so they can be invoked as `/...`
 commands.
 
 Defaults:
-  - Source: ~/code/ai-configs/_opencode/commands/*.md
+  - Source: ~/code/ai-configs/opencode/commands/*.md
   - Dest:   ~/.gemini/antigravity/global_workflows/
   - Names:  oc-<sanitized-stem>.md (':' -> '-', lowercased, safe chars only)
 """
@@ -93,8 +93,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--src",
-        default="~/code/ai-configs/_opencode/commands",
-        help="Directory containing OpenCode command .md files",
+        default="~/code/ai-configs/opencode/commands",
+        help="Directory containing opencode command .md files",
     )
     parser.add_argument(
         "--dst",

@@ -1,6 +1,7 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "instructions": ["~/.agents/SOUL.md"],
+  "model": "openai-codex/gpt-5.5",
   "mcp": {
     "chrome-devtools": {
       "command": ["npx", "-y", "chrome-devtools-mcp@latest"],
@@ -17,6 +18,11 @@
       "type": "remote",
       "url": "https://mcp.exa.ai/mcp?exaApiKey=YOUR_EXA_API_KEY&tools=get_code_context_exa"
     },
+    "macuse": {
+      "command": ["/Applications/Macuse.app/Contents/MacOS/macuse", "mcp"],
+      "enabled": true,
+      "type": "local"
+    },
     "playwright": {
       "command": ["npx", "@playwright/mcp@latest"],
       "enabled": false,
@@ -28,22 +34,97 @@
       "url": "https://mcp.sentry.dev/mcp/nodaste/javascript-nextjs"
     }
   },
-  "permission": {
-    "bash": {
-      "railway *": "deny",
-      "rm -rf *": "deny"
-    },
-    "external_directory": {
-      "/private/tmp/**": "allow",
-      "/tmp/**": "allow",
-      "/var/tmp/**": "allow",
-      "~/.config/opencode/*": "allow",
-      "~/Documents/Obsidian/**": "allow",
-      "~/code/*": "allow"
-    }
-  },
+  "permission": "allow",
   "plugin": ["@tarquinen/opencode-dcp@latest", "opencode-pty@latest"],
   "provider": {
+    "openai-codex": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "CLIProxyAPI (Codex)",
+      "options": {
+        "baseURL": "http://localhost:8317/v1",
+        "apiKey": "local"
+      },
+      "models": {
+        "gpt-5.5": {
+          "name": "GPT-5.5",
+          "reasoning": true,
+          "tool_call": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            }
+          }
+        },
+        "gpt-5.4": {
+          "name": "GPT-5.4",
+          "reasoning": true,
+          "tool_call": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            }
+          }
+        },
+        "gpt-5.4-codex": {
+          "name": "GPT-5.4 Codex",
+          "reasoning": true,
+          "tool_call": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            }
+          }
+        },
+        "gpt-5.3-codex": {
+          "name": "GPT-5.3 Codex",
+          "reasoning": true,
+          "tool_call": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            }
+          }
+        },
+        "gpt-5.3-codex-spark": {
+          "name": "GPT-5.3 Codex Spark",
+          "reasoning": true,
+          "tool_call": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            }
+          }
+        },
+        "codex-auto-review": {
+          "name": "Codex Auto Review",
+          "reasoning": true,
+          "tool_call": true,
+          "options": {
+            "reasoningEffort": "high"
+          },
+          "variants": {
+            "high": {
+              "reasoningEffort": "high"
+            }
+          }
+        }
+      }
+    },
     "fireworks-ai": {
       "models": {
         "accounts/fireworks/models/glm-5": {
