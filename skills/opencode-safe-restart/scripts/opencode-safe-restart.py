@@ -263,6 +263,12 @@ def build_inventory(target_names: list[str], targets: dict[str, dict[str, str]],
 def run_restart(name: str, target: dict[str, str], timeout: float) -> dict[str, Any]:
     command = target["restart"]
     started = time.time()
+
+    def output_text(value: Any) -> str:
+        if isinstance(value, bytes):
+            return value.decode("utf-8", "replace")
+        return value or ""
+
     try:
         proc = subprocess.run(
             command,
@@ -284,8 +290,8 @@ def run_restart(name: str, target: dict[str, str], timeout: float) -> dict[str, 
             "targetName": name,
             "command": command,
             "returncode": None,
-            "stdout": exc.stdout,
-            "stderr": exc.stderr,
+            "stdout": output_text(exc.stdout),
+            "stderr": output_text(exc.stderr),
             "durationSeconds": round(time.time() - started, 3),
             "error": "restart command timed out",
         }
