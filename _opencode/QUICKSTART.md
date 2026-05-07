@@ -36,6 +36,8 @@ mkdir -p ~/.config/opencode/{agents,commands,prompts,skills/playwright-skill/lib
 
 # 2. Copy config files
 cp opencode/config-template.json ~/.config/opencode/opencode.json
+mkdir -p ~/.opencode
+cp opencode/openai-codex-auth-config.template.json ~/.opencode/openai-codex-auth-config.json
 cp opencode/prompts/glm-reasoning.md ~/.config/opencode/prompts/
 cp -r opencode/skills/playwright-skill/ ~/.config/opencode/skills/
 cp -r opencode/commands/ ~/.config/opencode/commands/
@@ -64,6 +66,7 @@ cd /tmp && opencode
 
 - `opencode/OPENCODE_ONBOARDING.md` - Comprehensive onboarding guide (use this!)
 - `opencode/config-template.json` - OpenCode configuration template
+- `opencode/openai-codex-auth-config.template.json` - `oc-codex-multi-auth` runtime config template
 - `opencode/prompts/glm-reasoning.md` - GLM thinking prompt
 - `opencode/skills/playwright-skill/` - Browser automation skill
 

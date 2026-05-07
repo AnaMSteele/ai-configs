@@ -126,6 +126,18 @@ Copy the main OpenCode configuration template:
 cp ./_opencode/config-template.json ~/.config/opencode/opencode.json
 ```
 
+### 3.1b Copy Codex Multi-Auth Plugin Runtime Configuration
+
+If you use `oc-codex-multi-auth`, also copy its separate runtime config.
+
+```bash
+# Source: ./_opencode/openai-codex-auth-config.template.json
+# Destination: ~/.opencode/openai-codex-auth-config.json
+
+mkdir -p ~/.opencode
+cp ./_opencode/openai-codex-auth-config.template.json ~/.opencode/openai-codex-auth-config.json
+```
+
 ### 3.2 Copy Prompts
 
 Copy the GLM-4.7 preserved thinking prompt:
@@ -152,6 +164,9 @@ This installs the Playwright skill to `~/.agents/skills/playwright-skill` and li
 ```bash
 # Verify main config exists
 test -f ~/.config/opencode/opencode.json && echo "✅ opencode.json exists"
+
+# Verify codex multi-auth runtime config exists when using that plugin
+test -f ~/.opencode/openai-codex-auth-config.json && echo "✅ openai-codex-auth-config.json exists"
 
 # Verify prompt exists
 test -f ~/.config/opencode/prompts/glm-reasoning.md && echo "✅ glm-reasoning.md exists"

@@ -38,7 +38,11 @@
     }
   },
   "permission": "allow",
-  "plugin": ["@tarquinen/opencode-dcp@latest", "opencode-pty@latest"],
+  "plugin": [
+    "opencode-pty@latest",
+    "oc-codex-multi-auth@latest",
+    "@tarquinen/opencode-dcp@latest"
+  ],
   "provider": {
     "fireworks-ai": {
       "models": {

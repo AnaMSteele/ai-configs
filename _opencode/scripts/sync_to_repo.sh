@@ -68,6 +68,7 @@ for file in \
   OPENCODE_ONBOARDING.md \
   QUICKSTART.md \
   config-template.json \
+  openai-codex-auth-config.template.json \
   dcp.jsonc \
   read-truncation-warning-plugin.js \
   simple-plugin-test.js \
