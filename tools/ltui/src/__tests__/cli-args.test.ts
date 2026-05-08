@@ -50,6 +50,7 @@ const helpCases: HelpCase[] = [
   { title: 'issues create', args: ['issues', 'create', '--help'], expectOptions: ['--team <key>', '--project <key-or-id>', '--title <title>', '--description <text-or-@path>', '--state <name-or-id>', '--label <name-or-id>', '--assignee <me|email|id>', '--priority <0-4>'] },
   { title: 'issues update', args: ['issues', 'update', '--help'], expectOptions: ['--team <key>', '--project <key-or-id>', '--title <title>', '--description <text-or-@path>', '--state <name-or-id>', '--label <name-or-id>', '--add-label <name-or-id>', '--remove-label <name-or-id>', '--assignee <me|email|id>', '--priority <0-4>', '--estimate <number>', '--due <iso>'] },
   { title: 'issues comment', args: ['issues', 'comment', '--help'], expectOptions: ['--body <text-or-@path>'] },
+  { title: 'issues upload', args: ['issues', 'upload', '--help'], expectOptions: ['--file <path>', '--title <title>', '--alt <text>', '--content-type <type>', '--no-comment'] },
   { title: 'issues link', args: ['issues', 'link', '--help'], expectOptions: ['--url <url>', '--title <title>', '--branch <branch>', '--commit <sha>'] },
   { title: 'issues relate', args: ['issues', 'relate', '--help'], expectOptions: ['--parent <parent-id-or-key>'] },
   { title: 'issues block', args: ['issues', 'block', '--help'], expectOptions: ['--blocked-by <other-id-or-key>'] },

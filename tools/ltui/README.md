@@ -318,7 +318,25 @@ ltui issues comment ENG-123 --body "Implementation complete in PR #234"
 ltui issues link ENG-123 --url "https://github.com/org/repo/pull/234" --title "PR #234"
 ```
 
-### Workflow 3: Finding Relevant Issues
+### Workflow 3: Adding a UI Mockup to an Issue
+
+```bash
+# Agent generated a local mockup while planning a UI change.
+# This uploads it to Linear, creates an issue attachment, and comments with an inline image.
+ltui issues upload ENG-123 \
+  --file ./thoughts/mockups/proposed-ui.png \
+  --title "Proposed UI mockup" \
+  --alt "Proposed UI mockup"
+
+# If the agent needs to link the image from an existing Linear-hosted plan,
+# upload only and use the MARKDOWN line from the output.
+ltui issues upload ENG-123 --file ./thoughts/mockups/proposed-ui.png --no-comment
+```
+
+`issues upload` accepts regular image files inside the current workspace up to 25 MiB.
+The returned URL points to Linear private storage and is intended for authenticated Linear surfaces.
+
+### Workflow 4: Finding Relevant Issues
 
 ```bash
 # Find all "bug" issues in "Todo" state
@@ -331,7 +349,7 @@ ltui --limit 10 --format tsv issues list --assignee me --state "In Progress"
 ltui --limit 5 --format tsv issues list --search "authentication"
 ```
 
-### Workflow 4: Reading Full Issue Context
+### Workflow 5: Reading Full Issue Context
 
 ```bash
 # Get complete issue details including description and comments

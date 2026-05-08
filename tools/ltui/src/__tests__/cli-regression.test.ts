@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync, SpawnSyncReturns } from 'node:child_process';
+import { spawn, spawnSync, SpawnSyncReturns } from 'node:child_process';
 
 const CLI_PATH = path.resolve('bin/ltui');
 const MOCK_CLIENT = path.resolve('dist/test-utils/mockLinearClient.js');
@@ -73,6 +73,58 @@ function expectPureJsonOutput(result: SpawnSyncReturns<string>, commandLabel: st
 
 function readMockLog(pathName: string): any {
   return JSON.parse(readFileSync(pathName, 'utf8'));
+}
+
+function startUploadServer(ctx: EnvContext): { url: string; requestFile: string; stop: () => void } {
+  const scriptPath = path.join(ctx.baseDir, 'upload-server.cjs');
+  const requestFile = path.join(ctx.baseDir, 'upload-request.json');
+  const urlFile = path.join(ctx.baseDir, 'upload-url.txt');
+  rmSync(requestFile, { force: true });
+  rmSync(urlFile, { force: true });
+  writeFileSync(
+    scriptPath,
+    `
+const http = require('node:http');
+const fs = require('node:fs');
+const requestFile = process.argv[2];
+const urlFile = process.argv[3];
+const server = http.createServer((req, res) => {
+  const chunks = [];
+  req.on('data', chunk => chunks.push(chunk));
+  req.on('end', () => {
+    fs.writeFileSync(requestFile, JSON.stringify({
+      method: req.method,
+      headers: req.headers,
+      bodyBase64: Buffer.concat(chunks).toString('base64')
+    }));
+    res.writeHead(200);
+    res.end('ok');
+    server.close(() => process.exit(0));
+  });
+});
+server.listen(0, '127.0.0.1', () => {
+  const { port } = server.address();
+  fs.writeFileSync(urlFile, 'http://127.0.0.1:' + port + '/upload');
+});
+`
+  );
+
+  const child = spawn('node', [scriptPath, requestFile, urlFile], {
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
+  const deadline = Date.now() + 5000;
+  while (!existsSync(urlFile) && Date.now() < deadline) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
+  }
+  if (!existsSync(urlFile)) {
+    child.kill();
+    throw new Error('upload test server did not start');
+  }
+  return {
+    url: readFileSync(urlFile, 'utf8'),
+    requestFile,
+    stop: () => child.kill(),
+  };
 }
 
 test('json mode emits pure JSON suitable for jq parsing', () => {
@@ -253,6 +305,110 @@ test('issues commands including relationships succeed', () => {
     result = runCli(ctx, ['issues', 'comment', 'ENG-1', '--body', 'Looks good']);
     assertOk(result, 'issues comment');
     expectOutput(result, 'COMMENT_CREATED');
+
+    const imagePath = path.join(ctx.workDir, 'mockup.png');
+    writeFileSync(
+      imagePath,
+      Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lqR8YQAAAABJRU5ErkJggg==', 'base64')
+    );
+    const uploadServer = startUploadServer(ctx);
+    result = runCli(
+      ctx,
+      [
+        'issues',
+        'upload',
+        'ENG-1',
+        '--file',
+        'mockup.png',
+        '--title',
+        'Planned UI mockup',
+        '--alt',
+        'Planned UI',
+      ],
+      { LTUI_TEST_UPLOAD_URL: uploadServer.url }
+    );
+    uploadServer.stop();
+    assertOk(result, 'issues upload');
+    expectOutput(result, 'IMAGE_UPLOADED');
+    expectOutput(result, 'MARKDOWN: ![Planned UI](<https://uploads.linear.app/mock-workspace/mockup.png>)');
+    expectOutput(result, 'ATTACHMENT: attachment-1');
+    expectOutput(result, 'COMMENT: comment-created');
+    const uploadRequest = JSON.parse(readFileSync(uploadServer.requestFile, 'utf8'));
+    assert.equal(uploadRequest.method, 'PUT');
+    assert.equal(uploadRequest.headers['content-type'], 'image/png');
+    assert.equal(uploadRequest.headers['x-linear-content-type'], 'image/png');
+    assert.equal(uploadRequest.headers['x-linear-content-size'], String(readFileSync(imagePath).length));
+    assert.equal(uploadRequest.bodyBase64, readFileSync(imagePath).toString('base64'));
+
+    const noCommentServer = startUploadServer(ctx);
+    result = runCli(
+      ctx,
+      ['issues', 'upload', 'ENG-1', '--file', 'mockup.png', '--no-comment'],
+      { LTUI_TEST_UPLOAD_URL: noCommentServer.url }
+    );
+    noCommentServer.stop();
+    assertOk(result, 'issues upload no-comment');
+    expectOutput(result, 'ATTACHMENT_STATUS: created');
+    expectOutput(result, 'COMMENT_STATUS: skipped');
+
+    const outsidePath = path.join(ctx.baseDir, 'outside.png');
+    writeFileSync(outsidePath, readFileSync(imagePath));
+    result = runCli(ctx, ['issues', 'upload', 'ENG-1', '--file', outsidePath]);
+    assert.equal(result.status, 1, 'outside workspace upload should fail');
+    assert.match(result.stderr, /Upload file must be inside the current workspace/);
+
+    const symlinkPath = path.join(ctx.workDir, 'mockup-link.png');
+    symlinkSync(imagePath, symlinkPath);
+    result = runCli(ctx, ['issues', 'upload', 'ENG-1', '--file', 'mockup-link.png']);
+    assert.equal(result.status, 1, 'symlink upload should fail');
+    assert.match(result.stderr, /Refusing to upload symlink/);
+
+    const commentFailServer = startUploadServer(ctx);
+    result = runCli(
+      ctx,
+      ['issues', 'upload', 'ENG-1', '--file', 'mockup.png'],
+      { LTUI_TEST_UPLOAD_URL: commentFailServer.url, LTUI_TEST_FAIL_COMMENT: '1' }
+    );
+    commentFailServer.stop();
+    assert.equal(result.status, 1, 'comment failure should set a failing exit status');
+    expectOutput(result, 'IMAGE_UPLOADED');
+    expectOutput(result, 'ATTACHMENT_STATUS: created');
+    expectOutput(result, 'COMMENT_STATUS: failed');
+    expectOutput(result, 'MARKDOWN: ![mockup.png](<https://uploads.linear.app/mock-workspace/mockup.png>)');
+
+    const attachmentFailServer = startUploadServer(ctx);
+    result = runCli(
+      ctx,
+      ['issues', 'upload', 'ENG-1', '--file', 'mockup.png', '--no-comment'],
+      { LTUI_TEST_UPLOAD_URL: attachmentFailServer.url, LTUI_TEST_FAIL_ATTACHMENT: '1' }
+    );
+    attachmentFailServer.stop();
+    assert.equal(result.status, 1, 'attachment failure should set a failing exit status');
+    expectOutput(result, 'IMAGE_UPLOADED');
+    expectOutput(result, 'ATTACHMENT_STATUS: failed');
+    expectOutput(result, 'COMMENT_STATUS: skipped');
+    expectOutput(result, 'MARKDOWN: ![mockup.png](<https://uploads.linear.app/mock-workspace/mockup.png>)');
+
+    const jsonServer = startUploadServer(ctx);
+    result = runCli(
+      ctx,
+      ['--format', 'json', 'issues', 'upload', 'ENG-1', '--file', 'mockup.png', '--no-comment'],
+      { LTUI_TEST_UPLOAD_URL: jsonServer.url }
+    );
+    jsonServer.stop();
+    const uploadJson = expectPureJsonOutput(result, 'issues upload json') as Record<string, unknown>;
+    assert.equal(uploadJson.markdown, '![mockup.png](<https://uploads.linear.app/mock-workspace/mockup.png>)');
+    assert.equal(uploadJson.attachmentStatus, 'created');
+    assert.equal(uploadJson.commentStatus, 'skipped');
+
+    writeFileSync(path.join(ctx.workDir, 'not-image.txt'), 'not an image');
+    result = runCli(ctx, ['issues', 'upload', 'ENG-1', '--file', 'not-image.txt']);
+    assert.equal(result.status, 1, 'non-image upload should fail');
+    assert.match(result.stderr, /Unsupported image content type|Unable to recognize image file signature/);
+
+    result = runCli(ctx, ['issues', 'upload', 'ENG-1', '--file', 'mockup.png', '--content-type', 'image/jpeg']);
+    assert.equal(result.status, 1, 'mismatched content type should fail');
+    assert.match(result.stderr, /Image content type does not match file signature/);
 
     result = runCli(ctx, [
       'issues',

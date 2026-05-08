@@ -284,6 +284,16 @@ Truncation behavior is controlled by flags:
   - Adds a comment.
   - Output: `COMMENT_CREATED` block with id, author, timestamps.
 
+- `ltui issues upload <issue-id-or-key> --file <path> [--title <title>] [--alt <text>] [--no-comment]`
+  - Uploads a local image file to Linear private storage using the `fileUpload` signed URL flow.
+  - The file must be a regular image file inside the current workspace and no larger than 25 MiB.
+  - Uploaded URLs are Linear private storage URLs intended for authenticated Linear surfaces.
+  - Creates a Linear attachment record for the uploaded asset.
+  - Adds an inline image comment by default so the mockup is visible in the issue discussion.
+  - `--no-comment` uploads only and returns the `MARKDOWN` snippet for agents that need to insert the image link into an existing Linear-hosted plan.
+  - If upload succeeds but attachment or comment creation fails, output still includes the uploaded URL and markdown with the relevant `*_STATUS: failed`, and the command exits non-zero.
+  - Output: `IMAGE_UPLOADED` block with issue, local file path, content type, size, uploaded URL, markdown, attachment status/id, and optional comment id.
+
 - `ltui issues link <issue-id-or-key> --url <url> [--title <title>]`
   - Attaches a link (e.g. PR, build, docs).
   - Output: `LINK_ATTACHED` block.
@@ -530,7 +540,17 @@ ltui --agent issues comment ENG-123 --body "Working on this as part of bugfix br
 ltui --agent issues link ENG-123 --url "https://github.com/org/repo/pull/456" --title "PR #456"
 ```
 
-### 9.5 Per‑Project Alignment + Issue Creation
+### 9.5 Upload a Local UI Mockup
+
+```bash
+# Upload and comment with an inline image visible on the issue
+ltui --agent issues upload ENG-123 --file ./thoughts/mockups/new-ui.png --title "Proposed UI mockup" --alt "Proposed UI mockup"
+
+# Upload only and print MARKDOWN for insertion into an existing Linear plan
+ltui --agent issues upload ENG-123 --file ./thoughts/mockups/new-ui.png --no-comment
+```
+
+### 9.6 Per‑Project Alignment + Issue Creation
 
 ```bash
 # Align the current repo with a Linear project and defaults

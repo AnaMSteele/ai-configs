@@ -797,6 +797,112 @@ export function runIssuesCommands(program: Command): void {
     });
 
   issues
+    .command('upload')
+    .description('Upload a local image to an issue')
+    .argument('<issue-id-or-key>', 'Issue id or key')
+    .requiredOption('--file <path>', 'Local image file to upload')
+    .option('--title <title>', 'Title used in the generated comment')
+    .option('--alt <text>', 'Alt text for the markdown image')
+    .option('--content-type <type>', 'Override detected image content type')
+    .option('--no-comment', 'Upload only; do not add an issue comment')
+    .action(async (ref: string, options) => {
+      try {
+        const globalOpts = getGlobalOptions(program);
+        const resolved = resolveConfig(program.opts<{ profile?: string }>().profile);
+        const client = createLinearClient(resolved);
+        const issue = await resolveIssueByIdOrKey(client, ref);
+        if (!issue) {
+          const out = emitError('not_found', `Issue '${ref}' not found`);
+          process.stderr.write(out + '\n');
+          process.exitCode = 1;
+          return;
+        }
+
+        const fileInfo = await prepareLocalImageUpload(options.file, options.contentType);
+        const assetUrl = await uploadFileToLinear(client, fileInfo);
+        const title = sanitizeSingleLine(options.title ?? path.basename(fileInfo.path));
+        const alt = sanitizeMarkdownAlt(options.alt ?? title);
+        const markdown = `![${alt}](<${assetUrl}>)`;
+
+        let attachment: any | undefined;
+        let attachmentError = '';
+        try {
+          const payload = await client.createAttachment({
+            issueId: issue.id,
+            url: assetUrl,
+            title,
+            metadata: {
+              contentType: fileInfo.contentType,
+              filename: fileInfo.filename,
+              size: fileInfo.size,
+            },
+            subtitle: `file:${fileInfo.filename}`,
+          });
+          if (!payload?.success) {
+            throw new Error('attachment_create_failed');
+          }
+          attachment = payload.attachment ? await payload.attachment : undefined;
+        } catch (error) {
+          attachmentError = sanitizeSingleLine(String((error as Error)?.message ?? error));
+          process.exitCode = 1;
+        }
+
+        let comment: any | undefined;
+        let commentError = '';
+        if (options.comment !== false) {
+          const body = title ? `${title}\n\n${markdown}` : markdown;
+          try {
+            const payload = await client.createComment({ issueId: issue.id, body });
+            if (!payload?.success) {
+              throw new Error('comment_create_failed');
+            }
+            comment = payload.comment ? await payload.comment : undefined;
+          } catch (error) {
+            commentError = sanitizeSingleLine(String((error as Error)?.message ?? error));
+            process.exitCode = 1;
+          }
+        }
+
+        const detailFields = {
+          ISSUE: issue.identifier ?? issue.id,
+          FILE: fileInfo.path,
+          CONTENT_TYPE: fileInfo.contentType,
+          SIZE: String(fileInfo.size),
+          URL: assetUrl,
+          MARKDOWN: markdown,
+          ATTACHMENT: `${attachment?.id ?? ''}`,
+          ATTACHMENT_STATUS: attachmentError ? 'failed' : 'created',
+          ATTACHMENT_ERROR: attachmentError,
+          COMMENT: `${comment?.id ?? ''}`,
+          COMMENT_STATUS: commentError ? 'failed' : options.comment === false ? 'skipped' : 'created',
+          COMMENT_ERROR: commentError,
+        };
+        const block = renderDetailOrJsonRecord(
+          'IMAGE_UPLOADED',
+          detailFields,
+          {
+            issue: issue.identifier ?? issue.id ?? '',
+            file: fileInfo.path,
+            contentType: fileInfo.contentType,
+            size: fileInfo.size,
+            url: assetUrl,
+            markdown,
+            attachment: attachment?.id ?? '',
+            attachmentStatus: attachmentError ? 'failed' : 'created',
+            attachmentError,
+            comment: comment?.id ?? '',
+            commentStatus: commentError ? 'failed' : options.comment === false ? 'skipped' : 'created',
+            commentError,
+          },
+          { format: globalOpts.format, fields: globalOpts.fields }
+        );
+        process.stdout.write(block + '\n');
+      } catch (error) {
+        writeError(error);
+      }
+    });
+
+  issues
     .command('link')
     .description('Attach a link to an issue')
     .argument('<issue-id-or-key>', 'Issue id or key')
@@ -1405,9 +1511,25 @@ async function formatIssueSummaryBlock(
 
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
+const DEFAULT_MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']);
+const IMAGE_CONTENT_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml',
+]);
 
 type ImageKind = 'png' | 'jpeg' | 'gif' | 'webp' | 'svg' | 'unknown';
+
+interface LocalImageUpload {
+  path: string;
+  filename: string;
+  contentType: string;
+  size: number;
+  bytes: Buffer;
+}
 
 async function buildIssueAssetRows(
   issue: any,
@@ -1861,6 +1983,23 @@ function contentTypeToImageKind(contentType: string): ImageKind {
   }
 }
 
+function imageKindToContentType(kind: ImageKind): string {
+  switch (kind) {
+    case 'png':
+      return 'image/png';
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'gif':
+      return 'image/gif';
+    case 'webp':
+      return 'image/webp';
+    case 'svg':
+      return 'image/svg+xml';
+    default:
+      return '';
+  }
+}
+
 function sniffImageKind(head: Buffer): ImageKind {
   if (head.length >= 8
     && head[0] === 0x89
@@ -1901,6 +2040,118 @@ function sniffImageKind(head: Buffer): ImageKind {
   }
 
   return 'unknown';
+}
+
+async function prepareLocalImageUpload(
+  filePath: string,
+  explicitContentType?: string
+): Promise<LocalImageUpload> {
+  const workspaceRoot = await fs.realpath(process.cwd());
+  const resolvedPath = path.resolve(process.cwd(), filePath);
+  const stat = await safeLstat(resolvedPath);
+  if (!stat) {
+    throw new Error(`validation_error File '${filePath}' not found`);
+  }
+  if (stat.isSymbolicLink()) {
+    throw new Error('validation_error Refusing to upload symlink');
+  }
+  if (!stat.isFile()) {
+    throw new Error('validation_error Upload path must be a regular file');
+  }
+  if (stat.size <= 0) {
+    throw new Error('validation_error Upload file is empty');
+  }
+  if (stat.size > DEFAULT_MAX_UPLOAD_BYTES) {
+    throw new Error(`validation_error Upload file exceeds ${DEFAULT_MAX_UPLOAD_BYTES} byte limit`);
+  }
+
+  const realPath = await fs.realpath(resolvedPath);
+  if (!isPathWithin(realPath, workspaceRoot)) {
+    throw new Error('validation_error Upload file must be inside the current workspace');
+  }
+
+  const bytes = await fs.readFile(realPath);
+  const sniffed = sniffImageKind(bytes.subarray(0, Math.min(512, bytes.length)));
+  const normalizedExplicit = normalizeContentType(explicitContentType ?? '');
+  let contentType = normalizedExplicit || imageKindToContentType(sniffed) || contentTypeFromExtension(resolvedPath);
+  contentType = normalizeContentType(contentType);
+
+  if (!IMAGE_CONTENT_TYPES.has(contentType)) {
+    throw new Error(`validation_error Unsupported image content type '${contentType || 'unknown'}'`);
+  }
+
+  const expected = contentTypeToImageKind(contentType);
+  if (sniffed === 'unknown') {
+    throw new Error('validation_error Unable to recognize image file signature');
+  }
+  if (expected !== 'unknown' && expected !== sniffed) {
+    throw new Error(`validation_error Image content type does not match file signature (${expected} vs ${sniffed})`);
+  }
+
+  return {
+    path: realPath,
+    filename: path.basename(realPath),
+    contentType,
+    size: stat.size,
+    bytes,
+  };
+}
+
+function isPathWithin(candidatePath: string, rootPath: string): boolean {
+  const relative = path.relative(rootPath, candidatePath);
+  return relative === '' || (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+function contentTypeFromExtension(filePath: string): string {
+  switch (path.extname(filePath).toLowerCase()) {
+    case '.png':
+      return 'image/png';
+    case '.jpg':
+    case '.jpeg':
+      return 'image/jpeg';
+    case '.gif':
+      return 'image/gif';
+    case '.webp':
+      return 'image/webp';
+    case '.svg':
+      return 'image/svg+xml';
+    default:
+      return '';
+  }
+}
+
+async function uploadFileToLinear(client: any, file: LocalImageUpload): Promise<string> {
+  if (typeof client.fileUpload !== 'function') {
+    throw new Error('api_error Linear client does not support fileUpload');
+  }
+
+  const payload = await client.fileUpload(file.contentType, file.filename, file.size);
+  if (!payload?.success || !payload.uploadFile?.uploadUrl || !payload.uploadFile?.assetUrl) {
+    throw new Error('api_error Failed to request Linear upload URL');
+  }
+
+  const headers = new Headers();
+  headers.set('Content-Type', file.contentType);
+  for (const header of payload.uploadFile.headers ?? []) {
+    if (header?.key && header?.value !== undefined) {
+      headers.set(String(header.key), String(header.value));
+    }
+  }
+
+  const response = await fetch(payload.uploadFile.uploadUrl, {
+    method: 'PUT',
+    headers,
+    body: file.bytes as unknown as BodyInit,
+  });
+  if (!response.ok) {
+    throw new Error(`api_error Linear upload failed with HTTP ${response.status}`);
+  }
+
+  return String(payload.uploadFile.assetUrl);
+}
+
+function sanitizeMarkdownAlt(input: string): string {
+  return sanitizeSingleLine(input).replace(/[\[\]]/g, '').trim() || 'image';
 }
 
 async function validateDownloadedImage(filePath: string, contentType: string): Promise<string | null> {

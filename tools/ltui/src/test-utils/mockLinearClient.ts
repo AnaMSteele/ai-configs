@@ -459,7 +459,11 @@ class MockLinearClient {
   }
 
   async createComment(): Promise<any> {
+    if (process.env.LTUI_TEST_FAIL_COMMENT === '1') {
+      throw new Error('comment_create_failed');
+    }
     return {
+      success: true,
       comment: {
         id: 'comment-created',
         body: 'comment body',
@@ -469,8 +473,26 @@ class MockLinearClient {
     };
   }
 
-  async createAttachment(): Promise<any> {
+  async fileUpload(contentType: string, filename: string, size: number): Promise<any> {
     return {
+      success: true,
+      uploadFile: {
+        uploadUrl: process.env.LTUI_TEST_UPLOAD_URL ?? 'https://uploads.linear.app/mock-upload-target',
+        assetUrl: `https://uploads.linear.app/mock-workspace/${encodeURIComponent(filename)}`,
+        headers: [
+          { key: 'x-linear-content-type', value: contentType },
+          { key: 'x-linear-content-size', value: String(size) },
+        ],
+      },
+    };
+  }
+
+  async createAttachment(): Promise<any> {
+    if (process.env.LTUI_TEST_FAIL_ATTACHMENT === '1') {
+      throw new Error('attachment_create_failed');
+    }
+    return {
+      success: true,
       attachment: {
         id: 'attachment-1',
         title: 'Attachment',
