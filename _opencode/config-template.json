@@ -44,6 +44,20 @@
     "@tarquinen/opencode-dcp@latest"
   ],
   "provider": {
+    "openai": {
+      "models": {
+        "gpt-5.5": {
+          "options": {
+            "reasoningEffort": "high"
+          }
+        },
+        "gpt-5.4": {
+          "options": {
+            "reasoningEffort": "high"
+          }
+        }
+      }
+    },
     "fireworks-ai": {
       "models": {
         "accounts/fireworks/models/glm-5": {
