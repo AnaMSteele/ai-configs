@@ -284,6 +284,7 @@ This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-s
 
 **Reviews:**
 - `/skill:adn-dev-wf` — Canonical reviewed-plan development workflow
+- `/skill:omp-review-partner` — Use OMP with OpenCode Zen Kimi models for read-only plan and implementation reviews
 - `/skill:review-change` — Review code changes against plan
 - `/skill:review-change-integrate` — Integrate code-review feedback
 

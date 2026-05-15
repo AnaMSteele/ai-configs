@@ -231,6 +231,17 @@
       "notes": "Promoted from an older repo-local review-partner skill and normalized to launch the real `codex` CLI in exec mode.",
       "sourceType": "repo"
     },
+    "omp-review-partner": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/omp-review-partner",
+      "notes": "Uses `omp` with OpenCode Zen Kimi models as a read-only review partner for plan reviews, implementation reviews, and technical pairing.",
+      "sourceType": "repo"
+    },
     "codex-full-build": {
       "class": "consumer-specific-installable",
       "allowedConsumers": [
