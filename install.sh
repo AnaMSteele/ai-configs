@@ -563,33 +563,42 @@ install_tools() {
         echo "Installing ltui..."
 
         # Check for Bun
-        if ! command -v bun &> /dev/null; then
+        local bun_cmd=""
+        if command -v bun &> /dev/null; then
+            bun_cmd="$(command -v bun)"
+        elif [ -x "$HOME/.bun/bin/bun" ]; then
+            bun_cmd="$HOME/.bun/bin/bun"
+        fi
+
+        if [ -z "$bun_cmd" ]; then
             echo -e "${RED}Error: Bun is required to build ltui${NC}"
             echo "Install from: https://bun.sh"
             return 1
         fi
 
+        local install_bin_dir="$HOME/.local/bin"
+        mkdir -p "$install_bin_dir"
+
         local current_dir=$(pwd)
         cd "$REPO_ROOT/tools/ltui"
 
         echo "  - Installing dependencies..."
-        bun install
+        "$bun_cmd" install
 
         echo "  - Building ltui..."
-        bun run build
+        "$bun_cmd" run build
 
-        echo "  - Linking ltui globally..."
-        bun link
+        echo "  - Installing ltui into $install_bin_dir..."
+        ln -sfn "$REPO_ROOT/tools/ltui/bin/ltui" "$install_bin_dir/ltui"
 
         cd "$current_dir"
         echo -e "${GREEN}✓ ltui installed successfully${NC}"
         echo ""
 
-        # Check if ~/.bun/bin is in PATH
-        if [[ ":$PATH:" != *":$HOME/.bun/bin:"* ]]; then
-            echo -e "${YELLOW}⚠  NOTE: ~/.bun/bin is not in your PATH${NC}"
+        if [[ ":$PATH:" != *":$install_bin_dir:"* ]]; then
+            echo -e "${YELLOW}⚠  NOTE: $install_bin_dir is not in your PATH${NC}"
             echo "  Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
-            echo "    export PATH=\"\$HOME/.bun/bin:\$PATH\""
+            echo "    export PATH=\"$install_bin_dir:\$PATH\""
             echo ""
             echo "  After updating, run: source ~/.zshrc  (or restart your shell)"
             echo "  Then verify with: ltui --help"
