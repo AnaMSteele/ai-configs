@@ -1,6 +1,6 @@
 ---
 name: scoped-plan-run
-description: Execute an existing implementation plan persistently through code changes, scoped Claude and Codex reviews, fixes, verification, commit, push, and PR creation without expanding beyond the plan's stated scope.
+description: Execute an existing implementation plan persistently through code changes, scoped Claude and Codex reviews, fixes, verification, commit, push, PR creation, and goal-backed PR monitoring until feedback is addressed, Codex approves with a :thumbsup:, and the PR is mergeable without expanding beyond the plan's stated scope.
 ---
 
 # Scoped Plan Run
@@ -8,6 +8,8 @@ description: Execute an existing implementation plan persistently through code c
 Use this skill when the user has a plan file and wants it implemented all the way to a pull request with both Claude and Codex review, while preventing reviewer-driven scope creep.
 
 The plan is the contract. Reviews can reveal adjacent problems, but they do not expand the contract unless the user explicitly approves that expansion.
+
+This skill is goal-backed. A scoped plan run is not complete at PR creation; it remains active until the PR satisfies the post-PR completion criteria.
 
 ## Invocation
 
@@ -26,6 +28,8 @@ Accept either a plan path or a slug. For a slug, resolve `thoughts/plans/<slug>.
 - Do not ask reviewers to review the whole product for open-ended problems.
 - Do not proceed past a blocked plan decision by silently choosing a larger scope.
 - Do not create a PR until verification appropriate to the touched surfaces has run or a blocker is clearly reported.
+- Do not mark the Codex goal complete just because the implementation PR exists.
+- Do not mark the Codex goal complete until PR feedback has been monitored and addressed, the PR is mergeable with the destination branch, and Codex has provided a `:thumbsup:` on the original PR description.
 
 ## Scope Contract
 
@@ -68,7 +72,25 @@ If the answer to all three is no, defer it.
 
 ## Workflow
 
-### 1. Prepare
+### 1. Establish Goal
+
+1. Check whether a Codex goal is already active.
+2. If no goal is active, create one for the scoped plan run before implementation begins.
+3. The goal objective must require both:
+   - executing the specified plan through implementation, verification, review, commit, push, and PR creation;
+   - monitoring the PR after creation until the post-PR completion criteria are satisfied.
+4. If an active goal already exists and it is compatible with this scoped plan run, continue under it and state the compatibility in working notes.
+5. If an active goal exists but conflicts with this scoped plan run, stop and ask the user whether to finish, block, or abandon the existing goal before creating a new one.
+
+Use the Codex goal tools for this lifecycle. Do not treat the goal as a checklist in notes only.
+
+Use this objective shape:
+
+```text
+Execute <plan path> through scoped implementation, verification, reviews, commit, push, PR creation, and post-PR monitoring. Do not mark complete until PR feedback has been addressed through repeated monitoring, the PR is mergeable with <target branch>, and Codex has provided a :thumbsup: on the original PR description.
+```
+
+### 2. Prepare
 
 1. Read repo instructions and the plan file.
 2. Check git status and current branch.
@@ -78,7 +100,7 @@ If the answer to all three is no, defer it.
 
 If the worktree is dirty, preserve unrelated changes. Do not clean them up for convenience.
 
-### 2. Implement Phase by Phase
+### 3. Implement Phase by Phase
 
 For each unfinished phase:
 
@@ -90,7 +112,7 @@ For each unfinished phase:
 
 If a phase exposes a broader product problem, classify it. Fix it only if it is a plan prerequisite or a regression from this diff.
 
-### 3. Self Scope Audit
+### 4. Self Scope Audit
 
 Before external review, inspect the diff against the plan:
 
@@ -103,7 +125,7 @@ For every changed file, answer: why does this file need to change for this plan?
 
 If a changed file has no plan-bound reason, revert only your own edits to that file or split the work into a separate follow-up branch. Never revert user changes.
 
-### 4. Codex Review
+### 5. Codex Review
 
 Use the `codex-review-partner` skill or its wrapper for a read-only implementation review.
 
@@ -127,7 +149,7 @@ VERDICT: BLOCKED_BY_SCOPE_QUESTION
 
 Reject malformed reviews and rerun once with a tighter prompt.
 
-### 5. Claude Review
+### 6. Claude Review
 
 Use the `claude-code-review` skill for a read-only Claude review.
 
@@ -135,7 +157,7 @@ Claude must receive the same bounded prompt as Codex. It must not edit files. It
 
 If Claude reports broad adjacent risks, keep them as deferred follow-ups unless they pass the scope classification test.
 
-### 6. Triage Reviews Before Fixing
+### 7. Triage Reviews Before Fixing
 
 Create a short triage table in your working notes:
 
@@ -151,7 +173,7 @@ For each Claude and Codex finding:
 
 Do not implement fixes directly from reviewer prose. Convert them through this triage step first.
 
-### 7. Repeat Review Loop
+### 8. Repeat Review Loop
 
 After fixing in-scope findings:
 
@@ -194,6 +216,59 @@ The PR body must include:
 
 Do not include memory citations in PR messages.
 
+## Post-PR Goal Completion Loop
+
+After the PR is open, keep the Codex goal active and monitor the PR until all completion criteria are satisfied.
+
+### Completion Criteria
+
+The goal can be marked complete only when all of these are true:
+
+- All actionable PR feedback has been addressed.
+- PR feedback has been checked repeatedly after fixes, not just once immediately after PR creation.
+- Codex has provided a `:thumbsup:` on the original PR description.
+- The branch has been rebased or otherwise updated against the destination branch as needed.
+- GitHub reports the PR as mergeable with the destination branch.
+
+### Monitoring Loop
+
+Repeat this loop until the completion criteria are met or a true blocker is reached:
+
+1. Inspect PR reviews, review threads, comments, status checks, and mergeability.
+2. Classify every new feedback item using the same scope categories.
+3. Fix `IN_PLAN`, `PLAN_PREREQUISITE`, and `REGRESSION_FROM_THIS_DIFF` feedback.
+4. Record or report `OUT_OF_SCOPE_FOLLOW_UP` feedback without expanding the PR.
+5. Stop for user input on `QUESTION` feedback.
+6. Rerun the smallest meaningful verification for any changes.
+7. Commit and push fixes to the PR branch.
+8. Rebase onto the destination branch when GitHub reports the branch out of date, conflicted, or not mergeable.
+9. Recheck until GitHub shows the PR as mergeable and the Codex `:thumbsup:` is present on the original PR description.
+
+Use GitHub product surfaces for this check, for example:
+
+```bash
+gh pr view <pr> --json url,number,baseRefName,headRefName,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,comments,reviews
+gh api repos/<owner>/<repo>/issues/<number>/reactions --jq '.[] | select(.content == "+1") | .user.login'
+```
+
+The `:thumbsup:` criterion means a `+1` reaction from the expected Codex reviewer account on the PR issue itself, not a local reviewer verdict pasted into chat. If the expected Codex account is ambiguous, identify the account from the repository's normal PR automation or ask the user before declaring the goal complete.
+
+### Rebase Guidance
+
+When rebase is needed:
+
+1. Fetch the destination branch.
+2. Rebase the PR branch onto the destination branch.
+3. Resolve only conflicts in scoped files or conflicts required to preserve this plan's implementation.
+4. Rerun verification affected by the rebase.
+5. Push with lease.
+
+Do not use destructive git commands to force mergeability. If conflicts require decisions outside the plan, stop with a scope question.
+
+### Goal Closure
+
+Only after the completion criteria are all satisfied, mark the Codex goal complete. If the same blocking condition prevents progress for three consecutive goal turns and no meaningful progress is possible without user input or external state change, mark the goal blocked and report the exact blocker.
+
 ## Reviewer Prompt Template
 
 Use this shape for both reviewers:
@@ -234,9 +309,13 @@ For each finding include: file/line, classification, evidence, and why it is or 
 Report:
 
 - PR URL,
+- Codex goal status,
 - changed files at a high level,
 - verification run,
 - Claude and Codex verdicts,
+- PR feedback monitoring result,
+- PR mergeability result,
+- Codex `:thumbsup:` result,
 - deferred out-of-scope follow-ups,
 - any residual risk.
 
