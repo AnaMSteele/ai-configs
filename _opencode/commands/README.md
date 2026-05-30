@@ -33,15 +33,16 @@ This directory contains a comprehensive set of commands that support a complete 
 ### Git Utility Commands
 13. **`cmd:commit-push.md`** - Commit all changes and push to GitHub
 14. **`cmd:create-pr.md`** - Create a pull request
-15. **`cmd:start-linear-issue.md`** - Start work on a Linear issue with branch management
-16. **`cmd:start-linear-issue-branch.md`** - Start a Linear issue on a new branch (no worktree) and draft a first-pass plan
-17. **`cmd:execute-plan.md`** - Canonical reviewed-plan handoff that routes into `/skill:adn-dev-wf` or `/dev:run`
-18. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
+15. **`cmd:start-linear-issue.md`** - Bootstrap a Linear issue as an OpenCode workspace-backed build environment
+16. **`cmd:linear-build-workspace.md`** - Deterministic Linear issue build runner using OpenCode workspaces plus the enforced `linear_build_orchestrator.py` run ledger
+17. **`cmd:start-linear-issue-branch.md`** - Start a Linear issue on a new branch (no workspace/worktree) and draft a first-pass plan
+18. **`cmd:execute-plan.md`** - Canonical reviewed-plan handoff that routes into `/skill:adn-dev-wf` or `/dev:run`
+19. **`cmd:review-pr-comments.md`** - Review and address GitHub PR comments since last commit
 
 ### Workflow Skills
-19. **`adn-dev-wf`** - Canonical reviewed-plan workflow skill that replaces the retired quality-gated execution path
-20. **`ralph:review-gpt5.5.md`** - Run `/review` in a loop (GPT-5.5), apply quick fixes, stop when no straightforward fixes remain
-21. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
+20. **`adn-dev-wf`** - Canonical reviewed-plan workflow skill that replaces the retired quality-gated execution path
+21. **`ralph:review-gpt5.5.md`** - Run `/review` in a loop (GPT-5.5), apply quick fixes, stop when no straightforward fixes remain
+22. **`ralph:review-opus.md`** - Run `/review` in a loop (Opus), apply quick fixes, stop when no straightforward fixes remain
 
 ## Command Workflows
 
@@ -57,6 +58,16 @@ This directory contains a comprehensive set of commands that support a complete 
 - Only `execution-ready` reviewed plans move into `/cmd:execute-plan`; the handoff preserves the reviewed plan argument and asks whether to continue with `/skill:adn-dev-wf` or `/dev:run`.
 - `/skill:adn-dev-wf` is the canonical reviewed-plan continuation; `/dev:run` remains the direct execution path with one `quality-reviewer` pass after each phase.
 - Pi is the only maintained surface that promises context cleanup before dispatch; OpenCode shares the wrapper name and choice flow without claiming Pi-only context behavior.
+
+### Workflow 0B: Linear Issue Build In OpenCode Workspace
+`/cmd:linear-build-workspace NOD-123 origin/develop → OpenCode workspace row → enforced run ledger → plan → plan gates → implementation → validation → evidence → code/PM review → PR`
+```
+/cmd:linear-build-workspace NOD-123 origin/develop
+```
+- This workflow uses OpenCode workspaces as the build unit, not naked git worktrees, so each Linear build appears in the OpenCode workspace list.
+- `create_linear_workspace.py` creates or reuses the workspace row and workspace-backed worktree.
+- `linear_build_orchestrator.py` initializes a Markdown run ledger with embedded JSON state, guards stage transitions, records exact artifact verdicts, logs commands, records blockers, and stores manual/native evidence status.
+- Agents must not advance after missing or non-passing prior stages; the helper exits non-zero for blocked evidence and blocker records.
 
 ### Workflow 1: PRD-Based Development (Fidelity-Preserving)
 ```
@@ -196,10 +207,15 @@ All commands use consistent:
 - Includes test plan and summary
 
 **`/cmd:start-linear-issue`**:
-- Bootstrap work on Linear issues with worktree management
-- Creates dedicated branch and worktree for isolated development
-- Copies local config and MCP servers
+- Bootstrap work on Linear issues with OpenCode workspace management
+- Creates/reuses an OpenCode workspace row so the build appears in the workspace picker
+- Creates a workspace-backed git worktree and issue branch for isolated development
 - Uses Linear CLI for issue metadata
+
+**`/cmd:linear-build-workspace`**:
+- Runs the deterministic Linear issue build lifecycle from workspace creation through plan, reviews, implementation, validation, evidence, PR, and Linear handoff
+- Uses a durable `thoughts/runs/<issue-slug>.md` ledger as the authoritative orchestration state
+- Handles adversity explicitly: test timeouts, native evidence gaps, PR feedback, rebase conflicts, repeated blockers, and unresolved product decisions
 
 ## Fidelity-Preserving Agents
 

@@ -17,7 +17,7 @@ sync_dir() {
   local dir="$1"
   if [[ -d "$ROOT/$dir" ]]; then
     mkdir -p "$TARGET/$dir"
-    rsync -av "$ROOT/$dir/" "$TARGET/$dir/"
+    rsync -av --exclude='__pycache__/' --exclude='*.pyc' "$ROOT/$dir/" "$TARGET/$dir/"
   fi
 }
 
@@ -49,7 +49,7 @@ sync_skills() {
 
     if [[ -d "$skill_path" ]]; then
       mkdir -p "$target_dir/$skill_name"
-      rsync -av "$skill_path/" "$target_dir/$skill_name/"
+      rsync -av --exclude='__pycache__/' --exclude='*.pyc' "$skill_path/" "$target_dir/$skill_name/"
     elif [[ -f "$skill_path" ]]; then
       rsync -av "$skill_path" "$target_dir/$skill_name"
     fi
