@@ -85,6 +85,7 @@ Non-negotiable requirements:
 - Ready plans have no unresolved `Open Questions`
 - `### Verify` steps are copy/paste ready and match actual repo reality
 - The plan is resumable by another agent without inventing missing semantics
+- If the plan is rendered or delivered as HTML, use a dark-mode visual theme with an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not let the agent choose light mode.
 - For product-facing work, the plan explicitly documents the default workflow, inferred defaults, self-healing expectations, fail-closed boundaries, actionable agent-legible error guidance, and any repo-doc/test updates needed to stay aligned
 - When this repo uses the reviewed-plan flow, the plan assumes explicit handoff rather than hidden recovery paths. In this repo the canonical continuation is `/skill:adn-dev-wf <plan>`.
 - The plan does not normalize routine "run this other command to inspect/fix it" operator loops unless the work is explicitly about a high-risk or ambiguous exception path

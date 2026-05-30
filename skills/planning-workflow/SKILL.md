@@ -68,6 +68,7 @@ Write plans as execution artifacts, not brainstorming notes. A ready plan must b
 - Preserve the validated source scope. A ready plan should include only work that is critical to achieving the stated goal and verifying it.
 - When the requested scope is vague, tighten it by sharpening the Goal / Non-goals or other scoped language instead of widening the phase list to absorb adjacent surfaces.
 - Do not promote adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence into required plan work unless source requirements or validated repo evidence show they are necessary for success.
+- When a plan is rendered or delivered as HTML, use a dark-mode visual theme by default. Set an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not leave the plan to browser, OS, or agent-selected light/dark defaults.
 
 Required sections for new plans unless repo-local overrides say otherwise:
 

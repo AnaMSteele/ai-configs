@@ -136,6 +136,7 @@ Write (or update) `plan_path` with:
 Keep the plan faithful to the validated source scope and repo evidence. Include only work that is critical to achieving the stated goal and verifying it.
 If the requested scope is vague, narrow it by sharpening Goal / Non-goals or other scoped language instead of widening the phase list.
 Do not add adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence unless validated repo evidence shows they are necessary for success.
+If the plan is rendered or delivered as HTML, use a dark-mode visual theme with an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not let light mode depend on agent preference, browser defaults, or OS defaults.
 
 `Open Questions / Decision Points` guidance:
 

@@ -144,6 +144,8 @@ Write (or update) `plan_path` with:
 
 Keep scope faithful to the user's stated intent and the repository's guardrails.
 
+If the plan is rendered or delivered as HTML, use a dark-mode visual theme with an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not let light mode depend on agent preference, browser defaults, or OS defaults.
+
 For product-facing work, make the plan explicit about the default workflow, inferred defaults, self-healing behavior, actionable error guidance, and any repo-doc/test updates required to stay aligned.
 
 ### 6) Consistency Pass

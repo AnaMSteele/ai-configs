@@ -118,6 +118,7 @@ Use `planning-workflow` and the repo's `AGENTS.md` required structure. For this 
 - Progress with stable phase IDs.
 - Resume instructions for the next agent.
 - Decisions / Deviations log.
+- If any plan representation is rendered or delivered as HTML, it must use a dark-mode visual theme with explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`.
 
 If the issue or description is too broad, make the plan scope precise instead of absorbing adjacent cleanup. If important decisions remain unresolved, keep the plan in `research-ready` or `discovery` and ask/perform the next research action rather than starting review.
 
