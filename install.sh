@@ -1407,6 +1407,7 @@ install_opencode() {
     local opencode_plugin_dir="$opencode_config_dir/plugin"
     local opencode_commands_dir="$opencode_config_dir/commands"
     local opencode_agents_dir="$opencode_config_dir/agents"
+    local opencode_scripts_dir="$opencode_config_dir/scripts"
     local opencode_skills_dir="$opencode_config_dir/skills"
     local legacy_command_dir="$opencode_config_dir/command"
     local legacy_agent_dir="$opencode_config_dir/agent"
@@ -1480,6 +1481,14 @@ install_opencode() {
         cp -r "$REPO_ROOT/_opencode/agents/"* "$opencode_agents_dir/"
     fi
 
+    # Install scripts
+    echo "  - Installing OpenCode scripts to ~/.config/opencode/scripts..."
+    rm -rf "$opencode_scripts_dir"
+    mkdir -p "$opencode_scripts_dir"
+    if [ -d "$REPO_ROOT/_opencode/scripts" ]; then
+        rsync -a --exclude='__pycache__/' --exclude='*.pyc' "$REPO_ROOT/_opencode/scripts/" "$opencode_scripts_dir/"
+    fi
+
     # Shared skills are managed centrally via ~/.agents/skills.
     echo "  - Preparing OpenCode shared-skill compatibility directory at ~/.config/opencode/skills..."
     mkdir -p "$opencode_skills_dir"
@@ -1497,7 +1506,7 @@ install_opencode() {
     echo ""
     echo "Note: OpenCode configuration file opencode.json is not auto-installed"
     echo "      Copy _opencode/config-template.json to your repo root and customize as needed"
-    echo "      Commands, agents, and prompts are installed to $HOME/.config/opencode"
+    echo "      Commands, agents, prompts, and scripts are installed to $HOME/.config/opencode"
     echo "      Compatible shared skills are linked from ~/.config/opencode/skills to ~/.agents/skills"
     echo "      Documentation installed to $HOME/.config/opencode/OPENCODE_ONBOARDING.md"
 }
