@@ -30,6 +30,9 @@ Accept either a plan path or a slug. For a slug, resolve `thoughts/plans/<slug>.
 - Do not create a PR until verification appropriate to the touched surfaces has run or a blocker is clearly reported.
 - Do not mark the Codex goal complete just because the implementation PR exists.
 - Do not mark the Codex goal complete until PR feedback has been monitored and addressed, the PR is mergeable with the destination branch, and Codex has provided a `:thumbsup:` on the original PR description.
+- Do not mark the Codex goal blocked or stop monitoring merely because PR feedback or the qualifying Codex `:thumbsup:` is slow to arrive. Treat slow review response as a wait state that requires continued polling, not as a blocker.
+- Do not create, add, request, simulate, or otherwise manufacture the required Codex `:thumbsup:` from inside this skill, this workflow, this execution, or any account controlled by the executing agent. That approval signal exists only to prove an external PR reviewer accepted the current PR state.
+- Do not treat a self-authored reaction, local review verdict, chat transcript, manual note, or workflow-generated approval substitute as satisfying the Codex `:thumbsup:` criterion. If the executing agent accidentally or incorrectly adds such a reaction, remove it immediately, disclose the incident, and continue monitoring as incomplete.
 
 ## Scope Contract
 
@@ -87,8 +90,10 @@ Use the Codex goal tools for this lifecycle. Do not treat the goal as a checklis
 Use this objective shape:
 
 ```text
-Execute <plan path> through scoped implementation, verification, reviews, commit, push, PR creation, and post-PR monitoring. Do not mark complete until PR feedback has been addressed through repeated monitoring, the PR is mergeable with <target branch>, and Codex has provided a :thumbsup: on the original PR description.
+Execute <plan path> through scoped implementation, verification, reviews, commit, push, PR creation, and persistent post-PR monitoring. Do not mark complete until all PR feedback has been addressed and repeatedly rechecked, monitoring has continued until an external reviewer provides the qualifying Codex :thumbsup: on the original PR description for the current PR state, the :thumbsup: was not provided by this skill/workflow/execution or any account controlled/requested by the executing agent, and the PR is mergeable with <target branch>. Do not stop or mark blocked merely because review feedback or the qualifying :thumbsup: takes a long time to arrive.
 ```
+
+The `:thumbsup:` in the goal objective must be interpreted as external reviewer approval only. The executing agent must not provide it, cause it to be provided by this workflow, or count any reaction from itself or its automation as completion evidence.
 
 ### 2. Prepare
 
@@ -226,13 +231,15 @@ The goal can be marked complete only when all of these are true:
 
 - All actionable PR feedback has been addressed.
 - PR feedback has been checked repeatedly after fixes, not just once immediately after PR creation.
-- Codex has provided a `:thumbsup:` on the original PR description.
+- Codex has provided a `:thumbsup:` on the original PR description from the expected external PR reviewer account.
+- The required `:thumbsup:` was not added by the executing agent, this skill/workflow/execution, an agent-controlled account, or any approval action requested by the executing agent.
+- After every PR feedback item is addressed, monitoring continues until the external reviewer adds the qualifying `:thumbsup:` for the current PR state.
 - The branch has been rebased or otherwise updated against the destination branch as needed.
 - GitHub reports the PR as mergeable with the destination branch.
 
 ### Monitoring Loop
 
-Repeat this loop until the completion criteria are met or a true blocker is reached:
+Repeat this loop until the completion criteria are met or a true blocker is reached. Slow or absent reviewer feedback, pending checks, and a missing qualifying Codex `:thumbsup:` are not true blockers by themselves; they require continued polling.
 
 1. Inspect PR reviews, review threads, comments, status checks, and mergeability.
 2. Classify every new feedback item using the same scope categories.
@@ -242,7 +249,20 @@ Repeat this loop until the completion criteria are met or a true blocker is reac
 6. Rerun the smallest meaningful verification for any changes.
 7. Commit and push fixes to the PR branch.
 8. Rebase onto the destination branch when GitHub reports the branch out of date, conflicted, or not mergeable.
-9. Recheck until GitHub shows the PR as mergeable and the Codex `:thumbsup:` is present on the original PR description.
+9. Recheck until GitHub shows the PR as mergeable and the external-reviewer Codex `:thumbsup:` is present on the original PR description for the current PR state.
+10. If feedback is addressed but the external reviewer has not added the qualifying `:thumbsup:`, keep the goal active and continue monitoring. Do not add the reaction yourself, ask this workflow to add it, or mark the goal complete.
+11. If a poll finds no new feedback and no qualifying `:thumbsup:`, report the latest PR state briefly, keep the goal active, wait, and poll again. Do not end the scoped-plan run or mark the goal blocked for review latency alone.
+
+### Polling Persistence
+
+When the run has reached post-PR monitoring, Codex must persist across goal turns:
+
+- Keep polling the PR until the qualifying external Codex `:thumbsup:` appears or a real actionable blocker requires user input.
+- Use a reasonable repeated cadence for long waits: wait between checks, then rerun the PR review/comment/reaction/mergeability queries.
+- Continue monitoring even after all current feedback is addressed, because late feedback can still arrive before the `:thumbsup:`.
+- Do not treat "no new feedback", "review still pending", "checks still running", or "no `:thumbsup:` yet" as completion, failure, or a blocker.
+- A true blocker must be something Codex cannot resolve by continued polling or scoped fixes, such as lost GitHub authentication, a closed/deleted PR, a force-push/base-branch conflict requiring a product decision, or `QUESTION` feedback that needs the user.
+- If a true blocker is reached, report the exact blocker and the latest PR state. Otherwise, keep the goal open and continue polling.
 
 Use GitHub product surfaces for this check, for example:
 
@@ -251,7 +271,9 @@ gh pr view <pr> --json url,number,baseRefName,headRefName,mergeable,mergeStateSt
 gh api repos/<owner>/<repo>/issues/<number>/reactions --jq '.[] | select(.content == "+1") | .user.login'
 ```
 
-The `:thumbsup:` criterion means a `+1` reaction from the expected Codex reviewer account on the PR issue itself, not a local reviewer verdict pasted into chat. If the expected Codex account is ambiguous, identify the account from the repository's normal PR automation or ask the user before declaring the goal complete.
+The `:thumbsup:` criterion means a `+1` reaction from the expected external Codex reviewer account on the PR issue itself, not a local reviewer verdict pasted into chat and not a reaction from the executing agent. If the expected Codex account is ambiguous, identify the account from the repository's normal PR automation or ask the user before declaring the goal complete. The executing agent must never satisfy this criterion by adding its own `+1` reaction or by asking another agent in this workflow to add one.
+
+If a non-qualifying `+1` reaction exists, ignore it for completion. If the executing agent created it, remove it when possible and report that the previous completion signal was invalid.
 
 ### Rebase Guidance
 
@@ -267,7 +289,7 @@ Do not use destructive git commands to force mergeability. If conflicts require 
 
 ### Goal Closure
 
-Only after the completion criteria are all satisfied, mark the Codex goal complete. If the same blocking condition prevents progress for three consecutive goal turns and no meaningful progress is possible without user input or external state change, mark the goal blocked and report the exact blocker.
+Only after the completion criteria are all satisfied, mark the Codex goal complete. Do not mark the goal blocked for a slow reviewer, no new feedback, pending review, pending checks, or missing qualifying `:thumbsup:`; those are polling wait states. Mark the goal blocked only for a real actionable blocker that prevents meaningful polling or scoped fixes, and report the exact blocker with the latest PR state.
 
 ## Reviewer Prompt Template
 
