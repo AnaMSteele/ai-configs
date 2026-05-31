@@ -167,6 +167,26 @@ try {
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
     await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length >= 3);
+
+    const missingDomHtml = html.replace('<section id="dom-annotation"><h1>DOM annotation</h1><p>Plan index target.</p></section>', '');
+    const changed = await context.post('/api/plans/register', {
+      data: {
+        repoKey: 'e2e-repo',
+        repoName: 'e2e',
+        rootPath: '/tmp/e2e',
+        branch: 'main',
+        commitSha: 'e2e-missing-dom',
+        planPath: 'thoughts/plans/e2e.html',
+        slug: 'e2e',
+        html: missingDomHtml,
+        fileHash: sha256(missingDomHtml),
+        assets: [{ sourceUrl: './diagram.png', absolutePath: '/tmp/e2e/diagram.png', bytesBase64: imageBytesBase64 }],
+        updateMode: 'upsert'
+      }
+    });
+    assert.equal(changed.ok(), true);
+    await page.waitForFunction(() => !document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('#dom-annotation'));
+    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length === 2);
   } finally {
     await browser.close();
   }

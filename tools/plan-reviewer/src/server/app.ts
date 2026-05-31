@@ -212,6 +212,7 @@ function selectorForPlanNodeId(planNodeId){
 }
 function currentRectForComment(comment){
   const anchor = comment.anchor || {};
+  const hasDomTarget = Boolean(anchor.planNodeId || anchor.cssSelector);
   try {
     const doc = frame.contentDocument;
     if (doc) {
@@ -223,7 +224,7 @@ function currentRectForComment(comment){
       }
     }
   } catch {}
-  return anchor.rect;
+  return hasDomTarget ? null : anchor.rect;
 }
 function redrawMarkers(){
   document.querySelectorAll('.marker,.comment-anchor').forEach(marker => marker.remove());
