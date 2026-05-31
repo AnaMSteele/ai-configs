@@ -116,7 +116,9 @@ function optionalString(value: unknown): string | undefined {
 }
 
 function optionalNumber(value: unknown): number | undefined {
-  return value === null || value === undefined ? undefined : Number(value);
+  if (value === null || value === undefined) return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
 }
 
 export class PlanReviewStore {

@@ -91,6 +91,7 @@ export class SourceSyncService {
       }
     } catch (error) {
       this.fail(planId, error, 'watch_register');
+      return;
     }
     const watcher = chokidar.watch([...new Set(watchPaths)], {
       ignoreInitial: true,
@@ -147,6 +148,7 @@ export class SourceSyncService {
       if (!stat.isFile()) throw new Error(`Source path is not a file: ${plan.sourcePath}`);
       const html = fs.readFileSync(plan.sourcePath, 'utf8');
       const fileHash = sha256(html);
+      const htmlChanged = fileHash !== version.fileHash;
       const assets = discoverSourceAssets(html, plan.sourcePath);
       const payload: RegisterPlanInput = {
         repoKey: plan.repoKey,
@@ -171,7 +173,7 @@ export class SourceSyncService {
       }
       const result = this.store.registerPlan(payload, rendered.renderedHtml, rendered.warnings, 'filesystem_watch');
       this.bus.emitEvent(result.event);
-      void this.register(plan.id);
+      if (htmlChanged) void this.register(plan.id);
     } catch (error) {
       this.fail(plan.id, error, reason);
     }

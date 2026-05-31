@@ -185,6 +185,8 @@ function renderSyncWarning(plan){
 function handlePlanVersionEvent(event){
   try {
     const data = JSON.parse(event.data || '{}');
+    // Non-sync events for the current version are no-ops; synced events always
+    // call loadMeta with forceReloadPlan because asset-only changes can reuse versionId.
     if (event.type !== 'plan.version.synced' && data.versionId && data.versionId === versionId) return;
   } catch {}
   loadMeta({ reloadPlan: true, forceReloadPlan: event.type === 'plan.version.synced' });
