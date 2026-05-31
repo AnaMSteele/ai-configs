@@ -11,6 +11,8 @@ export const eventTypeSchema = z.enum([
   'comment.resolved',
   'comment.released',
   'plan.version.registered',
+  'plan.version.synced',
+  'plan.sync.failed',
   'heartbeat'
 ]);
 
@@ -34,6 +36,10 @@ export const registerPlanSchema = z.object({
   slug: z.string().optional(),
   html: z.string().min(1),
   fileHash: z.string().min(1),
+  sourcePath: z.string().min(1).optional(),
+  sourceMtimeMs: z.number().nonnegative().optional(),
+  sourceSize: z.number().int().nonnegative().optional(),
+  watchMode: z.enum(['filesystem', 'snapshot']).default('snapshot'),
   assets: z.array(z.object({
     sourceUrl: z.string().min(1),
     absolutePath: z.string().optional(),

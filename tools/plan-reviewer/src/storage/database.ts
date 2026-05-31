@@ -21,6 +21,11 @@ export interface PlanRecord {
   repoKey: string;
   branch: string;
   commitSha?: string;
+  sourcePath?: string;
+  watchMode: 'filesystem' | 'snapshot';
+  lastSyncAt?: string;
+  lastSyncStatus?: string;
+  lastSyncError?: Record<string, unknown> | null;
 }
 
 export interface VersionRecord {
@@ -32,6 +37,9 @@ export interface VersionRecord {
   renderedBlobPath: string;
   htmlBlobPath: string;
   renderWarnings: unknown[];
+  sourceMtimeMs?: number;
+  sourceSize?: number;
+  syncOrigin: 'manual_register' | 'filesystem_watch';
 }
 
 export interface StoredEvent {
@@ -103,6 +111,14 @@ function inferAssetDimensions(bytes: Buffer): { width?: number; height?: number 
   return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
 }
 
+function optionalString(value: unknown): string | undefined {
+  return value === null || value === undefined || value === '' ? undefined : String(value);
+}
+
+function optionalNumber(value: unknown): number | undefined {
+  return value === null || value === undefined ? undefined : Number(value);
+}
+
 export class PlanReviewStore {
   private db: Database.Database;
   private blobDir: string;
@@ -136,6 +152,11 @@ export class PlanReviewStore {
         repo_id TEXT NOT NULL REFERENCES repos(id),
         slug TEXT NOT NULL,
         plan_path TEXT NOT NULL,
+        source_path TEXT,
+        watch_mode TEXT NOT NULL DEFAULT 'snapshot',
+        last_sync_at TEXT,
+        last_sync_status TEXT,
+        last_sync_error_json TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         UNIQUE(repo_id, plan_path, slug)
@@ -149,6 +170,9 @@ export class PlanReviewStore {
         html_blob_path TEXT NOT NULL,
         rendered_blob_path TEXT NOT NULL,
         render_warnings_json TEXT NOT NULL,
+        source_mtime_ms REAL,
+        source_size INTEGER,
+        sync_origin TEXT NOT NULL DEFAULT 'manual_register',
         created_at TEXT NOT NULL,
         UNIQUE(plan_id, file_hash, branch, commit_sha)
       );
@@ -224,6 +248,21 @@ export class PlanReviewStore {
         ON claims(comment_id)
         WHERE released_at IS NULL AND acknowledged_at IS NULL;
     `);
+    this.ensureColumn('plans', 'source_path', 'TEXT');
+    this.ensureColumn('plans', 'watch_mode', "TEXT NOT NULL DEFAULT 'snapshot'");
+    this.ensureColumn('plans', 'last_sync_at', 'TEXT');
+    this.ensureColumn('plans', 'last_sync_status', 'TEXT');
+    this.ensureColumn('plans', 'last_sync_error_json', 'TEXT');
+    this.ensureColumn('plan_versions', 'source_mtime_ms', 'REAL');
+    this.ensureColumn('plan_versions', 'source_size', 'INTEGER');
+    this.ensureColumn('plan_versions', 'sync_origin', "TEXT NOT NULL DEFAULT 'manual_register'");
+  }
+
+  private ensureColumn(table: string, column: string, definition: string): void {
+    const columns = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!columns.some(item => item.name === column)) {
+      this.db.prepare(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`).run();
+    }
   }
 
   private nextEventSequence(planId: string): number {
@@ -305,7 +344,7 @@ export class PlanReviewStore {
     return file;
   }
 
-  registerPlan(input: RegisterPlanInput, renderedHtml: string, renderWarnings: unknown[]) {
+  registerPlan(input: RegisterPlanInput, renderedHtml: string, renderWarnings: unknown[], syncOrigin: 'manual_register' | 'filesystem_watch' = 'manual_register') {
     const tx = this.db.transaction(() => {
       const now = nowIso();
       const repoKey =
@@ -331,11 +370,16 @@ export class PlanReviewStore {
               .get(repoId, input.planPath, baseSlug) as { id: string } | undefined);
       const planId = existingPlan?.id || id('plan');
       const slug = input.updateMode === 'new-thread' ? `${baseSlug}-${shortHash(planId)}` : baseSlug;
+      const watchMode = input.watchMode ?? 'snapshot';
+      const lastSyncStatus = watchMode === 'filesystem' ? 'synced' : 'snapshot';
       this.db
-        .prepare(`INSERT INTO plans (id, repo_id, slug, plan_path, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?)
-          ON CONFLICT(repo_id, plan_path, slug) DO UPDATE SET updated_at = excluded.updated_at`)
-        .run(planId, repoId, slug, input.planPath, now, now);
+        .prepare(`INSERT INTO plans (id, repo_id, slug, plan_path, source_path, watch_mode, last_sync_at, last_sync_status, last_sync_error_json, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(repo_id, plan_path, slug) DO UPDATE SET updated_at = excluded.updated_at,
+            source_path = excluded.source_path, watch_mode = excluded.watch_mode,
+            last_sync_at = excluded.last_sync_at, last_sync_status = excluded.last_sync_status,
+            last_sync_error_json = excluded.last_sync_error_json`)
+        .run(planId, repoId, slug, input.planPath, input.sourcePath ?? null, watchMode, now, lastSyncStatus, null, now, now);
 
       const htmlName = `${input.fileHash}.html`;
       const renderedName = `${sha256(renderedHtml)}.rendered.html`;
@@ -348,11 +392,12 @@ export class PlanReviewStore {
       const versionId = existingVersion?.id || id('ver');
       this.db
         .prepare(`INSERT INTO plan_versions
-          (id, plan_id, file_hash, branch, commit_sha, html_blob_path, rendered_blob_path, render_warnings_json, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (id, plan_id, file_hash, branch, commit_sha, html_blob_path, rendered_blob_path, render_warnings_json, source_mtime_ms, source_size, sync_origin, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(plan_id, file_hash, branch, commit_sha) DO UPDATE SET
             html_blob_path = excluded.html_blob_path, rendered_blob_path = excluded.rendered_blob_path,
-            created_at = excluded.created_at,
+            source_mtime_ms = excluded.source_mtime_ms, source_size = excluded.source_size,
+            sync_origin = excluded.sync_origin, created_at = excluded.created_at,
             render_warnings_json = excluded.render_warnings_json`)
         .run(
           versionId,
@@ -363,6 +408,9 @@ export class PlanReviewStore {
           htmlBlobPath,
           renderedBlobPath,
           JSON.stringify(renderWarnings),
+          input.sourceMtimeMs ?? null,
+          input.sourceSize ?? null,
+          syncOrigin,
           now
         );
 
@@ -381,10 +429,14 @@ export class PlanReviewStore {
           .run(id('asset'), versionId, asset.sourceUrl, assetHash, contentType, dimensions.width ?? null, dimensions.height ?? null, blobPath, blobPath ? 'copied' : 'missing');
       }
 
-      const event = this.addEvent(planId, 'plan.version.registered', {
+      const eventType = syncOrigin === 'filesystem_watch' ? 'plan.version.synced' : 'plan.version.registered';
+      const event = this.addEvent(planId, eventType, {
         planId,
         versionId,
-        eventType: 'plan.version.registered'
+        eventType,
+        sourcePath: input.sourcePath,
+        watchMode,
+        lastSyncStatus
       });
 
       return {
@@ -393,6 +445,7 @@ export class PlanReviewStore {
         repoId,
         repoKey,
         slug,
+        sourceSync: { watchMode, sourcePath: input.sourcePath, status: lastSyncStatus, active: watchMode === 'filesystem' },
         event,
         reviewUrl: `/p/${planId}`,
         indexUrl: '/',
@@ -404,8 +457,11 @@ export class PlanReviewStore {
 
   listPlans() {
     const rows = this.db.prepare(`
-      SELECT p.id, p.slug, p.plan_path AS planPath, r.repo_name AS repoName, r.repo_key AS repoKey,
+      SELECT p.id, p.slug, p.plan_path AS planPath, p.source_path AS sourcePath, p.watch_mode AS watchMode,
+        p.last_sync_at AS lastSyncAt, p.last_sync_status AS lastSyncStatus, p.last_sync_error_json AS lastSyncErrorJson,
+        r.repo_name AS repoName, r.repo_key AS repoKey,
         v.id AS versionId, v.branch, v.commit_sha AS commitSha, v.file_hash AS fileHash,
+        v.source_mtime_ms AS sourceMtimeMs, v.source_size AS sourceSize, v.sync_origin AS syncOrigin,
         p.updated_at AS planUpdatedAt,
         SUM(CASE WHEN c.status = 'pending' THEN 1 ELSE 0 END) AS pending,
         SUM(CASE WHEN c.status = 'claimed' THEN 1 ELSE 0 END) AS claimed,
@@ -430,13 +486,21 @@ export class PlanReviewStore {
         slug: row.slug,
         planPath: row.planPath,
         repoName: row.repoName,
-        repoKey: row.repoKey
+        repoKey: row.repoKey,
+        sourcePath: optionalString(row.sourcePath),
+        watchMode: (row.watchMode ?? 'snapshot') as 'filesystem' | 'snapshot',
+        lastSyncAt: optionalString(row.lastSyncAt),
+        lastSyncStatus: optionalString(row.lastSyncStatus),
+        lastSyncError: parseJson(row.lastSyncErrorJson as string | null, null)
       },
       latestVersion: {
         id: row.versionId,
         branch: row.branch,
         commitSha: row.commitSha,
-        fileHash: row.fileHash
+        fileHash: row.fileHash,
+        sourceMtimeMs: optionalNumber(row.sourceMtimeMs),
+        sourceSize: optionalNumber(row.sourceSize),
+        syncOrigin: (row.syncOrigin ?? 'manual_register') as 'manual_register' | 'filesystem_watch'
       },
       counts: {
         pending: Number(row.pending ?? 0),
@@ -470,10 +534,13 @@ export class PlanReviewStore {
 
   getPlan(identifier: string): { plan: PlanRecord; version: VersionRecord } {
     const row = this.db.prepare(`
-      SELECT p.id, p.repo_id AS repoId, p.slug, p.plan_path AS planPath, r.repo_name AS repoName, r.repo_key AS repoKey,
+      SELECT p.id, p.repo_id AS repoId, p.slug, p.plan_path AS planPath, p.source_path AS sourcePath,
+        p.watch_mode AS watchMode, p.last_sync_at AS lastSyncAt, p.last_sync_status AS lastSyncStatus,
+        p.last_sync_error_json AS lastSyncErrorJson, r.repo_name AS repoName, r.repo_key AS repoKey,
         v.id AS versionId, v.file_hash AS fileHash, v.branch, v.commit_sha AS commitSha,
         v.html_blob_path AS htmlBlobPath, v.rendered_blob_path AS renderedBlobPath,
-        v.render_warnings_json AS renderWarningsJson
+        v.render_warnings_json AS renderWarningsJson, v.source_mtime_ms AS sourceMtimeMs,
+        v.source_size AS sourceSize, v.sync_origin AS syncOrigin
       FROM plans p
       JOIN repos r ON r.id = p.repo_id
       JOIN plan_versions v ON v.id = (
@@ -483,10 +550,13 @@ export class PlanReviewStore {
       LIMIT 1
     `).get(identifier) as Record<string, string> | undefined;
     const slugRows = row ? [] : this.db.prepare(`
-      SELECT p.id, p.repo_id AS repoId, p.slug, p.plan_path AS planPath, r.repo_name AS repoName, r.repo_key AS repoKey,
+      SELECT p.id, p.repo_id AS repoId, p.slug, p.plan_path AS planPath, p.source_path AS sourcePath,
+        p.watch_mode AS watchMode, p.last_sync_at AS lastSyncAt, p.last_sync_status AS lastSyncStatus,
+        p.last_sync_error_json AS lastSyncErrorJson, r.repo_name AS repoName, r.repo_key AS repoKey,
         v.id AS versionId, v.file_hash AS fileHash, v.branch, v.commit_sha AS commitSha,
         v.html_blob_path AS htmlBlobPath, v.rendered_blob_path AS renderedBlobPath,
-        v.render_warnings_json AS renderWarningsJson
+        v.render_warnings_json AS renderWarningsJson, v.source_mtime_ms AS sourceMtimeMs,
+        v.source_size AS sourceSize, v.sync_origin AS syncOrigin
       FROM plans p
       JOIN repos r ON r.id = p.repo_id
       JOIN plan_versions v ON v.id = (
@@ -514,7 +584,12 @@ export class PlanReviewStore {
         repoName: selectedRow.repoName,
         repoKey: selectedRow.repoKey,
         branch: selectedRow.branch,
-        commitSha: selectedRow.commitSha ?? undefined
+        commitSha: selectedRow.commitSha ?? undefined,
+        sourcePath: optionalString(selectedRow.sourcePath),
+        watchMode: (selectedRow.watchMode ?? 'snapshot') as 'filesystem' | 'snapshot',
+        lastSyncAt: optionalString(selectedRow.lastSyncAt),
+        lastSyncStatus: optionalString(selectedRow.lastSyncStatus),
+        lastSyncError: parseJson(selectedRow.lastSyncErrorJson, null)
       },
       version: {
         id: selectedRow.versionId,
@@ -524,14 +599,50 @@ export class PlanReviewStore {
         commitSha: selectedRow.commitSha ?? undefined,
         htmlBlobPath: selectedRow.htmlBlobPath,
         renderedBlobPath: selectedRow.renderedBlobPath,
-        renderWarnings: parseJson(selectedRow.renderWarningsJson, [])
+        renderWarnings: parseJson(selectedRow.renderWarningsJson, []),
+        sourceMtimeMs: optionalNumber(selectedRow.sourceMtimeMs),
+        sourceSize: optionalNumber(selectedRow.sourceSize),
+        syncOrigin: (selectedRow.syncOrigin ?? 'manual_register') as 'manual_register' | 'filesystem_watch'
       }
     };
   }
 
-  getRenderedHtml(identifier: string): string {
-    const { version } = this.getPlan(identifier);
-    return fs.readFileSync(version.renderedBlobPath, 'utf8');
+  getRenderedHtml(identifier: string, versionId?: string): string {
+    const { plan, version } = this.getPlan(identifier);
+    if (!versionId) return fs.readFileSync(version.renderedBlobPath, 'utf8');
+    const row = this.db.prepare('SELECT rendered_blob_path AS renderedBlobPath FROM plan_versions WHERE id = ? AND plan_id = ?')
+      .get(versionId, plan.id) as { renderedBlobPath: string } | undefined;
+    if (!row) throw new PlanReviewError('not_found', `Version '${versionId}' was not found for plan '${plan.id}'`, 404);
+    return fs.readFileSync(row.renderedBlobPath, 'utf8');
+  }
+
+  listFilesystemPlans(): Array<{ planId: string }> {
+    const rows = this.db.prepare("SELECT id AS planId FROM plans WHERE watch_mode = 'filesystem' AND source_path IS NOT NULL ORDER BY updated_at DESC").all() as Array<{ planId: string }>;
+    return rows;
+  }
+
+  markPlanSyncSucceeded(planId: string, versionId?: string): StoredEvent {
+    const now = nowIso();
+    this.db.prepare("UPDATE plans SET last_sync_at = ?, last_sync_status = 'synced', last_sync_error_json = NULL, updated_at = ? WHERE id = ?")
+      .run(now, now, planId);
+    return this.addEvent(planId, 'plan.version.synced', {
+      eventType: 'plan.version.synced',
+      planId,
+      versionId,
+      lastSyncStatus: 'synced'
+    });
+  }
+
+  markPlanSyncFailed(planId: string, error: Record<string, unknown>): StoredEvent {
+    const now = nowIso();
+    this.db.prepare("UPDATE plans SET last_sync_at = ?, last_sync_status = 'failed', last_sync_error_json = ?, updated_at = ? WHERE id = ?")
+      .run(now, JSON.stringify(error), now, planId);
+    return this.addEvent(planId, 'plan.sync.failed', {
+      eventType: 'plan.sync.failed',
+      planId,
+      lastSyncStatus: 'failed',
+      error
+    });
   }
 
   createComment(planId: string, input: CreateCommentInput): { comment: StoredComment; event: StoredEvent; created: boolean } {

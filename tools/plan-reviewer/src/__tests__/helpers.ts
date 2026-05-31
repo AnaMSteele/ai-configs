@@ -33,6 +33,7 @@ export function sampleRegisterPayload(overrides: Record<string, unknown> = {}) {
     slug: 'sample-plan',
     html,
     fileHash: sha256(html),
+    watchMode: 'snapshot' as const,
     assets: [
       {
         sourceUrl: './diagram.png',

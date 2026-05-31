@@ -14,6 +14,7 @@ import {
 } from '../schemas.js';
 import { renderPlan } from '../render/render.js';
 import { PlanReviewStore, type StoredEvent } from '../storage/database.js';
+import { SourceSyncService } from './sourceSync.js';
 import { fail, ok, PlanReviewError } from '../util.js';
 
 export interface AppOptions {
@@ -104,7 +105,7 @@ function reviewShell(planId: string): string {
     <link rel="stylesheet" href="/client.css">
   </head><body data-plan-id="${escapedPlanId}">
     <div id="app">
-      <aside id="sidebar"><h1>Comments</h1><div id="comments"></div></aside>
+      <aside id="sidebar"><h1>Comments</h1><div id="sync-warning" hidden></div><div id="comments"></div></aside>
       <main id="review"><iframe id="plan-frame" sandbox="allow-same-origin" src="/render/${escapedPlanId}"></iframe><div id="hover-selection-box" class="selection-box hover" hidden></div><div id="active-selection-box" class="selection-box active" hidden></div></main>
     </div>
     <div id="lightbox" class="lightbox" hidden><header><button id="zoom-out">-</button><button id="zoom-reset">Reset</button><button id="zoom-in">+</button><button id="pan-toggle">Pan</button><button id="close-lightbox">Close</button></header><div id="lightbox-stage" class="lightbox-stage"><img id="lightbox-image" alt=""><div id="image-selection-box" hidden></div></div></div>
@@ -123,7 +124,7 @@ body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}
 #app{display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:100vh}
 #review{grid-column:1;position:relative}#sidebar{grid-column:2;grid-row:1;border-left:1px solid #2b364d;padding:16px;background:#111827}
 #plan-frame{width:100%;height:100vh;border:0;background:white}.selection-box,.comment-anchor{position:fixed;pointer-events:none;border-radius:6px;transition:left .08s ease,top .08s ease,width .08s ease,height .08s ease}.selection-box{z-index:8;box-shadow:0 0 0 9999px rgba(2,6,23,.08),0 10px 24px rgba(0,0,0,.25)}.selection-box.hover{border:2px solid rgba(125,211,252,.9);background:rgba(56,189,248,.10)}.selection-box.active{z-index:9;border:3px solid #38bdf8;background:rgba(56,189,248,.16);box-shadow:0 0 0 4px rgba(56,189,248,.18),0 12px 32px rgba(0,0,0,.35)}.comment-anchor{z-index:7}.comment-anchor.pending{border:3px solid #a855f7;background:rgba(168,85,247,.22);box-shadow:0 0 0 4px rgba(168,85,247,.16),0 12px 30px rgba(0,0,0,.28)}.comment-anchor.addressed{border:2px dotted rgba(216,180,254,.9);background:transparent;box-shadow:none}.comment-anchor-label{position:absolute;right:-10px;top:-12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;padding:0 6px;background:#7e22ce;color:white;border:2px solid #f3e8ff;font-weight:800;font-size:12px;box-shadow:0 8px 18px rgba(0,0,0,.35)}.comment-anchor.addressed .comment-anchor-label{display:none}.comment-row{border:1px solid #2b364d;padding:10px;margin:8px 0;border-radius:8px;background:#0f172a}.comment-row small{color:#a7b0c0}.marker{position:absolute;z-index:9;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#0ea5e9;color:white;border:2px solid #dbeafe;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.35);pointer-events:none}
-#composer{position:fixed;right:340px;top:80px;background:#0f172a;border:1px solid #38bdf8;padding:12px;border-radius:8px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+#sync-warning{border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#fde68a;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#composer{position:fixed;right:340px;top:80px;background:#0f172a;border:1px solid #38bdf8;padding:12px;border-radius:8px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4)}
 #composer textarea{width:260px;height:90px;background:#020617;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:8px;display:block}
 	#composer button{margin-top:8px;margin-right:8px}.plan-review-selected{outline:3px solid #38bdf8!important;box-shadow:0 0 0 4px rgba(56,189,248,.2)!important}.lightbox{position:fixed;inset:36px 360px 36px 36px;background:#020617;border:1px solid #38bdf8;z-index:12;display:grid;grid-template-rows:auto 1fr}.lightbox[hidden]{display:none}.lightbox header{display:flex;gap:8px;padding:10px;border-bottom:1px solid #2b364d}.lightbox img{max-width:100%;max-height:100%;place-self:center;transform-origin:center}.lightbox-stage{display:grid;overflow:hidden;position:relative}#image-selection-box{position:absolute;border:2px solid #38bdf8;background:rgba(56,189,248,.2);pointer-events:none}
 `;
@@ -137,6 +138,7 @@ const frame = document.getElementById('plan-frame');
 const composer = document.getElementById('composer');
 const body = document.getElementById('comment-body');
 const comments = document.getElementById('comments');
+const syncWarning = document.getElementById('sync-warning');
 const hoverSelectionBox = document.getElementById('hover-selection-box');
 const activeSelectionBox = document.getElementById('active-selection-box');
 const lightbox = document.getElementById('lightbox');
@@ -162,19 +164,30 @@ async function loadMeta(options = {}){
   const res = await fetch('/api/plans/'+planId);
   const json = await res.json();
   const latestVersionId = json.data.latestVersion.id;
-  if (options.reloadPlan && versionId && latestVersionId !== versionId) {
+  if (options.reloadPlan && versionId && (latestVersionId !== versionId || options.forceReloadPlan)) {
     clearPendingSelection();
     frame.src = '/render/'+encodeURIComponent(planId)+'?versionId='+encodeURIComponent(latestVersionId)+'&t='+Date.now();
   }
   versionId = latestVersionId;
+  renderSyncWarning(json.data.plan);
   renderComments(json.data.comments || []);
+}
+function renderSyncWarning(plan){
+  if (!plan || plan.lastSyncStatus !== 'failed') {
+    syncWarning.hidden = true;
+    syncWarning.textContent = '';
+    return;
+  }
+  const error = plan.lastSyncError || {};
+  syncWarning.textContent = 'Source sync failed for ' + (plan.sourcePath || plan.planPath) + ': ' + (error.message || 'unknown error');
+  syncWarning.hidden = false;
 }
 function handlePlanVersionEvent(event){
   try {
     const data = JSON.parse(event.data || '{}');
-    if (data.versionId && data.versionId === versionId) return;
+    if (event.type !== 'plan.version.synced' && data.versionId && data.versionId === versionId) return;
   } catch {}
-  loadMeta({ reloadPlan: true });
+  loadMeta({ reloadPlan: true, forceReloadPlan: event.type === 'plan.version.synced' });
 }
 function renderComments(items){
   renderMarkers(items);
@@ -523,7 +536,7 @@ function attachFrameListeners(){
   frame.contentWindow?.addEventListener('scroll', scheduleMarkerReflow);
   frame.contentWindow?.addEventListener('resize', scheduleMarkerReflow);
 }
-frame.addEventListener('load', () => { frameListenersAttached = false; attachFrameListeners(); mountWashiOverlay(); });
+frame.addEventListener('load', () => { frameListenersAttached = false; attachFrameListeners(); mountWashiOverlay(); redrawMarkers(); });
 window.addEventListener('resize', scheduleMarkerReflow);
 if (frame.contentDocument && frame.contentDocument.readyState !== 'loading') setTimeout(attachFrameListeners, 0);
 document.getElementById('close-lightbox').addEventListener('click', () => { lightbox.hidden = true; });
@@ -587,6 +600,7 @@ document.getElementById('submit-comment').addEventListener('click', async () => 
 const source = new EventSource('/api/plans/'+planId+'/events?mode=all');
 source.addEventListener('plan.version.registered', handlePlanVersionEvent);
 source.addEventListener('plan.version.synced', handlePlanVersionEvent);
+source.addEventListener('plan.sync.failed', () => loadMeta());
 source.addEventListener('comment.created', () => loadMeta());
 source.addEventListener('comment.claimed', () => loadMeta());
 source.addEventListener('comment.acknowledged', () => loadMeta());
@@ -619,13 +633,18 @@ export function createApp(options: AppOptions): FastifyInstance {
   const app = Fastify({ logger: false });
   const store = new PlanReviewStore(options.dbPath);
   const bus = createEventBus();
+  const sourceSync = new SourceSyncService(store, bus);
+  void sourceSync.rehydrateFromStore();
   const emitExpired = (planId?: string) => {
     const events = store.releaseExpiredClaims(planId);
     for (const event of events) bus.emitEvent(event);
     return events;
   };
 
-  app.addHook('onClose', async () => store.close());
+  app.addHook('onClose', async () => {
+    await sourceSync.close();
+    store.close();
+  });
 
   app.get('/health', async () => ok({ status: 'ok' }));
   app.get('/favicon.ico', async (_request, reply) => reply.code(204).send());
@@ -664,6 +683,8 @@ export function createApp(options: AppOptions): FastifyInstance {
       const rendered = renderPlan(input);
       const result = store.registerPlan(input, rendered.renderedHtml, rendered.warnings);
       bus.emitEvent(result.event);
+      await sourceSync.register(result.planId);
+      const { plan } = store.getPlan(result.planId);
       return ok({
         planId: result.planId,
         versionId: result.versionId,
@@ -671,6 +692,13 @@ export function createApp(options: AppOptions): FastifyInstance {
         reviewUrl: result.reviewUrl,
         indexUrl: result.indexUrl,
         watchCommand: result.watchCommand,
+        sourceSync: {
+          watchMode: plan.watchMode,
+          sourcePath: plan.sourcePath,
+          status: plan.lastSyncStatus,
+          error: plan.lastSyncError,
+          active: plan.watchMode === 'filesystem' && plan.lastSyncStatus !== 'failed'
+        },
         renderedWithWarnings: rendered.warnings
       });
     } catch (error) {
@@ -691,10 +719,11 @@ export function createApp(options: AppOptions): FastifyInstance {
   app.get('/render/:planId', async (request, reply) => {
     try {
       const { planId } = request.params as { planId: string };
+      const query = request.query as { versionId?: string };
       reply
         .header('Content-Security-Policy', "default-src 'none'; script-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; style-src 'unsafe-inline'; img-src 'self' data: blob:")
         .type('text/html')
-        .send(store.getRenderedHtml(planId));
+        .send(store.getRenderedHtml(planId, query.versionId));
     } catch (error) {
       sendError(reply, error);
     }
