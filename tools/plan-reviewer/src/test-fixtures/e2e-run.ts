@@ -1,0 +1,199 @@
+import assert from 'node:assert/strict';
+import { chromium, request } from 'playwright';
+import { createApp } from '../server/app.js';
+import { sha256 } from '../util.js';
+
+const app = createApp({ dbPath: `/tmp/plan-reviewer-e2e-${process.pid}.sqlite` });
+await app.listen({ host: '127.0.0.1', port: 0 });
+const address = app.server.address();
+if (!address || typeof address === 'string') throw new Error('server did not bind to a TCP port');
+const baseUrl = `http://127.0.0.1:${address.port}`;
+
+try {
+  const context = await request.newContext({ baseURL: baseUrl });
+  const imageBytesBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/lqSL4wAAAABJRU5ErkJggg==';
+  const html = '<!doctype html><html><body><main><div style="height:240px"></div><section id="dom-annotation"><h1>DOM annotation</h1><p>Plan index target.</p></section><section id="text-annotation"><h2>Text annotation</h2><p id="text-target">Text range context target for reviewer selection.</p></section><figure><img src="./diagram.png" alt="image annotation" width="120" height="90"></figure><div style="height:1200px"></div></main></body></html>';
+  const register = await context.post('/api/plans/register', {
+    data: {
+      repoKey: 'e2e-repo',
+      repoName: 'e2e',
+      rootPath: '/tmp/e2e',
+      branch: 'main',
+      commitSha: 'e2e',
+      planPath: 'thoughts/plans/e2e.html',
+      slug: 'e2e',
+      html,
+      fileHash: sha256(html),
+      assets: [{ sourceUrl: './diagram.png', absolutePath: '/tmp/e2e/diagram.png', bytesBase64: imageBytesBase64 }],
+      updateMode: 'upsert'
+    }
+  });
+  assert.equal(register.ok(), true);
+  const registered = (await register.json()).data as { planId: string; versionId: string };
+
+  const index = await context.get('/');
+  assert.equal(index.ok(), true);
+  assert.match(await index.text(), /Plan Review Index/);
+
+  const rendered = await context.get(`/render/${registered.planId}`);
+  assert.equal(rendered.ok(), true);
+  const renderedHtml = await rendered.text();
+  assert.match(renderedHtml, /data-plan-node-id="dom-annotation"/);
+  const assetPath = renderedHtml.match(/src="(\/assets\/[^"]+)"/)?.[1];
+  assert.ok(assetPath);
+  const planAsset = await context.get(assetPath);
+  assert.equal(planAsset.ok(), true);
+  assert.equal(planAsset.headers()['cache-control'], 'public, max-age=31536000, immutable');
+
+  const domComment = await context.post(`/api/plans/${registered.planId}/comments`, {
+    data: {
+      versionId: registered.versionId,
+      body: 'DOM annotation comment',
+      anchorType: 'dom',
+      anchor: { planNodeId: 'dom-annotation', cssSelector: '#dom-annotation', textPreview: 'DOM annotation' }
+    }
+  });
+  assert.equal(domComment.ok(), true);
+
+  const imageComment = await context.post(`/api/plans/${registered.planId}/comments`, {
+    data: {
+      versionId: registered.versionId,
+      body: 'Image annotation comment',
+      anchorType: 'image',
+      anchor: {
+        cssSelector: 'img[alt="image annotation"]',
+        sourceUrl: './diagram.png',
+        naturalSize: { width: 1, height: 1 },
+        normalizedRect: { x: 0, y: 0, width: 1, height: 1 }
+      }
+    }
+  });
+  assert.equal(imageComment.ok(), true);
+
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto(`${baseUrl}/p/${registered.planId}`);
+    await page.evaluate(() => {
+      const globals = window as typeof window & { html2canvas?: unknown; __html2canvasCalls?: number };
+      globals.__html2canvasCalls = 0;
+      globals.html2canvas = async (element: HTMLElement) => {
+        globals.__html2canvasCalls = (globals.__html2canvasCalls ?? 0) + 1;
+        const canvas = document.createElement('canvas');
+        canvas.width = 360;
+        canvas.height = 220;
+        const ctx = canvas.getContext('2d')!;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#0f172a';
+        ctx.font = '16px system-ui';
+        ctx.fillText(element.textContent?.trim().slice(0, 80) || element.tagName, 16, 40);
+        return canvas;
+      };
+    });
+    await page.waitForSelector('#plan-frame');
+    await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('#dom-annotation'));
+    await page.evaluate(() => {
+      const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
+      const target = iframe?.contentDocument?.querySelector('#dom-annotation');
+      target?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe?.contentWindow ?? window }));
+    });
+    await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
+    await page.fill('#comment-body', 'Browser DOM annotation comment');
+    await page.click('#submit-comment');
+    await page.waitForFunction(() => document.querySelectorAll('.marker').length > 0);
+    assert.equal(await page.locator('.marker').count(), 1);
+    assert.equal(await page.locator('.marker').first().evaluate(marker => marker.getAttribute('style')?.includes('NaN')), false);
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser DOM annotation comment'));
+    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 1);
+    const markerTopBeforeScroll = await page.locator('.marker').first().evaluate(marker => marker.getBoundingClientRect().top);
+    await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentWindow?.scrollTo(0, 120));
+    await page.waitForFunction(
+      before => Math.abs((document.querySelector('.marker')?.getBoundingClientRect().top ?? before) - before) > 20,
+      markerTopBeforeScroll
+    );
+    await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentWindow?.scrollTo(0, 0));
+
+    await page.evaluate(() => {
+      const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame')!;
+      const doc = iframe.contentDocument!;
+      const target = doc.querySelector('#text-target')!;
+      const text = target.firstChild!;
+      const range = doc.createRange();
+      range.setStart(text, 0);
+      range.setEnd(text, 18);
+      const selection = doc.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      target.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: iframe.contentWindow ?? window }));
+    });
+    await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
+    await page.fill('#comment-body', 'Browser text annotation comment');
+    await page.click('#submit-comment');
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser text annotation comment'));
+    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 2);
+
+    await page.evaluate(() => {
+      const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
+      const target = iframe?.contentDocument?.querySelector('img[alt="image annotation"]');
+      target?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe?.contentWindow ?? window }));
+    });
+    await page.waitForSelector('#lightbox:not([hidden])');
+    await page.click('#zoom-in');
+    await page.click('#zoom-in');
+    await page.click('#pan-toggle');
+    const stageBox = await page.locator('#lightbox-stage').boundingBox();
+    assert.ok(stageBox);
+    await page.mouse.move(stageBox.x + stageBox.width * 0.5, stageBox.y + stageBox.height * 0.5);
+    await page.mouse.down();
+    await page.mouse.move(stageBox.x + stageBox.width * 0.55, stageBox.y + stageBox.height * 0.55);
+    await page.mouse.up();
+    await page.click('#pan-toggle');
+    const imageBox = await page.locator('#lightbox-image').boundingBox();
+    assert.ok(imageBox);
+    await page.mouse.move(imageBox.x + imageBox.width * 0.25, imageBox.y + imageBox.height * 0.25);
+    await page.mouse.down();
+    await page.mouse.move(imageBox.x + imageBox.width * 0.75, imageBox.y + imageBox.height * 0.65);
+    await page.mouse.up();
+    await page.waitForSelector('#image-selection-box:not([hidden])');
+    await page.fill('#comment-body', 'Browser image annotation comment');
+    await page.click('#submit-comment');
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
+    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 3);
+    assert.match(await page.locator('#comments').innerText(), /image · mapped/);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
+    await page.waitForFunction(() => document.querySelectorAll('.marker').length >= 3);
+  } finally {
+    await browser.close();
+  }
+
+  const comments = await context.get(`/api/plans/${registered.planId}/comments`);
+  const commentData = (await comments.json()).data.comments as Array<{ body: string; screenshotAssetId?: string; anchor?: { selectedText?: string; planNodeId?: string; domPath?: string; xpath?: string; textQuote?: unknown; normalizedPoint?: unknown; normalizedRect?: { width: number; height: number }; displayedRect?: unknown; zoomState?: { scale: number; panX?: number; panY?: number }; imageHash?: string } }>;
+  const uiComment = commentData.find(comment => comment.body === 'Browser DOM annotation comment');
+  assert.ok(uiComment?.screenshotAssetId);
+  const uiTextComment = commentData.find(comment => comment.body === 'Browser text annotation comment');
+  assert.equal(uiTextComment?.anchor?.selectedText, 'Text range context');
+  assert.equal(uiTextComment.anchor.planNodeId, 'text-target');
+  assert.ok(uiTextComment.anchor.domPath);
+  assert.ok(uiTextComment.anchor.xpath);
+  assert.ok(uiTextComment.anchor.textQuote);
+  const uiImageComment = commentData.find(comment => comment.body === 'Browser image annotation comment');
+  assert.ok(uiImageComment?.anchor?.normalizedPoint);
+  assert.ok(uiImageComment.anchor.normalizedRect);
+  assert.equal(uiImageComment.anchor.normalizedRect.width > 0, true);
+  assert.equal(uiImageComment.anchor.normalizedRect.height > 0, true);
+  assert.ok(uiImageComment.anchor.displayedRect);
+  assert.equal(typeof uiImageComment.anchor.zoomState?.scale, 'number');
+  assert.equal((uiImageComment.anchor.zoomState?.panX ?? 0) !== 0 || (uiImageComment.anchor.zoomState?.panY ?? 0) !== 0, true);
+  assert.equal(typeof uiImageComment.anchor.imageHash, 'string');
+  const asset = await context.get(`/comment-assets/${uiComment.screenshotAssetId}`);
+  assert.equal(asset.ok(), true);
+  const assetBody = await asset.body();
+  assert.ok(assetBody.length > 100, `expected non-trivial marker screenshot, got ${assetBody.length} bytes`);
+
+  await context.dispose();
+  console.log('e2e scenarios passed: plan index, dom annotation, image annotation');
+} finally {
+  await app.close();
+}

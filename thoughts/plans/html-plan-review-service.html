@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTML Plan Review Service</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #111827;
+      --panel-2: #182235;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --accent: #7dd3fc;
+      --accent-2: #c084fc;
+      --good: #86efac;
+      --warn: #fbbf24;
+      --bad: #fca5a5;
+      --border: #2b364d;
+      --code: #0f172a;
+    }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(125, 211, 252, 0.12), transparent 36rem), var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    main { max-width: 1080px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1, h2, h3 { line-height: 1.2; margin-top: 1.8em; }
+    h1 { font-size: clamp(2rem, 4vw, 3.5rem); margin-top: 0; }
+    h2 { border-top: 1px solid var(--border); padding-top: 1.2em; color: #f8fafc; }
+    h3 { color: var(--accent); }
+    a { color: var(--accent); }
+    p, li { color: var(--text); }
+    .muted { color: var(--muted); }
+    .badge { display: inline-block; padding: 0.2rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: var(--accent); font-size: 0.85rem; }
+    .card { background: rgba(17, 24, 39, 0.88); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin: 18px 0; box-shadow: 0 18px 60px rgba(0,0,0,0.25); }
+    code, pre { background: var(--code); color: #dbeafe; border-radius: 8px; }
+    code { padding: 0.12rem 0.28rem; }
+    pre { padding: 16px; overflow-x: auto; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
+    th { background: var(--panel-2); color: #f8fafc; text-align: left; }
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    .mock-flow { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr); gap: 16px; align-items: stretch; margin: 18px 0; }
+    .mock-browser, .mock-conversation { border: 1px solid var(--border); border-radius: 14px; background: rgba(15, 23, 42, 0.92); overflow: hidden; }
+    .mock-topbar { display: flex; gap: 6px; align-items: center; padding: 10px 12px; background: #111827; border-bottom: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+    .mock-dot { width: 9px; height: 9px; border-radius: 50%; background: #64748b; }
+    .mock-plan { position: relative; padding: 18px; min-height: 360px; }
+    .mock-plan-section { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: #0b1220; margin-bottom: 12px; }
+    .mock-plan-section h4, .mock-comment-box h4, .mock-message strong { margin: 0 0 8px; color: #f8fafc; }
+    .mock-selected { border: 2px solid #38bdf8; background: rgba(56, 189, 248, 0.12); box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1); }
+    .mock-pin { position: absolute; top: 116px; right: 166px; width: 26px; height: 26px; border-radius: 50%; background: #0ea5e9; color: white; display: grid; place-items: center; font-weight: 700; border: 2px solid #dbeafe; }
+    .mock-comment-box { position: absolute; top: 84px; right: 18px; width: 220px; padding: 12px; border: 1px solid #38bdf8; border-radius: 10px; background: #0f172a; box-shadow: 0 18px 45px rgba(0,0,0,0.35); }
+    .mock-comment-box textarea { box-sizing: border-box; width: 100%; min-height: 72px; resize: none; border: 1px solid var(--border); border-radius: 8px; background: #020617; color: var(--text); padding: 8px; font: inherit; }
+    .mock-button { display: inline-block; margin-top: 8px; padding: 6px 10px; border-radius: 8px; background: #0ea5e9; color: white; font-weight: 700; font-size: 0.85rem; }
+    .mock-sidebar { border-left: 1px solid var(--border); background: rgba(17, 24, 39, 0.9); padding: 14px; }
+    .mock-comment-row { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #0b1220; margin-bottom: 10px; }
+    .mock-message-list { padding: 14px; display: grid; gap: 10px; }
+    .mock-message { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #0b1220; }
+    .mock-message.agent { border-color: rgba(134, 239, 172, 0.55); background: rgba(22, 101, 52, 0.16); }
+    .mock-message .meta { color: var(--muted); font-size: 0.82rem; margin-bottom: 4px; }
+    .flow-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+    .flow-step { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: rgba(24, 34, 53, 0.72); }
+    @media (max-width: 860px) {
+      .mock-flow { grid-template-columns: 1fr; }
+      .flow-steps { grid-template-columns: 1fr 1fr; }
+      .mock-comment-box { position: static; width: auto; margin-top: 12px; }
+      .mock-pin { top: 136px; right: 28px; }
+    }
+    @media (max-width: 560px) {
+      .flow-steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="badge">Status: execution-ready plan</p>
+  <h1>HTML Plan Review Service</h1>
+  <p class="muted">A local-network review surface for HTML development plans stored in <code>thoughts/plans</code>, with a browsable plan index, DOM/image-anchored comments, and comments delivered back to coding agents through REST, CLI, and near-real-time streams.</p>
+
+  <section id="goal">
+    <h2>Goal</h2>
+    <p>Build a simple unauthenticated local-network service where agents register HTML development plans from any repo, users browse an index of registered plans, review a plan in a browser by selecting DOM elements or images and leaving comments, and agents can monitor, claim, and process those comments as a durable queue.</p>
+    <p>The golden path should be:</p>
+    <pre><code>brew tap local/ai-configs &lt;repo-checkout-path&gt;
+brew install local/ai-configs/plan-reviewer
+brew services start plan-reviewer
+plan-review register thoughts/plans/my-plan.html --repo auto --branch auto --commit auto
+plan-review watch &lt;plan-id-or-slug&gt; --mode queue</code></pre>
+    <p>The reviewer opens <code>http://&lt;host&gt;:4317/</code>, chooses a plan from the index, clicks a plan section/component or image, comments, and the watching agent receives a structured event without needing manual refresh.</p>
+  </section>
+
+  <section id="why">
+    <h2>Why this plan exists</h2>
+    <p>Current plan review workflows rely on inline text comments inside plan files. That works for markdown review, but HTML plans can express richer structure, UI mockups, status dashboards, diagrams, and interactive sections. The review system needs to preserve that context: not just “line 80,” but “this card/button/phase/scenario element, with its DOM path, surrounding text, screenshot coordinates, and stable plan node identity.”</p>
+  </section>
+
+  <section id="authority-inputs">
+    <h2>Authority and inputs</h2>
+    <ul>
+      <li>User request in this session.</li>
+      <li>Root <code>AGENTS.md</code>: plans belong under <code>thoughts/plans</code>, multi-surface parity must be explicit, and plan execution should be resumable.</li>
+      <li>Shared planning workflow: HTML plans need explicit dark-mode styling and canonical execution-plan sections.</li>
+      <li>Shared product principles: golden path first, safe defaults, self-healing, actionable errors.</li>
+      <li>Dependency-selection doctrine: reuse maintained libraries and document any custom implementation over 100 lines.</li>
+      <li>Prior art observed during discovery: DOM/comment overlay tools commonly use CSS selector + DOM path + coordinates; SSE is a good default for server-to-agent/server-to-browser one-way events, with polling fallback.</li>
+    </ul>
+  </section>
+
+  <section id="current-reality">
+    <h2>Current implementation reality</h2>
+    <ul>
+      <li>This repo stores working plans under <code>thoughts/plans</code>, currently mostly markdown.</li>
+      <li>No existing plan-review service code is present in this repo.</li>
+      <li>The repo has a TypeScript CLI precedent under <code>tools/ltui</code>, using Node 20, ESM, <code>commander</code>, <code>typescript</code>, and <code>node --test</code>.</li>
+      <li>No product-intent document exists under <code>thoughts/specs/product_intent.md</code>; this plan aligns directly to the user request and repo instructions.</li>
+    </ul>
+  </section>
+
+  <section id="progress">
+    <h2>Progress</h2>
+    <ul>
+      <li><input type="checkbox" checked /> P1 Bootstrap package, Homebrew, and launchctl service</li>
+      <li><input type="checkbox" checked /> P2 Register plans and build browsable index</li>
+      <li><input type="checkbox" checked /> P3 Add DOM and image annotation UI</li>
+      <li><input type="checkbox" checked /> P4 Implement comment queue, streaming, and CLI watch</li>
+      <li><input type="checkbox" checked /> P5 Add agent action lifecycle and bulk processing</li>
+      <li><input type="checkbox" checked /> P6 Dogfood docs and future security seams</li>
+    </ul>
+  </section>
+
+  <section id="resume">
+    <h2>Resume instructions (agent)</h2>
+    <p>Read this document fully. Start with the first unchecked item in <a href="#progress">Progress</a>. Execute phases in order. Do not implement adjacent collaboration features beyond HTML plan registration, DOM-anchored comments, and agent comment consumption unless the user explicitly expands scope. Update only this plan’s progress checkboxes when completing phases.</p>
+  </section>
+
+  <section id="product-intent">
+    <h2>Product intent alignment</h2>
+    <ul>
+      <li><strong>Default workflow:</strong> the Homebrew-installed daemon starts persistently with launchctl, listens on <code>0.0.0.0:4317</code>, and exposes an index where anyone on the reachable network can browse registered plans and comment.</li>
+      <li><strong>Safe inference:</strong> CLI infers repo name, branch, commit, remote URL, plan slug, and file hash from the current git workspace when possible.</li>
+      <li><strong>Self-healing:</strong> re-registering the same plan path updates the existing plan version instead of creating duplicates, unless the user asks for a new review thread.</li>
+      <li><strong>Fail-closed boundaries:</strong> ambiguous repo identity, invalid HTML, dangerous inline script, unavailable image assets, or corrupt image metadata should stop with a clear error rather than guessing.</li>
+      <li><strong>Actionable errors:</strong> every CLI/API failure should say what failed, what was inferred or retried, and the exact command or input needed next.</li>
+      <li><strong>Agent-friendly state:</strong> comments are durable queue items with sequence IDs, claim/ack semantics, and a replayable event stream so an agent can recover after disconnecting.</li>
+    </ul>
+  </section>
+
+  <section id="locked-decisions">
+    <h2>Locked decisions</h2>
+    <ol>
+      <li><strong>MVP shape:</strong> create a repo-owned TypeScript package at <code>tools/plan-reviewer</code> containing the daemon and CLI, plus Homebrew formula/install wiring in this <code>ai-configs</code> repo.</li>
+      <li><strong>Scope approval:</strong> the user request is explicit approval to build a new service/CLI in this repo even though the implementation will exceed 100 lines of custom code. The dependency-selection rule still applies to reusable libraries; do not hand-roll package-manager, HTTP, SQLite, selector, screenshot, or browser-test primitives.</li>
+      <li><strong>Deployment topology:</strong> MVP is one shared local-network service instance that can register plans from many repos. It listens on <code>0.0.0.0:4317</code> by default with SQLite at <code>~/.plan-reviewer/plan-reviewer.sqlite</code>. Local-only binding is an optional override, not the default.</li>
+      <li><strong>Persistent install:</strong> install via Homebrew from a repo checkout for now. The formula lives at <code>Formula/plan-reviewer.rb</code>; because Homebrew 5.1 requires local formulae to live in a tap, <code>brew tap local/ai-configs &lt;repo-checkout-path&gt;</code> followed by <code>brew install local/ai-configs/plan-reviewer</code> installs the CLI/daemon, and <code>brew services start plan-reviewer</code> installs the formula service through launchctl. The formula service block must set <code>run [opt_bin/"plan-review", "serve", "--host", "0.0.0.0", "--port", "4317", "--db", "#{Dir.home}/.plan-reviewer/plan-reviewer.sqlite"]</code>, <code>keep_alive true</code>, <code>log_path var/"log/plan-reviewer.log"</code>, and <code>error_log_path var/"log/plan-reviewer.err.log"</code>. MVP service management is macOS/Homebrew-only; Linux service units are future work.</li>
+      <li><strong>CLI service discovery:</strong> resolve service URL in this order: <code>--url</code> flag, <code>PLAN_REVIEW_URL</code>, project <code>.plan-reviewer.json</code>, user config <code>~/.config/plan-reviewer/config.json</code>, then <code>http://127.0.0.1:4317</code>. The CLI never requires auth for MVP.</li>
+      <li><strong>No-auth MVP:</strong> there is no authentication, reviewer token, share-token, or obfuscated review URL in the initial product. Anyone who can reach the service can view the index, open plans, create comments, and use queue endpoints. The service should print a startup warning when bound to non-loopback addresses so the operator understands the exposure.</li>
+      <li><strong>Plan index:</strong> <code>GET /</code> serves a browsable index of all registered plans grouped by repo and sorted by most recent registration/comment activity. The index supports text filtering, repo filtering, status counts, latest version metadata, links to open each plan, and comment-count badges.</li>
+      <li><strong>Repo identity:</strong> a repo is keyed by canonical git remote URL when available, otherwise absolute repo root path plus machine hostname. The API stores <code>repoKey</code>, <code>repoName</code>, <code>remoteUrl</code>, <code>rootPath</code>, <code>branch</code>, and <code>commitSha</code> on each registration so one SQLite file can safely hold many repos.</li>
+      <li><strong>Runtime/tooling:</strong> implementation targets Node 20+ ESM TypeScript at runtime. Bun is the package manager/script runner for this package to match the existing <code>tools/ltui</code> lockfile pattern.</li>
+      <li><strong>HTTP framework:</strong> use Fastify with TypeScript route schemas. Do not reopen Express/Hono during execution unless Fastify cannot satisfy an explicitly tested contract.</li>
+      <li><strong>Schema validation:</strong> use Zod as the single source for runtime validation and TypeScript request/response types.</li>
+      <li><strong>Storage:</strong> use <code>better-sqlite3</code> for local synchronous SQLite access behind a narrow repository interface so a future hosted deployment can move to Postgres without changing API contracts.</li>
+      <li><strong>HTML parsing/sanitization:</strong> use <code>parse5</code> for server-side HTML parsing/rewriting and <code>sanitize-html</code> for removing unsafe active content from the review artifact. Use Playwright for browser verification, not server-side DOM emulation.</li>
+      <li><strong>CLI:</strong> use <code>commander</code>, matching existing <code>tools/ltui</code>.</li>
+      <li><strong>Realtime default:</strong> use Server-Sent Events for plan/comment streams because browser and agent clients mostly need server-to-client updates. Keep REST writes for comments and acknowledgements. Do not introduce WebSockets unless bidirectional live collaboration becomes required.</li>
+      <li><strong>Plan render safety:</strong> serve uploaded HTML inside an iframe with <code>sandbox="allow-same-origin"</code> only and no <code>allow-scripts</code>. The review shell, annotation layer, zoom popovers, and event handlers run entirely in the parent document; parent code reads the same-origin sanitized iframe DOM via <code>contentDocument</code>/<code>elementFromPoint</code> and attaches parent-owned listeners to iframe scroll/resize. Do not inject scripts or postMessage hooks into the iframe. Set CSP to <code>default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'</code> for the review shell. Sanitized plan artifacts strip <code>&lt;script&gt;</code>, event-handler attributes, javascript/data navigation URLs except safe images, forms, object/embed, and external active resources. Blocked content is reported in registration/render metadata.</li>
+      <li><strong>Image support:</strong> registered plans must display safe local/relative images and safe data/blob images. The renderer copies relative image assets referenced by the HTML into content-addressed service storage when possible; unresolved images render as visible placeholders with actionable warnings.</li>
+      <li><strong>Image zoom and comments:</strong> clicking an image opens a parent-owned zoom popover/lightbox with fit-to-screen, zoom in/out, reset, pan, and close controls. Reviewers can comment on the whole image or on a point/rectangle inside the zoomed image; the comment stores image source hash/path, natural dimensions, displayed rect, and normalized coordinates.</li>
+      <li><strong>Anchoring model:</strong> store multiple selectors per DOM annotation: stable service-generated <code>data-plan-node-id</code>, CSS selector, DOM path, XPath-like path, text quote, nearest heading hierarchy, bounding rect, viewport size, and a trimmed outerHTML/context snapshot. Text-range annotations use <code>anchorType: "text_range"</code> and add start/end container selectors, character offsets, selected text, and client rects. Image annotations use the same surrounding DOM context plus normalized image coordinates.</li>
+      <li><strong>Anchor state mapping:</strong> comment anchor state values are <code>mapped</code>, <code>stale</code>, and <code>unmapped</code>. A comment is <code>mapped</code> when the current version resolves the same <code>data-plan-node-id</code> or generated selector and the text quote still matches. It is <code>stale</code> when only a weaker selector or heading/text context match succeeds. It is <code>unmapped</code> when no current node/image can be resolved; the UI must still show the original captured context and screenshot.</li>
+      <li><strong>Stable node ID algorithm:</strong> preserve an existing <code>id</code> as <code>data-plan-node-id</code>; otherwise derive <code>headingPathSlug + shortHash(textContent)</code> for headings/sections; otherwise derive <code>tagName + domSiblingPath + shortHash(trimmedTextOrOuterHtml)</code>. When two generated IDs collide within one version, append deterministic sibling-order suffixes <code>-2</code>, <code>-3</code>, etc. The renderer must produce deterministic IDs for identical plan content across registrations.</li>
+      <li><strong>Marker screenshots:</strong> the parent review shell captures a cropped marker screenshot with <code>html2canvas</code> after the selected-region highlight and marker are rendered. No screenshot code runs inside the sandboxed iframe. The screenshot is posted with the comment as safe PNG bytes, stored as a comment asset, and referenced by <code>screenshotAssetId</code>.</li>
+      <li><strong>Reviewer identity:</strong> the no-auth UI asks for an optional display name on first comment and stores it in localStorage. If omitted, comments use <code>{ "type": "reviewer", "displayName": "Anonymous reviewer" }</code>. The API accepts optional <code>createdBy.displayName</code> and normalizes missing/blank values to that anonymous default.</li>
+      <li><strong>Agent delivery:</strong> comments are delivered at least once. Agents must claim then ack comments; unacked claims expire after a 5-minute lease and re-enter the pending queue.</li>
+      <li><strong>Main conversation response:</strong> comment events include a <code>browser.comment.v1</code> conversation bridge payload so a host adapter can append the browser comment to the active chat thread, respond there, and ack/resolve the comment with a response summary, run ID, changed files, and optional commit SHA. The service/CLI owns the portable event and file/stdout handoff contract; host-specific injection into Codex, Claude, or Pi is a thin adapter that consumes that contract. The review service stores and displays response metadata but does not implement its own chat system.</li>
+      <li><strong>Queue state machine:</strong> comment status values are <code>pending</code>, <code>claimed</code>, <code>acknowledged</code>, and <code>resolved</code>. Allowed transitions are <code>pending → claimed → acknowledged → resolved</code>, <code>pending → resolved</code>, and <code>claimed → pending</code> on lease expiry or explicit release. Agent ack requires an active matching claim; direct ack from <code>pending</code> returns <code>409 claim_required</code>. Ack and resolve are idempotent for the life of the comment.</li>
+      <li><strong>Event sequencing:</strong> event sequence numbers are monotonic per plan. SSE uses <code>id: &lt;sequence&gt;</code>; reconnect with <code>Last-Event-ID</code> replays later events. Retain events until both thresholds are exceeded: older than 7 days and outside the latest 10,000 events per plan.</li>
+      <li><strong>Latency/reconnect defaults:</strong> local SSE delivery target is p95 under 1 second after transaction commit. Heartbeats are sent every 15 seconds. CLI reconnect backoff starts at 1 second and doubles to a 30-second max, with REST polling every 10 seconds if SSE is unavailable.</li>
+      <li><strong>Concurrent claims:</strong> claiming is atomic. Two agents cannot hold the same active claim; conflicts return <code>409 claim_conflict</code> with the current holder and lease expiry.</li>
+      <li><strong>Versioning:</strong> every registration creates or updates a plan version identified by file hash + repo + path + branch + commit. Comments attach to a plan version but can be shown on newer versions as “stale/mapped/unmapped.”</li>
+      <li><strong>Security posture:</strong> MVP intentionally optimizes for simple local-network access over access control. Authentication, reviewer tokens, private share links, SSO, and authorization are explicit future work, not part of initial execution.</li>
+    </ol>
+  </section>
+
+  <section id="architecture">
+    <h2>Architecture</h2>
+    <div class="card">
+      <pre><code>Agent repo                         Plan Review Service                       Reviewer browser
+---------                          -------------------                       ----------------
+thoughts/plans/*.html   register   REST API + storage             open /   Plan index
+plan-review CLI       ----------&gt;  HTML/image renderer + overlay  --------&gt;  sandboxed plan iframe
+plan-review watch     &lt;----------  SSE events + queue claims      &lt;--------  DOM/image comments
+agent action loop       claim/ack   durable comments + versions     stream    comment updates</code></pre>
+    </div>
+    <h3>Deployment and discovery</h3>
+    <p>The MVP runs as one shared Homebrew/launchctl-managed daemon, not one service per repo. It binds to <code>0.0.0.0:4317</code> by default so other devices on the reachable network can open the plan index. Agents in any repo use the same CLI, which discovers the daemon URL from flag, environment, project config, user config, then the local default. The daemon stores every plan under a repo-scoped key so <code>thoughts/plans/foo.html</code> in two repos cannot collide.</p>
+    <h3>Core components</h3>
+    <table>
+      <thead><tr><th>Component</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td>CLI</td><td>Register local plan files, infer git metadata, print review URL/index URL, watch event streams, claim/ack comments singly or in bulk.</td></tr>
+        <tr><td>API server</td><td>Plan index, plan registration, plan version lookup, comments, queue state, SSE streams, static review shell, and image assets without authentication.</td></tr>
+        <tr><td>Renderer</td><td>Stores uploaded HTML, copies safe image assets, sanitizes HTML, injects stable node IDs/metadata, serves a versioned render artifact inside a no-scripts sandboxed iframe.</td></tr>
+        <tr><td>Review UI</td><td>Shows plan index, plan iframe, parent-owned Washi annotation layer, image zoom lightbox, comment composer, comment sidebar, stale-anchor warnings, and resolution state.</td></tr>
+        <tr><td>Queue worker logic</td><td>Maintains pending/claimed/acknowledged/resolved comment lifecycle with claim leases and replayable sequence IDs.</td></tr>
+        <tr><td>Storage</td><td>SQLite tables for repos, plans, versions, plan assets, comments, comment events, claims, and agent consumers.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="review-ux-loop">
+    <h2>Review UX and agent response loop</h2>
+    <p>The core interaction should feel like collaborative plan review: the reviewer selects a concrete piece of the rendered plan, leaves a comment in the browser, and the active agent receives enough structured context to answer in the main conversation without asking the reviewer to restate the issue.</p>
+
+    <div class="mock-flow" aria-label="Visual mock showing plan selection, comment creation, and agent conversation response">
+      <div class="mock-browser">
+        <div class="mock-topbar"><span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span><span>/p/plan_123</span></div>
+        <div class="mock-plan">
+          <div class="mock-plan-section">
+            <h4>Phase 2 - Register plans</h4>
+            <p class="muted">Persist metadata, render the plan safely, and show it in the review shell.</p>
+          </div>
+          <div class="mock-plan-section mock-selected">
+            <h4>Phase 3 - Annotation UI</h4>
+            <p>The selected region is outlined in blue while the comment composer is open. Marker 1 stays attached to this section after submit.</p>
+          </div>
+          <div class="mock-pin">1</div>
+          <div class="mock-comment-box">
+            <h4>Comment on selection</h4>
+            <textarea readonly>Add a visual for how selection and comments work.</textarea>
+            <span class="mock-button">Submit comment</span>
+          </div>
+          <div class="mock-sidebar">
+            <div class="mock-comment-row"><strong>1 Pending</strong><br /><span class="muted">Phase 3 - Annotation UI</span></div>
+            <div class="mock-comment-row"><strong>Agent status</strong><br /><span class="muted">Waiting for claim</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mock-conversation">
+        <div class="mock-topbar"><span>Main agent conversation</span></div>
+        <div class="mock-message-list">
+          <div class="mock-message">
+            <div class="meta">Browser comment</div>
+            <strong>Comment 1 on section#phase-p3</strong>
+            <p>Add a visual for how selection and comments work.</p>
+          </div>
+          <div class="mock-message agent">
+            <div class="meta">Agent response</div>
+            <strong>Handled in plan update</strong>
+            <p>I added the selection/comment mockup and updated the response-loop requirements. The comment is acked with the changed file and summary.</p>
+          </div>
+          <div class="mock-message">
+            <div class="meta">Review UI update</div>
+            <strong>Comment 1 acknowledged</strong>
+            <p>The marker remains visible and the sidebar shows the agent response/resolution metadata.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow-steps">
+      <div class="flow-step"><strong>1. Select</strong><br /><span class="muted">Reviewer clicks or drags over a DOM node, text range, image point, or image rectangle. The review shell highlights the target and previews captured context.</span></div>
+      <div class="flow-step"><strong>2. Comment</strong><br /><span class="muted">Submitting creates a durable pending comment with selector, quote, rect, screenshot coordinates, and image metadata when applicable.</span></div>
+      <div class="flow-step"><strong>3. Wake agent</strong><br /><span class="muted">The daemon emits <code>comment.created</code>. Codex, Claude, Pi, or another watcher claims the comment and receives a conversation-ready payload.</span></div>
+      <div class="flow-step"><strong>4. Respond</strong><br /><span class="muted">The agent answers in the active chat, performs the requested edit when appropriate, then acks/resolves the comment with run metadata and a human-readable summary.</span></div>
+    </div>
+
+    <h3>Conversation bridge contract</h3>
+    <p>The MVP should expose the comment event in a shape that the host agent can surface as a normal user message in the active conversation. The service does not need to own chat UI. It must provide enough metadata for Codex-style clients to render “Browser comment: Comment 1” with the selected text, marker screenshot, URL, selector, and reviewer note, then let the agent reply in the main thread. The ack/resolve payload records the agent response summary so the review UI can show that the comment was handled even though the full discussion happened in chat.</p>
+    <pre><code>{
+  "type": "browser.comment.v1",
+  "commentId": "cmt_01...",
+  "conversationHint": {
+    "mode": "append-to-active-thread",
+    "title": "Comment 1 on Phase 3 - Annotation UI",
+    "summary": "Reviewer asked for visuals showing selection/comment UX and agent response behavior."
+  },
+  "evidence": {
+    "reviewUrl": "http://127.0.0.1:4317/p/plan_123",
+    "selector": "section#phase-p3",
+    "markerNumber": 1,
+    "textPreview": "Phase 3 - Annotation UI",
+    "screenshotAssetId": "asset_comment_marker_1"
+  },
+  "body": "Add a visual for how selection and comments work."
+}</code></pre>
+  </section>
+
+  <section id="contracts">
+    <h2>API and data contracts</h2>
+    <h3>SQLite schema contract</h3>
+    <table>
+      <thead><tr><th>Table</th><th>Required columns / relationships</th></tr></thead>
+      <tbody>
+        <tr><td><code>repos</code></td><td><code>id</code> PK, unique <code>repo_key</code>, <code>repo_name</code>, <code>remote_url</code>, <code>root_path</code>, <code>created_at</code>, <code>updated_at</code>.</td></tr>
+        <tr><td><code>plans</code></td><td><code>id</code> PK, <code>repo_id</code> FK, <code>slug</code>, <code>plan_path</code>, unique <code>(repo_id, plan_path, slug)</code>, <code>created_at</code>, <code>updated_at</code>.</td></tr>
+        <tr><td><code>plan_versions</code></td><td><code>id</code> PK, <code>plan_id</code> FK, <code>file_hash</code>, <code>branch</code>, <code>commit_sha</code>, <code>html_blob_path</code>, <code>rendered_blob_path</code>, <code>render_warnings_json</code>, unique <code>(plan_id, file_hash, branch, commit_sha)</code>.</td></tr>
+        <tr><td><code>plan_assets</code></td><td><code>id</code> PK, <code>version_id</code> FK, <code>source_url</code>, <code>asset_hash</code>, <code>content_type</code>, <code>width</code>, <code>height</code>, <code>blob_path</code>, <code>status</code>, <code>warning_json</code>, unique <code>(version_id, source_url)</code>.</td></tr>
+        <tr><td><code>comment_assets</code></td><td><code>id</code> PK, <code>comment_id</code> FK nullable until comment transaction completes, <code>asset_type</code> currently <code>marker_screenshot</code>, <code>content_hash</code>, <code>content_type</code>, <code>width</code>, <code>height</code>, <code>capture_rect_json</code>, <code>viewport_json</code>, <code>blob_path</code>, timestamps.</td></tr>
+        <tr><td><code>comments</code></td><td><code>id</code> PK, <code>plan_id</code> FK, <code>version_id</code> FK, per-plan <code>sequence</code>, <code>status</code>, <code>body</code>, <code>anchor_type</code> (<code>dom</code>, <code>text_range</code>, or <code>image</code>), <code>anchor_state</code> (<code>mapped</code>, <code>stale</code>, <code>unmapped</code>), <code>anchor_json</code>, <code>screenshot_asset_id</code> FK nullable, <code>conversation_payload_json</code>, <code>agent_response_json</code> nullable, <code>created_by_json</code>, <code>client_mutation_id</code> nullable, <code>claim_id</code> nullable, timestamps, unique <code>(plan_id, sequence)</code>, unique nullable <code>(plan_id, client_mutation_id)</code>.</td></tr>
+        <tr><td><code>comment_events</code></td><td><code>id</code> PK, <code>plan_id</code> FK, per-plan <code>sequence</code>, <code>event_type</code>, <code>comment_id</code> FK nullable, <code>client_mutation_id</code> nullable, <code>payload_json</code>, <code>created_at</code>, unique <code>(plan_id, sequence)</code>.</td></tr>
+        <tr><td><code>claims</code></td><td><code>id</code> PK, <code>comment_id</code> FK, <code>agent_id</code> text, <code>ack_client_mutation_id</code> nullable, <code>lease_expires_at</code>, <code>released_at</code>, <code>acknowledged_at</code>; partial unique active claim per comment.</td></tr>
+      </tbody>
+    </table>
+    <p>All JSON endpoints return <code>{ "ok": true, "data": ... }</code> on success. Errors return <code>{ "ok": false, "error": { "code", "message", "details", "nextAction" } }</code>. Common status codes are <code>400 validation_failed</code>, <code>404 not_found</code>, <code>409 claim_conflict</code>, and <code>422 unsafe_or_invalid_html</code>. There are no <code>401</code>/<code>403</code> paths in the MVP because access control is explicitly deferred.</p>
+
+    <h3>Endpoint contracts</h3>
+    <table>
+      <thead><tr><th>Endpoint</th><th>Request</th><th>Response</th></tr></thead>
+      <tbody>
+        <tr><td><code>GET /</code></td><td>Optional query filters <code>?q=&amp;repoKey=&amp;status=</code>.</td><td>HTML plan index grouped by repo with plan links, latest metadata, and comment-count badges.</td></tr>
+        <tr><td><code>GET /api/plans</code></td><td>Optional query filters <code>?q=&amp;repoKey=&amp;limit=&amp;cursor=</code>.</td><td><code>{ plans: [{ plan, latestVersion, counts, reviewUrl }], nextCursor? }</code>.</td></tr>
+        <tr><td><code>POST /api/plans/register</code></td><td><code>{ repoKey?, repoName, remoteUrl?, rootPath?, branch, commitSha?, planPath, slug?, html, fileHash, assets?: [{ sourceUrl, absolutePath?, bytesBase64? }], updateMode: "upsert"|"new-thread" }</code></td><td><code>{ planId, versionId, repoId, reviewUrl, indexUrl, watchCommand, renderedWithWarnings: [{ code, detail }] }</code>.</td></tr>
+        <tr><td><code>GET /p/:planId</code></td><td>No auth or token.</td><td>HTML review shell for the latest visible version.</td></tr>
+        <tr><td><code>GET /assets/:assetId</code></td><td>No body.</td><td>Safe copied image asset bytes with content type and cache headers.</td></tr>
+        <tr><td><code>GET /api/plans/:planId</code></td><td>No auth.</td><td><code>{ plan, latestVersion, assets, versions, counts: { pending, claimed, acknowledged, resolved }, reviewUrl }</code></td></tr>
+        <tr><td><code>POST /api/plans/:planId/comments</code></td><td><code>{ versionId, body, anchorType: "dom"|"text_range"|"image", anchor, markerScreenshot?: { contentType: "image/png", bytesBase64, width, height, captureRect, viewport }, createdBy?: { displayName? }, clientMutationId? }</code></td><td><code>{ comment, event }</code>; duplicate <code>clientMutationId</code> returns the original comment.</td></tr>
+        <tr><td><code>GET /api/plans/:planId/comments?status=&amp;versionId=&amp;anchorState=&amp;sinceSequence=</code></td><td>Filters only; no body.</td><td><code>{ comments, nextCursor? }</code> ordered by per-plan sequence.</td></tr>
+        <tr><td><code>POST /api/plans/:planId/comments/claim</code></td><td><code>{ mode: "one"|"selected"|"bulk", limit?, commentIds?, leaseSeconds?: 300 }</code></td><td><code>{ claimed: Comment[], leaseExpiresAt, skipped: [{ commentId, reason }] }</code>.</td></tr>
+        <tr><td><code>POST /api/comments/:commentId/ack</code></td><td><code>{ claimId, action?: { runId?, handoffPath?, commitSha?, note?, responseSummary?, changedFiles? }, clientMutationId? }</code></td><td><code>{ comment, alreadyAcknowledged: boolean }</code>; missing or inactive claims return <code>409 claim_required</code>.</td></tr>
+        <tr><td><code>POST /api/comments/:commentId/resolve</code></td><td><code>{ resolutionNote, action?: { runId?, commitSha?, responseSummary?, changedFiles? } }</code></td><td><code>{ comment, alreadyResolved: boolean }</code>.</td></tr>
+        <tr><td><code>POST /api/comments/:commentId/release</code></td><td><code>{ claimId, reason? }</code></td><td><code>{ comment }</code> with status returned to <code>pending</code>.</td></tr>
+        <tr><td><code>GET /comment-assets/:assetId</code></td><td>No body.</td><td>Safe comment asset bytes, currently marker screenshots, with content type and cache headers.</td></tr>
+        <tr><td><code>GET /api/plans/:planId/events</code></td><td>SSE request with optional <code>Last-Event-ID</code> header and query <code>?mode=all|queue</code>.</td><td><code>text/event-stream</code> with per-plan sequence replay, heartbeats, and queue/comment events.</td></tr>
+        <tr><td><code>GET /api/plans/:planId/events/poll?afterSequence=&amp;mode=&amp;limit=</code></td><td>REST polling fallback for environments where SSE cannot stay connected.</td><td><code>{ events, latestSequence, retryAfterMs }</code> using the same event payloads and sequence IDs as SSE.</td></tr>
+        <tr><td><code>GET /api/agent/queue?repoKey=&amp;planId=&amp;limit=</code></td><td>No auth.</td><td><code>{ items: Comment[], latestSequenceByPlan: Record&lt;string, number&gt; }</code>.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Agent watch contract</h3>
+    <p>Agents keep an open watch connection with Server-Sent Events. WebSockets are intentionally not part of the MVP because comment creation, ack, resolve, and claim writes are ordinary REST requests, while the watch side only needs server-to-agent notifications. Add WebSockets later only if bidirectional live collaboration becomes a product requirement.</p>
+    <pre><code>GET /api/plans/plan_123/events?mode=queue
+Accept: text/event-stream
+Last-Event-ID: 42</code></pre>
+    <ul>
+      <li><strong>Primary transport:</strong> <code>plan-review watch plan_123 --mode queue</code> opens <code>GET /api/plans/:planId/events?mode=queue</code> with <code>Accept: text/event-stream</code> and keeps the HTTP connection open until the process exits, the server closes it, or the network fails.</li>
+      <li><strong>Event shape:</strong> each SSE message uses <code>id: &lt;sequence&gt;</code>, <code>event: &lt;eventType&gt;</code>, and JSON <code>data</code>. Queue mode emits <code>comment.created</code>, <code>comment.claimed</code>, <code>comment.acknowledged</code>, <code>comment.resolved</code>, and <code>comment.released</code>. <code>mode=all</code> also emits plan-version events.</li>
+      <li><strong>Resume:</strong> the CLI stores the latest delivered sequence per plan. On reconnect it sends <code>Last-Event-ID</code>; the server replays events with a greater sequence before streaming live events.</li>
+      <li><strong>Heartbeat:</strong> the server sends <code>event: heartbeat</code> every 15 seconds with <code>{ latestSequence, serverTime }</code> so agents can detect dead connections.</li>
+      <li><strong>Fallback polling:</strong> if the SSE connection cannot be established or repeatedly drops, the CLI polls <code>GET /api/plans/:planId/events/poll?afterSequence=&amp;mode=queue</code> every 10 seconds. Poll responses use the same event objects and monotonic sequence IDs as SSE, with <code>retryAfterMs</code> available for backoff.</li>
+      <li><strong>Delivery semantics:</strong> watch delivery is at-least-once. Agents must dedupe by <code>{ planId, sequence }</code>, then claim/ack comments through the queue endpoints before acting.</li>
+      <li><strong>CLI output:</strong> <code>--json</code> prints each event as one NDJSON object with <code>source: "sse"</code> or <code>source: "poll"</code>. <code>--format browser-comment</code> prints only <code>browser.comment.v1</code> envelopes for host conversation adapters.</li>
+    </ul>
+
+    <h3>Claim request precedence</h3>
+    <ul>
+      <li><code>mode="one"</code> requires no <code>commentIds</code>; it claims the oldest pending comment by sequence, respecting optional <code>limit=1</code>.</li>
+      <li><code>mode="selected"</code> requires non-empty <code>commentIds</code>; <code>limit</code> is invalid and returns <code>400 validation_failed</code>.</li>
+      <li><code>mode="bulk"</code> rejects <code>commentIds</code>; it claims up to <code>limit</code> pending comments, default 50, max 200, ordered by sequence.</li>
+      <li>Expired claims are released transactionally before each claim query. Active claims held by another agent are skipped for bulk and returned as <code>409 claim_conflict</code> for selected mode.</li>
+    </ul>
+
+    <h3>Comment payload</h3>
+    <pre><code>{
+  "id": "cmt_01...",
+  "planId": "plan_01...",
+  "versionId": "ver_01...",
+  "sequence": 42,
+  "status": "pending",
+  "body": "Clarify how claim leases expire here.",
+  "anchorType": "dom",
+  "anchorState": "mapped",
+  "anchor": {
+    "planNodeId": "phase-p4-queue-streaming",
+    "cssSelector": "section#phase-p4 h2",
+    "domPath": "html/body/main/section[14]/h2[1]",
+    "xpath": "/html/body/main/section[14]/h2[1]",
+    "textQuote": { "exact": "Phase 4 - Implement comment queue", "prefix": "", "suffix": "" },
+    "headingPath": ["Phase-by-phase execution plan", "Phase 4 - Implement comment queue, streaming, and CLI watch"],
+    "rect": { "x": 84, "y": 1220, "width": 640, "height": 38 },
+    "viewport": { "width": 1440, "height": 1000 },
+    "textPreview": "Phase 4 - Implement comment queue, streaming, and CLI watch",
+    "outerHtmlPreview": "&lt;h2 id=\"phase-p4\" data-plan-node-id=\"phase-p4\"&gt;Phase 4...&lt;/h2&gt;"
+  },
+  "screenshotAssetId": "asset_01...",
+  "createdBy": { "type": "reviewer", "displayName": "Ann" },
+  "conversationPayload": {
+    "type": "browser.comment.v1",
+    "conversationHint": {
+      "mode": "append-to-active-thread",
+      "title": "Comment 42 on Phase 4 - Implement comment queue"
+    },
+    "evidence": {
+      "reviewUrl": "http://127.0.0.1:4317/p/plan_01...",
+      "markerNumber": 42,
+      "screenshotAssetId": "asset_01..."
+    }
+  },
+  "agentResponse": null,
+  "createdAt": "2026-05-30T00:00:00Z",
+  "claim": null
+}</code></pre>
+    <p>Text-range comments use <code>anchorType: "text_range"</code> and add <code>{ startContainerSelector, startOffset, endContainerSelector, endOffset, selectedText, clientRects: [{ x, y, width, height }] }</code> inside <code>anchor</code>, alongside the surrounding DOM selector/context fields. Image comments use <code>anchorType: "image"</code> and add <code>{ imageAssetId, sourceUrl, imageHash, naturalSize: { width, height }, normalizedPoint?: { x, y }, normalizedRect?: { x, y, width, height }, zoomState?: { scale, panX, panY } }</code> inside <code>anchor</code>.</p>
+
+    <h3>SSE event contract</h3>
+    <pre><code>id: 43
+event: comment.created
+data: {"sequence":43,"planId":"plan_01...","commentId":"cmt_01...","comment":{...}}</code></pre>
+    <ul>
+      <li><code>comment.created</code>: new pending comment available, including <code>conversationPayload.type = "browser.comment.v1"</code> so the host adapter can surface the browser comment in the active conversation.</li>
+      <li><code>comment.claimed</code>: agent claimed comment; review UI can show “agent reviewing.”</li>
+      <li><code>comment.acknowledged</code>: agent consumed comment and may include <code>agentResponse</code> metadata for the review UI sidebar.</li>
+      <li><code>comment.resolved</code>: comment closed, with resolution note and optional agent response summary.</li>
+      <li><code>comment.released</code>: claim released or lease expired.</li>
+      <li><code>plan.version.registered</code>: agent uploaded a new plan version.</li>
+      <li><code>heartbeat</code>: every 15 seconds with <code>{ latestSequence, serverTime }</code>.</li>
+    </ul>
+
+    <h3>Conversation bridge host contract</h3>
+    <p>The daemon and CLI expose a host-neutral bridge; they do not directly control proprietary chat UIs. <code>plan-review watch --format browser-comment</code> prints one <code>browser.comment.v1</code> envelope per pending comment. <code>plan-review watch --conversation-out ~/.plan-reviewer/host-bridge/inbox.ndjson</code> appends the same envelopes to a durable file for Codex/Claude/Pi host adapters. Host adapters are responsible for inserting that envelope into the active conversation. The MVP includes a serializer/parser and a fixture adapter test; if a host lacks an active-thread injection API, the adapter must fail with an actionable message and leave the comment pending.</p>
+
+    <h3>CLI output contracts</h3>
+    <ul>
+      <li><code>plan-review register path.html --json</code> prints the register response JSON and exits 0. Human mode prints <code>Plan ID</code>, <code>Index URL</code>, <code>Review URL</code>, and <code>Watch command</code>. Registration uploads or references relative image assets found in the plan.</li>
+      <li><code>plan-review index --json</code> prints the <code>GET /api/plans</code> response JSON. Human mode prints the index URL and a compact table of registered plans.</li>
+      <li><code>plan-review watch plan_123 --json</code> opens the SSE watch endpoint and prints one newline-delimited JSON event per line, reconnecting with saved sequence state. <code>--mode queue</code> prints only queue-relevant comment events, <code>--format browser-comment</code> prints the <code>conversationPayload</code> envelope, <code>--conversation-out &lt;path&gt;</code> appends those envelopes to a durable NDJSON host-bridge inbox, <code>--once</code> exits after the first matching event or timeout, and <code>--timeout &lt;ms&gt;</code> exits non-zero when no event arrives in time. If SSE is unavailable, 10-second REST polling against <code>/api/plans/:planId/events/poll</code> emits the same event objects with <code>"source":"poll"</code>; SSE events use <code>"source":"sse"</code>.</li>
+      <li><code>plan-review queue claim plan_123 --all --json</code> maps to <code>POST /api/plans/:planId/comments/claim</code> with <code>{ "mode": "bulk" }</code>, prints the claim response JSON, and exits 0 when zero or more comments are claimed. <code>--one</code> maps to <code>{ "mode": "one" }</code>; <code>--ids cmt_1,cmt_2</code> maps to <code>{ "mode": "selected", "commentIds": [...] }</code>.</li>
+      <li><code>plan-review ack cmt_123 --claim claim_123 --json</code> and <code>plan-review resolve cmt_123 --json</code> print their endpoint response JSON and are idempotent. Agent ack without <code>--claim</code> exits non-zero and prints the <code>claim_required</code> next action.</li>
+    </ul>
+  </section>
+
+  <section id="acceptance">
+    <h2>Acceptance criteria</h2>
+    <ol>
+      <li>Homebrew installs the daemon/CLI from this repo checkout as a local tap with <code>brew tap local/ai-configs &lt;repo-checkout-path&gt;</code> and <code>brew install local/ai-configs/plan-reviewer</code>, and <code>brew services start plan-reviewer</code> runs it persistently through launchctl on <code>0.0.0.0:4317</code> by default.</li>
+      <li>Agents can register an HTML plan from <code>thoughts/plans</code> via CLI and REST, receiving a stable plan ID, index URL, and review URL.</li>
+      <li>The index at <code>GET /</code> lists registered plans across repos with search/filtering, latest metadata, status counts, and links to open/comment on each plan.</li>
+      <li>The review URL renders the plan in a dark-compatible review shell without executing arbitrary plan-authored JavaScript.</li>
+      <li>Reviewers can select a DOM element/range or image/image region in the rendered plan, write a comment, and see an anchored marker, selected-region highlight, comment composer, and sidebar entry matching the UX in <a href="#review-ux-loop">Review UX and agent response loop</a>.</li>
+      <li>Each comment captures enough context for an agent to locate the affected plan content without looking at the browser: selectors, DOM path, heading path, quote, coordinates, marker screenshot, trimmed HTML/text context, and image coordinates/assets for image comments.</li>
+      <li>Images render from safe copied assets or safe data/blob URLs, support zoom/pan in a popover/lightbox, and support whole-image, point, and rectangle comments.</li>
+      <li>Agents can monitor comments near-real-time through a documented open SSE watch connection, receive a <code>browser.comment.v1</code> payload through stdout or a host-bridge NDJSON inbox for active chat insertion, and recover missed events through sequence replay or the documented REST polling fallback. WebSockets are not required for MVP.</li>
+      <li>Multiple comments queue durably. Agents can claim one comment, selected comments, or all pending comments for a single plan; repo-wide processing uses <code>GET /api/agent/queue?repoKey=...</code> followed by per-plan grouped claims.</li>
+      <li>Unacked claimed comments return to pending after a lease timeout; duplicate delivery is safe because ack is idempotent.</li>
+      <li>After claiming the comment and responding in the main conversation through a host adapter, an agent can ack or resolve the comment with response summary, changed files, run metadata, and optional commit SHA; the review UI shows that metadata on the anchored marker/sidebar entry.</li>
+      <li>CLI and REST expose equivalent registration, queue, claim, ack, resolve, and watch capabilities.</li>
+      <li>Errors for ambiguous repo inference, invalid HTML, missing image assets, unavailable service, and stale anchors include exact next steps.</li>
+      <li>Docs explain how agents should generate HTML plans with stable IDs and how to register/watch them.</li>
+    </ol>
+  </section>
+
+  <section id="bdd">
+    <h2>BDD scenarios</h2>
+    <h3>B1 - Golden-path registration</h3>
+    <p><strong>Given</strong> the Homebrew service is running through launchctl on <code>0.0.0.0:4317</code><br />
+    <strong>And</strong> an agent is in a git repo with <code>thoughts/plans/service-plan.html</code><br />
+    <strong>When</strong> it runs <code>plan-review register thoughts/plans/service-plan.html</code><br />
+    <strong>Then</strong> the CLI infers repo/branch/commit/path, uploads the plan and relative image assets, prints the index URL, prints a review URL, and prints the matching watch command.</p>
+
+    <h3>B2 - DOM-anchored comment creation</h3>
+    <p><strong>Given</strong> a reviewer opens the service index and chooses a plan<br />
+    <strong>When</strong> they select a phase card and submit a comment<br />
+    <strong>Then</strong> the service persists the comment with multiple selectors and displays the selected-region outline, marker, composer result, and sidebar entry anchored to the selected element.</p>
+
+    <h3>B3 - Agent wake-up stream and conversation payload</h3>
+    <p><strong>Given</strong> an agent is running <code>plan-review watch plan_123 --mode queue</code><br />
+    <strong>When</strong> a reviewer creates a comment<br />
+    <strong>Then</strong> the CLI receives a <code>comment.created</code> event within the p95 under-1-second local stream latency target and prints structured JSON with <code>conversationPayload.type = "browser.comment.v1"</code> suitable for a host adapter to append the browser comment to the active agent conversation.</p>
+
+    <h3>B4 - Bulk processing</h3>
+    <p><strong>Given</strong> five pending comments exist for a plan<br />
+    <strong>When</strong> the agent runs <code>plan-review queue claim plan_123 --all</code><br />
+    <strong>Then</strong> the service marks all five as claimed by that agent lease and returns them in deterministic sequence order.</p>
+
+    <h3>B5 - Disconnect recovery</h3>
+    <p><strong>Given</strong> an agent stream disconnects after event sequence 10<br />
+    <strong>When</strong> it reconnects with <code>Last-Event-ID: 10</code> or CLI state containing sequence 10<br />
+    <strong>Then</strong> the service replays later events and the agent does not lose comments.</p>
+
+    <h3>B6 - Lease expiry</h3>
+    <p><strong>Given</strong> an agent claims a comment but never acks it<br />
+    <strong>When</strong> the 5-minute claim lease expires<br />
+    <strong>Then</strong> the comment returns to pending and a future queue claim can receive it again.</p>
+
+    <h3>B7 - Stale anchor after plan update</h3>
+    <p><strong>Given</strong> a comment was anchored to an older plan version<br />
+    <strong>When</strong> the agent registers a newer version where the exact DOM node no longer exists<br />
+    <strong>Then</strong> the UI shows the comment as stale/unmapped and still exposes the original captured context to the agent.</p>
+
+    <h3>B8 - Fail-closed unsafe HTML</h3>
+    <p><strong>Given</strong> a plan contains inline scripts or external active content<br />
+    <strong>When</strong> the service prepares the review render<br />
+    <strong>Then</strong> it blocks arbitrary execution by default and reports which content was blocked or why rendering failed.</p>
+
+    <h3>B9 - Image zoom and image-region comment</h3>
+    <p><strong>Given</strong> a registered plan includes a relative image asset<br />
+    <strong>When</strong> a reviewer clicks the image, zooms in, selects a rectangle, and submits a comment<br />
+    <strong>Then</strong> the service stores an image comment with image asset identity, natural dimensions, normalized rectangle coordinates, zoom state, and surrounding DOM context.</p>
+
+    <h3>B10 - Browsable multi-repo index</h3>
+    <p><strong>Given</strong> plans from two repos have been registered<br />
+    <strong>When</strong> a reviewer opens <code>http://&lt;host&gt;:4317/</code><br />
+    <strong>Then</strong> the index groups plans by repo, shows latest version and comment counts, supports filtering, and links to each review page.</p>
+
+    <h3>B11 - Agent response reflected in review UI</h3>
+    <p><strong>Given</strong> a browser comment has been surfaced in the active agent conversation and claimed with <code>plan-review queue claim plan_123 --ids cmt_123 --json</code><br />
+    <strong>When</strong> the agent updates the plan and calls <code>plan-review ack cmt_123 --claim claim_123 --note "handled in plan update" --json</code> with response metadata<br />
+    <strong>Then</strong> the main conversation contains the agent response, and the review UI shows the marker/sidebar item as acknowledged with the response summary, changed files, run metadata, and optional commit SHA.</p>
+  </section>
+
+  <section id="phases">
+    <h2>Phase-by-phase execution plan</h2>
+
+    <section id="phase-p1">
+      <h3>Phase 1 - Bootstrap package, Homebrew, and launchctl service</h3>
+      <h4>End State</h4>
+      <p><code>tools/plan-reviewer</code> contains a buildable TypeScript CLI/API skeleton, and this repo contains Homebrew/launchctl install wiring for a persistent daemon that defaults to <code>0.0.0.0:4317</code>.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Schema tests for plan registration, plan index, DOM/image comment anchors, queue claim, ack, and SSE event payloads.</li>
+        <li>CLI argument parsing tests for <code>serve</code>, <code>register</code>, <code>index</code>, <code>watch</code>, <code>queue claim</code>, <code>ack</code>, and <code>resolve</code>.</li>
+        <li>Install tests or fixture checks for <code>Formula/plan-reviewer.rb</code>, asserting service label, <code>keep_alive true</code>, default host <code>0.0.0.0</code>, port <code>4317</code>, database path, and log paths.</li>
+        <li>Dependency smoke tests that import Fastify, Zod, better-sqlite3, parse5, sanitize-html, commander, <code>@washi-ui/core</code>, <code>@medv/finder</code>, <code>html2canvas</code>, and Playwright from the package.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Create <code>tools/plan-reviewer/package.json</code>, <code>tsconfig.json</code>, source layout, Bun lockfile, and Node test wiring.</li>
+        <li>Install and wire the locked dependencies: Fastify, Zod, better-sqlite3, parse5, sanitize-html, commander, <code>@washi-ui/core</code>, <code>@medv/finder</code>, and Playwright.</li>
+        <li>Add package scripts for <code>test</code>, <code>test:e2e</code>, <code>test:fixtures</code>, <code>build</code>, and <code>dev</code>, runnable via <code>bun run</code>.</li>
+        <li>Define shared TypeScript schemas and OpenAPI-compatible route contracts for every endpoint in this plan.</li>
+        <li>Add a minimal health endpoint, config resolution, CLI <code>--help</code>, and <code>serve</code> defaults for <code>0.0.0.0:4317</code>.</li>
+        <li>Add <code>Formula/plan-reviewer.rb</code> with a Homebrew service block matching the locked persistent-install contract; include uninstall/caveat text for stopping the service and deleting <code>~/.plan-reviewer</code> data manually if desired.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/**</code></li><li><code>Formula/plan-reviewer.rb</code></li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun install
+bun run test
+bun run build
+node dist/bin/plan-review.js --help
+cd ../..
+brew tap local/ai-configs &lt;repo-checkout-path&gt;
+brew install local/ai-configs/plan-reviewer
+brew services start plan-reviewer
+brew services list | grep plan-reviewer
+brew services stop plan-reviewer</code></pre>
+    </section>
+
+    <section id="phase-p2">
+      <h3>Phase 2 - Register plans and build browsable index</h3>
+      <h4>End State</h4>
+      <p>An agent can register a local HTML plan with image assets, the service persists versioned metadata/content, the index lists registered plans across repos, and the review shell renders selected plans safely.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Integration test for unauthenticated <code>POST /api/plans/register</code> idempotent update behavior.</li>
+        <li>Index tests for <code>GET /</code> and <code>GET /api/plans</code> grouping by repo, filtering, sorting, latest metadata, and comment-count badges.</li>
+        <li>Renderer tests for blocking active content, applying iframe/CSP metadata, copying safe relative image assets, reporting missing images, and preserving readable plan structure.</li>
+        <li>CLI test for service URL config resolution, git metadata inference, image asset discovery, and ambiguous repo failure.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Implement SQLite migrations for repos, plans, versions, plan assets, comments, comment events, claims, and consumer state.</li>
+        <li>Implement CLI registration with service discovery, git metadata inference, relative image asset discovery, and explicit overrides.</li>
+        <li>Store uploaded plan content by hash, copy safe image assets by content hash, and create a sanitized render artifact with service-owned metadata and stable node IDs.</li>
+        <li>Serve <code>/</code> plan index, <code>/api/plans</code> JSON index, <code>/assets/:assetId</code> image assets, and <code>/p/:planId</code> review shell plus sandboxed plan iframe.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/src/server/**</code></li><li><code>tools/plan-reviewer/src/cli/**</code></li><li><code>tools/plan-reviewer/src/storage/**</code></li><li><code>tools/plan-reviewer/src/render/**</code></li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test
+bun run build
+# Start this with the process tool, then run register/index checks in a separate shell; kill the process after verification:
+node dist/bin/plan-review.js serve --db /tmp/plan-reviewer.sqlite --host 0.0.0.0 --port 4317
+node dist/bin/plan-review.js register ../../thoughts/plans/html-plan-review-service.html --url http://127.0.0.1:4317 --json
+node dist/bin/plan-review.js index --url http://127.0.0.1:4317 --json
+curl -fsS http://127.0.0.1:4317/ &gt;/tmp/plan-reviewer-index.html</code></pre>
+    </section>
+
+    <section id="phase-p3">
+      <h3>Phase 3 - Add DOM and image annotation UI</h3>
+      <h4>End State</h4>
+      <p>Reviewers can click/select plan DOM elements and images, zoom/pan images in a lightbox, create comments on DOM nodes or image regions, and see anchored markers/sidebar entries.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Browser/E2E test opens the index, navigates to a registered plan, selects an element, submits a comment, and verifies persisted DOM anchor fields.</li>
+        <li>Browser/E2E test selects a text range and verifies <code>anchorType: "text_range"</code>, start/end offsets, selected text, and client rects.</li>
+        <li>Browser/E2E test opens an image zoom lightbox, zooms/pans, selects a point and rectangle, submits comments, and verifies persisted image anchor fields.</li>
+        <li>Browser/E2E test verifies the selected-region outline, numbered marker, comment composer, sidebar entry, and marker screenshot asset match the UX contract in <a href="#review-ux-loop">Review UX and agent response loop</a>.</li>
+        <li>Browser/E2E test asserts parent-owned iframe selection under <code>sandbox="allow-same-origin"</code>: <code>elementFromPoint</code> coordinate translation, iframe scroll/resize marker reflow, and no iframe script execution.</li>
+        <li>Unit tests for selector generation, heading-path extraction, text quote capture, image-coordinate normalization, and context truncation.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Implement review shell UI with <code>@washi-ui/core</code> mounted over the sandboxed iframe from the parent document; no script runs inside the iframe.</li>
+        <li>Generate stable <code>data-plan-node-id</code> values from existing IDs or heading/content hashes with deterministic collision suffixes.</li>
+        <li>Use parent-owned iframe DOM access plus finder to capture CSS selector, DOM path, XPath-like path, heading path, quote, rect, viewport, text, text-range offsets, and trimmed outerHTML.</li>
+        <li>Add image affordances: image hover/click target, zoom lightbox/popover, fit/zoom/pan controls, whole-image comment, point comment, and rectangle comment.</li>
+        <li>Use parent-owned <code>html2canvas</code> capture for marker screenshots; persist DOM/text-range/image comments, screenshot assets, selected-region highlights, numbered sidebar/marker entries, and status labels.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/src/client/**</code></li><li><code>tools/plan-reviewer/src/anchors/**</code></li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test
+bun run test:e2e -- --grep "dom annotation|image annotation|plan index"</code></pre>
+    </section>
+
+    <section id="phase-p4">
+      <h3>Phase 4 - Implement comment queue, streaming, and CLI watch</h3>
+      <h4>End State</h4>
+      <p>Agents receive near-real-time comment notifications and can recover missed events.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Integration test for the SSE watch endpoint, monotonic event sequence creation, and <code>Last-Event-ID</code> replay.</li>
+        <li>CLI watch test using a test server that emits comment events over SSE.</li>
+        <li>Conversation payload contract test asserting comment events include title, summary, selected text, review URL, marker number, selector, and screenshot asset reference.</li>
+        <li>Host-bridge inbox test asserting <code>plan-review watch --conversation-out</code> appends valid <code>browser.comment.v1</code> NDJSON envelopes without losing sequence state.</li>
+        <li>Local latency measurement test that emits 50 committed comments through a fixture server and asserts p95 commit-to-watch delivery under 1000 ms on localhost.</li>
+        <li>Fallback polling test for <code>GET /api/plans/:planId/events/poll</code> when SSE fails.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Add comment event log, SSE watch endpoint, heartbeat handling, <code>Last-Event-ID</code> replay, and REST polling fallback endpoint.</li>
+        <li>Implement CLI <code>watch</code> with reconnect, sequence persistence, JSON output, and human-readable output modes.</li>
+        <li>Build the <code>browser.comment.v1</code> conversation bridge payload and <code>--conversation-out</code> durable NDJSON handoff for each comment event so host clients can insert the browser comment into the active agent thread.</li>
+        <li>Add <code>GET /api/agent/queue</code> for pending queue snapshots across repos/plans.</li>
+        <li>Make reviewer UI subscribe to the same event stream for status changes.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/src/server/events*</code></li><li><code>tools/plan-reviewer/src/cli/watch*</code></li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test
+bun run test:fixtures -- --scenario seeded-comment-stream
+bun run test:fixtures -- --scenario sse-latency --samples 50 --p95-ms 1000
+node dist/bin/plan-review.js watch &lt;plan-id&gt; --url http://127.0.0.1:4317 --json --once --timeout 5000</code></pre>
+    </section>
+
+    <section id="phase-p5">
+      <h3>Phase 5 - Add agent action lifecycle and bulk processing</h3>
+      <h4>End State</h4>
+      <p>Agents can claim, ack, resolve, and bulk-process comments with durable lease semantics.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Queue tests for single claim, selected claim, bulk claim, idempotent ack, resolve, and lease expiry.</li>
+        <li>Concurrency test proving two agents cannot hold the same active claim simultaneously.</li>
+        <li>Ack/resolve tests proving ack requires an active claim and agent response metadata is stored and returned to the review UI.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Add claim lease fields and queue status transitions.</li>
+        <li>Implement REST endpoints and CLI commands for claim/ack/resolve/release.</li>
+        <li>Display queue/agent status in review UI.</li>
+        <li>Attach optional agent action metadata: run ID, handoff URL/path, commit SHA, changed files, response summary, or resolution note.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/src/queue/**</code></li><li><code>tools/plan-reviewer/src/cli/queue*</code></li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test
+bun run test:fixtures -- --scenario queue-claim-ack
+node dist/bin/plan-review.js queue claim &lt;plan-id&gt; --url http://127.0.0.1:4317 --all --json
+node dist/bin/plan-review.js ack &lt;comment-id&gt; --url http://127.0.0.1:4317 --claim &lt;claim-id&gt; --note "handled in plan update" --json</code></pre>
+    </section>
+
+    <section id="phase-p6">
+      <h3>Phase 6 - Dogfood docs and future security seams</h3>
+      <h4>End State</h4>
+      <p>The no-auth MVP is easy to install with Homebrew, runs persistently via launchctl, is documented for agents that generate HTML/image-rich plans, and clearly marks security hardening as future work.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Install docs smoke test or scripted examples for Homebrew install, <code>brew services start</code>, register, index, review, image comment, and watch workflow.</li>
+        <li>Error-guidance tests for invalid HTML, missing image assets, unavailable service, stale anchors, and ambiguous repo metadata.</li>
+        <li>Startup-output test that warns when binding to <code>0.0.0.0</code> without authentication.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Document Homebrew installation, launchctl persistence, default bind address, local-network exposure, and how to override host/port/db path.</li>
+        <li>Document recommended HTML plan conventions: stable IDs, semantic sections, dark mode, relative image assets, image dimensions/alt text, no required inline JS, and review-friendly components.</li>
+        <li>Add an agent prompt snippet showing how to register a plan, browse the index, and watch for comments.</li>
+        <li>Add explicit future-security seams in docs/code comments without implementing auth: where bearer tokens, private shares, or network restrictions would later plug in.</li>
+        <li>Dogfood the full flow with this plan and at least one image-rich fixture plan; record low-risk follow-ups separately instead of expanding MVP scope.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/README.md</code></li><li>Optional prompt/skill docs if the workflow is wired into Pi/Claude/Codex after MVP validation.</li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test
+bun run build
+# plus manual dogfood: register this plan, open the index, create DOM/text/image comments, bridge one browser comment into the active agent conversation, claim/ack it from CLI</code></pre>
+    </section>
+  </section>
+
+  <section id="verification-strategy">
+    <h2>Verification strategy</h2>
+    <ul>
+      <li>Unit tests for schema validation, selector extraction, queue state transitions, and error text.</li>
+      <li>API integration tests against temporary SQLite databases.</li>
+      <li>CLI tests using local test servers and fixture repos, with parity assertions that compare CLI output JSON to direct REST responses for register, index, claim, ack, resolve, and queue list.</li>
+      <li>Browser/E2E tests for plan index, DOM/text-range selection visual states, image display, image zoom/pan, image-region comments, markers, composers, marker screenshots, sidebar entries, and no-scripts iframe selection behavior.</li>
+      <li>Homebrew/launchctl checks for default <code>0.0.0.0:4317</code> service configuration.</li>
+      <li>Manual dogfood: register this HTML plan plus an image-rich fixture, annotate at least one DOM section, one text range, and one image, watch the SSE stream, surface the browser comment through the host-bridge inbox into the active agent conversation, claim and ack the comments, and verify the review UI shows the agent response summary.</li>
+    </ul>
+
+    <h3>Test coverage matrix</h3>
+    <table>
+      <thead><tr><th>Acceptance / scenario</th><th>Planned evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Install/service + B1</td><td>Homebrew formula/plist checks plus launchctl smoke verifying default <code>0.0.0.0:4317</code>.</td></tr>
+        <tr><td>Registration/index + B1/B10</td><td>CLI + API registration integration tests with git metadata inference and index rendering/filtering tests.</td></tr>
+        <tr><td>Safe render + B8</td><td>Renderer/sandbox tests plus browser smoke test.</td></tr>
+        <tr><td>DOM/text comments + B2</td><td>E2E DOM and text-range annotation tests, visual-state assertions for outline/marker/composer/sidebar/screenshot, and selector/context unit tests.</td></tr>
+        <tr><td>Image comments + B9</td><td>E2E image display, zoom, pan, point/rectangle comment tests and normalized-coordinate unit tests.</td></tr>
+        <tr><td>Realtime + B3/B5</td><td>SSE replay integration tests, CLI watch reconnect tests, localhost p95 latency fixture, host-bridge inbox tests, and conversation payload contract tests.</td></tr>
+        <tr><td>Queue + B4/B6/B11</td><td>Queue claim/ack/lease/concurrency tests plus ack/resolve response metadata tests.</td></tr>
+        <tr><td>CLI/REST parity</td><td>Parity tests that exercise equivalent CLI and REST paths.</td></tr>
+        <tr><td>Error guidance</td><td>Error-guidance assertions for representative failures.</td></tr>
+        <tr><td>Docs/dogfood</td><td>README plus dogfood registration of this plan and an image-rich fixture.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="delivery-order">
+    <h2>Delivery order</h2>
+    <ol>
+      <li>Package skeleton, Homebrew formula, and launchctl service.</li>
+      <li>Registration, storage, plan index, image asset handling, and safe rendering.</li>
+      <li>Reviewer UI with DOM and image anchoring, including selection visuals, composer, marker, and sidebar states.</li>
+      <li>SSE event stream, CLI watch, and conversation bridge payload for host agent clients.</li>
+      <li>Queue claim/ack/resolve lifecycle with agent response metadata shown in the review UI.</li>
+      <li>Docs, dogfood workflow, and future security seams.</li>
+    </ol>
+  </section>
+
+  <section id="non-goals">
+    <h2>Non-goals</h2>
+    <ul>
+      <li>General-purpose website QA or bug reporting outside registered HTML plan files.</li>
+      <li>Realtime collaborative editing of the plan document.</li>
+      <li>A standalone chat product inside the review service; agent replies happen in the host conversation and are summarized back into the review UI.</li>
+      <li>Replacing existing markdown inline plan review commands in Phase 1.</li>
+      <li>Internet-hosted public SaaS plan hosting; the MVP is a local-network daemon and intentionally has no auth.</li>
+      <li>Bearer tokens, private share links, SSO, OAuth, or enterprise administration in the initial release.</li>
+      <li>Guaranteeing exactly-once event delivery; the queue contract is at-least-once with idempotent ack.</li>
+      <li>Perfect automatic remapping of anchors across arbitrary plan rewrites.</li>
+    </ul>
+  </section>
+
+  <section id="risks">
+    <h2>Risks and mitigations</h2>
+    <table>
+      <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Unsafe plan HTML executes arbitrary code.</td><td>Sandbox iframe, CSP, block plan-authored scripts by default, inject only service overlay.</td></tr>
+        <tr><td>DOM anchors break after plan regeneration.</td><td>Capture multiple selectors and original context; show stale/unmapped status instead of pretending confidence.</td></tr>
+        <tr><td>Agents miss comments while offline.</td><td>Durable event log, sequence replay, REST queue snapshots, claim leases.</td></tr>
+        <tr><td>No-auth service is exposed on the network.</td><td>Keep this intentional for MVP, bind to <code>0.0.0.0</code> by default per product requirement, print a startup warning, and document host override for local-only use.</td></tr>
+        <tr><td>Reviewers accidentally comment on decorative markup.</td><td>Overlay should bubble to nearest semantic element and display selected context before submit.</td></tr>
+        <tr><td>Browser comments are disconnected from the active agent conversation.</td><td>Every comment event includes a conversation bridge payload; ack/resolve stores response metadata that the review UI can display even though the full reply lives in chat.</td></tr>
+        <tr><td>Image anchors drift after resize or reload.</td><td>Store natural dimensions plus normalized point/rectangle coordinates and recompute display positions from current rendered dimensions.</td></tr>
+        <tr><td>CLI and REST drift.</td><td>Generate CLI client behavior from shared schemas/contracts and test both surfaces against the same fixtures.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="dependencies">
+    <h2>Locked dependencies</h2>
+    <ul>
+      <li><strong>HTTP:</strong> Fastify.</li>
+      <li><strong>Schema validation:</strong> Zod.</li>
+      <li><strong>SQLite:</strong> better-sqlite3 behind a storage repository interface.</li>
+      <li><strong>HTML parsing/sanitization:</strong> parse5 plus sanitize-html.</li>
+      <li><strong>CLI:</strong> commander, matching existing <code>tools/ltui</code>.</li>
+      <li><strong>Browser testing:</strong> Playwright for UI selection flows.</li>
+      <li><strong>Overlay/annotation:</strong> use <code>@washi-ui/core</code> for iframe pin/comment overlay mechanics and <code>@medv/finder</code> for robust CSS selector generation. Use <code>html2canvas</code> from the parent review shell for marker screenshots. Implement only the service-specific adapter, anchor enrichment, and API wiring under <code>src/client</code>.</li>
+    </ul>
+    <h3>Overlay dependency evaluation</h3>
+    <table>
+      <thead><tr><th>Candidate</th><th>Decision</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr><td><code>@washi-ui/core</code></td><td>Use</td><td>Verified with <code>npm view @washi-ui/core</code> as a published framework-agnostic HTML commenting engine; pair with service anchor enrichment for agent context.</td></tr>
+        <tr><td><code>@medv/finder</code></td><td>Use</td><td>Verified with <code>npm view @medv/finder</code>; focused maintained CSS selector generator, avoiding custom selector-generation logic.</td></tr>
+        <tr><td><code>html2canvas</code></td><td>Use</td><td>Verified with <code>npm view html2canvas</code>; supports parent-owned screenshot capture without executing plan-authored iframe scripts.</td></tr>
+        <tr><td><code>agent-ui-annotation</code></td><td>Do not use for MVP</td><td>Verified published package, but it assumes a web-page annotation toolbar model rather than the no-scripts parent-owned iframe contract.</td></tr>
+        <tr><td><code>@vybe-adk/dom-element-selector</code></td><td>Do not use for MVP</td><td>Verified published package, but it targets same-tree React hook selection rather than a parent-controlled sandboxed iframe review shell.</td></tr>
+        <tr><td><code>@kendew-agency/react-feedback-layer</code></td><td>Do not use for MVP</td><td>Verified published package; comment lifecycle UI is useful, but it does not provide the iframe anchoring and multi-selector payload required for agent wake-up context.</td></tr>
+      </tbody>
+    </table>
+    <p>Execution may add small support libraries only when they do not change these architecture decisions and are documented in the implementation notes.</p>
+  </section>
+
+  <section id="decisions-log">
+    <h2>Decisions / Deviations log</h2>
+    <ul>
+      <li>2026-05-30: Chose HTML plan artifact for this plan to dogfood the requested plan format and comply with dark-mode HTML plan guidance.</li>
+      <li>2026-05-30: Chose SSE over WebSockets for MVP because comment notifications are primarily one-way server-to-agent/browser events, while writes remain simple REST calls.</li>
+      <li>2026-05-30: Chose SQLite for MVP storage to keep local/self-hosted dogfooding small while preserving a storage abstraction for a later hosted Postgres deployment.</li>
+      <li>2026-05-30: Locked at-least-once queue delivery with claim/ack/lease semantics instead of exactly-once delivery because it is simpler, recoverable, and agent-friendly.</li>
+      <li>2026-05-30: Integrated first Codex and Claude Code review blockers by locking dependencies, deployment/discovery, render safety policy, concrete API payloads, queue numerics, SSE replay semantics, claim precedence, CLI output shapes, and runnable verification gates.</li>
+      <li>2026-05-30: Integrated second Codex blockers by defining a no-scripts parent-owned iframe overlay contract, overlay dependency evaluation with <code>@washi-ui/core</code>/<code>@medv/finder</code> reuse, and Bun-based verification commands aligned with the existing tools package pattern.</li>
+      <li>2026-05-30: Superseded the reviewed auth-heavy MVP after user clarification: initial service is now no-auth, Homebrew-installed from this repo, launchctl-persistent, bound to <code>0.0.0.0</code> by default, index-first, and includes image display, zoom, and image-region comments.</li>
+      <li>2026-05-31: Added the review UX visual contract and main-conversation bridge so browser comments can wake the agent, be answered in the active chat through a host adapter, and reflect response metadata back in the review UI.</li>
+      <li>2026-05-31: Integrated Codex/Claude execution-readiness blockers by specifying Homebrew formula layout, claim-required ack semantics, text-range anchors, marker screenshot storage, reviewer identity defaulting, anchor-state mapping, host-bridge NDJSON handoff, CLI/API flag mappings, latency tests, and dependency verification evidence.</li>
+      <li>2026-05-31: Execution discovered Homebrew 5.1 rejects arbitrary local formula paths outside taps; the install contract was narrowed to a local tap install from this repo checkout while preserving the same formula and launchctl service behavior.</li>
+      <li>2026-05-31: Second-pass Codex and Claude reviews both returned <code>Execution-ready</code> with no blocking findings; only low-risk implementation notes remained.</li>
+      <li>2026-05-31: Third-pass Codex and Claude reviews after the agent watch contract update both returned <code>Execution-ready</code> with no blocking findings.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
