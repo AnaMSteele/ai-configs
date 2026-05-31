@@ -56,7 +56,7 @@
 </head>
 <body>
 <main>
-  <p class="badge">Status: draft plan for browser review</p>
+  <p class="badge">Status: implementation complete pending scoped reviews/PR</p>
   <h1 id="title">HTML Plan Reviewer Authoritative Source Sync</h1>
   <p class="muted">Make the repository plan file the single source of truth. The service may keep rendered/cached copies, but those copies must be derived from and refreshed from the authoritative file after registration.</p>
 
@@ -123,12 +123,12 @@
   <section id="phase-plan">
     <h2>Progress</h2>
     <ul>
-      <li id="phase-p1-contract"><input type="checkbox" /> P1: Lock source-sync contracts in schemas and tests</li>
-      <li id="phase-p2-storage"><input type="checkbox" /> P2: Persist authoritative source metadata and migrations</li>
-      <li id="phase-p3-watcher"><input type="checkbox" /> P3: Add debounced filesystem watcher and startup rehydration</li>
-      <li id="phase-p4-browser"><input type="checkbox" /> P4: Auto-refresh browser render on plan-version events</li>
-      <li id="phase-p5-cli"><input type="checkbox" /> P5: Update CLI/docs/skill for authoritative sync behavior</li>
-      <li id="phase-p6-verify"><input type="checkbox" /> P6: Run unit, fixture, and e2e verification</li>
+      <li id="phase-p1-contract"><input type="checkbox" checked /> P1: Lock source-sync contracts in schemas and tests</li>
+      <li id="phase-p2-storage"><input type="checkbox" checked /> P2: Persist authoritative source metadata and migrations</li>
+      <li id="phase-p3-watcher"><input type="checkbox" checked /> P3: Add debounced filesystem watcher and startup rehydration</li>
+      <li id="phase-p4-browser"><input type="checkbox" checked /> P4: Auto-refresh browser render on plan-version events</li>
+      <li id="phase-p5-cli"><input type="checkbox" checked /> P5: Update CLI/docs/skill for authoritative sync behavior</li>
+      <li id="phase-p6-verify"><input type="checkbox" checked /> P6: Run unit, fixture, and e2e verification</li>
     </ul>
   </section>
 

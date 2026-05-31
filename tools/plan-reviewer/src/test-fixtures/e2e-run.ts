@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { chromium, request } from 'playwright';
 import { createApp } from '../server/app.js';
 import { sha256 } from '../util.js';
@@ -101,15 +104,15 @@ try {
     await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
     await page.fill('#comment-body', 'Browser DOM annotation comment');
     await page.click('#submit-comment');
-    await page.waitForFunction(() => document.querySelectorAll('.marker').length > 0);
-    assert.equal(await page.locator('.marker').count(), 1);
-    assert.equal(await page.locator('.marker').first().evaluate(marker => marker.getAttribute('style')?.includes('NaN')), false);
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser DOM annotation comment'));
+    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length > 0);
+    assert.equal(await page.locator('.comment-anchor').count(), 1);
+    assert.equal(await page.locator('.comment-anchor').first().evaluate(marker => marker.getAttribute('style')?.includes('NaN')), false);
     assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 1);
-    const markerTopBeforeScroll = await page.locator('.marker').first().evaluate(marker => marker.getBoundingClientRect().top);
+    const markerTopBeforeScroll = await page.locator('.comment-anchor').first().evaluate(marker => marker.getBoundingClientRect().top);
     await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentWindow?.scrollTo(0, 120));
     await page.waitForFunction(
-      before => Math.abs((document.querySelector('.marker')?.getBoundingClientRect().top ?? before) - before) > 20,
+      before => Math.abs((document.querySelector('.comment-anchor')?.getBoundingClientRect().top ?? before) - before) > 20,
       markerTopBeforeScroll
     );
     await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentWindow?.scrollTo(0, 0));
@@ -163,9 +166,51 @@ try {
     assert.match(await page.locator('#comments').innerText(), /image · mapped/);
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
-    await page.waitForFunction(() => document.querySelectorAll('.marker').length >= 3);
+    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length >= 3);
   } finally {
     await browser.close();
+  }
+
+  const syncDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-e2e-sync-'));
+  const syncPath = path.join(syncDir, 'live-plan.html');
+  const syncHtmlV1 = '<!doctype html><html><body><main><section id="sync-target"><h1>Plan sync</h1><p>Source sync v1</p></section></main></body></html>';
+  fs.writeFileSync(syncPath, syncHtmlV1);
+  const syncStat = fs.statSync(syncPath);
+  const syncRegister = await context.post('/api/plans/register', {
+    data: {
+      repoKey: 'e2e-sync-repo',
+      repoName: 'e2e-sync',
+      rootPath: syncDir,
+      branch: 'main',
+      commitSha: 'e2e-sync',
+      planPath: 'live-plan.html',
+      slug: 'e2e-sync',
+      html: syncHtmlV1,
+      fileHash: sha256(syncHtmlV1),
+      sourcePath: syncPath,
+      sourceMtimeMs: syncStat.mtimeMs,
+      sourceSize: syncStat.size,
+      watchMode: 'filesystem',
+      updateMode: 'upsert'
+    }
+  });
+  assert.equal(syncRegister.ok(), true);
+  const syncRegistered = (await syncRegister.json()).data as { planId: string; versionId: string };
+  const syncBrowser = await chromium.launch({ headless: true });
+  try {
+    const syncPage = await syncBrowser.newPage();
+    await syncPage.goto(`${baseUrl}/p/${syncRegistered.planId}`);
+    await syncPage.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v1'));
+    const syncHtmlV2 = syncHtmlV1.replace('Source sync v1', 'Source sync v2');
+    fs.writeFileSync(syncPath, syncHtmlV2);
+    await syncPage.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v2'));
+    fs.rmSync(syncPath);
+    await syncPage.waitForFunction(() => document.querySelector<HTMLElement>('#sync-warning')?.hidden === false);
+    fs.writeFileSync(syncPath, syncHtmlV2);
+    await syncPage.waitForFunction(() => document.querySelector<HTMLElement>('#sync-warning')?.hidden === true);
+  } finally {
+    await syncBrowser.close();
+    fs.rmSync(syncDir, { recursive: true, force: true });
   }
 
   const comments = await context.get(`/api/plans/${registered.planId}/comments`);
@@ -193,7 +238,7 @@ try {
   assert.ok(assetBody.length > 100, `expected non-trivial marker screenshot, got ${assetBody.length} bytes`);
 
   await context.dispose();
-  console.log('e2e scenarios passed: plan index, dom annotation, image annotation');
+  console.log('e2e scenarios passed: plan index, dom annotation, image annotation, plan sync');
 } finally {
   await app.close();
 }

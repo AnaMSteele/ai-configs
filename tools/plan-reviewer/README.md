@@ -27,7 +27,15 @@ plan-review register thoughts/plans/my-plan.html --repo auto --branch auto --com
 plan-review index
 ```
 
-Open the printed review URL. The browser shell renders sanitized HTML in a no-script iframe and keeps the comment UI in the parent page. Selecting a DOM element opens the composer; image and text comments use the same comment API with `anchorType: "image"` or `anchorType: "text_range"`.
+Open the printed review URL. By default, registration live-links the local source file: the repo HTML file is authoritative, service blobs are derived cache/history, and later edits to the file sync into the latest rendered version automatically. Open review pages reload their iframe when a synced version is available.
+
+Use `--snapshot` only when you want a detached historical review that will not watch the source file:
+
+```bash
+plan-review register thoughts/plans/my-plan.html --snapshot
+```
+
+The browser shell renders sanitized HTML in a no-script iframe and keeps the comment UI in the parent page. Selecting a DOM element opens the composer; image and text comments use the same comment API with `anchorType: "image"` or `anchorType: "text_range"`. If the service cannot read a live-linked source file, it keeps serving the last good rendered version and exposes the sync failure in the API and sidebar.
 
 ## Agent Watch Contract
 
@@ -45,7 +53,7 @@ Accept: text/event-stream
 Last-Event-ID: <last-seen-sequence>
 ```
 
-SSE frames use `id: <sequence>`, `event: comment.created|comment.claimed|comment.acknowledged|comment.resolved|comment.released`, and JSON `data`. On reconnect, `Last-Event-ID` replays later events. Heartbeats are sent every 15 seconds. If SSE is unavailable, agents poll:
+SSE frames use `id: <sequence>`, `event: comment.created|comment.claimed|comment.acknowledged|comment.resolved|comment.released`, and JSON `data`. Non-queue event streams also include `plan.version.registered`, `plan.version.synced`, and `plan.sync.failed` for browser refresh/status updates. On reconnect, `Last-Event-ID` replays later events. Heartbeats are sent every 15 seconds. If SSE is unavailable, agents poll:
 
 ```http
 GET /api/plans/:planId/events/poll?afterSequence=<last-seen-sequence>&mode=queue

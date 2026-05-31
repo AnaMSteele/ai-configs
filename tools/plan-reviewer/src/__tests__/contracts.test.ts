@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import http from 'node:http';
 import { spawn, spawnSync } from 'node:child_process';
 import test from 'node:test';
@@ -18,6 +19,10 @@ import { domAnchor, registeredApp, sampleHtml, sampleRegisterPayload, tempDbPath
 test('schemas validate locked registration, comment, and claim contracts', () => {
   const register = registerPlanSchema.parse(sampleRegisterPayload());
   assert.equal(register.updateMode, 'upsert');
+  assert.throws(
+    () => registerPlanSchema.parse(sampleRegisterPayload({ watchMode: 'filesystem' })),
+    /sourcePath is required/
+  );
 
   const comment = createCommentSchema.parse({
     versionId: 'ver_1',
@@ -735,4 +740,317 @@ test('Homebrew formula locks the daemon service contract', () => {
   assert.match(formula, /error_log_path var\/"log\/plan-reviewer\.err\.log"/);
   assert.match(formula, /brew services stop plan-reviewer/);
   assert.match(formula, /rm -rf ~\/\.plan-reviewer/);
+});
+
+test('registration stores authoritative source metadata and version origin', async () => {
+  const app = createApp({ dbPath: tempDbPath('source-contract') });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-source-'));
+  const sourcePath = path.join(sourceDir, 'sample-plan.html');
+  const html = sampleHtml();
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  try {
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem'
+      })
+    });
+    assert.equal(first.statusCode, 200);
+    assert.equal(first.json().data.sourceSync.active, true);
+    const planId = first.json().data.planId;
+    const versionId = first.json().data.versionId;
+
+    const same = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem'
+      })
+    });
+    assert.equal(same.statusCode, 200);
+    assert.equal(same.json().data.planId, planId);
+    assert.equal(same.json().data.versionId, versionId);
+
+    const changedHtml = sampleHtml().replace('Register the plan.', 'Register and sync the plan.');
+    const changedStat = fs.statSync(sourcePath);
+    const changed = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        html: changedHtml,
+        fileHash: sha256(changedHtml),
+        sourcePath,
+        sourceMtimeMs: changedStat.mtimeMs,
+        sourceSize: changedStat.size,
+        watchMode: 'filesystem'
+      })
+    });
+    assert.equal(changed.statusCode, 200);
+    assert.equal(changed.json().data.planId, planId);
+    assert.notEqual(changed.json().data.versionId, versionId);
+
+    const meta = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(meta.json().data.plan.sourcePath, sourcePath);
+    assert.equal(meta.json().data.plan.watchMode, 'filesystem');
+    assert.equal(meta.json().data.plan.lastSyncStatus, 'synced');
+    assert.equal(meta.json().data.latestVersion.syncOrigin, 'manual_register');
+  } finally {
+    await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('registration reports failed source sync when API source path is unreadable', async () => {
+  const app = createApp({ dbPath: tempDbPath('source-register-failure') });
+  const sourcePath = path.join(os.tmpdir(), `plan-review-missing-${process.pid}.html`);
+  try {
+    fs.rmSync(sourcePath, { force: true });
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        sourcePath,
+        sourceMtimeMs: 0,
+        sourceSize: 0,
+        watchMode: 'filesystem'
+      })
+    });
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().data.sourceSync.active, false);
+    assert.equal(response.json().data.sourceSync.status, 'failed');
+    assert.match(response.json().data.sourceSync.error.message, /ENOENT|no such file/i);
+  } finally {
+    await app.close();
+  }
+});
+
+test('filesystem source recovery watcher syncs after startup read failure', async () => {
+  const dbPath = tempDbPath('source-recovery-watch');
+  const app = createApp({ dbPath });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-source-recovery-'));
+  const sourcePath = path.join(sourceDir, 'recovery-plan.html');
+  const html = '<!doctype html><html><body><main><p>Original</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for recovery sync');
+  };
+  let recoveryApp = app;
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'recovery-plan.html',
+        slug: 'recovery-plan',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    await app.close();
+
+    fs.rmSync(sourcePath);
+    recoveryApp = createApp({ dbPath });
+    await waitFor(async () => {
+      const current = await recoveryApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+      return current.json().data.plan.lastSyncStatus === 'failed';
+    });
+
+    const recoveredHtml = '<!doctype html><html><body><main><p>Recovered</p></main></body></html>';
+    fs.writeFileSync(sourcePath, recoveredHtml);
+    await waitFor(async () => {
+      const rendered = await recoveryApp.inject({ method: 'GET', url: `/render/${planId}` });
+      return rendered.body.includes('Recovered');
+    });
+    const recovered = await recoveryApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(recovered.json().data.plan.lastSyncStatus, 'synced');
+  } finally {
+    await recoveryApp.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('filesystem source watches missing relative image creation', async () => {
+  const app = createApp({ dbPath: tempDbPath('source-missing-asset-watch') });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-missing-asset-watch-'));
+  const sourcePath = path.join(sourceDir, 'asset-plan.html');
+  const imagePath = path.join(sourceDir, 'diagram.png');
+  const html = '<!doctype html><html><body><main><img src="./diagram.png" alt="Diagram"></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for missing asset sync');
+  };
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'asset-plan.html',
+        slug: 'asset-plan',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: [{ sourceUrl: './diagram.png', absolutePath: imagePath }]
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    const missingRendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+    assert.match(missingRendered.body, /Missing image: \.\/diagram\.png/);
+
+    fs.writeFileSync(imagePath, Buffer.from('created-image'));
+    const createdHash = sha256(Buffer.from('created-image'));
+    await waitFor(async () => {
+      const rendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+      return rendered.body.includes(`/assets/${createdHash}`);
+    });
+  } finally {
+    await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('filesystem source watches relative image changes even when HTML is unchanged', async () => {
+  const app = createApp({ dbPath: tempDbPath('source-asset-watch') });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-asset-watch-'));
+  const sourcePath = path.join(sourceDir, 'asset-plan.html');
+  const imagePath = path.join(sourceDir, 'diagram.png');
+  const html = '<!doctype html><html><body><main><img src="./diagram.png" alt="Diagram"></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  fs.writeFileSync(imagePath, Buffer.from('first-image'));
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for asset sync');
+  };
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'asset-plan.html',
+        slug: 'asset-plan',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: [{ sourceUrl: './diagram.png', absolutePath: imagePath, bytesBase64: Buffer.from('first-image').toString('base64') }]
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    const firstRendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+    const firstHash = sha256(Buffer.from('first-image'));
+    const secondHash = sha256(Buffer.from('second-image'));
+    assert.match(firstRendered.body, new RegExp(`/assets/${firstHash}`));
+
+    fs.writeFileSync(imagePath, Buffer.from('second-image'));
+    await waitFor(async () => {
+      const rendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+      return rendered.body.includes(`/assets/${secondHash}`);
+    });
+    const synced = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(synced.json().data.latestVersion.syncOrigin, 'filesystem_watch');
+
+    fs.rmSync(imagePath);
+    await waitFor(async () => {
+      const rendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+      return /Missing image: \.\/diagram\.png/.test(rendered.body);
+    });
+    const deleted = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(deleted.json().data.plan.lastSyncStatus, 'synced');
+  } finally {
+    await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('filesystem source changes create a synced latest version and failures keep last good render', async () => {
+  const app = createApp({ dbPath: tempDbPath('source-watch') });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-watch-'));
+  const sourcePath = path.join(sourceDir, 'sample-plan.html');
+  fs.writeFileSync(sourcePath, sampleHtml());
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for source sync');
+  };
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem'
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    const firstVersionId = registered.json().data.versionId;
+
+    const changedHtml = sampleHtml().replace('Reviewers can select this section.', 'Reviewers see live synced content.');
+    fs.writeFileSync(sourcePath, changedHtml);
+    await waitFor(async () => {
+      const meta = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+      return meta.json().data.latestVersion.id !== firstVersionId;
+    });
+    const synced = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(synced.json().data.latestVersion.syncOrigin, 'filesystem_watch');
+    const rendered = await app.inject({ method: 'GET', url: `/render/${planId}?versionId=${synced.json().data.latestVersion.id}` });
+    assert.match(rendered.body, /Reviewers see live synced content/);
+
+    fs.rmSync(sourcePath);
+    await waitFor(async () => {
+      const meta = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+      return meta.json().data.plan.lastSyncStatus === 'failed';
+    });
+    const failed = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.match(failed.json().data.plan.lastSyncError.message, /missing|ENOENT|Source file/i);
+    const lastGood = await app.inject({ method: 'GET', url: `/render/${planId}` });
+    assert.match(lastGood.body, /Reviewers see live synced content/);
+  } finally {
+    await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
 });

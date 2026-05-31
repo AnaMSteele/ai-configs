@@ -11,6 +11,8 @@ export const eventTypeSchema = z.enum([
   'comment.resolved',
   'comment.released',
   'plan.version.registered',
+  'plan.version.synced',
+  'plan.sync.failed',
   'heartbeat'
 ]);
 
@@ -34,12 +36,24 @@ export const registerPlanSchema = z.object({
   slug: z.string().optional(),
   html: z.string().min(1),
   fileHash: z.string().min(1),
+  sourcePath: z.string().min(1).optional(),
+  sourceMtimeMs: z.number().nonnegative().optional(),
+  sourceSize: z.number().int().nonnegative().optional(),
+  watchMode: z.enum(['filesystem', 'snapshot']).default('snapshot'),
   assets: z.array(z.object({
     sourceUrl: z.string().min(1),
     absolutePath: z.string().optional(),
     bytesBase64: z.string().optional()
   })).optional(),
   updateMode: z.enum(['upsert', 'new-thread']).default('upsert')
+}).superRefine((input, context) => {
+  if (input.watchMode === 'filesystem' && !input.sourcePath) {
+    context.addIssue({
+      code: 'custom',
+      path: ['sourcePath'],
+      message: 'sourcePath is required when watchMode is filesystem'
+    });
+  }
 });
 
 export const createCommentSchema = z.object({

@@ -16,6 +16,7 @@ interface RegisterResponse {
   reviewUrl: string;
   indexUrl: string;
   watchCommand: string;
+  sourceSync?: { watchMode: 'filesystem' | 'snapshot'; sourcePath?: string; status?: string; active?: boolean };
   renderedWithWarnings: Array<{ code: string; detail: string }>;
 }
 
@@ -124,10 +125,11 @@ function writeWatchState(filePath: string, key: string, sequence: number): void 
   fs.writeFileSync(filePath, `${JSON.stringify(state, null, 2)}\n`);
 }
 
-async function registerPlan(filePath: string, options: { url?: string; json?: boolean; repo?: string; branch?: string; commit?: string; newThread?: boolean }) {
+async function registerPlan(filePath: string, options: { url?: string; json?: boolean; repo?: string; branch?: string; commit?: string; newThread?: boolean; snapshot?: boolean }) {
   const serviceUrl = resolveServiceUrl(options.url);
   const absolute = path.resolve(filePath);
   const html = fs.readFileSync(absolute, 'utf8');
+  const stat = fs.statSync(absolute);
   const meta = repoMetadata(path.dirname(absolute));
   const branch = options.branch && options.branch !== 'auto' ? options.branch : meta.branch;
   const commitSha = options.commit && options.commit !== 'auto' ? options.commit : meta.commitSha;
@@ -143,6 +145,10 @@ async function registerPlan(filePath: string, options: { url?: string; json?: bo
     slug: slugify(path.basename(filePath, path.extname(filePath))),
     html,
     fileHash: sha256(html),
+    sourcePath: options.snapshot ? undefined : absolute,
+    sourceMtimeMs: options.snapshot ? undefined : stat.mtimeMs,
+    sourceSize: options.snapshot ? undefined : stat.size,
+    watchMode: options.snapshot ? 'snapshot' as const : 'filesystem' as const,
     assets: discoverImageAssets(html, absolute),
     updateMode: options.newThread ? 'new-thread' as const : 'upsert' as const
   };
@@ -155,7 +161,8 @@ async function registerPlan(filePath: string, options: { url?: string; json?: bo
     printJson(data);
     return;
   }
-  process.stdout.write(`Plan ID: ${data.planId}\nIndex URL: ${fullUrl(serviceUrl, data.indexUrl)}\nReview URL: ${fullUrl(serviceUrl, data.reviewUrl)}\nWatch command: ${data.watchCommand} --url ${serviceUrl}\n`);
+  const sync = data.sourceSync?.active ? `active (${data.sourceSync.sourcePath})` : 'snapshot';
+  process.stdout.write(`Plan ID: ${data.planId}\nIndex URL: ${fullUrl(serviceUrl, data.indexUrl)}\nReview URL: ${fullUrl(serviceUrl, data.reviewUrl)}\nSource sync: ${sync}\nWatch command: ${data.watchCommand} --url ${serviceUrl}\n`);
 }
 
 async function printIndex(options: { url?: string; json?: boolean; q?: string; repoKey?: string; limit?: string; cursor?: string }) {
@@ -405,6 +412,7 @@ export async function main(argv: string[] = process.argv.slice(2)) {
     .option('--branch <branch>')
     .option('--commit <commit>')
     .option('--new-thread')
+    .option('--snapshot', 'register a detached snapshot instead of live filesystem sync')
     .option('--json')
     .action(registerPlan);
 
