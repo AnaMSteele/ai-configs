@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTML Plan Reviewer Authoritative Source Sync</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #111827;
+      --panel-2: #182235;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --accent: #7dd3fc;
+      --accent-2: #c084fc;
+      --good: #86efac;
+      --warn: #fbbf24;
+      --bad: #fca5a5;
+      --border: #2b364d;
+      --code: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(125, 211, 252, 0.13), transparent 34rem), var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+    main { max-width: 1080px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1, h2, h3 { line-height: 1.18; }
+    h1 { font-size: clamp(2rem, 4vw, 3.35rem); margin: 0 0 0.7rem; }
+    h2 { margin-top: 2.2rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: #f8fafc; }
+    h3 { margin-top: 1.6rem; color: var(--accent); }
+    p, li { color: var(--text); }
+    a { color: var(--accent); }
+    code, pre { background: var(--code); color: #dbeafe; border-radius: 8px; }
+    code { padding: 0.12rem 0.3rem; }
+    pre { padding: 16px; overflow-x: auto; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
+    th { background: var(--panel-2); color: #f8fafc; text-align: left; }
+    .badge { display: inline-block; padding: 0.22rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: var(--accent); font-size: 0.86rem; }
+    .muted { color: var(--muted); }
+    .card { background: rgba(17,24,39,0.88); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin: 18px 0; box-shadow: 0 18px 60px rgba(0,0,0,0.25); }
+    .decision { border-left: 4px solid var(--accent); }
+    .warn { border-left: 4px solid var(--warn); }
+    .good { color: var(--good); }
+    .bad { color: var(--bad); }
+    .flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0; }
+    .flow > div { background: rgba(24,34,53,0.72); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .flow strong { color: #f8fafc; }
+    @media (max-width: 820px) { .flow { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="badge">Status: draft plan for browser review</p>
+  <h1 id="title">HTML Plan Reviewer Authoritative Source Sync</h1>
+  <p class="muted">Make the repository plan file the single source of truth. The service may keep rendered/cached copies, but those copies must be derived from and refreshed from the authoritative file after registration.</p>
+
+  <section id="goal">
+    <h2>Goal</h2>
+    <p>Change <code>tools/plan-reviewer</code> so registering <code>thoughts/plans/&lt;plan&gt;.html</code> creates a durable link to that repo file, not a one-time detached snapshot. After registration, edits to the file should update the service-rendered plan automatically and notify open review pages.</p>
+    <p>The golden path should become:</p>
+    <pre><code>plan-review register thoughts/plans/my-plan.html --repo auto --branch auto --commit auto
+# edit thoughts/plans/my-plan.html
+# browser review page updates to the latest registered/synced version</code></pre>
+  </section>
+
+  <section id="non-goals">
+    <h2>Non-goals</h2>
+    <ul>
+      <li id="non-goal-editor">Do not build an in-browser editor for repo files in this phase.</li>
+      <li id="non-goal-remote">Do not support remote repos where the service cannot access the local filesystem.</li>
+      <li id="non-goal-auth">Do not add authentication or sharing controls; preserve the current trusted-network MVP posture.</li>
+      <li id="non-goal-migration">Do not delete existing stored versions or comments; migrate/add fields compatibly.</li>
+    </ul>
+  </section>
+
+  <section id="current-behavior">
+    <h2>Current behavior</h2>
+    <ul>
+      <li id="current-register-read">The CLI reads the plan file once in <code>src/cli.ts registerPlan</code> and sends <code>html</code>, <code>fileHash</code>, and copied relative image assets to <code>POST /api/plans/register</code>.</li>
+      <li id="current-store-copy">The service stores HTML/rendered blobs under <code>~/.plan-reviewer/blobs</code> and serves <code>/render/:planId</code> from the latest stored rendered blob.</li>
+      <li id="current-no-watch">No service component watches the repo file or re-reads it after registration.</li>
+      <li id="current-browser-no-reload">The browser shell listens for comment events only, so even an explicit re-register requires a page reload to show the new HTML.</li>
+    </ul>
+  </section>
+
+  <section id="recommended-architecture">
+    <h2>Recommended architecture</h2>
+    <div class="card decision" id="decision-central-watcher">
+      <h3>Decision: central service owns filesystem watching</h3>
+      <p>Implement direct source watching inside the existing Homebrew service. The service already runs as the logged-in user LaunchAgent, is not sandboxed, and can normally read <code>/Users/anichols/code/**</code>. Do not add a second daemon, RPC protocol, lifecycle manager, port allocation, or helper cleanup path.</p>
+      <p>Keep source access behind a narrow <code>SourceProvider</code> interface for testability and future internal refactors, but the only planned provider for this work is <code>FilesystemSourceProvider</code> inside the central service.</p>
+    </div>
+
+    <div class="flow" id="sync-flow">
+      <div><strong>1. Register</strong><br />CLI sends the authoritative absolute source path plus the initial HTML/assets snapshot.</div>
+      <div><strong>2. Watch</strong><br />Service records the source path, starts a debounced watcher, and reuses the registration pipeline on file changes.</div>
+      <div><strong>3. Refresh</strong><br />Service writes a new derived version, emits a plan-version event, and open browsers reload the iframe.</div>
+    </div>
+
+    <h3 id="source-of-truth-rule">Source-of-truth rule</h3>
+    <p>The repo file is authoritative. Service blobs are a cache and historical version store. Any sync failure should leave the last good rendered version visible with a clear warning/event, not silently diverge.</p>
+  </section>
+
+  <section id="data-model">
+    <h2>Data model changes</h2>
+    <table>
+      <thead><tr><th>Table / schema</th><th>Change</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr id="schema-register-source"><td><code>registerPlanSchema</code></td><td>Add <code>sourcePath</code>, <code>sourceMtimeMs</code>, <code>sourceSize</code>, and <code>watchMode: "filesystem" | "snapshot"</code>.</td><td>Let the service know whether it can re-read the authoritative file.</td></tr>
+        <tr id="schema-plans-source"><td><code>plans</code></td><td>Add nullable <code>source_path</code>, <code>watch_mode</code>, <code>last_sync_at</code>, <code>last_sync_status</code>, <code>last_sync_error_json</code>.</td><td>Persist watch configuration and operator-visible status across service restarts.</td></tr>
+        <tr id="schema-version-origin"><td><code>plan_versions</code></td><td>Add <code>source_mtime_ms</code>, <code>source_size</code>, and <code>sync_origin: "manual_register" | "filesystem_watch"</code>.</td><td>Explain how the current rendered copy was produced and avoid duplicate versions for unchanged content.</td></tr>
+        <tr id="schema-events"><td><code>comment_events</code></td><td>Include <code>plan.version.registered</code>, <code>plan.version.synced</code>, and <code>plan.sync.failed</code> in non-queue event streams.</td><td>Browser pages need version refresh events; agent queue mode can remain comment-only.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="phase-plan">
+    <h2>Progress</h2>
+    <ul>
+      <li id="phase-p1-contract"><input type="checkbox" /> P1: Lock source-sync contracts in schemas and tests</li>
+      <li id="phase-p2-storage"><input type="checkbox" /> P2: Persist authoritative source metadata and migrations</li>
+      <li id="phase-p3-watcher"><input type="checkbox" /> P3: Add debounced filesystem watcher and startup rehydration</li>
+      <li id="phase-p4-browser"><input type="checkbox" /> P4: Auto-refresh browser render on plan-version events</li>
+      <li id="phase-p5-cli"><input type="checkbox" /> P5: Update CLI/docs/skill for authoritative sync behavior</li>
+      <li id="phase-p6-verify"><input type="checkbox" /> P6: Run unit, fixture, and e2e verification</li>
+    </ul>
+  </section>
+
+  <section id="phase-p1-details">
+    <h2>P1: Contracts</h2>
+    <ul>
+      <li id="p1-register-contract">Update <code>src/schemas.ts</code> so registration accepts optional source metadata while preserving existing snapshot registrations.</li>
+      <li id="p1-event-contract">Add explicit event names for version sync and sync failure. Keep <code>mode=queue</code> comment-only; use default/all mode for browser plan-version updates.</li>
+      <li id="p1-tests">Add contract tests that prove a re-register of the same source path keeps the same <code>planId</code> and creates a new latest version only when the file hash changes.</li>
+    </ul>
+  </section>
+
+  <section id="phase-p2-details">
+    <h2>P2: Storage and source metadata</h2>
+    <ul>
+      <li id="p2-migration">Extend <code>PlanReviewStore</code> schema creation/migration in <code>src/storage/database.ts</code> with source/watch fields. Existing DBs must continue to open.</li>
+      <li id="p2-register-result">Return source sync status from registration so CLI JSON and browser metadata can show whether the plan is live-linked or snapshot-only.</li>
+      <li id="p2-list-status">Expose source path and last sync status in <code>GET /api/plans</code> and <code>GET /api/plans/:planId</code>.</li>
+    </ul>
+  </section>
+
+  <section id="phase-p3-details">
+    <h2>P3: Filesystem watcher</h2>
+    <ul>
+      <li id="p3-dependency">Add <code>chokidar</code> as a runtime dependency instead of relying on raw <code>fs.watch</code>; this is a maintained library and avoids hand-rolled cross-platform watch edge cases.</li>
+      <li id="p3-source-provider">Create <code>src/server/sourceSync.ts</code> with a narrow service that can <code>register(planId)</code>, <code>unregister(planId)</code>, <code>rehydrateFromStore()</code>, and <code>syncNow(planId, reason)</code>.</li>
+      <li id="p3-read-path">For filesystem mode, read <code>source_path</code>, discover relative image assets from the plan directory, call <code>renderPlan</code>, and store a new version through the same store path as manual registration.</li>
+      <li id="p3-debounce">Debounce file changes for 300-750ms, ignore unchanged file hashes, and serialize per-plan syncs to avoid races during editor save bursts.</li>
+      <li id="p3-startup">On service startup, rehydrate all <code>watch_mode="filesystem"</code> plans and run an initial sync check. Missing files should set <code>last_sync_status="failed"</code> and emit/log an actionable error.</li>
+      <li id="p3-permissions">If the service cannot read the path, keep serving the last good cached version and report: path, errno, suggested fix, and fallback command <code>plan-review register &lt;path&gt; --snapshot</code> if snapshot mode is retained.</li>
+    </ul>
+  </section>
+
+  <section id="phase-p4-details">
+    <h2>P4: Browser auto-refresh</h2>
+    <ul>
+      <li id="p4-sse-events">Have the review shell listen for <code>plan.version.registered</code>, <code>plan.version.synced</code>, and <code>plan.sync.failed</code> in its existing <code>EventSource</code>.</li>
+      <li id="p4-refresh-render">When latest version changes, call <code>loadMeta()</code>, update <code>versionId</code>, and reload the iframe with a version query string like <code>/render/:planId?versionId=&lt;id&gt;</code> to avoid stale browser cache.</li>
+      <li id="p4-comment-preserve">Preserve comment sidebar state and markers after reload. Existing comments may map/stale/unmap according to the current anchor mapping rules.</li>
+      <li id="p4-sync-warning">Display a visible sync warning in the sidebar when the latest sync failed, while leaving the last good rendered plan visible.</li>
+    </ul>
+  </section>
+
+  <section id="phase-p5-details">
+    <h2>P5: CLI, docs, and skill updates</h2>
+    <ul>
+      <li id="p5-cli-default">Make <code>plan-review register</code> default to live filesystem sync when it can resolve an absolute source path. Print “Source sync: active” with the watched path.</li>
+      <li id="p5-cli-flags">Add explicit flags only if needed: <code>--snapshot</code> for detached historical review and <code>--sync-now</code> for manual repair. Do not add helper daemon commands.</li>
+      <li id="p5-readme">Update <code>tools/plan-reviewer/README.md</code> to state that repo files are authoritative and service blobs are derived cache/history.</li>
+      <li id="p5-skill">Update <code>/Users/anichols/.agents/skills/html-plan-reviewer/SKILL.md</code> so agents know they no longer need to re-register after every edit once source sync is active.</li>
+    </ul>
+  </section>
+
+  <section id="phase-p6-details">
+    <h2>P6: Verification</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Scenario</th><th>Expected result</th></tr></thead>
+      <tbody>
+        <tr id="bdd-register-live"><td>BDD-1</td><td>Register a repo plan with default options.</td><td>The API stores <code>source_path</code>, starts a watcher, and reports live sync active.</td></tr>
+        <tr id="bdd-file-edit"><td>BDD-2</td><td>Edit the registered HTML file on disk.</td><td>The service creates a new latest version without a manual register command.</td></tr>
+        <tr id="bdd-browser-refresh"><td>BDD-3</td><td>Keep the review page open while the file changes.</td><td>The iframe reloads to the latest rendered version and comment sidebar remains usable.</td></tr>
+        <tr id="bdd-image-edit"><td>BDD-4</td><td>Change a relative image referenced by the plan.</td><td>The next file sync copies the new image asset and the browser render points to the new asset hash.</td></tr>
+        <tr id="bdd-permission-error"><td>BDD-5</td><td>Delete or chmod the source file after registration.</td><td>The service keeps last good render, marks sync failed, logs the failure, and returns an actionable sync status.</td></tr>
+        <tr id="bdd-restart"><td>BDD-6</td><td>Restart the Homebrew service.</td><td>Watchers are rehydrated from SQLite and future file edits continue syncing.</td></tr>
+      </tbody>
+    </table>
+    <p>Run:</p>
+    <pre><code>cd tools/plan-reviewer
+bun install
+bun run test
+bun run test:e2e -- --grep "plan sync|plan index"</code></pre>
+  </section>
+
+  <section id="helper-service-decision">
+    <h2>No helper service</h2>
+    <div class="card warn" id="helper-defer">
+      <h3>Do not plan or implement a repo-local helper daemon</h3>
+      <p>This plan assumes the central Homebrew service can watch and read registered plan files directly. If a source file cannot be read, the required behavior is an actionable sync failure plus continued serving of the last good rendered version, not a helper-service fallback.</p>
+      <p>Only revisit a helper/RPC design if direct central-service filesystem watching is proven impossible by verification evidence and the user explicitly reopens that scope.</p>
+    </div>
+  </section>
+
+  <section id="risks">
+    <h2>Risks and mitigations</h2>
+    <ul>
+      <li id="risk-editor-burst"><strong>Editor save bursts:</strong> debounce and serialize syncs per plan; ignore unchanged hashes.</li>
+      <li id="risk-permissions"><strong>macOS permissions:</strong> service is a user LaunchAgent, so normal repo paths should work. Protected folders may fail; expose sync errors and keep last good render.</li>
+      <li id="risk-stale-comments"><strong>Stale anchors:</strong> comments remain tied to their version and are mapped to the latest render using current anchor-state logic.</li>
+      <li id="risk-cache-confusion"><strong>Cache confusion:</strong> label stored blobs as derived versions in docs/UI and always show source path plus latest sync status.</li>
+    </ul>
+  </section>
+
+  <section id="acceptance-criteria">
+    <h2>Acceptance criteria</h2>
+    <ol>
+      <li id="ac-authoritative-file">The registered repo file is documented and represented in API responses as the authoritative source.</li>
+      <li id="ac-auto-sync">Changing that file updates the latest service-rendered version without manually re-running <code>plan-review register</code>.</li>
+      <li id="ac-browser-live">An open review page updates to the latest version after a source sync event.</li>
+      <li id="ac-last-good">If the source file cannot be read or rendered, the service keeps serving the last good version and surfaces the failure.</li>
+      <li id="ac-restart">Homebrew service restart preserves registered live watches and resumes syncing.</li>
+      <li id="ac-docs">README and <code>html-plan-reviewer</code> skill describe the new authoritative-source workflow.</li>
+    </ol>
+  </section>
+</main>
+</body>
+</html>

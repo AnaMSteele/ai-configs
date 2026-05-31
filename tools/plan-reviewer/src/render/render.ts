@@ -16,6 +16,9 @@ type Node = DefaultTreeAdapterMap['node'];
 const allowedTags = sanitizeHtml.defaults.allowedTags.concat([
   'html',
   'head',
+  'meta',
+  'title',
+  'style',
   'body',
   'main',
   'section',
@@ -37,6 +40,7 @@ const allowedTags = sanitizeHtml.defaults.allowedTags.concat([
 const allowedAttributes: Record<string, sanitizeHtml.AllowedAttribute[]> = {
   ...sanitizeHtml.defaults.allowedAttributes,
   '*': ['id', 'class', 'style', 'title', 'aria-label', 'role', 'data-*'],
+  meta: ['charset', 'name', 'content'],
   img: ['src', 'alt', 'width', 'height', 'title', 'data-*'],
   input: ['type', 'checked', 'disabled', 'readonly', 'aria-label', 'data-*'],
   a: ['href', 'name', 'target', 'rel', 'data-*']
@@ -127,6 +131,9 @@ export function renderPlan(input: RegisterPlanInput): RenderResult {
     allowedAttributes,
     allowedSchemes: ['http', 'https', 'mailto'],
     allowProtocolRelative: false,
+    // Plans are rendered in a no-script iframe with a restrictive CSP; preserving
+    // inline CSS is required for HTML plans to remain reviewable.
+    allowVulnerableTags: true,
     allowedSchemesByTag: { img: ['data', 'blob'] },
     disallowedTagsMode: 'discard',
     transformTags: {

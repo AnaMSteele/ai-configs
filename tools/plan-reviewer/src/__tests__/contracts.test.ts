@@ -37,6 +37,8 @@ test('renderer strips active content, rewrites images, and adds deterministic no
 
   assert.equal(output.warnings.some(item => item.code === 'blocked_script'), true);
   assert.equal(output.renderedHtml.includes('<script>'), false);
+  assert.match(output.renderedHtml, /<style[^>]*>body\{color:white\}<\/style>/);
+  assert.match(output.renderedHtml, /<title[^>]*>Sample Plan<\/title>/);
   assert.equal(output.renderedHtml.includes('src="/assets/'), true);
   assert.equal(output.renderedHtml.includes('data-plan-image-hash='), true);
   assert.equal(output.renderedHtml.includes('data-plan-node-id="phase-p1"'), true);

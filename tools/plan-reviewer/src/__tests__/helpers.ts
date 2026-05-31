@@ -10,7 +10,7 @@ export function tempDbPath(name: string): string {
 export function sampleHtml(): string {
   return `<!doctype html>
   <html>
-    <head><title>Sample Plan</title><script>window.bad = true</script></head>
+    <head><title>Sample Plan</title><style>body{color:white}</style><script>window.bad = true</script></head>
     <body>
       <main id="sample-plan">
         <section id="phase-p1"><h2>Phase 1</h2><p>Register the plan.</p></section>
