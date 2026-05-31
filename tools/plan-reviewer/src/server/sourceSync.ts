@@ -35,7 +35,11 @@ export function discoverSourceAssets(html: string, sourcePath: string) {
       assets.push({ sourceUrl });
       continue;
     }
-    if (!fs.existsSync(absolutePath) || !isLocalImagePath(sourceUrl)) {
+    if (!isLocalImagePath(sourceUrl)) {
+      assets.push({ sourceUrl });
+      continue;
+    }
+    if (!fs.existsSync(absolutePath)) {
       assets.push({ sourceUrl, absolutePath });
       continue;
     }
@@ -83,7 +87,7 @@ export class SourceSyncService {
     try {
       const html = fs.readFileSync(plan.sourcePath, 'utf8');
       for (const asset of discoverSourceAssets(html, plan.sourcePath)) {
-        if (asset.absolutePath && asset.bytesBase64) watchPaths.push(asset.absolutePath);
+        if (asset.absolutePath) watchPaths.push(asset.absolutePath);
       }
     } catch (error) {
       this.fail(planId, error, 'watch_register');
@@ -94,7 +98,13 @@ export class SourceSyncService {
     });
     watcher.on('add', () => this.schedule(planId));
     watcher.on('change', () => this.schedule(planId));
-    watcher.on('unlink', () => this.fail(planId, new Error(`Source file is missing: ${plan.sourcePath}`)));
+    watcher.on('unlink', changedPath => {
+      if (path.resolve(changedPath) === path.resolve(plan.sourcePath!)) {
+        this.fail(planId, new Error(`Source file is missing: ${plan.sourcePath}`));
+      } else {
+        this.schedule(planId);
+      }
+    });
     watcher.on('error', (error: unknown) => this.fail(planId, error));
     this.watchers.set(planId, watcher);
     await new Promise<void>(resolve => watcher.once('ready', resolve));

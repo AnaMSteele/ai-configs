@@ -828,6 +828,55 @@ test('registration reports failed source sync when API source path is unreadable
   }
 });
 
+test('filesystem source watches missing relative image creation', async () => {
+  const app = createApp({ dbPath: tempDbPath('source-missing-asset-watch') });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-missing-asset-watch-'));
+  const sourcePath = path.join(sourceDir, 'asset-plan.html');
+  const imagePath = path.join(sourceDir, 'diagram.png');
+  const html = '<!doctype html><html><body><main><img src="./diagram.png" alt="Diagram"></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for missing asset sync');
+  };
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'asset-plan.html',
+        slug: 'asset-plan',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: [{ sourceUrl: './diagram.png', absolutePath: imagePath }]
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    const missingRendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+    assert.match(missingRendered.body, /Missing image: \.\/diagram\.png/);
+
+    fs.writeFileSync(imagePath, Buffer.from('created-image'));
+    const createdHash = sha256(Buffer.from('created-image'));
+    await waitFor(async () => {
+      const rendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+      return rendered.body.includes(`/assets/${createdHash}`);
+    });
+  } finally {
+    await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
 test('filesystem source watches relative image changes even when HTML is unchanged', async () => {
   const app = createApp({ dbPath: tempDbPath('source-asset-watch') });
   const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-asset-watch-'));
@@ -875,6 +924,14 @@ test('filesystem source watches relative image changes even when HTML is unchang
     });
     const synced = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
     assert.equal(synced.json().data.latestVersion.syncOrigin, 'filesystem_watch');
+
+    fs.rmSync(imagePath);
+    await waitFor(async () => {
+      const rendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+      return /Missing image: \.\/diagram\.png/.test(rendered.body);
+    });
+    const deleted = await app.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(deleted.json().data.plan.lastSyncStatus, 'synced');
   } finally {
     await app.close();
     fs.rmSync(sourceDir, { recursive: true, force: true });
