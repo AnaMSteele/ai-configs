@@ -19,6 +19,10 @@ import { domAnchor, registeredApp, sampleHtml, sampleRegisterPayload, tempDbPath
 test('schemas validate locked registration, comment, and claim contracts', () => {
   const register = registerPlanSchema.parse(sampleRegisterPayload());
   assert.equal(register.updateMode, 'upsert');
+  assert.throws(
+    () => registerPlanSchema.parse(sampleRegisterPayload({ watchMode: 'filesystem' })),
+    /sourcePath is required/
+  );
 
   const comment = createCommentSchema.parse({
     versionId: 'ver_1',

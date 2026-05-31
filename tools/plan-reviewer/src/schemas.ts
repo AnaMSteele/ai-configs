@@ -46,6 +46,14 @@ export const registerPlanSchema = z.object({
     bytesBase64: z.string().optional()
   })).optional(),
   updateMode: z.enum(['upsert', 'new-thread']).default('upsert')
+}).superRefine((input, context) => {
+  if (input.watchMode === 'filesystem' && !input.sourcePath) {
+    context.addIssue({
+      code: 'custom',
+      path: ['sourcePath'],
+      message: 'sourcePath is required when watchMode is filesystem'
+    });
+  }
 });
 
 export const createCommentSchema = z.object({
