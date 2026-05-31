@@ -628,7 +628,7 @@ export function createApp(options: AppOptions): FastifyInstance {
       const { planId } = request.params as { planId: string };
       const { plan } = store.getPlan(planId);
       const result = store.createComment(plan.id, createCommentSchema.parse(request.body));
-      bus.emitEvent(result.event);
+      if (result.created) bus.emitEvent(result.event);
       return ok(result);
     } catch (error) {
       sendError(reply, error);

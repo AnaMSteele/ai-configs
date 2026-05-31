@@ -260,6 +260,31 @@ export class PlanReviewStore {
     return event;
   }
 
+  private eventFromRow(row: Record<string, unknown>): StoredEvent {
+    return {
+      id: String(row.id),
+      planId: String(row.plan_id),
+      sequence: Number(row.sequence),
+      eventType: String(row.event_type),
+      commentId: row.comment_id ? String(row.comment_id) : undefined,
+      payload: parseJson(String(row.payload_json), {}),
+      createdAt: String(row.created_at)
+    };
+  }
+
+  private getCommentCreatedEvent(commentId: string): StoredEvent {
+    const row = this.db.prepare(`
+      SELECT * FROM comment_events
+      WHERE comment_id = ? AND event_type = 'comment.created'
+      ORDER BY sequence ASC
+      LIMIT 1
+    `).get(commentId) as Record<string, unknown> | undefined;
+    if (!row) {
+      throw new PlanReviewError('not_found', `Created event for comment '${commentId}' was not found`, 404);
+    }
+    return this.eventFromRow(row);
+  }
+
   private pruneEvents(planId: string): void {
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     this.db
@@ -489,7 +514,7 @@ export class PlanReviewStore {
     return fs.readFileSync(version.renderedBlobPath, 'utf8');
   }
 
-  createComment(planId: string, input: CreateCommentInput): { comment: StoredComment; event: StoredEvent } {
+  createComment(planId: string, input: CreateCommentInput): { comment: StoredComment; event: StoredEvent; created: boolean } {
     const tx = this.db.transaction(() => {
       const version = this.db
         .prepare('SELECT id FROM plan_versions WHERE id = ? AND plan_id = ?')
@@ -504,7 +529,7 @@ export class PlanReviewStore {
         ? this.db.prepare('SELECT id FROM comments WHERE plan_id = ? AND client_mutation_id = ?').get(planId, input.clientMutationId) as { id: string } | undefined
         : undefined;
       if (duplicate) {
-        return { comment: this.getComment(duplicate.id), event: this.eventsAfter(planId, 0).at(-1)! };
+        return { comment: this.getComment(duplicate.id), event: this.getCommentCreatedEvent(duplicate.id), created: false };
       }
 
       const now = nowIso();
@@ -582,7 +607,7 @@ export class PlanReviewStore {
         commentId,
         comment
       }, commentId);
-      return { comment, event };
+      return { comment, event, created: true };
     });
     return tx();
   }
@@ -909,15 +934,7 @@ export class PlanReviewStore {
     const rows = this.db
       .prepare(`SELECT * FROM comment_events WHERE plan_id = ? AND sequence > ? ${eventFilter} ORDER BY sequence ASC LIMIT ?`)
       .all(planId, afterSequence, limit) as Array<Record<string, unknown>>;
-    return rows.map(row => ({
-      id: String(row.id),
-      planId: String(row.plan_id),
-      sequence: Number(row.sequence),
-      eventType: String(row.event_type),
-      commentId: row.comment_id ? String(row.comment_id) : undefined,
-      payload: parseJson(String(row.payload_json), {}),
-      createdAt: String(row.created_at)
-    }));
+    return rows.map(row => this.eventFromRow(row));
   }
 
   queueSnapshot(filters: { repoKey?: string; planId?: string; limit?: number }) {

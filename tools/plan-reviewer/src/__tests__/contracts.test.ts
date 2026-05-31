@@ -53,11 +53,27 @@ test('renderer strips active content, rewrites images, and adds deterministic no
   }));
   assert.equal(unquotedImage.renderedHtml.includes('src="/assets/'), true);
   assert.equal(unquotedImage.renderedHtml.includes('data-plan-image-source="diagram.png"'), true);
-  assert.deepEqual(findImageSources('<img src=diagram.png><img src="./two.png"><img alt=x src=\'three.png\'>'), [
+  assert.deepEqual(findImageSources('<img src=diagram.png><img src="./two.png"><img alt=x src=\'three.png\'><img data-src="placeholder.png" alt="preview src=placeholder.png" src="actual.png">'), [
     'diagram.png',
     './two.png',
-    'three.png'
+    'three.png',
+    'actual.png'
   ]);
+
+  const lazyImage = renderPlan(sampleRegisterPayload({
+    html: '<!doctype html><html><body><img data-src="placeholder.png" alt="lazy preview src=placeholder.png" src="diagram.png"></body></html>',
+    fileHash: 'lazy-image'
+  }));
+  assert.equal(lazyImage.renderedHtml.includes('data-src="placeholder.png"'), true);
+  assert.equal(lazyImage.renderedHtml.includes('alt="lazy preview src=placeholder.png"'), true);
+  assert.equal(lazyImage.renderedHtml.includes('data-plan-image-source="diagram.png"'), true);
+
+  const quotedAttributeImage = renderPlan(sampleRegisterPayload({
+    html: '<!doctype html><html><body><img alt=\'preview src="diagram.png"\' src="diagram.png"></body></html>',
+    fileHash: 'quoted-attribute-image'
+  }));
+  assert.equal(quotedAttributeImage.renderedHtml.includes('data-plan-image-source="diagram.png"'), true);
+  assert.equal(quotedAttributeImage.renderedHtml.includes('alt="preview src=&quot;/assets/'), false);
 
   const unsafeLink = renderPlan(sampleRegisterPayload({
     html: '<!doctype html><html><body><a href="data:text/html,bad">bad link</a><img src="data:image/png;base64,abc" alt="inline"></body></html>'
@@ -269,6 +285,33 @@ test('HTTP API registers plans, creates comments, claims, acks, resolves, and po
     });
     assert.equal(resolveResponse.statusCode, 200);
     assert.equal(resolveResponse.json().data.comment.status, 'resolved');
+
+    const eventsBeforeRetry = await app.inject({ method: 'GET', url: `/api/plans/${planId}/events/poll?afterSequence=0&mode=queue` });
+    const lastQueueSequence = eventsBeforeRetry.json().data.events.at(-1).sequence;
+
+    const duplicateCreate = await app.inject({
+      method: 'POST',
+      url: `/api/plans/${planId}/comments`,
+      payload: {
+        versionId,
+        body: 'Retry after resolution.',
+        anchorType: 'dom',
+        anchor: domAnchor(),
+        clientMutationId: 'comment-1'
+      }
+    });
+    assert.equal(duplicateCreate.statusCode, 200);
+    assert.equal(duplicateCreate.json().data.created, false);
+    assert.equal(duplicateCreate.json().data.comment.id, comment.id);
+    assert.equal(duplicateCreate.json().data.event.eventType, 'comment.created');
+    assert.equal(duplicateCreate.json().data.event.commentId, comment.id);
+
+    const retryEvents = await app.inject({
+      method: 'GET',
+      url: `/api/plans/${planId}/events/poll?afterSequence=${lastQueueSequence}&mode=queue`
+    });
+    assert.equal(retryEvents.statusCode, 200);
+    assert.deepEqual(retryEvents.json().data.events, []);
 
     const events = await app.inject({ method: 'GET', url: `/api/plans/${planId}/events/poll?afterSequence=0&mode=queue` });
     assert.equal(events.statusCode, 200);

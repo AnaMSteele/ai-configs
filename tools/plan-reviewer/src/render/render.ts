@@ -76,7 +76,7 @@ function walk(node: Node, visitor: (node: ElementNode, path: number[]) => void, 
 }
 
 function rewriteImages(html: string, input: RegisterPlanInput, warnings: RenderResult['warnings']): string {
-  return replaceImageTags(html, ({ tag, src, srcAttribute }) => {
+  return replaceImageTags(html, ({ tag, src, srcAttributeStart, srcAttributeEnd }) => {
     if (/^(https?:)?\/\//i.test(src)) {
       warnings.push({ code: 'blocked_external_image', detail: `External image '${src}' was blocked; upload a relative image asset instead.` });
       return `<span data-missing-image="${escapeAttr(src)}" style="display:inline-block;border:1px solid #fbbf24;padding:8px;color:#fbbf24">Blocked external image: ${escapeAttr(src)}</span>`;
@@ -94,7 +94,8 @@ function rewriteImages(html: string, input: RegisterPlanInput, warnings: RenderR
       return `<span data-missing-image="${escapeAttr(src)}" style="display:inline-block;border:1px solid #fbbf24;padding:8px;color:#fbbf24">Missing image: ${escapeAttr(src)}</span>`;
     }
     const assetHash = sha256(Buffer.from(asset.bytesBase64, 'base64'));
-    return tag.replace(srcAttribute, `src="/assets/${assetHash}" data-plan-image-source="${escapeAttr(src)}" data-plan-image-hash="${assetHash}"`);
+    const rewrittenSrc = `src="/assets/${assetHash}" data-plan-image-source="${escapeAttr(src)}" data-plan-image-hash="${assetHash}"`;
+    return `${tag.slice(0, srcAttributeStart)}${rewrittenSrc}${tag.slice(srcAttributeEnd)}`;
   });
 }
 
