@@ -1,4 +1,5 @@
-const imageTagPattern = /<img\b[^>]*>/gi;
+import { parseFragment } from 'parse5';
+import type { DefaultTreeAdapterMap } from 'parse5';
 
 export interface ImageTagMatch {
   tag: string;
@@ -8,64 +9,53 @@ export interface ImageTagMatch {
   srcAttributeEnd: number;
 }
 
-function findSrcAttribute(tag: string): Omit<ImageTagMatch, 'tag'> | undefined {
-  let index = /^<img\b/i.test(tag) ? 4 : 0;
-  while (index < tag.length) {
-    while (/\s|\/|>/.test(tag[index] ?? '')) index += 1;
-    const nameStart = index;
-    while (index < tag.length && !/[\s=/>]/.test(tag[index])) index += 1;
-    if (index === nameStart) break;
-    const name = tag.slice(nameStart, index).toLowerCase();
-    while (/\s/.test(tag[index] ?? '')) index += 1;
-    if (tag[index] !== '=') continue;
-    index += 1;
-    while (/\s/.test(tag[index] ?? '')) index += 1;
+type Node = DefaultTreeAdapterMap['node'];
+type ElementNode = DefaultTreeAdapterMap['element'];
+type ImageTagLocation = ImageTagMatch & { tagStart: number; tagEnd: number };
 
-    let src = '';
-    if (tag[index] === '"' || tag[index] === "'") {
-      const quote = tag[index];
-      index += 1;
-      const valueStart = index;
-      while (index < tag.length && tag[index] !== quote) index += 1;
-      src = tag.slice(valueStart, index);
-      if (tag[index] === quote) index += 1;
-    } else {
-      const valueStart = index;
-      while (index < tag.length && !/[\s/>]/.test(tag[index])) index += 1;
-      src = tag.slice(valueStart, index);
-    }
+function isElement(node: Node): node is ElementNode {
+  return 'tagName' in node && typeof node.tagName === 'string';
+}
 
-    if (name === 'src') {
-      return {
-        src,
-        srcAttribute: tag.slice(nameStart, index),
-        srcAttributeStart: nameStart,
-        srcAttributeEnd: index
-      };
+function imageMatches(html: string): ImageTagLocation[] {
+  const fragment = parseFragment(html, { sourceCodeLocationInfo: true }) as DefaultTreeAdapterMap['documentFragment'];
+  const matches: ImageTagLocation[] = [];
+  const walk = (node: Node): void => {
+    if (isElement(node) && node.tagName.toLowerCase() === 'img') {
+      const src = node.attrs.find(attr => attr.name.toLowerCase() === 'src')?.value;
+      const location = node.sourceCodeLocation;
+      const srcLocation = location?.attrs?.src;
+      const startTag = location?.startTag;
+      if (src !== undefined && srcLocation && startTag) {
+        const tagStart = startTag.startOffset;
+        const tagEnd = startTag.endOffset;
+        matches.push({
+          tag: html.slice(tagStart, tagEnd),
+          tagStart,
+          tagEnd,
+          src,
+          srcAttribute: html.slice(srcLocation.startOffset, srcLocation.endOffset),
+          srcAttributeStart: srcLocation.startOffset - tagStart,
+          srcAttributeEnd: srcLocation.endOffset - tagStart
+        });
+      }
     }
-  }
-  return undefined;
+    if ('childNodes' in node && Array.isArray(node.childNodes)) {
+      for (const child of node.childNodes) walk(child as Node);
+    }
+  };
+  for (const child of fragment.childNodes) walk(child as Node);
+  return matches;
 }
 
 export function findImageSources(html: string): string[] {
-  const sources: string[] = [];
-  for (const tag of html.match(imageTagPattern) ?? []) {
-    const match = findSrcAttribute(tag);
-    if (match) sources.push(match.src);
-  }
-  return sources;
+  return imageMatches(html).map(match => match.src);
 }
 
 export function replaceImageTags(html: string, visitor: (match: ImageTagMatch) => string): string {
-  return html.replace(imageTagPattern, tag => {
-    const match = findSrcAttribute(tag);
-    if (!match) return tag;
-    return visitor({
-      tag,
-      src: match.src,
-      srcAttribute: match.srcAttribute,
-      srcAttributeStart: match.srcAttributeStart,
-      srcAttributeEnd: match.srcAttributeEnd
-    });
-  });
+  let output = html;
+  for (const match of imageMatches(html).reverse()) {
+    output = `${output.slice(0, match.tagStart)}${visitor(match)}${output.slice(match.tagEnd)}`;
+  }
+  return output;
 }

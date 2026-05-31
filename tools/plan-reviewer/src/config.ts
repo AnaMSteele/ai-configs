@@ -14,15 +14,23 @@ function readJson(filePath: string): Partial<ServiceConfig> {
   }
 }
 
+function normalizeUrl(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.replace(/\/$/, '') : undefined;
+}
+
 export function resolveServiceUrl(explicitUrl?: string, cwd = process.cwd()): string {
-  if (explicitUrl) return explicitUrl.replace(/\/$/, '');
-  if (process.env.PLAN_REVIEW_URL) return process.env.PLAN_REVIEW_URL.replace(/\/$/, '');
+  const explicit = normalizeUrl(explicitUrl);
+  if (explicit) return explicit;
+  const env = normalizeUrl(process.env.PLAN_REVIEW_URL);
+  if (env) return env;
 
   const project = readJson(path.join(cwd, '.plan-reviewer.json'));
-  if (project.url) return project.url.replace(/\/$/, '');
+  const projectUrl = normalizeUrl(project.url);
+  if (projectUrl) return projectUrl;
 
   const user = readJson(path.join(os.homedir(), '.config', 'plan-reviewer', 'config.json'));
-  if (user.url) return user.url.replace(/\/$/, '');
+  const userUrl = normalizeUrl(user.url);
+  if (userUrl) return userUrl;
 
   return 'http://127.0.0.1:4317';
 }

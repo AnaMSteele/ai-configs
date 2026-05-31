@@ -88,6 +88,7 @@ async function sseLatency(): Promise<void> {
     const response = await fetch(`${baseUrl}/api/plans/${planId}/events?mode=queue`, {
       headers: { accept: 'text/event-stream' }
     });
+    assert.equal(response.ok, true, `SSE subscribe failed: ${response.status}`);
     if (!response.body) throw new Error('SSE response did not include a body');
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -95,7 +96,13 @@ async function sseLatency(): Promise<void> {
     const readUntilComment = async (commentId: string, timeoutMs: number) => {
       const deadline = Date.now() + timeoutMs;
       while (Date.now() < deadline) {
-        const read = await reader.read();
+        const remainingMs = Math.max(1, deadline - Date.now());
+        const read = await Promise.race([
+          reader.read(),
+          new Promise<ReadableStreamReadResult<Uint8Array>>((_resolve, reject) =>
+            setTimeout(() => reject(new Error(`SSE timed out waiting for ${commentId}`)), remainingMs)
+          )
+        ]);
         if (read.done) break;
         buffer += decoder.decode(read.value);
         let index: number;

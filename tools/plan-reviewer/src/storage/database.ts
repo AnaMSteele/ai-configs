@@ -479,32 +479,52 @@ export class PlanReviewStore {
       JOIN plan_versions v ON v.id = (
         SELECT id FROM plan_versions WHERE plan_id = p.id ORDER BY created_at DESC LIMIT 1
       )
-      WHERE p.id = ? OR p.slug = ?
+      WHERE p.id = ?
       LIMIT 1
-    `).get(identifier, identifier) as Record<string, string> | undefined;
-    if (!row) {
+    `).get(identifier) as Record<string, string> | undefined;
+    const slugRows = row ? [] : this.db.prepare(`
+      SELECT p.id, p.repo_id AS repoId, p.slug, p.plan_path AS planPath, r.repo_name AS repoName, r.repo_key AS repoKey,
+        v.id AS versionId, v.file_hash AS fileHash, v.branch, v.commit_sha AS commitSha,
+        v.html_blob_path AS htmlBlobPath, v.rendered_blob_path AS renderedBlobPath,
+        v.render_warnings_json AS renderWarningsJson
+      FROM plans p
+      JOIN repos r ON r.id = p.repo_id
+      JOIN plan_versions v ON v.id = (
+        SELECT id FROM plan_versions WHERE plan_id = p.id ORDER BY created_at DESC LIMIT 1
+      )
+      WHERE p.slug = ?
+      ORDER BY p.updated_at DESC
+      LIMIT 2
+    `).all(identifier) as Array<Record<string, string>>;
+    if (!row && slugRows.length > 1) {
+      throw new PlanReviewError('ambiguous_plan_slug', `Plan slug '${identifier}' matches multiple registered plans`, 409, {
+        matches: slugRows.map(item => ({ planId: item.id, repoKey: item.repoKey, planPath: item.planPath }))
+      }, 'Use the plan ID from plan-review index instead of the ambiguous slug.');
+    }
+    const selectedRow = row ?? slugRows[0];
+    if (!selectedRow) {
       throw new PlanReviewError('not_found', `Plan '${identifier}' was not found`, 404, {}, 'Register the plan first.');
     }
     return {
       plan: {
-        id: row.id,
-        repoId: row.repoId,
-        slug: row.slug,
-        planPath: row.planPath,
-        repoName: row.repoName,
-        repoKey: row.repoKey,
-        branch: row.branch,
-        commitSha: row.commitSha ?? undefined
+        id: selectedRow.id,
+        repoId: selectedRow.repoId,
+        slug: selectedRow.slug,
+        planPath: selectedRow.planPath,
+        repoName: selectedRow.repoName,
+        repoKey: selectedRow.repoKey,
+        branch: selectedRow.branch,
+        commitSha: selectedRow.commitSha ?? undefined
       },
       version: {
-        id: row.versionId,
-        planId: row.id,
-        fileHash: row.fileHash,
-        branch: row.branch,
-        commitSha: row.commitSha ?? undefined,
-        htmlBlobPath: row.htmlBlobPath,
-        renderedBlobPath: row.renderedBlobPath,
-        renderWarnings: parseJson(row.renderWarningsJson, [])
+        id: selectedRow.versionId,
+        planId: selectedRow.id,
+        fileHash: selectedRow.fileHash,
+        branch: selectedRow.branch,
+        commitSha: selectedRow.commitSha ?? undefined,
+        htmlBlobPath: selectedRow.htmlBlobPath,
+        renderedBlobPath: selectedRow.renderedBlobPath,
+        renderWarnings: parseJson(selectedRow.renderWarningsJson, [])
       }
     };
   }
@@ -720,22 +740,28 @@ export class PlanReviewStore {
   }
 
   listComments(planId: string, filters: { status?: string; anchorState?: string; sinceSequence?: number; versionId?: string } = {}) {
-    const clauses = ['plan_id = ?'];
+    const clauses = ['c.plan_id = ?'];
     const params: unknown[] = [planId];
     if (filters.versionId) {
-      clauses.push('version_id = ?');
+      clauses.push('c.version_id = ?');
       params.push(filters.versionId);
     }
     if (filters.status) {
-      clauses.push('status = ?');
+      clauses.push('c.status = ?');
       params.push(filters.status);
     }
     if (filters.sinceSequence) {
-      clauses.push('sequence > ?');
+      clauses.push('c.sequence > ?');
       params.push(filters.sinceSequence);
     }
     const rows = this.db
-      .prepare(`SELECT * FROM comments WHERE ${clauses.join(' AND ')} ORDER BY sequence ASC`)
+      .prepare(`
+        SELECT c.*, cl.id AS activeClaimId, cl.agent_id AS activeAgentId, cl.lease_expires_at AS activeLeaseExpiresAt
+        FROM comments c
+        LEFT JOIN claims cl ON cl.id = c.claim_id AND cl.released_at IS NULL AND cl.acknowledged_at IS NULL
+        WHERE ${clauses.join(' AND ')}
+        ORDER BY c.sequence ASC
+      `)
       .all(...params) as Array<Record<string, unknown>>;
     const currentVersion = this.getPlan(planId).version;
     const renderedHtml = fs.readFileSync(currentVersion.renderedBlobPath, 'utf8');
@@ -951,10 +977,11 @@ export class PlanReviewStore {
     }
     params.push(filters.limit ?? 50);
     const rows = this.db.prepare(`
-      SELECT c.*
+      SELECT c.*, cl.id AS activeClaimId, cl.agent_id AS activeAgentId, cl.lease_expires_at AS activeLeaseExpiresAt
       FROM comments c
       JOIN plans p ON p.id = c.plan_id
       JOIN repos r ON r.id = p.repo_id
+      LEFT JOIN claims cl ON cl.id = c.claim_id AND cl.released_at IS NULL AND cl.acknowledged_at IS NULL
       WHERE ${clauses.join(' AND ')}
       ORDER BY c.sequence ASC
       LIMIT ?

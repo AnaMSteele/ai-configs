@@ -10,6 +10,7 @@ import { renderPlan } from '../render/render.js';
 import { PlanReviewStore } from '../storage/database.js';
 import { createApp } from '../server/app.js';
 import { findImageSources } from '../htmlImages.js';
+import { resolveServiceUrl } from '../config.js';
 import { domAnchor, registeredApp, sampleHtml, sampleRegisterPayload, tempDbPath } from './helpers.js';
 
 test('schemas validate locked registration, comment, and claim contracts', () => {
@@ -53,7 +54,7 @@ test('renderer strips active content, rewrites images, and adds deterministic no
   }));
   assert.equal(unquotedImage.renderedHtml.includes('src="/assets/'), true);
   assert.equal(unquotedImage.renderedHtml.includes('data-plan-image-source="diagram.png"'), true);
-  assert.deepEqual(findImageSources('<img src=diagram.png><img src="./two.png"><img alt=x src=\'three.png\'><img data-src="placeholder.png" alt="preview src=placeholder.png" src="actual.png">'), [
+  assert.deepEqual(findImageSources('<img src=diagram.png><img src="./two.png"><img alt=x src=\'three.png\'><img data-src="placeholder.png" alt="preview src=placeholder.png > ok" src="actual.png">'), [
     'diagram.png',
     './two.png',
     'three.png',
@@ -69,7 +70,7 @@ test('renderer strips active content, rewrites images, and adds deterministic no
   assert.equal(lazyImage.renderedHtml.includes('data-plan-image-source="diagram.png"'), true);
 
   const quotedAttributeImage = renderPlan(sampleRegisterPayload({
-    html: '<!doctype html><html><body><img alt=\'preview src="diagram.png"\' src="diagram.png"></body></html>',
+    html: '<!doctype html><html><body><img alt=\'preview src="diagram.png" > still attribute\' src="diagram.png"></body></html>',
     fileHash: 'quoted-attribute-image'
   }));
   assert.equal(quotedAttributeImage.renderedHtml.includes('data-plan-image-source="diagram.png"'), true);
@@ -250,6 +251,9 @@ test('HTTP API registers plans, creates comments, claims, acks, resolves, and po
     assert.equal(claimResponse.statusCode, 200);
     const claimed = claimResponse.json().data.claimed[0];
     assert.equal(claimed.status, 'claimed');
+    const claimedComments = await app.inject({ method: 'GET', url: `/api/plans/${planId}/comments` });
+    assert.equal(claimedComments.json().data.comments[0].claim.id, claimed.claim.id);
+    assert.equal(claimedComments.json().data.comments[0].claim.agentId, 'agent-a');
 
     const resolveClaimed = await app.inject({
       method: 'POST',
@@ -563,6 +567,10 @@ test('index groups plans by repo and sorts API plans by comment activity', async
     assert.equal(paged.json().data.plans.length, 1);
     assert.equal(paged.json().data.nextCursor, '1');
 
+    const invalidCursor = await app.inject({ method: 'GET', url: '/api/plans?cursor=abc' });
+    assert.equal(invalidCursor.statusCode, 400);
+    assert.equal(invalidCursor.json().error.code, 'validation_failed');
+
     const htmlIndex = await app.inject({ method: 'GET', url: '/' });
     assert.match(htmlIndex.body, /class="repo-group"/);
     assert.match(htmlIndex.body, />sample</);
@@ -570,6 +578,41 @@ test('index groups plans by repo and sorts API plans by comment activity', async
   } finally {
     await app.close();
   }
+});
+
+test('bare plan slugs fail clearly when multiple repos register the same slug', async () => {
+  const { app } = await registeredApp('ambiguous-slug');
+  try {
+    const duplicateSlug = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        repoKey: 'git@example.com:demo/other-slug.git',
+        repoName: 'other-slug',
+        remoteUrl: 'git@example.com:demo/other-slug.git',
+        rootPath: '/tmp/other-slug',
+        planPath: 'thoughts/plans/sample-plan.html',
+        fileHash: 'other-slug-hash'
+      })
+    });
+    assert.equal(duplicateSlug.statusCode, 200);
+
+    const slugLookup = await app.inject({ method: 'GET', url: '/api/plans/sample-plan' });
+    assert.equal(slugLookup.statusCode, 409);
+    assert.equal(slugLookup.json().error.code, 'ambiguous_plan_slug');
+  } finally {
+    await app.close();
+  }
+});
+
+test('service URL config ignores invalid url values and trims valid URLs', () => {
+  const dir = path.join('/tmp', `plan-reviewer-config-${process.pid}-${Date.now()}`);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, '.plan-reviewer.json'), '{"url":{}}');
+  assert.equal(resolveServiceUrl(undefined, dir), 'http://127.0.0.1:4317');
+
+  fs.writeFileSync(path.join(dir, '.plan-reviewer.json'), '{"url":"http://127.0.0.1:9999/"}');
+  assert.equal(resolveServiceUrl(undefined, dir), 'http://127.0.0.1:9999');
 });
 
 test('CLI help is wired through the installed bin entrypoint', () => {

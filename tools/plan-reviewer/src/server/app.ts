@@ -69,6 +69,17 @@ function indexHtml(plans: ReturnType<PlanReviewStore['listPlans']>): string {
 }
 
 function filterPlans(plans: ReturnType<PlanReviewStore['listPlans']>, query: { q?: string; repoKey?: string; status?: string; limit?: string; cursor?: string }) {
+  const parseInteger = (value: string | undefined, name: string, min: number, max?: number): number | undefined => {
+    if (value === undefined) return undefined;
+    if (!/^\d+$/.test(value)) {
+      throw new PlanReviewError('validation_failed', `${name} must be a non-negative integer`, 400, { [name]: value });
+    }
+    const parsed = Number(value);
+    if (!Number.isSafeInteger(parsed) || parsed < min || (max !== undefined && parsed > max)) {
+      throw new PlanReviewError('validation_failed', `${name} must be between ${min} and ${max ?? Number.MAX_SAFE_INTEGER}`, 400, { [name]: value });
+    }
+    return parsed;
+  };
   const text = query.q?.toLowerCase();
   const filtered = plans.filter(item => {
     const matchesRepo = !query.repoKey || item.plan.repoKey === query.repoKey;
@@ -77,8 +88,8 @@ function filterPlans(plans: ReturnType<PlanReviewStore['listPlans']>, query: { q
     const matchesText = !text || haystack.includes(text);
     return matchesRepo && matchesStatus && matchesText;
   });
-  const offset = query.cursor ? Math.max(0, Number(query.cursor)) : 0;
-  const limit = query.limit ? Math.max(1, Math.min(200, Number(query.limit))) : undefined;
+  const offset = parseInteger(query.cursor, 'cursor', 0) ?? 0;
+  const limit = parseInteger(query.limit, 'limit', 1, 200);
   const page = limit ? filtered.slice(offset, offset + limit) : filtered.slice(offset);
   return {
     plans: page,
@@ -556,10 +567,14 @@ export function createApp(options: AppOptions): FastifyInstance {
     reply.type('text/html').send(indexHtml(filterPlans(store.listPlans(), query).plans));
   });
 
-  app.get('/api/plans', async (request) => {
-    const query = request.query as { q?: string; repoKey?: string; status?: string; limit?: string; cursor?: string };
-    const { plans, nextCursor } = filterPlans(store.listPlans(), query);
-    return ok({ plans, nextCursor });
+  app.get('/api/plans', async (request, reply) => {
+    try {
+      const query = request.query as { q?: string; repoKey?: string; status?: string; limit?: string; cursor?: string };
+      const { plans, nextCursor } = filterPlans(store.listPlans(), query);
+      return ok({ plans, nextCursor });
+    } catch (error) {
+      sendError(reply, error);
+    }
   });
 
   app.post('/api/plans/register', async (request, reply) => {

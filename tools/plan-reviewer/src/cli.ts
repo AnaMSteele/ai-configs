@@ -242,7 +242,12 @@ async function watchPlan(planId: string, options: {
           for (const raw of parsed.events) {
             if (raw.event === 'heartbeat' || raw.event === 'connected') continue;
             const data = raw.data ? JSON.parse(raw.data) : {};
-            emit(data, 'sse');
+            emit({
+              ...data,
+              sequence: raw.id ? Number(raw.id) : data.sequence,
+              eventType: raw.event ?? data.eventType,
+              event: raw.event ?? data.event
+            }, 'sse');
             if (options.once) {
               await reader.cancel();
               return;
@@ -256,7 +261,12 @@ async function watchPlan(planId: string, options: {
       if (error instanceof PlanReviewError && error.code === 'watch_timeout') throw error;
       const data = await pollEvents(serviceUrl, planId, latestSequence, mode);
       for (const event of data.events) {
-        emit(event.payload ?? event, 'poll');
+        emit({
+          ...(event.payload ?? {}),
+          sequence: event.sequence,
+          eventType: event.eventType,
+          event: event.eventType
+        }, 'poll');
         if (options.once) return;
       }
       const remaining = remainingTimeout();
