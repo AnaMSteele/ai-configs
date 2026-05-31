@@ -338,7 +338,7 @@ export class PlanReviewStore {
         .run(planId, repoId, slug, input.planPath, now, now);
 
       const htmlName = `${input.fileHash}.html`;
-      const renderedName = `${input.fileHash}.rendered.html`;
+      const renderedName = `${sha256(renderedHtml)}.rendered.html`;
       const htmlBlobPath = this.writeBlob('html', htmlName, input.html);
       const renderedBlobPath = this.writeBlob('rendered', renderedName, renderedHtml);
       const commitSha = input.commitSha ?? '';

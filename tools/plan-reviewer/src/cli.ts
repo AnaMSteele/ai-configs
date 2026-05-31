@@ -43,20 +43,42 @@ function repoMetadata(cwd = process.cwd()) {
   };
 }
 
-function discoverImageAssets(html: string, planFile: string) {
+function isLocalImagePath(sourceUrl: string): boolean {
+  return ['.gif', '.jpg', '.jpeg', '.png', '.svg', '.webp'].includes(
+    path.extname(sourceUrl.split(/[?#]/, 1)[0] || '').toLowerCase()
+  );
+}
+
+function isInsideDirectory(parent: string, child: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+export function discoverImageAssets(html: string, planFile: string) {
   const planDir = path.dirname(planFile);
+  const absolutePlanDir = path.resolve(planDir);
+  const realPlanDir = fs.realpathSync(planDir);
   const assets: Array<{ sourceUrl: string; absolutePath?: string; bytesBase64?: string }> = [];
   for (const sourceUrl of findImageSources(html)) {
     if (/^(data:|blob:|https?:\/\/|\/)/i.test(sourceUrl)) continue;
     const absolutePath = path.resolve(planDir, sourceUrl);
-    if (!fs.existsSync(absolutePath)) {
+    if (!isInsideDirectory(absolutePlanDir, absolutePath)) {
+      assets.push({ sourceUrl });
+      continue;
+    }
+    if (!fs.existsSync(absolutePath) || !isLocalImagePath(sourceUrl)) {
       assets.push({ sourceUrl, absolutePath });
+      continue;
+    }
+    const realAssetPath = fs.realpathSync(absolutePath);
+    if (!isInsideDirectory(realPlanDir, realAssetPath) || !fs.statSync(realAssetPath).isFile()) {
+      assets.push({ sourceUrl });
       continue;
     }
     assets.push({
       sourceUrl,
-      absolutePath,
-      bytesBase64: fs.readFileSync(absolutePath).toString('base64')
+      absolutePath: realAssetPath,
+      bytesBase64: fs.readFileSync(realAssetPath).toString('base64')
     });
   }
   return assets;

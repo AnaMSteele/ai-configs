@@ -11,6 +11,8 @@ import { PlanReviewStore } from '../storage/database.js';
 import { createApp } from '../server/app.js';
 import { findImageSources } from '../htmlImages.js';
 import { resolveServiceUrl } from '../config.js';
+import { discoverImageAssets } from '../cli.js';
+import { sha256 } from '../util.js';
 import { domAnchor, registeredApp, sampleHtml, sampleRegisterPayload, tempDbPath } from './helpers.js';
 
 test('schemas validate locked registration, comment, and claim contracts', () => {
@@ -164,6 +166,87 @@ test('plan versions are distinct for the same content on a different branch or c
   } finally {
     store.close();
   }
+});
+
+test('rendered blobs stay isolated when identical HTML uses different local assets', async () => {
+  const app = createApp({ dbPath: tempDbPath('rendered-blob-isolation') });
+  const html = '<!doctype html><html><body><main><img src="./diagram.png" alt="Diagram"></main></body></html>';
+  const fileHash = sha256(html);
+  const firstAssetHash = sha256(Buffer.from('first-image'));
+  const secondAssetHash = sha256(Buffer.from('second-image'));
+  try {
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        repoKey: 'git@example.com:demo/first.git',
+        repoName: 'first',
+        rootPath: '/tmp/first',
+        planPath: 'thoughts/plans/shared.html',
+        slug: 'shared',
+        html,
+        fileHash,
+        assets: [{ sourceUrl: './diagram.png', absolutePath: '/tmp/first/thoughts/plans/diagram.png', bytesBase64: Buffer.from('first-image').toString('base64') }]
+      })
+    });
+    assert.equal(first.statusCode, 200);
+    const firstPlanId = first.json().data.planId;
+    const firstRendered = await app.inject({ method: 'GET', url: `/render/${firstPlanId}` });
+    assert.equal(firstRendered.statusCode, 200);
+    assert.match(firstRendered.body, new RegExp(`/assets/${firstAssetHash}`));
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        repoKey: 'git@example.com:demo/second.git',
+        repoName: 'second',
+        rootPath: '/tmp/second',
+        planPath: 'thoughts/plans/shared.html',
+        slug: 'shared',
+        html,
+        fileHash,
+        assets: [{ sourceUrl: './diagram.png', absolutePath: '/tmp/second/thoughts/plans/diagram.png', bytesBase64: Buffer.from('second-image').toString('base64') }]
+      })
+    });
+    assert.equal(second.statusCode, 200);
+
+    const firstRenderedAfterSecondRegister = await app.inject({ method: 'GET', url: `/render/${firstPlanId}` });
+    assert.equal(firstRenderedAfterSecondRegister.statusCode, 200);
+    assert.match(firstRenderedAfterSecondRegister.body, new RegExp(`/assets/${firstAssetHash}`));
+    assert.doesNotMatch(firstRenderedAfterSecondRegister.body, new RegExp(`/assets/${secondAssetHash}`));
+
+    const secondRendered = await app.inject({ method: 'GET', url: `/render/${second.json().data.planId}` });
+    assert.equal(secondRendered.statusCode, 200);
+    assert.match(secondRendered.body, new RegExp(`/assets/${secondAssetHash}`));
+  } finally {
+    await app.close();
+  }
+});
+
+test('CLI local image discovery only reads supported images inside the plan directory', () => {
+  const root = fs.mkdtempSync(path.join('/tmp', `plan-reviewer-assets-${process.pid}-`));
+  const planDir = path.join(root, 'plans');
+  fs.mkdirSync(planDir);
+  fs.writeFileSync(path.join(planDir, 'diagram.png'), 'png-data');
+  fs.writeFileSync(path.join(planDir, 'notes.txt'), 'not an image');
+  fs.writeFileSync(path.join(root, 'secret.png'), 'outside');
+  fs.writeFileSync(path.join(root, 'secret.txt'), 'outside');
+
+  const assets = discoverImageAssets(
+    '<img src="./diagram.png"><img src="./notes.txt"><img src="../secret.png"><img src="../secret.txt"><img src="../missing.png"><img src="./missing.png"><img src="https://example.com/remote.png">',
+    path.join(planDir, 'plan.html')
+  );
+  const bySource = new Map(assets.map(asset => [asset.sourceUrl, asset]));
+
+  assert.equal(bySource.get('./diagram.png')?.bytesBase64, Buffer.from('png-data').toString('base64'));
+  assert.equal(bySource.get('./notes.txt')?.bytesBase64, undefined);
+  assert.equal(bySource.get('../secret.png')?.bytesBase64, undefined);
+  assert.equal(bySource.get('../secret.png')?.absolutePath, undefined);
+  assert.equal(bySource.get('../secret.txt')?.absolutePath, undefined);
+  assert.equal(bySource.get('../missing.png')?.absolutePath, undefined);
+  assert.equal(bySource.get('./missing.png')?.bytesBase64, undefined);
+  assert.equal(bySource.has('https://example.com/remote.png'), false);
 });
 
 test('HTTP API registers plans, creates comments, claims, acks, resolves, and polls events', async () => {
