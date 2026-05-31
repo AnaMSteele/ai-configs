@@ -59,6 +59,7 @@ export function discoverSourceAssets(html: string, sourcePath: string) {
 
 export class SourceSyncService {
   private watchers = new Map<string, FSWatcher>();
+  private recoveryWatchers = new Set<string>();
   private timers = new Map<string, NodeJS.Timeout>();
   private chains = new Map<string, Promise<void>>();
 
@@ -69,6 +70,7 @@ export class SourceSyncService {
     this.timers.clear();
     const watchers = [...this.watchers.values()];
     this.watchers.clear();
+    this.recoveryWatchers.clear();
     await Promise.all(watchers.map(watcher => watcher.close()));
   }
 
@@ -91,6 +93,21 @@ export class SourceSyncService {
       }
     } catch (error) {
       this.fail(planId, error, 'watch_register');
+      const watcher = chokidar.watch(plan.sourcePath, {
+        ignoreInitial: true,
+        awaitWriteFinish: false
+      });
+      const recover = () => {
+        void this.register(planId).then(() => this.schedule(planId));
+      };
+      watcher.on('add', recover);
+      watcher.on('change', recover);
+      watcher.on('unlink', () => this.fail(planId, new Error(`Source file is missing: ${plan.sourcePath}`)));
+      watcher.on('error', (watchError: unknown) => this.fail(planId, watchError));
+      this.watchers.set(planId, watcher);
+      this.recoveryWatchers.add(planId);
+      await new Promise<void>(resolve => watcher.once('ready', resolve));
+      await new Promise(resolve => setTimeout(resolve, 100));
       return;
     }
     const watcher = chokidar.watch([...new Set(watchPaths)], {
@@ -116,6 +133,7 @@ export class SourceSyncService {
     const timer = this.timers.get(planId);
     if (timer) clearTimeout(timer);
     this.timers.delete(planId);
+    this.recoveryWatchers.delete(planId);
     const watcher = this.watchers.get(planId);
     if (!watcher) return;
     this.watchers.delete(planId);
@@ -149,6 +167,7 @@ export class SourceSyncService {
       const html = fs.readFileSync(plan.sourcePath, 'utf8');
       const fileHash = sha256(html);
       const htmlChanged = fileHash !== version.fileHash;
+      const needsWatcherRefresh = this.recoveryWatchers.has(plan.id);
       const assets = discoverSourceAssets(html, plan.sourcePath);
       const payload: RegisterPlanInput = {
         repoKey: plan.repoKey,
@@ -169,11 +188,12 @@ export class SourceSyncService {
       const rendered = renderPlan(payload);
       if (fileHash === version.fileHash && sha256(rendered.renderedHtml) === sha256(this.store.getRenderedHtml(plan.id, version.id))) {
         this.bus.emitEvent(this.store.markPlanSyncSucceeded(plan.id, version.id));
+        if (needsWatcherRefresh) void this.register(plan.id);
         return;
       }
       const result = this.store.registerPlan(payload, rendered.renderedHtml, rendered.warnings, 'filesystem_watch');
       this.bus.emitEvent(result.event);
-      if (htmlChanged) void this.register(plan.id);
+      if (htmlChanged || needsWatcherRefresh) void this.register(plan.id);
     } catch (error) {
       this.fail(plan.id, error, reason);
     }

@@ -832,6 +832,64 @@ test('registration reports failed source sync when API source path is unreadable
   }
 });
 
+test('filesystem source recovery watcher syncs after startup read failure', async () => {
+  const dbPath = tempDbPath('source-recovery-watch');
+  const app = createApp({ dbPath });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-source-recovery-'));
+  const sourcePath = path.join(sourceDir, 'recovery-plan.html');
+  const html = '<!doctype html><html><body><main><p>Original</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for recovery sync');
+  };
+  let recoveryApp = app;
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'recovery-plan.html',
+        slug: 'recovery-plan',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    await app.close();
+
+    fs.rmSync(sourcePath);
+    recoveryApp = createApp({ dbPath });
+    await waitFor(async () => {
+      const current = await recoveryApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+      return current.json().data.plan.lastSyncStatus === 'failed';
+    });
+
+    const recoveredHtml = '<!doctype html><html><body><main><p>Recovered</p></main></body></html>';
+    fs.writeFileSync(sourcePath, recoveredHtml);
+    await waitFor(async () => {
+      const rendered = await recoveryApp.inject({ method: 'GET', url: `/render/${planId}` });
+      return rendered.body.includes('Recovered');
+    });
+    const recovered = await recoveryApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(recovered.json().data.plan.lastSyncStatus, 'synced');
+  } finally {
+    await recoveryApp.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
 test('filesystem source watches missing relative image creation', async () => {
   const app = createApp({ dbPath: tempDbPath('source-missing-asset-watch') });
   const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-missing-asset-watch-'));
