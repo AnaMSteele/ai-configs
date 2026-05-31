@@ -53,7 +53,7 @@ try {
       versionId: registered.versionId,
       body: 'DOM annotation comment',
       anchorType: 'dom',
-      anchor: { planNodeId: 'dom-annotation', cssSelector: '#dom-annotation', textPreview: 'DOM annotation' }
+      anchor: { planNodeId: 'dom-annotation', cssSelector: 'section', textPreview: 'DOM annotation' }
     }
   });
   assert.equal(domComment.ok(), true);
@@ -168,6 +168,18 @@ try {
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
     await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length >= 3);
 
+    const staleDomComment = await context.post(`/api/plans/${registered.planId}/comments`, {
+      data: {
+        versionId: registered.versionId,
+        body: 'Legacy DOM annotation with loose fallback selector',
+        anchorType: 'dom',
+        anchor: { planNodeId: 'dom-annotation', cssSelector: 'section', textPreview: 'DOM annotation', rect: { x: 0, y: 240, width: 200, height: 80 } }
+      }
+    });
+    assert.equal(staleDomComment.ok(), true);
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Legacy DOM annotation with loose fallback selector'));
+    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length >= 4);
+
     const missingDomHtml = html.replace('<section id="dom-annotation"><h1>DOM annotation</h1><p>Plan index target.</p></section>', '');
     const changed = await context.post('/api/plans/register', {
       data: {
@@ -186,7 +198,7 @@ try {
     });
     assert.equal(changed.ok(), true);
     await page.waitForFunction(() => !document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('#dom-annotation'));
-    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length === 2);
+    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length === 1);
   } finally {
     await browser.close();
   }

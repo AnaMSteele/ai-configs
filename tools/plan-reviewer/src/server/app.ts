@@ -216,8 +216,12 @@ function currentRectForComment(comment){
   try {
     const doc = frame.contentDocument;
     if (doc) {
-      let target = anchor.planNodeId ? doc.querySelector(selectorForPlanNodeId(anchor.planNodeId)) : null;
-      if (!target && anchor.cssSelector) target = doc.querySelector(anchor.cssSelector);
+      let target = null;
+      if (anchor.planNodeId) {
+        target = doc.querySelector(selectorForPlanNodeId(anchor.planNodeId));
+      } else if (anchor.cssSelector) {
+        target = doc.querySelector(anchor.cssSelector);
+      }
       if (target) {
         const rect = target.getBoundingClientRect();
         return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
