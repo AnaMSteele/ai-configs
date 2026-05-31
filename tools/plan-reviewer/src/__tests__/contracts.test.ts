@@ -234,12 +234,13 @@ test('CLI local image discovery only reads supported images inside the plan dire
   fs.writeFileSync(path.join(root, 'secret.txt'), 'outside');
 
   const assets = discoverImageAssets(
-    '<img src="./diagram.png"><img src="./notes.txt"><img src="../secret.png"><img src="../secret.txt"><img src="../missing.png"><img src="./missing.png"><img src="https://example.com/remote.png">',
+    '<img src="./diagram.png"><img src="./diagram.png?v=2"><img src="./notes.txt"><img src="../secret.png"><img src="../secret.txt"><img src="../missing.png"><img src="./missing.png"><img src="https://example.com/remote.png">',
     path.join(planDir, 'plan.html')
   );
   const bySource = new Map(assets.map(asset => [asset.sourceUrl, asset]));
 
   assert.equal(bySource.get('./diagram.png')?.bytesBase64, Buffer.from('png-data').toString('base64'));
+  assert.equal(bySource.get('./diagram.png?v=2')?.bytesBase64, Buffer.from('png-data').toString('base64'));
   assert.equal(bySource.get('./notes.txt')?.bytesBase64, undefined);
   assert.equal(bySource.get('../secret.png')?.bytesBase64, undefined);
   assert.equal(bySource.get('../secret.png')?.absolutePath, undefined);

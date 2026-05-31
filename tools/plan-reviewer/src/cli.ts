@@ -61,7 +61,8 @@ export function discoverImageAssets(html: string, planFile: string) {
   const assets: Array<{ sourceUrl: string; absolutePath?: string; bytesBase64?: string }> = [];
   for (const sourceUrl of findImageSources(html)) {
     if (/^(data:|blob:|https?:\/\/|\/)/i.test(sourceUrl)) continue;
-    const absolutePath = path.resolve(planDir, sourceUrl);
+    const filesystemSource = sourceUrl.split(/[?#]/, 1)[0] || sourceUrl;
+    const absolutePath = path.resolve(planDir, filesystemSource);
     if (!isInsideDirectory(absolutePlanDir, absolutePath)) {
       assets.push({ sourceUrl });
       continue;
