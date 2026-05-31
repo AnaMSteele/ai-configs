@@ -1,6 +1,6 @@
 ---
 name: scoped-plan-run
-description: Execute an existing implementation plan persistently through code changes, scoped Claude and Codex reviews, fixes, verification, commit, push, PR creation, and goal-backed PR monitoring until feedback is addressed, Codex approves with a :thumbsup:, and the PR is mergeable without expanding beyond the plan's stated scope.
+description: Execute an existing implementation plan persistently through code changes, scoped Claude and Codex reviews, fixes, verification, commit, push, PR creation, and Codex/Pi goal-backed PR monitoring until feedback is addressed, Codex approves with a :thumbsup:, and the PR is mergeable without expanding beyond the plan's stated scope.
 ---
 
 # Scoped Plan Run
@@ -9,7 +9,7 @@ Use this skill when the user has a plan file and wants it implemented all the wa
 
 The plan is the contract. Reviews can reveal adjacent problems, but they do not expand the contract unless the user explicitly approves that expansion.
 
-This skill is goal-backed. A scoped plan run is not complete at PR creation; it remains active until the PR satisfies the post-PR completion criteria.
+This skill is goal-backed in Codex and Pi. A scoped plan run is not complete at PR creation; it remains active until the PR satisfies the post-PR completion criteria. In Codex, back this with the Codex goal tools. In Pi, back this with the todo tool plus explicit working notes/handoff state so the monitoring obligation survives normal turn-to-turn execution.
 
 ## Invocation
 
@@ -28,9 +28,9 @@ Accept either a plan path or a slug. For a slug, resolve `thoughts/plans/<slug>.
 - Do not ask reviewers to review the whole product for open-ended problems.
 - Do not proceed past a blocked plan decision by silently choosing a larger scope.
 - Do not create a PR until verification appropriate to the touched surfaces has run or a blocker is clearly reported.
-- Do not mark the Codex goal complete just because the implementation PR exists.
-- Do not mark the Codex goal complete until PR feedback has been monitored and addressed, the PR is mergeable with the destination branch, and Codex has provided a `:thumbsup:` on the original PR description.
-- Do not mark the Codex goal blocked or stop monitoring merely because PR feedback or the qualifying Codex `:thumbsup:` is slow to arrive. Treat slow review response as a wait state that requires continued polling, not as a blocker.
+- Do not mark the active run state complete just because the implementation PR exists.
+- Do not mark the active run state complete until PR feedback has been monitored and addressed, the PR is mergeable with the destination branch, and Codex has provided a `:thumbsup:` on the original PR description.
+- Do not mark the active run state blocked or stop monitoring merely because PR feedback or the qualifying Codex `:thumbsup:` is slow to arrive. Treat slow review response as a wait state that requires continued polling, not as a blocker.
 - Do not create, add, request, simulate, or otherwise manufacture the required Codex `:thumbsup:` from inside this skill, this workflow, this execution, or any account controlled by the executing agent. That approval signal exists only to prove an external PR reviewer accepted the current PR state.
 - Do not treat a self-authored reaction, local review verdict, chat transcript, manual note, or workflow-generated approval substitute as satisfying the Codex `:thumbsup:` criterion. If the executing agent accidentally or incorrectly adds such a reaction, remove it immediately, disclose the incident, and continue monitoring as incomplete.
 
@@ -75,17 +75,17 @@ If the answer to all three is no, defer it.
 
 ## Workflow
 
-### 1. Establish Goal
+### 1. Establish Run State
 
-1. Check whether a Codex goal is already active.
-2. If no goal is active, create one for the scoped plan run before implementation begins.
-3. The goal objective must require both:
+1. Check whether a scoped-plan-run goal or task state is already active.
+2. If no compatible run state is active, create one before implementation begins.
+   - In Codex, use the Codex goal tools for this lifecycle. Do not treat the goal as a checklist in notes only.
+   - In Pi, use the todo tool to create an explicit lifecycle task set before implementation. Keep exactly one active item at a time and include a final post-PR monitoring item that cannot be marked done until all completion criteria are satisfied.
+3. The objective must require both:
    - executing the specified plan through implementation, verification, review, commit, push, and PR creation;
    - monitoring the PR after creation until the post-PR completion criteria are satisfied.
-4. If an active goal already exists and it is compatible with this scoped plan run, continue under it and state the compatibility in working notes.
-5. If an active goal exists but conflicts with this scoped plan run, stop and ask the user whether to finish, block, or abandon the existing goal before creating a new one.
-
-Use the Codex goal tools for this lifecycle. Do not treat the goal as a checklist in notes only.
+4. If an active run state already exists and it is compatible with this scoped plan run, continue under it and state the compatibility in working notes.
+5. If an active run state exists but conflicts with this scoped plan run, stop and ask the user whether to finish, block, or abandon the existing run before creating a new one.
 
 Use this objective shape:
 
@@ -93,7 +93,9 @@ Use this objective shape:
 Execute <plan path> through scoped implementation, verification, reviews, commit, push, PR creation, and persistent post-PR monitoring. Do not mark complete until all PR feedback has been addressed and repeatedly rechecked, monitoring has continued until an external reviewer provides the qualifying Codex :thumbsup: on the original PR description for the current PR state, the :thumbsup: was not provided by this skill/workflow/execution or any account controlled/requested by the executing agent, and the PR is mergeable with <target branch>. Do not stop or mark blocked merely because review feedback or the qualifying :thumbsup: takes a long time to arrive.
 ```
 
-The `:thumbsup:` in the goal objective must be interpreted as external reviewer approval only. The executing agent must not provide it, cause it to be provided by this workflow, or count any reaction from itself or its automation as completion evidence.
+The `:thumbsup:` in the objective must be interpreted as external reviewer approval only. The executing agent must not provide it, cause it to be provided by this workflow, or count any reaction from itself or its automation as completion evidence.
+
+Pi-specific state expectation: keep the todo/working notes current with the plan path, PR URL once known, target branch, latest verification status, latest review state, mergeability, and whether the qualifying external `:thumbsup:` is still missing. Do not clear or complete those todos until the same criteria that would close the Codex goal are satisfied.
 
 ### 2. Prepare
 
@@ -221,13 +223,13 @@ The PR body must include:
 
 Do not include memory citations in PR messages.
 
-## Post-PR Goal Completion Loop
+## Post-PR Completion Loop
 
-After the PR is open, keep the Codex goal active and monitor the PR until all completion criteria are satisfied.
+After the PR is open, keep the active Codex goal or Pi todo/run state active and monitor the PR until all completion criteria are satisfied.
 
 ### Completion Criteria
 
-The goal can be marked complete only when all of these are true:
+The run state can be marked complete only when all of these are true:
 
 - All actionable PR feedback has been addressed.
 - PR feedback has been checked repeatedly after fixes, not just once immediately after PR creation.
@@ -250,19 +252,20 @@ Repeat this loop until the completion criteria are met or a true blocker is reac
 7. Commit and push fixes to the PR branch.
 8. Rebase onto the destination branch when GitHub reports the branch out of date, conflicted, or not mergeable.
 9. Recheck until GitHub shows the PR as mergeable and the external-reviewer Codex `:thumbsup:` is present on the original PR description for the current PR state.
-10. If feedback is addressed but the external reviewer has not added the qualifying `:thumbsup:`, keep the goal active and continue monitoring. Do not add the reaction yourself, ask this workflow to add it, or mark the goal complete.
-11. If a poll finds no new feedback and no qualifying `:thumbsup:`, report the latest PR state briefly, keep the goal active, wait, and poll again. Do not end the scoped-plan run or mark the goal blocked for review latency alone.
+10. If feedback is addressed but the external reviewer has not added the qualifying `:thumbsup:`, keep the run state active and continue monitoring. Do not add the reaction yourself, ask this workflow to add it, or mark the run state complete.
+11. If a poll finds no new feedback and no qualifying `:thumbsup:`, report the latest PR state briefly, keep the run state active, wait, and poll again. Do not end the scoped-plan run or mark the run state blocked for review latency alone.
 
 ### Polling Persistence
 
-When the run has reached post-PR monitoring, Codex must persist across goal turns:
+When the run has reached post-PR monitoring, the agent must persist across goal/session turns:
 
 - Keep polling the PR until the qualifying external Codex `:thumbsup:` appears or a real actionable blocker requires user input.
 - Use a reasonable repeated cadence for long waits: wait between checks, then rerun the PR review/comment/reaction/mergeability queries.
 - Continue monitoring even after all current feedback is addressed, because late feedback can still arrive before the `:thumbsup:`.
 - Do not treat "no new feedback", "review still pending", "checks still running", or "no `:thumbsup:` yet" as completion, failure, or a blocker.
-- A true blocker must be something Codex cannot resolve by continued polling or scoped fixes, such as lost GitHub authentication, a closed/deleted PR, a force-push/base-branch conflict requiring a product decision, or `QUESTION` feedback that needs the user.
-- If a true blocker is reached, report the exact blocker and the latest PR state. Otherwise, keep the goal open and continue polling.
+- In Pi, leave the monitoring todo active and summarize the latest PR URL, mergeability, feedback state, and missing/completed `:thumbsup:` evidence in any handoff or final-in-turn status.
+- A true blocker must be something the agent cannot resolve by continued polling or scoped fixes, such as lost GitHub authentication, a closed/deleted PR, a force-push/base-branch conflict requiring a product decision, or `QUESTION` feedback that needs the user.
+- If a true blocker is reached, report the exact blocker and the latest PR state. Otherwise, keep the active run state open and continue polling.
 
 Use GitHub product surfaces for this check, for example:
 
@@ -287,9 +290,9 @@ When rebase is needed:
 
 Do not use destructive git commands to force mergeability. If conflicts require decisions outside the plan, stop with a scope question.
 
-### Goal Closure
+### Run State Closure
 
-Only after the completion criteria are all satisfied, mark the Codex goal complete. Do not mark the goal blocked for a slow reviewer, no new feedback, pending review, pending checks, or missing qualifying `:thumbsup:`; those are polling wait states. Mark the goal blocked only for a real actionable blocker that prevents meaningful polling or scoped fixes, and report the exact blocker with the latest PR state.
+Only after the completion criteria are all satisfied, mark the Codex goal or Pi monitoring todo complete. Do not mark the run state blocked for a slow reviewer, no new feedback, pending review, pending checks, or missing qualifying `:thumbsup:`; those are polling wait states. Mark the run state blocked only for a real actionable blocker that prevents meaningful polling or scoped fixes, and report the exact blocker with the latest PR state.
 
 ## Reviewer Prompt Template
 
@@ -331,7 +334,7 @@ For each finding include: file/line, classification, evidence, and why it is or 
 Report:
 
 - PR URL,
-- Codex goal status,
+- run-state status (Codex goal or Pi todo),
 - changed files at a high level,
 - verification run,
 - Claude and Codex verdicts,

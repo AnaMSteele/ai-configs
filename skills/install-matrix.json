@@ -566,10 +566,11 @@
     "scoped-plan-run": {
       "class": "consumer-specific-installable",
       "allowedConsumers": [
-        "codex"
+        "codex",
+        "pi"
       ],
       "canonicalSource": "skills/scoped-plan-run",
-      "notes": "Codex-only: executes existing plans through bounded implementation, scoped Claude/Codex reviews, fixes, verification, push, and PR creation without reviewer-driven scope expansion.",
+      "notes": "Codex/Pi: executes existing plans through bounded implementation, scoped Claude/Codex reviews, fixes, verification, push, PR creation, and post-PR monitoring without reviewer-driven scope expansion.",
       "sourceType": "repo"
     },
     "signing-entitlements": {
