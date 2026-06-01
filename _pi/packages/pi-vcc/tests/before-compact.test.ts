@@ -10,16 +10,28 @@ mock.module("@mariozechner/pi-coding-agent", () => ({
   convertToLlm: (messages: any[]) => messages,
 }));
 
-const getBeforeCompactHandler = async () => {
+const getRegisteredHandlers = async () => {
   const { registerBeforeCompactHook } = await import("../src/hooks/before-compact");
+  const handlers: Record<string, Array<(event: any, ctx?: any) => any>> = {};
+  const sentUserMessages: Array<{ content: string; options: any }> = [];
+  const ctx = { isIdle: () => true };
 
-  let handler: ((event: any) => any) | undefined;
   registerBeforeCompactHook({
-    on: (eventName: string, callback: (event: any) => any) => {
-      if (eventName === "session_before_compact") handler = callback;
+    on: (eventName: string, callback: (event: any, ctx?: any) => any) => {
+      handlers[eventName] ??= [];
+      handlers[eventName].push(callback);
+    },
+    sendUserMessage: (content: string, options: any) => {
+      sentUserMessages.push({ content, options });
     },
   } as any);
 
+  return { handlers, sentUserMessages, ctx };
+};
+
+const getBeforeCompactHandler = async () => {
+  const { handlers } = await getRegisteredHandlers();
+  const handler = handlers.session_before_compact?.[0];
   if (!handler) throw new Error("session_before_compact handler was not registered");
   return handler;
 };
@@ -35,6 +47,15 @@ const basePreparation = {
     edited: [],
   },
 };
+
+const compactableEntries = () => [
+  messageEntry("1", userMsg("Investigate the compaction bug")),
+  messageEntry("2", assistantText("I found the hook.")),
+  messageEntry("3", userMsg("Follow-up request")),
+  messageEntry("4", assistantText("Working on it.")),
+];
+
+const delay = (ms = 75) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe("before-compact cut policy", () => {
   it("falls back to compacting long agent-only tails", async () => {
@@ -96,5 +117,50 @@ describe("before-compact cut policy", () => {
     expect(result.compaction.firstKeptEntryId).toBe("3");
     expect(result.compaction.summary).toContain("First request");
     expect(result.compaction.summary).not.toContain("Follow-up request");
+  });
+});
+
+describe("active compaction continuation", () => {
+  it("prompts the agent to continue after compacting an in-flight turn", async () => {
+    const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
+
+    handlers.agent_start[0]({ type: "agent_start" });
+    const result = handlers.session_before_compact[0]({
+      preparation: basePreparation,
+      branchEntries: compactableEntries(),
+    });
+
+    expect(result.compaction.details.interruptedInFlightTurn).toBe(true);
+
+    handlers.session_compact[0]({
+      type: "session_compact",
+      compactionEntry: { details: result.compaction.details },
+      fromExtension: true,
+    }, ctx);
+    await delay();
+
+    expect(sentUserMessages).toHaveLength(1);
+    expect(sentUserMessages[0].content).toContain("Continue from where you left off.");
+    expect(sentUserMessages[0].options).toEqual({ deliverAs: "followUp" });
+  });
+
+  it("does not prompt after ordinary idle compaction", async () => {
+    const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
+
+    const result = handlers.session_before_compact[0]({
+      preparation: basePreparation,
+      branchEntries: compactableEntries(),
+    });
+
+    expect(result.compaction.details.interruptedInFlightTurn).toBe(false);
+
+    handlers.session_compact[0]({
+      type: "session_compact",
+      compactionEntry: { details: result.compaction.details },
+      fromExtension: true,
+    }, ctx);
+    await delay();
+
+    expect(sentUserMessages).toHaveLength(0);
   });
 });

@@ -10,6 +10,7 @@ Vendored into `ai-configs` from `sting8k/pi-vcc` so this repo can ship a pinned 
   - `/pi-vcc` carries the `__PI_VCC_MANUAL_BYPASS__` marker directly in-source so repo-managed auto-compaction and manual compaction both use pi-vcc without global patching
   - the compaction hook keeps the repo-local agent-only fallback tail and shifts the cut backward so a live `toolResult` never outlives its matching assistant tool call
   - this vendored copy intentionally does **not** append the upstream `vcc_recall` reminder note to every summary; this repo keeps the pre-existing summary output contract while still stripping older injected note lines during merge
+  - when pi-vcc compacts while an agent turn is still in flight, it sends a follow-up continue prompt after compaction so the agent resumes instead of stalling
   - local tests and harnesses cover the repo-specific compaction safety contract and package-wide verification flow
 
 Algorithmic conversation compactor for [Pi](https://github.com/badlogic/pi-mono). No LLM calls — produces a brief transcript via extraction and formatting.

@@ -9,6 +9,11 @@ import type { PiVccCompactionDetails } from "../details";
 const CONFIG_PATH = join(homedir(), ".pi", "agent", "pi-vcc-config.json");
 const MIN_MESSAGES_TO_COMPACT = 3;
 const AGENT_ONLY_FALLBACK_TAIL_MESSAGES = 4;
+const CONTINUE_AFTER_COMPACTION_PROMPT =
+  "Continue from where you left off. Pi-vcc compacted the active in-flight conversation; resume the next concrete step without summarizing the compaction.";
+const CONTINUE_AFTER_COMPACTION_DELAY_MS = 50;
+const CONTINUE_AFTER_COMPACTION_RETRY_MS = 100;
+const CONTINUE_AFTER_COMPACTION_MAX_WAIT_MS = 5000;
 
 export interface CompactionStats {
   summarized: number;
@@ -118,11 +123,48 @@ function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId:
 }
 
 export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
+  let agentTurnActive = false;
+  let continueAfterNextCompaction = false;
+  let continueTimer: ReturnType<typeof setTimeout> | undefined;
+
+  pi.on("agent_start", () => {
+    agentTurnActive = true;
+  });
+
+  pi.on("agent_end", () => {
+    agentTurnActive = false;
+  });
+
+  pi.on("session_compact", (event, ctx) => {
+    if (!continueAfterNextCompaction) return;
+    continueAfterNextCompaction = false;
+
+    const details = event.compactionEntry.details as PiVccCompactionDetails | undefined;
+    if (details?.compactor !== "pi-vcc") return;
+    if (continueTimer) return;
+
+    const startedAt = Date.now();
+    const deliverContinue = () => {
+      if (!ctx.isIdle() && Date.now() - startedAt < CONTINUE_AFTER_COMPACTION_MAX_WAIT_MS) {
+        continueTimer = setTimeout(deliverContinue, CONTINUE_AFTER_COMPACTION_RETRY_MS);
+        return;
+      }
+
+      continueTimer = undefined;
+      pi.sendUserMessage(CONTINUE_AFTER_COMPACTION_PROMPT, { deliverAs: "followUp" });
+    };
+
+    continueTimer = setTimeout(deliverContinue, CONTINUE_AFTER_COMPACTION_DELAY_MS);
+  });
+
   pi.on("session_before_compact", (event) => {
     const { preparation, branchEntries } = event;
+    const compactingActiveTurn = agentTurnActive;
+    if (compactingActiveTurn) agentTurnActive = false;
 
     const ownCut = buildOwnCut(branchEntries as any[]);
     if (!ownCut) return { cancel: true };
+    if (compactingActiveTurn) continueAfterNextCompaction = true;
 
     const agentMessages = ownCut.messages;
     const firstKeptEntryId = ownCut.firstKeptEntryId;
@@ -192,6 +234,7 @@ export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
       sections: [...summary.matchAll(/^\[(.+?)\]/gm)].map((m) => m[1]),
       sourceMessageCount: agentMessages.length,
       previousSummaryUsed: Boolean(preparation.previousSummary),
+      interruptedInFlightTurn: compactingActiveTurn,
     };
 
     return {
