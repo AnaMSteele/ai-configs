@@ -1,6 +1,6 @@
 ---
 name: html-plan-reviewer
-description: Create, publish, and monitor HTML development plans with the local `plan-review` service. Use this skill whenever the user asks to create an HTML plan, publish/register a plan for browser review, use the HTML plan editor/reviewer, monitor plan comments, process reviewer annotations, or wire an agent workflow to plan-reviewer comments. Also use it when working with plans under `thoughts/plans/*.html` that should be served at `http://mbp:4317/` or another plan-reviewer URL.
+description: Create, publish, and monitor HTML development plans with the local `plan-review` service. Use this skill whenever the user asks to create an HTML plan, publish/register a plan for browser review, use the HTML plan editor/reviewer, monitor plan comments, process reviewer annotations, or wire an agent workflow to plan-reviewer comments. Also use it when working with plans under `thoughts/plans/*.html` that should be served at `http://mbp.braid-python.ts.net:4317/` or another plan-reviewer URL.
 ---
 
 # HTML Plan Reviewer Workflow
@@ -14,10 +14,10 @@ The tool is the Homebrew-installed `plan-review` CLI from `ai-configs/tools/plan
 Default service URL on this host:
 
 ```bash
-http://mbp:4317
+http://mbp.braid-python.ts.net:4317
 ```
 
-Use that Tailscale-hostname URL in all user-facing plan links. `localhost` and `127.0.0.1` are allowed only for private health checks or curl diagnostics, never for URLs shared with the user or browser-review handoff.
+Use that full Tailscale MagicDNS URL in all user-facing plan links. Shortnames such as `mbp`, `localhost`, and `127.0.0.1` are allowed only for private health checks or curl diagnostics, never for URLs shared with the user or browser-review handoff.
 
 Local health check:
 
@@ -51,7 +51,7 @@ When asked to create a plan for this reviewer:
 3. Write the plan under `thoughts/plans/<slug>.html` unless repo-local instructions say otherwise.
 4. Use an HTML document, not Markdown renamed as HTML.
 5. Mandatory visual baseline: use a dark-mode default theme with an explicit dark background, light foreground, readable muted text, accessible accent/link colors, and `color-scheme: dark`. Do not create light-mode HTML plans unless the user explicitly asks for a light-mode artifact.
-6. Mandatory URL baseline: every plan URL shown to the user, opened in the browser, posted to Linear, or recorded in handoff must use the Tailscale hostname, not `localhost` or `127.0.0.1`. On this host the canonical base is `http://mbp:4317/`; if using a temporary alternate port, keep the hostname and change only the port, e.g. `http://mbp:4318/...`.
+6. Mandatory URL baseline: every plan URL shown to the user, opened in the browser, posted to Linear, or recorded in handoff must use the full Tailscale MagicDNS name, not a shortname, `localhost`, or `127.0.0.1`. On this host the canonical base is `http://mbp.braid-python.ts.net:4317/`; if using a temporary alternate port, keep the hostname and change only the port, e.g. `http://mbp.braid-python.ts.net:4318/...`.
 7. Add stable `id` attributes to sections, phases, acceptance criteria, diagrams, figures, mockups, and other likely comment targets.
 8. Prefer semantic HTML: `section`, `article`, `figure`, `figcaption`, headings, lists, tables, and code blocks.
 9. Keep plan-authored scripts, event handlers, forms, and active embeds out of the artifact; the reviewer shell owns interactivity.
@@ -92,7 +92,7 @@ Open the review URL for browser annotation, or open the index:
 
 ```bash
 plan-review index
-open http://mbp:4317/
+open http://mbp.braid-python.ts.net:4317/
 ```
 
 Registration normally upserts the same plan thread. Use `--new-thread` only when the user explicitly wants a fresh review thread instead of updating the existing plan.
@@ -222,7 +222,7 @@ curl -fsS http://127.0.0.1:4317/health
 plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --json
 
 # 3. Share/open review UI
-open http://mbp:4317/
+open http://mbp.braid-python.ts.net:4317/
 
 # 4. Monitor comments
 plan-review watch <planId> --mode queue --format browser-comment --json
