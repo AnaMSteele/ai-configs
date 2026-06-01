@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HTML Plan Reviewer Draft-Safe Refresh UX</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: #111827;
+      --panel-2: #182235;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --accent: #7dd3fc;
+      --accent-2: #c084fc;
+      --good: #86efac;
+      --warn: #fbbf24;
+      --bad: #fca5a5;
+      --border: #2b364d;
+      --code: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(125, 211, 252, 0.13), transparent 34rem), var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+    main { max-width: 1120px; margin: 0 auto; padding: 48px 24px 88px; }
+    h1, h2, h3, h4 { line-height: 1.18; }
+    h1 { font-size: clamp(2rem, 4vw, 3.25rem); margin: 0 0 0.7rem; }
+    h2 { margin-top: 2.25rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: #f8fafc; }
+    h3 { margin-top: 1.5rem; color: var(--accent); }
+    h4 { margin: 1rem 0 0.35rem; color: #f8fafc; }
+    p, li { color: var(--text); }
+    a { color: var(--accent); }
+    code, pre { background: var(--code); color: #dbeafe; border-radius: 8px; }
+    code { padding: 0.12rem 0.3rem; }
+    pre { padding: 16px; overflow-x: auto; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
+    th { background: var(--panel-2); color: #f8fafc; text-align: left; }
+    .badge { display: inline-block; padding: 0.22rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: var(--accent); font-size: 0.86rem; }
+    .muted { color: var(--muted); }
+    .card { background: rgba(17,24,39,0.88); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin: 18px 0; box-shadow: 0 18px 60px rgba(0,0,0,0.25); }
+    .decision { border-left: 4px solid var(--accent); }
+    .warn { border-left: 4px solid var(--warn); }
+    .bad { color: var(--bad); }
+    .good { color: var(--good); }
+    .phase { border-left: 4px solid var(--accent-2); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="badge">Status: execution-ready</p>
+  <h1 id="title">HTML Plan Reviewer Draft-Safe Refresh UX</h1>
+  <p class="muted">Prevent live plan sync from destroying an in-progress browser comment, and close the loop on why recently added review-shell UX is not visible in the running browser.</p>
+
+  <section id="status">
+    <h2>Status</h2>
+    <p>Execution-ready. The desired behavior is known, the affected files are identified, and verification can be driven through the existing Playwright e2e fixture.</p>
+  </section>
+
+  <section id="goal">
+    <h2>Goal</h2>
+    <p>When a registered plan changes in the background, the review shell must not reload the rendered iframe or clear comment state while a reviewer has an open comment composer. The reviewer can finish or cancel the comment, then the latest plan version applies safely.</p>
+    <p>The same implementation pass must also make the served browser surface visibly current: <kbd>Cmd+Enter</kbd>/<kbd>Ctrl+Enter</kbd> submits comments, and the top navigation bar with the Plan Index link is present on the running service.</p>
+  </section>
+
+  <section id="why-this-plan-exists">
+    <h2>Why this plan exists</h2>
+    <p>Authoritative source sync currently improves plan freshness at the cost of reviewer safety. If the repo file changes while someone is typing, the review page calls its reload path, clears the pending selection, empties the textarea, and hides the composer. That makes background agent edits hostile to the reviewer’s active workflow.</p>
+    <p>The user also reports that previously requested UI changes are not visible in their running browser. Source and the local service indicate those changes exist, so the plan includes a delivery/served-artifact verification phase rather than assuming code changes alone are enough.</p>
+  </section>
+
+  <section id="authority-and-inputs">
+    <h2>Authority and inputs</h2>
+    <ul>
+      <li id="input-user-report">User report: background plan reload clears active comments; reload must wait while a comment dialog is open.</li>
+      <li id="input-user-missing-ui">User report: running server does not expose Cmd+Enter submit or a top bar to return to the plan index.</li>
+      <li id="input-source-app"><code>tools/plan-reviewer/src/server/app.ts</code>: review shell, embedded CSS, embedded browser client, SSE refresh handling, composer behavior.</li>
+      <li id="input-e2e"><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code>: existing Playwright coverage for browser comments, Cmd/Ctrl+Enter, plan index, and source sync iframe refresh.</li>
+      <li id="input-readme"><code>tools/plan-reviewer/README.md</code>: current service behavior and development commands.</li>
+      <li id="input-skill"><code>html-plan-reviewer</code> skill: source sync expectation that saving the plan refreshes an already-open review page.</li>
+    </ul>
+  </section>
+
+  <section id="current-implementation-reality">
+    <h2>Current implementation reality</h2>
+    <ul>
+      <li id="reality-refresh-clears-draft"><code>loadMeta({ reloadPlan: true })</code> in <code>app.ts</code> calls <code>clearPendingSelection()</code> before changing <code>frame.src</code>. That explicitly clears <code>selected</code>, <code>pendingAnchor</code>, <code>comment-body</code>, the composer, and the lightbox.</li>
+      <li id="reality-sync-events"><code>handlePlanVersionEvent()</code> calls <code>loadMeta({ reloadPlan: true, forceReloadPlan: event.type === 'plan.version.synced' })</code>, so filesystem sync can trigger the destructive path even when the latest version ID is reused for asset-only changes.</li>
+      <li id="reality-hotkey-exists">The current source has a <code>comment-body</code> keydown handler that submits on Enter with Meta or Ctrl and preserves Shift+Enter as a newline.</li>
+      <li id="reality-navbar-exists">The current source and locally running <code>http://127.0.0.1:4317/p/&lt;planId&gt;</code> shell include <code>#plan-navbar</code> with a “← Plan index” link and Archive button.</li>
+      <li id="reality-e2e-gap">The e2e fixture proves Cmd/Ctrl+Enter and basic plan sync, but it does not cover “sync arrives while composer is open with typed text.” That is the missing regression guard.</li>
+      <li id="reality-served-gap">Because the user’s browser does not show UI that the running local endpoint now serves, delivery verification must check the exact user-facing URL, browser cache/module behavior, and Homebrew-installed service artifact.</li>
+    </ul>
+  </section>
+
+  <section id="progress">
+    <h2>Progress</h2>
+    <ul>
+      <li id="progress-p1"><input type="checkbox" checked /> P1 — RED tests for draft-safe source sync</li>
+      <li id="progress-p2"><input type="checkbox" checked /> P2 — Implement deferred iframe refresh state machine</li>
+      <li id="progress-p3"><input type="checkbox" checked /> P3 — Make served UI freshness explicit</li>
+      <li id="progress-p4"><input type="checkbox" checked /> P4 — Verify installed service and browser behavior</li>
+    </ul>
+  </section>
+
+  <section id="resume-instructions">
+    <h2>Resume instructions (agent)</h2>
+    <p>Read this full plan, then execute the first unchecked Progress item. Stay within <code>tools/plan-reviewer</code> plus the <code>html-plan-reviewer</code> skill/README if the implementation changes operator guidance. Do not start by redesigning source sync. The core contract is: defer render reload while the composer is open; apply it when the composer is submitted or cancelled; prove the running browser sees the current shell.</p>
+  </section>
+
+  <section id="product-intent-alignment">
+    <h2>Product intent alignment</h2>
+    <div class="card decision" id="intent-default-workflow">
+      <h3>Default workflow contract</h3>
+      <p>Agent edits should live-sync plan content, but never interrupt the reviewer’s active comment. The correct path is automatic: the reviewer should not need to copy text elsewhere, manually pause source sync, or reload at the right moment.</p>
+    </div>
+    <div class="card decision" id="intent-safe-defaults">
+      <h3>Safe defaults and recovery</h3>
+      <p>While a comment composer is open, the review shell keeps showing the old rendered iframe and stores exactly one pending latest-version refresh. Comment metadata remains tied to the version and anchor the reviewer actually selected. After submit or cancel, the shell applies the latest deferred version and remaps comments using existing anchor-state rules.</p>
+    </div>
+    <div class="card warn" id="intent-fail-closed">
+      <h3>Fail-closed boundary</h3>
+      <p>If the selected anchor becomes invalid only after the deferred refresh, the submitted comment should still be accepted against the version where it was created; any later mapping can become <code>stale</code> or <code>unmapped</code>. Do not silently mutate the user’s selection to a new node while they are typing.</p>
+    </div>
+  </section>
+
+  <section id="locked-decisions">
+    <h2>Locked decisions</h2>
+    <ol>
+      <li id="decision-dialog-open">A comment dialog is considered open when the composer is visible and either <code>pendingAnchor</code> exists or the textarea has draft text.</li>
+      <li id="decision-defer-not-drop">Plan version events received during an open composer are deferred, not ignored. Only the latest deferred version needs to be applied.</li>
+      <li id="decision-meta-still-updates">Comment sidebar data and sync warnings may still update while a draft is open, but iframe reload, selection clearing, textarea clearing, and lightbox hiding must not happen until the draft resolves.</li>
+      <li id="decision-resolve-actions">“Dialog resolved” means successful submit or explicit Cancel. Successful submit clears the draft and then applies the deferred refresh. Cancel discards the draft and then applies the deferred refresh.</li>
+      <li id="decision-visible-banner">When a refresh is deferred, show a small, non-blocking notice near the composer/sidebar: “Plan updated in the background. Finish or cancel this comment to refresh.”</li>
+      <li id="decision-no-full-page-reload">Do not reload the whole page for source sync. The only refresh target is the rendered iframe, and even that is deferred while the composer is open.</li>
+      <li id="decision-ui-freshness">Serve the review shell, <code>/client.js</code>, and <code>/client.css</code> with explicit no-cache or revisioned URLs so local browser/module cache cannot hide newly shipped UI.</li>
+    </ol>
+  </section>
+
+  <section id="acceptance-criteria">
+    <h2>Acceptance criteria</h2>
+    <ol>
+      <li id="ac-draft-survives-sync">If a source sync event arrives while the composer is open and contains typed text, the textarea value, pending anchor, selection UI, and submit ability remain intact.</li>
+      <li id="ac-deferred-refresh-submit">After the reviewer submits the comment, the comment is created successfully and the latest deferred plan version becomes visible without a full page reload.</li>
+      <li id="ac-deferred-refresh-cancel">After the reviewer cancels the comment, the latest deferred plan version becomes visible and no empty comment is created.</li>
+      <li id="ac-sidebar-live">Existing comments, claim/ack/resolve changes, and sync failure warnings can still update while a draft is open without clearing the draft.</li>
+      <li id="ac-hotkey-visible"><kbd>Cmd+Enter</kbd> on macOS and <kbd>Ctrl+Enter</kbd> elsewhere submit the active composer in the running browser; <kbd>Shift+Enter</kbd> still inserts a newline.</li>
+      <li id="ac-navbar-visible">The running review page has a top navigation bar with a working link back to the plan index.</li>
+      <li id="ac-served-current">The implementation verifies the actual served URL the user opens, not only TypeScript source or freshly built dist files.</li>
+    </ol>
+  </section>
+
+  <section id="bdd-scenarios">
+    <h2>BDD scenarios</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Scenario</th><th>Expected behavior</th></tr></thead>
+      <tbody>
+        <tr id="bdd-open-draft-sync"><td>BDD-1</td><td>Given a review page is open and the reviewer typed “draft body” into the composer, when filesystem source sync publishes a new plan version.</td><td>The iframe stays on the old rendered content, the composer remains open, and “draft body” is unchanged.</td></tr>
+        <tr id="bdd-submit-after-sync"><td>BDD-2</td><td>Given BDD-1, when the reviewer presses Cmd/Ctrl+Enter.</td><td>The comment is submitted against the selected anchor/version, then the iframe refreshes to the latest synced content.</td></tr>
+        <tr id="bdd-cancel-after-sync"><td>BDD-3</td><td>Given BDD-1, when the reviewer presses Cancel.</td><td>No comment is created, draft state clears, and the iframe refreshes to the latest synced content.</td></tr>
+        <tr id="bdd-multiple-syncs"><td>BDD-4</td><td>Given a draft is open, when two or more source sync events arrive.</td><td>The shell keeps the draft and applies only the latest version after submit/cancel.</td></tr>
+        <tr id="bdd-sync-failed"><td>BDD-5</td><td>Given a draft is open, when source sync fails because the file disappears.</td><td>The draft remains intact and the sidebar warning appears without reloading the iframe.</td></tr>
+        <tr id="bdd-existing-comments"><td>BDD-6</td><td>Given a draft is open, when another comment is acknowledged or resolved.</td><td>The sidebar can update status while the draft text remains intact.</td></tr>
+        <tr id="bdd-hotkey"><td>BDD-7</td><td>Given the composer is open in the running browser, when the reviewer presses Shift+Enter and then Cmd/Ctrl+Enter.</td><td>Shift+Enter inserts a newline; Cmd/Ctrl+Enter submits.</td></tr>
+        <tr id="bdd-navbar"><td>BDD-8</td><td>Given the user opens the canonical service URL for a plan.</td><td>The top bar is visible and the Plan Index link navigates to <code>/</code>.</td></tr>
+        <tr id="bdd-cache"><td>BDD-9</td><td>Given the service is rebuilt/restarted after UI changes, when the browser opens the plan page.</td><td>The served shell and client assets are the current implementation without requiring a hard-refresh incantation.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="phase-by-phase-execution-plan">
+    <h2>Phase-by-phase execution plan</h2>
+
+    <article class="card phase" id="phase-p1-red-tests">
+      <h3>P1 — RED tests for draft-safe source sync</h3>
+      <h4>End State</h4>
+      <p>Playwright coverage fails on current behavior because source sync clears the open composer and draft.</p>
+      <h4>Tests first</h4>
+      <p>Extend <code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code> in the existing source-sync scenario. Open a synced plan, click a target to open the composer, type a draft, edit the source file, and assert the old iframe content plus draft remain while a deferred-refresh notice appears. Then submit and assert the new content appears.</p>
+      <h4>Work</h4>
+      <p>No production work in this phase. Keep test assertions behavior-focused: textarea value, composer visibility, iframe body text before/after resolution, comment creation, and top navbar/hotkey visibility.</p>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run build
+node dist/test-fixtures/e2e-run.js</code></pre>
+      <p>Expected RED result before implementation: failure showing the draft/composer was cleared or the iframe refreshed before submit/cancel.</p>
+    </article>
+
+    <article class="card phase" id="phase-p2-deferred-refresh">
+      <h3>P2 — Implement deferred iframe refresh state machine</h3>
+      <h4>End State</h4>
+      <p>Plan version events are applied immediately only when there is no open draft. While a draft is open, refresh metadata is queued and applied after submit/cancel.</p>
+      <h4>Tests first</h4>
+      <p>Run the P1 e2e test and keep it failing until the state machine is implemented. Add a narrow unit-style contract only if helper extraction makes that cheaper than browser coverage.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p2-open-draft-helper">Add small client helpers inside <code>clientJs</code>: <code>hasOpenCommentDialog()</code>, <code>queueDeferredPlanRefresh()</code>, and <code>applyDeferredPlanRefreshIfIdle()</code>.</li>
+        <li id="p2-load-meta-mode">Split metadata refresh from iframe reload. <code>loadMeta()</code> should be able to update comments/sync warning without clearing selection or changing <code>frame.src</code>.</li>
+        <li id="p2-event-handler">Change <code>handlePlanVersionEvent()</code> so it queues reload details when <code>hasOpenCommentDialog()</code> is true, otherwise it reloads the iframe as today.</li>
+        <li id="p2-submit-flow">After successful <code>submitPendingComment()</code>, clear the submitted draft, call <code>loadMeta()</code>, then apply the deferred latest refresh if present.</li>
+        <li id="p2-cancel-flow">On Cancel, clear the draft and then apply the deferred latest refresh if present.</li>
+        <li id="p2-notice">Add a small <code>#deferred-refresh-notice</code> element in the shell/sidebar/composer area and hide/show it from the queued-refresh state.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul><li><code>tools/plan-reviewer/src/server/app.ts</code></li></ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test:e2e</code></pre>
+    </article>
+
+    <article class="card phase" id="phase-p3-served-ui-freshness">
+      <h3>P3 — Make served UI freshness explicit</h3>
+      <h4>End State</h4>
+      <p>The running service cannot silently serve stale browser shell assets after review-shell changes, and the UI exposes enough evidence to debug stale deployments quickly.</p>
+      <h4>Tests first</h4>
+      <p>Add/extend assertions in <code>e2e-run.ts</code> that the shell contains <code>#plan-navbar</code>, the Plan Index link works, and the browser-submitted Cmd/Ctrl+Enter path still works after source sync changes.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p3-cache-headers">Set explicit <code>Cache-Control: no-store</code> for <code>/p/:planId</code>, <code>/client.js</code>, and <code>/client.css</code>, or use revisioned asset URLs from the shell. Prefer no-store for this local review tool.</li>
+        <li id="p3-build-stamp">Add a lightweight build/source stamp to the navbar or API metadata only if needed for debugging; keep it unobtrusive.</li>
+        <li id="p3-docs">Update README/troubleshooting only if the implementation changes how users should refresh/restart the service.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul>
+        <li><code>tools/plan-reviewer/src/server/app.ts</code></li>
+        <li><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></li>
+        <li><code>tools/plan-reviewer/README.md</code> if operator guidance changes</li>
+      </ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test:e2e
+curl -I http://127.0.0.1:4317/client.js</code></pre>
+    </article>
+
+    <article class="card phase" id="phase-p4-installed-service">
+      <h3>P4 — Verify installed service and browser behavior</h3>
+      <h4>End State</h4>
+      <p>The exact running service URL used by the reviewer shows the current shell, hotkey behavior, top nav, and draft-safe refresh behavior.</p>
+      <h4>Tests first</h4>
+      <p>Use the existing e2e fixture as the automated gate. For installed-service confidence, perform read-only HTTP checks before and after reinstall/restart to prove the served artifact changed as expected.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p4-build">Run the normal build/test command from the package, not ad hoc source inspection.</li>
+        <li id="p4-install">If the Homebrew service is the user-facing daemon, reinstall or rebuild the formula from this checkout and restart <code>brew services restart local/ai-configs/plan-reviewer</code> or the actual installed formula name.</li>
+        <li id="p4-canonical-url">Verify both <code>http://127.0.0.1:4317</code> and the canonical Tailscale URL <code>http://mbp.braid-python.ts.net:4317</code> return the same current shell.</li>
+        <li id="p4-browser">Use Playwright against the running service, not only the ephemeral test server, to confirm the top bar and hotkey in a real browser context.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul>
+        <li>No additional source files unless P3 documentation changes are needed.</li>
+      </ul>
+      <h4>Verify</h4>
+      <pre><code>cd tools/plan-reviewer
+bun run test
+bun run test:e2e
+curl -fsS http://127.0.0.1:4317/p/&lt;planId&gt; | rg 'plan-navbar|Plan index|client.js'
+curl -fsS http://127.0.0.1:4317/client.js | rg 'keydown|submitPendingComment'</code></pre>
+    </article>
+  </section>
+
+  <section id="verification-strategy">
+    <h2>Verification strategy</h2>
+    <table>
+      <thead><tr><th>Acceptance</th><th>BDD</th><th>Test layer</th><th>Command</th></tr></thead>
+      <tbody>
+        <tr><td>AC-1, AC-2</td><td>BDD-1, BDD-2, BDD-4</td><td>Playwright e2e with filesystem source sync</td><td><code>bun run test:e2e</code></td></tr>
+        <tr><td>AC-3</td><td>BDD-3</td><td>Playwright e2e cancel path</td><td><code>bun run test:e2e</code></td></tr>
+        <tr><td>AC-4</td><td>BDD-5, BDD-6</td><td>Playwright plus existing API event tests</td><td><code>bun run test</code></td></tr>
+        <tr><td>AC-5, AC-6</td><td>BDD-7, BDD-8</td><td>Playwright browser assertions</td><td><code>bun run test:e2e</code></td></tr>
+        <tr><td>AC-7</td><td>BDD-9</td><td>Installed-service smoke checks</td><td><code>curl</code> against <code>127.0.0.1:4317</code> and <code>mbp.braid-python.ts.net:4317</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="delivery-order">
+    <h2>Delivery order</h2>
+    <ol>
+      <li id="delivery-red">Write the failing e2e regression for draft-safe source sync.</li>
+      <li id="delivery-green">Implement deferred refresh and make the regression pass.</li>
+      <li id="delivery-cache">Add explicit no-cache/revision behavior for review shell assets and assert visible nav/hotkey behavior.</li>
+      <li id="delivery-full-test">Run package tests and e2e tests.</li>
+      <li id="delivery-service">Rebuild/restart the Homebrew service and verify the real URL the user opens.</li>
+    </ol>
+  </section>
+
+  <section id="non-goals">
+    <h2>Non-goals</h2>
+    <ul>
+      <li id="non-goal-editor">Do not build a browser-based plan editor.</li>
+      <li id="non-goal-source-sync-redesign">Do not redesign the authoritative source sync service or watcher architecture.</li>
+      <li id="non-goal-offline-drafts">Do not add multi-session persistent draft storage; this task only protects an active open composer from in-page sync reloads.</li>
+      <li id="non-goal-auth">Do not add authentication or sharing controls.</li>
+      <li id="non-goal-anchor-remap">Do not invent new anchor remapping rules beyond preserving the version/anchor selected before the deferred refresh.</li>
+    </ul>
+  </section>
+
+  <section id="decisions-deviations-log">
+    <h2>Decisions / Deviations log</h2>
+    <ul>
+      <li id="log-2026-06-01">2026-06-01: Plan created from user report and repo inspection. Current source already contains top nav and Cmd/Ctrl+Enter support; the implementation plan therefore includes served-artifact/cache/Homebrew verification as first-class work.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
