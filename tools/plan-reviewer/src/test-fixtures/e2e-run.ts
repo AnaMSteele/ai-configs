@@ -95,6 +95,7 @@ try {
       };
     });
     await page.waitForSelector('#plan-frame');
+    const commentAnchorCount = () => page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length ?? 0);
     await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('#dom-annotation'));
     await page.evaluate(() => {
       const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
@@ -105,14 +106,14 @@ try {
     await page.fill('#comment-body', 'Browser DOM annotation comment');
     await page.click('#submit-comment');
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser DOM annotation comment'));
-    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length > 0);
-    assert.equal(await page.locator('.comment-anchor').count(), 1);
-    assert.equal(await page.locator('.comment-anchor').first().evaluate(marker => marker.getAttribute('style')?.includes('NaN')), false);
+    await page.waitForFunction(() => (document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length ?? 0) > 0);
+    assert.equal(await commentAnchorCount(), 1);
+    assert.equal(await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector<HTMLElement>('.comment-anchor')?.getAttribute('style')?.includes('NaN')), false);
     assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 1);
-    const markerTopBeforeScroll = await page.locator('.comment-anchor').first().evaluate(marker => marker.getBoundingClientRect().top);
+    const markerTopBeforeScroll = await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('.comment-anchor')?.getBoundingClientRect().top ?? 0);
     await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentWindow?.scrollTo(0, 120));
     await page.waitForFunction(
-      before => Math.abs((document.querySelector('.comment-anchor')?.getBoundingClientRect().top ?? before) - before) > 20,
+      before => Math.abs((document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('.comment-anchor')?.getBoundingClientRect().top ?? before) - before) > 20,
       markerTopBeforeScroll
     );
     await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentWindow?.scrollTo(0, 0));
@@ -166,7 +167,7 @@ try {
     assert.match(await page.locator('#comments').innerText(), /image · mapped/);
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
-    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length >= 3);
+    await page.waitForFunction(() => (document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length ?? 0) >= 3);
 
     const staleDomComment = await context.post(`/api/plans/${registered.planId}/comments`, {
       data: {
@@ -178,7 +179,7 @@ try {
     });
     assert.equal(staleDomComment.ok(), true);
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Legacy DOM annotation with loose fallback selector'));
-    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length >= 4);
+    await page.waitForFunction(() => (document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length ?? 0) >= 4);
 
     const missingDomHtml = html.replace('<section id="dom-annotation"><h1>DOM annotation</h1><p>Plan index target.</p></section>', '');
     const changed = await context.post('/api/plans/register', {
@@ -198,7 +199,7 @@ try {
     });
     assert.equal(changed.ok(), true);
     await page.waitForFunction(() => !document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('#dom-annotation'));
-    await page.waitForFunction(() => document.querySelectorAll('.comment-anchor').length === 1);
+    await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length === 1);
   } finally {
     await browser.close();
   }

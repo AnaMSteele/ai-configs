@@ -210,6 +210,24 @@ function renderMarkers(items){
 function selectorForPlanNodeId(planNodeId){
   return '[data-plan-node-id=' + JSON.stringify(String(planNodeId)) + ']';
 }
+function ensureFrameAnchorStyles(){
+  const doc = frame.contentDocument;
+  if (!doc) return null;
+  let style = doc.getElementById('plan-review-comment-anchor-styles');
+  if (!style) {
+    style = doc.createElement('style');
+    style.id = 'plan-review-comment-anchor-styles';
+    style.textContent = '.comment-anchor{position:absolute;pointer-events:none;border-radius:6px;box-sizing:border-box;z-index:2147483640}.comment-anchor.pending{border:3px solid #a855f7;background:rgba(168,85,247,.22);box-shadow:0 0 0 4px rgba(168,85,247,.16),0 12px 30px rgba(0,0,0,.28)}.comment-anchor.addressed{border:2px dotted rgba(216,180,254,.9);background:transparent;box-shadow:none}.comment-anchor-label{position:absolute;right:-10px;top:-12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;padding:0 6px;background:#7e22ce;color:white;border:2px solid #f3e8ff;font-weight:800;font-size:12px;line-height:20px;box-shadow:0 8px 18px rgba(0,0,0,.35)}.comment-anchor.addressed .comment-anchor-label{display:none}';
+    (doc.head || doc.documentElement).appendChild(style);
+  }
+  return doc;
+}
+function clearCommentAnchors(){
+  document.querySelectorAll('.comment-anchor').forEach(marker => marker.remove());
+  try {
+    frame.contentDocument?.querySelectorAll('.comment-anchor').forEach(marker => marker.remove());
+  } catch {}
+}
 function currentRectForComment(comment){
   const anchor = comment.anchor || {};
   const hasDomTarget = Boolean(anchor.planNodeId || anchor.cssSelector);
@@ -231,7 +249,8 @@ function currentRectForComment(comment){
   return hasDomTarget ? null : anchor.rect;
 }
 function redrawMarkers(){
-  document.querySelectorAll('.marker,.comment-anchor').forEach(marker => marker.remove());
+  document.querySelectorAll('.marker').forEach(marker => marker.remove());
+  clearCommentAnchors();
   markerCount = 0;
   for (const comment of markerComments) {
     const rect = currentRectForComment(comment);
@@ -333,23 +352,25 @@ function isCommentAddressed(comment){
   return comment.status === 'acknowledged' || comment.status === 'resolved';
 }
 function addCommentAnchor(rect, comment){
-  const frameRect = frame.getBoundingClientRect();
-  const anchor = document.createElement('div');
+  const doc = ensureFrameAnchorStyles();
+  if (!doc) return null;
+  const win = frame.contentWindow;
+  const anchor = doc.createElement('div');
   anchor.className = 'comment-anchor ' + (isCommentAddressed(comment) ? 'addressed' : 'pending');
   anchor.dataset.commentId = comment.id;
   const x = Number(rect.x ?? rect.left ?? 0);
   const y = Number(rect.y ?? rect.top ?? 0);
   const width = Number(rect.width ?? 0);
   const height = Number(rect.height ?? 0);
-  anchor.style.left = (frameRect.left + x) + 'px';
-  anchor.style.top = (frameRect.top + y) + 'px';
+  anchor.style.left = ((win?.scrollX || 0) + x) + 'px';
+  anchor.style.top = ((win?.scrollY || 0) + y) + 'px';
   anchor.style.width = Math.max(1, width) + 'px';
   anchor.style.height = Math.max(1, height) + 'px';
-  const label = document.createElement('div');
+  const label = doc.createElement('div');
   label.className = 'comment-anchor-label';
   label.textContent = String(comment.sequence || '');
   anchor.appendChild(label);
-  document.getElementById('review').appendChild(anchor);
+  doc.body.appendChild(anchor);
   return anchor;
 }
 function assetIdFor(element){
