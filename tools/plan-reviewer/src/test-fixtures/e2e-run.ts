@@ -108,8 +108,13 @@ try {
     });
     await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
     await page.fill('#comment-body', 'Browser DOM annotation comment');
-    await page.click('#submit-comment');
+    await page.keyboard.press('Shift+Enter');
+    await page.keyboard.type('second line');
+    assert.equal(await page.inputValue('#comment-body'), 'Browser DOM annotation comment\nsecond line');
+    assert.equal((await page.locator('#comments').innerText()).includes('Browser DOM annotation comment'), false);
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter');
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser DOM annotation comment'));
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('second line'));
     await page.waitForFunction(() => (document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length ?? 0) > 0);
     assert.equal(await commentAnchorCount(), 1);
     assert.equal(await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector<HTMLElement>('.comment-anchor')?.getAttribute('style')?.includes('NaN')), false);
@@ -195,8 +200,25 @@ try {
       }
     });
     assert.equal(staleDomComment.ok(), true);
+    const staleDom = (await staleDomComment.json()).data as { comment: { id: string } };
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Legacy DOM annotation with loose fallback selector'));
     await page.waitForFunction(() => (document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length ?? 0) >= 4);
+
+    const resolvedFallbackComment = await context.post(`/api/plans/${registered.planId}/comments`, {
+      data: {
+        versionId: registered.versionId,
+        body: 'Resolved DOM annotation maps by selector fallback',
+        anchorType: 'dom',
+        anchor: { planNodeId: 'old-node-id', cssSelector: '#text-target', xpath: '/html/body/main/section[2]/p', textPreview: 'Text range context target', rect: { x: 0, y: 0, width: 20, height: 20 } }
+      }
+    });
+    assert.equal(resolvedFallbackComment.ok(), true);
+    const resolvedFallback = (await resolvedFallbackComment.json()).data as { comment: { id: string } };
+    const resolvedResponse = await context.post(`/api/comments/${resolvedFallback.comment.id}/resolve`, {
+      data: { resolutionNote: 'Resolved in e2e regression' }
+    });
+    assert.equal(resolvedResponse.ok(), true);
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Resolved DOM annotation maps by selector fallback'));
 
     const missingDomHtml = html.replace('<section id="dom-annotation"><h1>DOM annotation</h1><p>Plan index target.</p></section>', '');
     const changed = await context.post('/api/plans/register', {
@@ -216,7 +238,38 @@ try {
     });
     assert.equal(changed.ok(), true);
     await page.waitForFunction(() => !document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('#dom-annotation'));
-    await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length === 1);
+    await page.waitForFunction(
+      commentId => Boolean(document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector(`.comment-anchor.addressed[data-comment-id="${commentId}"]`)),
+      resolvedFallback.comment.id
+    );
+    assert.equal(await page.evaluate(commentId => {
+      const doc = document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument;
+      const anchor = doc?.querySelector<HTMLElement>(`.comment-anchor.pending[data-comment-id="${commentId}"]`);
+      const target = doc?.querySelector<HTMLElement>('#text-target');
+      if (!anchor || !target) return false;
+      const anchorRect = anchor.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      return Math.abs(anchorRect.y - targetRect.y) <= 1;
+    }, staleDom.comment.id), false);
+    const resolvedAnchor = await page.evaluate(commentId => {
+      const doc = document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument;
+      const anchor = doc?.querySelector<HTMLElement>(`.comment-anchor.addressed[data-comment-id="${commentId}"]`);
+      const target = doc?.querySelector<HTMLElement>('#text-target');
+      if (!anchor || !target) return null;
+      const anchorRect = anchor.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      return {
+        borderStyle: getComputedStyle(anchor).borderStyle,
+        anchorY: Math.round(anchorRect.y),
+        targetY: Math.round(targetRect.y),
+        anchorWidth: Math.round(anchorRect.width),
+        targetWidth: Math.round(targetRect.width)
+      };
+    }, resolvedFallback.comment.id);
+    assert.ok(resolvedAnchor);
+    assert.equal(resolvedAnchor.borderStyle, 'dotted');
+    assert.equal(Math.abs(resolvedAnchor.anchorY - resolvedAnchor.targetY) <= 1, true);
+    assert.equal(Math.abs(resolvedAnchor.anchorWidth - resolvedAnchor.targetWidth) <= 1, true);
   } finally {
     await browser.close();
   }
@@ -265,7 +318,7 @@ try {
 
   const comments = await context.get(`/api/plans/${registered.planId}/comments`);
   const commentData = (await comments.json()).data.comments as Array<{ body: string; screenshotAssetId?: string; anchor?: { selectedText?: string; planNodeId?: string; domPath?: string; xpath?: string; textQuote?: unknown; normalizedPoint?: unknown; normalizedRect?: { width: number; height: number }; displayedRect?: unknown; zoomState?: { scale: number; panX?: number; panY?: number }; imageHash?: string } }>;
-  const uiComment = commentData.find(comment => comment.body === 'Browser DOM annotation comment');
+  const uiComment = commentData.find(comment => comment.body === 'Browser DOM annotation comment\nsecond line');
   assert.ok(uiComment?.screenshotAssetId);
   const uiFallbackComment = commentData.find(comment => comment.body === 'Browser DOM annotation without screenshot');
   assert.ok(uiFallbackComment);

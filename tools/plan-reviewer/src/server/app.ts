@@ -254,22 +254,41 @@ function clearCommentAnchors(){
     frame.contentDocument?.querySelectorAll('.comment-anchor').forEach(marker => marker.remove());
   } catch {}
 }
+function anchorTextMatches(target, anchor){
+  const targetText = (target?.textContent || '').toLowerCase();
+  const fragments = [anchor?.textQuote?.exact, anchor?.selectedText, anchor?.textPreview].filter(value => typeof value === 'string' && value.trim().length > 0);
+  if (fragments.length === 0) return true;
+  return fragments.some(fragment => {
+    const text = fragment.toLowerCase();
+    if (targetText.includes(text) || text.includes(targetText)) return true;
+    const tokens = [...new Set(text.match(/[a-z0-9_-]{4,}/g) || [])];
+    if (tokens.length === 0) return false;
+    const matches = tokens.filter(token => targetText.includes(token)).length;
+    return matches >= Math.min(2, tokens.length) && matches / tokens.length >= 0.35;
+  });
+}
+function rectForTarget(target){
+  const rect = target.getBoundingClientRect();
+  return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+}
+function xpathTarget(doc, xpath){
+  try {
+    const result = doc.evaluate(xpath, doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+    return result.singleNodeValue?.nodeType === 1 ? result.singleNodeValue : null;
+  } catch { return null; }
+}
 function currentRectForComment(comment){
   const anchor = comment.anchor || {};
-  const hasDomTarget = Boolean(anchor.planNodeId || anchor.cssSelector);
+  const hasDomTarget = Boolean(anchor.planNodeId || anchor.cssSelector || anchor.xpath);
   try {
     const doc = frame.contentDocument;
     if (doc) {
-      let target = null;
-      if (anchor.planNodeId) {
-        target = doc.querySelector(selectorForPlanNodeId(anchor.planNodeId));
-      } else if (anchor.cssSelector) {
-        target = doc.querySelector(anchor.cssSelector);
-      }
-      if (target) {
-        const rect = target.getBoundingClientRect();
-        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-      }
+      const byNodeId = anchor.planNodeId ? doc.querySelector(selectorForPlanNodeId(anchor.planNodeId)) : null;
+      if (byNodeId) return rectForTarget(byNodeId);
+      const bySelector = anchor.cssSelector ? doc.querySelector(anchor.cssSelector) : null;
+      if (bySelector && anchorTextMatches(bySelector, anchor)) return rectForTarget(bySelector);
+      const byXpath = anchor.xpath ? xpathTarget(doc, anchor.xpath) : null;
+      if (byXpath && anchorTextMatches(byXpath, anchor)) return rectForTarget(byXpath);
     }
   } catch {}
   return hasDomTarget ? null : anchor.rect;
@@ -627,7 +646,7 @@ window.addEventListener('mouseup', event => {
   updateImageRectangle(lightboxDragStart, lightboxImagePoint(event));
   lightboxDragStart = null;
 });
-document.getElementById('submit-comment').addEventListener('click', async () => {
+async function submitPendingComment(){
   if (!pendingAnchor || !body.value.trim()) return;
   const note = body.value;
   const marker = addMarker(pendingAnchor.rect);
@@ -648,7 +667,13 @@ document.getElementById('submit-comment').addEventListener('click', async () => 
   if (!json.ok) { marker.remove(); alert(json.error.message); }
   clearPendingSelection();
   await loadMeta();
+}
+body.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' || event.shiftKey || (!event.metaKey && !event.ctrlKey)) return;
+  event.preventDefault();
+  submitPendingComment();
 });
+document.getElementById('submit-comment').addEventListener('click', submitPendingComment);
 const source = new EventSource('/api/plans/'+planId+'/events?mode=all');
 source.addEventListener('plan.version.registered', handlePlanVersionEvent);
 source.addEventListener('plan.version.synced', handlePlanVersionEvent);
