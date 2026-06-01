@@ -349,6 +349,21 @@
       "sourceType": "external-package",
       "packageSource": "anthropics/skills"
     },
+    "html-plan-reviewer": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "codex",
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/html-plan-reviewer",
+      "legacySources": [
+        ".agents/skills/html-plan-reviewer"
+      ],
+      "notes": "Canonicalized from the installed shared skill; includes Codex-specific long-running watcher guidance for plan-review comment monitoring.",
+      "sourceType": "repo"
+    },
     "internal-comms": {
       "class": "universal-installable",
       "allowedConsumers": [
