@@ -109,12 +109,31 @@ try {
     });
     await page.waitForSelector('#plan-frame');
     const commentAnchorCount = () => page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelectorAll('.comment-anchor').length ?? 0);
+    const openDomComposer = async () => {
+      await page.evaluate(() => {
+        const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
+        const target = iframe?.contentDocument?.querySelector('#dom-annotation');
+        target?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe?.contentWindow ?? window }));
+      });
+      await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
+    };
     await page.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.querySelector('#dom-annotation'));
-    await page.evaluate(() => {
-      const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
-      const target = iframe?.contentDocument?.querySelector('#dom-annotation');
-      target?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe?.contentWindow ?? window }));
-    });
+    await openDomComposer();
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === true);
+
+    await openDomComposer();
+    await page.fill('#comment-body', 'Unsaved draft warning');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.inputValue('#comment-body'), 'Unsaved draft warning');
+    assert.equal(await page.evaluate(() => document.querySelector<HTMLElement>('#composer')?.hidden), false);
+    assert.equal(await page.evaluate(() => document.querySelector<HTMLElement>('#composer')?.classList.contains('discard-warning')), true);
+    assert.match(await page.locator('#comment-discard-warning').innerText(), /comment would be lost/i);
+    assert.match(await page.locator('#comment-discard-warning').innerText(), /Cancel/);
+    await page.click('#cancel-comment');
+    await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === true);
+
+    await openDomComposer();
     await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
     await page.fill('#comment-body', 'Browser DOM annotation comment');
     await page.keyboard.press('Shift+Enter');

@@ -122,7 +122,7 @@ function reviewShell(planId: string): string {
       <main id="review"><iframe id="plan-frame" sandbox="allow-same-origin" src="/render/${escapedPlanId}"></iframe><div id="hover-selection-box" class="selection-box hover" hidden></div><div id="active-selection-box" class="selection-box active" hidden></div></main>
     </div>
     <div id="lightbox" class="lightbox" hidden><header><button id="zoom-out">-</button><button id="zoom-reset">Reset</button><button id="zoom-in">+</button><button id="pan-toggle">Pan</button><button id="close-lightbox">Close</button></header><div id="lightbox-stage" class="lightbox-stage"><img id="lightbox-image" alt=""><div id="image-selection-box" hidden></div></div></div>
-    <div id="composer" hidden><textarea id="comment-body" placeholder="Comment on selection"></textarea><button id="submit-comment">Submit</button><button id="cancel-comment">Cancel</button></div>
+    <div id="composer" hidden><textarea id="comment-body" placeholder="Comment on selection"></textarea><div id="comment-discard-warning" hidden>Your comment would be lost. Use Cancel to discard it.</div><button id="submit-comment">Submit</button><button id="cancel-comment">Cancel</button></div>
     <script src="/vendor/html2canvas.js"></script>
     <script type="module" src="/client.js"></script>
   </body></html>`;
@@ -138,7 +138,8 @@ body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}
 #app{display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:calc(100vh - 52px)}
 #review{grid-column:1;position:relative}#sidebar{grid-column:2;grid-row:1;border-left:1px solid #2b364d;padding:16px;background:#111827}
 #plan-frame{width:100%;height:calc(100vh - 52px);border:0;background:white}.selection-box,.comment-anchor{position:fixed;pointer-events:none;border-radius:6px;transition:left .08s ease,top .08s ease,width .08s ease,height .08s ease}.selection-box{z-index:8;box-shadow:0 0 0 9999px rgba(2,6,23,.08),0 10px 24px rgba(0,0,0,.25)}.selection-box.hover{border:2px solid rgba(125,211,252,.9);background:rgba(56,189,248,.10)}.selection-box.active{z-index:9;border:3px solid #38bdf8;background:rgba(56,189,248,.16);box-shadow:0 0 0 4px rgba(56,189,248,.18),0 12px 32px rgba(0,0,0,.35)}.comment-anchor{z-index:7}.comment-anchor.pending{border:3px solid #a855f7;background:rgba(168,85,247,.22);box-shadow:0 0 0 4px rgba(168,85,247,.16),0 12px 30px rgba(0,0,0,.28)}.comment-anchor.addressed{border:2px dotted rgba(216,180,254,.9);background:transparent;box-shadow:none}.comment-anchor-label{position:absolute;right:-10px;top:-12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;padding:0 6px;background:#7e22ce;color:white;border:2px solid #f3e8ff;font-weight:800;font-size:12px;box-shadow:0 8px 18px rgba(0,0,0,.35)}.comment-anchor.addressed .comment-anchor-label{display:none}.comment-row{border:1px solid #2b364d;padding:10px;margin:8px 0;border-radius:8px;background:#0f172a}.comment-row small{color:#a7b0c0}.marker{position:absolute;z-index:9;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#0ea5e9;color:white;border:2px solid #dbeafe;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.35);pointer-events:none}
-#sync-warning{border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#fde68a;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#deferred-refresh-notice{border:1px solid #38bdf8;background:rgba(56,189,248,.12);color:#bae6fd;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#composer{position:fixed;right:340px;top:80px;background:#0f172a;border:1px solid #38bdf8;padding:12px;border-radius:8px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+#sync-warning{border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#fde68a;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#deferred-refresh-notice{border:1px solid #38bdf8;background:rgba(56,189,248,.12);color:#bae6fd;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#composer{position:fixed;right:340px;top:80px;background:#0f172a;border:1px solid #38bdf8;padding:12px;border-radius:8px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4)}#composer.discard-warning{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.22),0 12px 32px rgba(0,0,0,.4)}
+#comment-discard-warning{margin-top:8px;color:#fecaca;font-size:13px;font-weight:700}#composer.discard-warning textarea{border-color:#ef4444}
 #composer textarea{width:260px;height:90px;background:#020617;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:8px;display:block}
 	#composer button{margin-top:8px;margin-right:8px}.plan-review-selected{outline:3px solid #38bdf8!important;box-shadow:0 0 0 4px rgba(56,189,248,.2)!important}.lightbox{position:fixed;inset:36px 360px 36px 36px;background:#020617;border:1px solid #38bdf8;z-index:12;display:grid;grid-template-rows:auto 1fr}.lightbox[hidden]{display:none}.lightbox header{display:flex;gap:8px;padding:10px;border-bottom:1px solid #2b364d}.lightbox img{max-width:100%;max-height:100%;place-self:center;transform-origin:center}.lightbox-stage{display:grid;overflow:hidden;position:relative}#image-selection-box{position:absolute;border:2px solid #38bdf8;background:rgba(56,189,248,.2);pointer-events:none}
 `;
@@ -152,6 +153,7 @@ const frame = document.getElementById('plan-frame');
 const archivePlanButton = document.getElementById('archive-plan');
 const composer = document.getElementById('composer');
 const body = document.getElementById('comment-body');
+const discardWarning = document.getElementById('comment-discard-warning');
 const comments = document.getElementById('comments');
 const syncWarning = document.getElementById('sync-warning');
 const deferredRefreshNotice = document.getElementById('deferred-refresh-notice');
@@ -220,6 +222,23 @@ function updateDeferredRefreshNotice(){
 function queueDeferredPlanRefresh(refresh){
   deferredPlanRefresh = refresh;
   updateDeferredRefreshNotice();
+}
+function clearDiscardWarning(){
+  composer.classList.remove('discard-warning');
+  if (discardWarning) discardWarning.hidden = true;
+}
+function showDiscardWarning(){
+  composer.classList.add('discard-warning');
+  if (discardWarning) discardWarning.hidden = false;
+}
+async function closeComposerFromEscape(){
+  if (composer.hidden) return;
+  if (body.value.trim().length > 0) {
+    showDiscardWarning();
+    return;
+  }
+  clearPendingSelection();
+  await applyDeferredPlanRefreshIfIdle();
 }
 async function applyDeferredPlanRefreshIfIdle(){
   if (!deferredPlanRefresh || hasOpenCommentDialog()) return false;
@@ -498,6 +517,7 @@ function clearPendingSelection(){
   selectedForScreenshot = null;
   pendingAnchor = null;
   body.value = '';
+  clearDiscardWarning();
   composer.hidden = true;
   lightbox.hidden = true;
   imageSelectionBox.hidden = true;
@@ -633,6 +653,7 @@ function attachFrameListeners(){
     pendingAnchor = anchorForElement(selected, event);
     updateSelectionBoxes();
     if (selected.tagName.toLowerCase() === 'img') showLightbox(selected);
+    clearDiscardWarning();
     composer.hidden = false;
     body.focus();
   }, true);
@@ -651,6 +672,9 @@ document.getElementById('pan-toggle').addEventListener('click', () => { panMode 
 document.getElementById('cancel-comment').addEventListener('click', async () => {
   clearPendingSelection();
   await applyDeferredPlanRefreshIfIdle();
+});
+body.addEventListener('input', () => {
+  if (body.value.trim().length === 0) clearDiscardWarning();
 });
 lightboxStage.addEventListener('mousedown', event => {
   if (!selected || selected.tagName.toLowerCase() !== 'img') return;
@@ -704,6 +728,11 @@ async function submitPendingComment(){
   await applyDeferredPlanRefreshIfIdle();
 }
 body.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeComposerFromEscape();
+    return;
+  }
   if (event.key !== 'Enter' || event.shiftKey || (!event.metaKey && !event.ctrlKey)) return;
   event.preventDefault();
   submitPendingComment();
