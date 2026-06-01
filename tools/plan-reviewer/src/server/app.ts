@@ -118,7 +118,7 @@ function reviewShell(planId: string): string {
   </head><body data-plan-id="${escapedPlanId}">
     <nav id="plan-navbar" aria-label="Plan actions"><a href="/">← Plan index</a><button id="archive-plan" type="button">Archive plan</button></nav>
     <div id="app">
-      <aside id="sidebar"><h1>Comments</h1><div id="sync-warning" hidden></div><div id="comments"></div></aside>
+      <aside id="sidebar"><h1>Comments</h1><div id="sync-warning" hidden></div><div id="deferred-refresh-notice" hidden>Plan updated in the background. Finish or cancel this comment to refresh.</div><div id="comments"></div></aside>
       <main id="review"><iframe id="plan-frame" sandbox="allow-same-origin" src="/render/${escapedPlanId}"></iframe><div id="hover-selection-box" class="selection-box hover" hidden></div><div id="active-selection-box" class="selection-box active" hidden></div></main>
     </div>
     <div id="lightbox" class="lightbox" hidden><header><button id="zoom-out">-</button><button id="zoom-reset">Reset</button><button id="zoom-in">+</button><button id="pan-toggle">Pan</button><button id="close-lightbox">Close</button></header><div id="lightbox-stage" class="lightbox-stage"><img id="lightbox-image" alt=""><div id="image-selection-box" hidden></div></div></div>
@@ -138,7 +138,7 @@ body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}
 #app{display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:calc(100vh - 52px)}
 #review{grid-column:1;position:relative}#sidebar{grid-column:2;grid-row:1;border-left:1px solid #2b364d;padding:16px;background:#111827}
 #plan-frame{width:100%;height:calc(100vh - 52px);border:0;background:white}.selection-box,.comment-anchor{position:fixed;pointer-events:none;border-radius:6px;transition:left .08s ease,top .08s ease,width .08s ease,height .08s ease}.selection-box{z-index:8;box-shadow:0 0 0 9999px rgba(2,6,23,.08),0 10px 24px rgba(0,0,0,.25)}.selection-box.hover{border:2px solid rgba(125,211,252,.9);background:rgba(56,189,248,.10)}.selection-box.active{z-index:9;border:3px solid #38bdf8;background:rgba(56,189,248,.16);box-shadow:0 0 0 4px rgba(56,189,248,.18),0 12px 32px rgba(0,0,0,.35)}.comment-anchor{z-index:7}.comment-anchor.pending{border:3px solid #a855f7;background:rgba(168,85,247,.22);box-shadow:0 0 0 4px rgba(168,85,247,.16),0 12px 30px rgba(0,0,0,.28)}.comment-anchor.addressed{border:2px dotted rgba(216,180,254,.9);background:transparent;box-shadow:none}.comment-anchor-label{position:absolute;right:-10px;top:-12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;padding:0 6px;background:#7e22ce;color:white;border:2px solid #f3e8ff;font-weight:800;font-size:12px;box-shadow:0 8px 18px rgba(0,0,0,.35)}.comment-anchor.addressed .comment-anchor-label{display:none}.comment-row{border:1px solid #2b364d;padding:10px;margin:8px 0;border-radius:8px;background:#0f172a}.comment-row small{color:#a7b0c0}.marker{position:absolute;z-index:9;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#0ea5e9;color:white;border:2px solid #dbeafe;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.35);pointer-events:none}
-#sync-warning{border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#fde68a;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#composer{position:fixed;right:340px;top:80px;background:#0f172a;border:1px solid #38bdf8;padding:12px;border-radius:8px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+#sync-warning{border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#fde68a;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#deferred-refresh-notice{border:1px solid #38bdf8;background:rgba(56,189,248,.12);color:#bae6fd;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#composer{position:fixed;right:340px;top:80px;background:#0f172a;border:1px solid #38bdf8;padding:12px;border-radius:8px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4)}
 #composer textarea{width:260px;height:90px;background:#020617;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:8px;display:block}
 	#composer button{margin-top:8px;margin-right:8px}.plan-review-selected{outline:3px solid #38bdf8!important;box-shadow:0 0 0 4px rgba(56,189,248,.2)!important}.lightbox{position:fixed;inset:36px 360px 36px 36px;background:#020617;border:1px solid #38bdf8;z-index:12;display:grid;grid-template-rows:auto 1fr}.lightbox[hidden]{display:none}.lightbox header{display:flex;gap:8px;padding:10px;border-bottom:1px solid #2b364d}.lightbox img{max-width:100%;max-height:100%;place-self:center;transform-origin:center}.lightbox-stage{display:grid;overflow:hidden;position:relative}#image-selection-box{position:absolute;border:2px solid #38bdf8;background:rgba(56,189,248,.2);pointer-events:none}
 `;
@@ -154,6 +154,7 @@ const composer = document.getElementById('composer');
 const body = document.getElementById('comment-body');
 const comments = document.getElementById('comments');
 const syncWarning = document.getElementById('sync-warning');
+const deferredRefreshNotice = document.getElementById('deferred-refresh-notice');
 const hoverSelectionBox = document.getElementById('hover-selection-box');
 const activeSelectionBox = document.getElementById('active-selection-box');
 const lightbox = document.getElementById('lightbox');
@@ -172,6 +173,7 @@ let panX = 0;
 let panY = 0;
 let panMode = false;
 let versionId = null;
+let deferredPlanRefresh = null;
 let lightboxDragStart = null;
 let lightboxPanStart = null;
 let washi = null;
@@ -190,13 +192,42 @@ async function loadMeta(options = {}){
   const res = await fetch('/api/plans/'+planId);
   const json = await res.json();
   const latestVersionId = json.data.latestVersion.id;
-  if (options.reloadPlan && versionId && (latestVersionId !== versionId || options.forceReloadPlan)) {
-    clearPendingSelection();
-    frame.src = '/render/'+encodeURIComponent(planId)+'?versionId='+encodeURIComponent(latestVersionId)+'&t='+Date.now();
+  const shouldReloadPlan = options.reloadPlan && versionId && (latestVersionId !== versionId || options.forceReloadPlan);
+  if (shouldReloadPlan) {
+    if (!options.bypassDialogDefer && hasOpenCommentDialog()) {
+      queueDeferredPlanRefresh({ versionId: latestVersionId, forceReloadPlan: Boolean(options.forceReloadPlan) });
+    } else {
+      reloadPlanFrame(latestVersionId, { clearSelection: true });
+    }
+  } else if (!versionId) {
+    versionId = latestVersionId;
   }
-  versionId = latestVersionId;
   renderSyncWarning(json.data.plan);
   renderComments(json.data.comments || []);
+}
+function reloadPlanFrame(nextVersionId, options = {}){
+  if (options.clearSelection) clearPendingSelection();
+  frame.src = '/render/'+encodeURIComponent(planId)+'?versionId='+encodeURIComponent(nextVersionId)+'&t='+Date.now();
+  versionId = nextVersionId;
+}
+function hasOpenCommentDialog(){
+  return !composer.hidden && (Boolean(pendingAnchor) || body.value.trim().length > 0);
+}
+function updateDeferredRefreshNotice(){
+  if (!deferredRefreshNotice) return;
+  deferredRefreshNotice.hidden = !deferredPlanRefresh;
+}
+function queueDeferredPlanRefresh(refresh){
+  deferredPlanRefresh = refresh;
+  updateDeferredRefreshNotice();
+}
+async function applyDeferredPlanRefreshIfIdle(){
+  if (!deferredPlanRefresh || hasOpenCommentDialog()) return false;
+  const refresh = deferredPlanRefresh;
+  deferredPlanRefresh = null;
+  updateDeferredRefreshNotice();
+  await loadMeta({ reloadPlan: true, forceReloadPlan: refresh.forceReloadPlan, bypassDialogDefer: true });
+  return true;
 }
 function renderSyncWarning(plan){
   if (!plan || plan.lastSyncStatus !== 'failed') {
@@ -617,7 +648,10 @@ document.getElementById('zoom-in').addEventListener('click', () => { zoom = Math
 document.getElementById('zoom-out').addEventListener('click', () => { zoom = Math.max(.5, zoom - .25); applyImageTransform(); });
 document.getElementById('zoom-reset').addEventListener('click', () => { zoom = 1; panX = 0; panY = 0; applyImageTransform(); });
 document.getElementById('pan-toggle').addEventListener('click', () => { panMode = !panMode; });
-document.getElementById('cancel-comment').addEventListener('click', clearPendingSelection);
+document.getElementById('cancel-comment').addEventListener('click', async () => {
+  clearPendingSelection();
+  await applyDeferredPlanRefreshIfIdle();
+});
 lightboxStage.addEventListener('mousedown', event => {
   if (!selected || selected.tagName.toLowerCase() !== 'img') return;
   if (panMode && zoom > 1) {
@@ -667,6 +701,7 @@ async function submitPendingComment(){
   if (!json.ok) { marker.remove(); alert(json.error.message); }
   clearPendingSelection();
   await loadMeta();
+  await applyDeferredPlanRefreshIfIdle();
 }
 body.addEventListener('keydown', event => {
   if (event.key !== 'Enter' || event.shiftKey || (!event.metaKey && !event.ctrlKey)) return;
@@ -725,8 +760,8 @@ export function createApp(options: AppOptions): FastifyInstance {
 
   app.get('/health', async () => ok({ status: 'ok' }));
   app.get('/favicon.ico', async (_request, reply) => reply.code(204).send());
-  app.get('/client.css', async (_request, reply) => reply.type('text/css').send(clientCss));
-  app.get('/client.js', async (_request, reply) => reply.type('application/javascript').send(clientJs));
+  app.get('/client.css', async (_request, reply) => reply.header('Cache-Control', 'no-store').type('text/css').send(clientCss));
+  app.get('/client.js', async (_request, reply) => reply.header('Cache-Control', 'no-store').type('application/javascript').send(clientJs));
   app.get('/vendor/html2canvas.js', async (_request, reply) => {
     reply
       .type('application/javascript')
@@ -787,7 +822,7 @@ export function createApp(options: AppOptions): FastifyInstance {
     try {
       const { planId } = request.params as { planId: string };
       const { plan } = store.getPlan(planId);
-      reply.type('text/html').send(reviewShell(plan.id));
+      reply.header('Cache-Control', 'no-store').type('text/html').send(reviewShell(plan.id));
     } catch (error) {
       sendError(reply, error);
     }

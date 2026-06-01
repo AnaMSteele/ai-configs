@@ -37,6 +37,15 @@ try {
   const index = await context.get('/');
   assert.equal(index.ok(), true);
   assert.match(await index.text(), /Plan Review Index/);
+  const shellResponse = await context.get(`/p/${registered.planId}`);
+  assert.equal(shellResponse.ok(), true);
+  assert.equal(shellResponse.headers()['cache-control'], 'no-store');
+  const clientJsResponse = await context.get('/client.js');
+  assert.equal(clientJsResponse.ok(), true);
+  assert.equal(clientJsResponse.headers()['cache-control'], 'no-store');
+  const clientCssResponse = await context.get('/client.css');
+  assert.equal(clientCssResponse.ok(), true);
+  assert.equal(clientCssResponse.headers()['cache-control'], 'no-store');
 
   const rendered = await context.get(`/render/${registered.planId}`);
   assert.equal(rendered.ok(), true);
@@ -304,12 +313,49 @@ try {
     const syncPage = await syncBrowser.newPage();
     await syncPage.goto(`${baseUrl}/p/${syncRegistered.planId}`);
     await syncPage.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v1'));
+    await syncPage.waitForSelector('#plan-navbar');
+    assert.equal(await syncPage.locator('#plan-navbar a').getAttribute('href'), '/');
+    const openSyncComposer = async () => {
+      await syncPage.evaluate(() => {
+        const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
+        const target = iframe?.contentDocument?.querySelector('#sync-target');
+        target?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe?.contentWindow ?? window }));
+      });
+      await syncPage.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
+    };
+
+    await openSyncComposer();
+    await syncPage.fill('#comment-body', 'Draft survives source sync');
     const syncHtmlV2 = syncHtmlV1.replace('Source sync v1', 'Source sync v2');
     fs.writeFileSync(syncPath, syncHtmlV2);
+    await syncPage.waitForFunction(
+      () => document.querySelector<HTMLElement>('#deferred-refresh-notice')?.hidden === false || document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v2'),
+      undefined,
+      { timeout: 5000 }
+    );
+    assert.equal(await syncPage.inputValue('#comment-body'), 'Draft survives source sync');
+    assert.equal(await syncPage.evaluate(() => document.querySelector<HTMLElement>('#composer')?.hidden), false);
+    assert.equal(await syncPage.evaluate(() => document.querySelector<HTMLElement>('#deferred-refresh-notice')?.hidden), false);
+    assert.equal(await syncPage.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v1')), true);
+    assert.equal(await syncPage.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v2')), false);
+    await syncPage.keyboard.press(process.platform === 'darwin' ? 'Meta+Enter' : 'Control+Enter');
+    await syncPage.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Draft survives source sync'));
     await syncPage.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v2'));
+    await syncPage.waitForFunction(() => document.querySelector<HTMLElement>('#deferred-refresh-notice')?.hidden !== false);
+
+    await openSyncComposer();
+    await syncPage.fill('#comment-body', 'Draft cancelled after source sync');
+    const syncHtmlV3 = syncHtmlV2.replace('Source sync v2', 'Source sync v3');
+    fs.writeFileSync(syncPath, syncHtmlV3);
+    await syncPage.waitForFunction(() => document.querySelector<HTMLElement>('#deferred-refresh-notice')?.hidden === false, undefined, { timeout: 5000 });
+    assert.equal(await syncPage.inputValue('#comment-body'), 'Draft cancelled after source sync');
+    await syncPage.click('#cancel-comment');
+    await syncPage.waitForFunction(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentDocument?.body?.textContent?.includes('Source sync v3'));
+    assert.equal((await syncPage.locator('#comments').innerText()).includes('Draft cancelled after source sync'), false);
+
     fs.rmSync(syncPath);
     await syncPage.waitForFunction(() => document.querySelector<HTMLElement>('#sync-warning')?.hidden === false);
-    fs.writeFileSync(syncPath, syncHtmlV2);
+    fs.writeFileSync(syncPath, syncHtmlV3);
     await syncPage.waitForFunction(() => document.querySelector<HTMLElement>('#sync-warning')?.hidden === true);
   } finally {
     await syncBrowser.close();
