@@ -26,6 +26,13 @@ export interface PlanRecord {
   lastSyncAt?: string;
   lastSyncStatus?: string;
   lastSyncError?: Record<string, unknown> | null;
+  archivedAt?: string;
+}
+
+export interface PlanProgress {
+  totalPhases: number;
+  completedPhases: number;
+  phases: Array<{ label: string; complete: boolean }>;
 }
 
 export interface VersionRecord {
@@ -121,6 +128,62 @@ function optionalNumber(value: unknown): number | undefined {
   return Number.isFinite(number) ? number : undefined;
 }
 
+function stripHtml(value: string): string {
+  return value
+    .replace(/<script\b[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style\b[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function progressScope(html: string): string {
+  const htmlHeading = /<h[1-6]\b[^>]*>\s*Progress\s*<\/h[1-6]>/i.exec(html);
+  if (htmlHeading) {
+    const afterHeading = html.slice(htmlHeading.index);
+    const sectionEnd = afterHeading.search(/<\/section>/i);
+    return sectionEnd >= 0 ? afterHeading.slice(0, sectionEnd) : afterHeading;
+  }
+  const markdownHeading = /^##\s+Progress\s*$/im.exec(html);
+  if (markdownHeading) {
+    const afterHeading = html.slice(markdownHeading.index + markdownHeading[0].length);
+    const nextHeading = afterHeading.search(/^##\s+/m);
+    return nextHeading >= 0 ? afterHeading.slice(0, nextHeading) : afterHeading;
+  }
+  return html;
+}
+
+function extractPlanProgress(html: string): PlanProgress {
+  const scope = progressScope(html);
+  const phases: PlanProgress['phases'] = [];
+  for (const match of scope.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/gi)) {
+    const itemHtml = match[1] ?? '';
+    const checkbox = /<input\b(?=[^>]*\btype=["']?checkbox)[^>]*>/i.exec(itemHtml)?.[0];
+    if (!checkbox) continue;
+    const label = stripHtml(itemHtml).replace(/^\s*checked\s*/i, '').trim();
+    if (!/\b(?:P\d+|Phase\s+\d+)\b/i.test(label)) continue;
+    phases.push({ label, complete: /\bchecked(?:\s|=|>|\/)/i.test(checkbox) });
+  }
+  if (phases.length === 0) {
+    for (const match of scope.matchAll(/(?:^|\n)\s*[-*]\s*\[([ xX])\]\s*([^\n]+)/g)) {
+      const label = String(match[2] ?? '').trim();
+      if (!/\b(?:P\d+|Phase\s+\d+)\b/i.test(label)) continue;
+      phases.push({ label, complete: String(match[1]).toLowerCase() === 'x' });
+    }
+  }
+  return {
+    totalPhases: phases.length,
+    completedPhases: phases.filter(phase => phase.complete).length,
+    phases
+  };
+}
+
 export class PlanReviewStore {
   private db: Database.Database;
   private blobDir: string;
@@ -159,6 +222,7 @@ export class PlanReviewStore {
         last_sync_at TEXT,
         last_sync_status TEXT,
         last_sync_error_json TEXT,
+        archived_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         UNIQUE(repo_id, plan_path, slug)
@@ -255,6 +319,7 @@ export class PlanReviewStore {
     this.ensureColumn('plans', 'last_sync_at', 'TEXT');
     this.ensureColumn('plans', 'last_sync_status', 'TEXT');
     this.ensureColumn('plans', 'last_sync_error_json', 'TEXT');
+    this.ensureColumn('plans', 'archived_at', 'TEXT');
     this.ensureColumn('plan_versions', 'source_mtime_ms', 'REAL');
     this.ensureColumn('plan_versions', 'source_size', 'INTEGER');
     this.ensureColumn('plan_versions', 'sync_origin', "TEXT NOT NULL DEFAULT 'manual_register'");
@@ -375,12 +440,13 @@ export class PlanReviewStore {
       const watchMode = input.watchMode ?? 'snapshot';
       const lastSyncStatus = watchMode === 'filesystem' ? 'synced' : 'snapshot';
       this.db
-        .prepare(`INSERT INTO plans (id, repo_id, slug, plan_path, source_path, watch_mode, last_sync_at, last_sync_status, last_sync_error_json, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        .prepare(`INSERT INTO plans (id, repo_id, slug, plan_path, source_path, watch_mode, last_sync_at, last_sync_status, last_sync_error_json, archived_at, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)
           ON CONFLICT(repo_id, plan_path, slug) DO UPDATE SET updated_at = excluded.updated_at,
             source_path = excluded.source_path, watch_mode = excluded.watch_mode,
             last_sync_at = excluded.last_sync_at, last_sync_status = excluded.last_sync_status,
-            last_sync_error_json = excluded.last_sync_error_json`)
+            last_sync_error_json = excluded.last_sync_error_json,
+            archived_at = NULL`)
         .run(planId, repoId, slug, input.planPath, input.sourcePath ?? null, watchMode, now, lastSyncStatus, null, now, now);
 
       const htmlName = `${input.fileHash}.html`;
@@ -457,12 +523,15 @@ export class PlanReviewStore {
     return tx();
   }
 
-  listPlans() {
+  listPlans(options: { includeArchived?: boolean } = {}) {
+    const archiveFilter = options.includeArchived ? '' : 'WHERE p.archived_at IS NULL';
     const rows = this.db.prepare(`
       SELECT p.id, p.slug, p.plan_path AS planPath, p.source_path AS sourcePath, p.watch_mode AS watchMode,
         p.last_sync_at AS lastSyncAt, p.last_sync_status AS lastSyncStatus, p.last_sync_error_json AS lastSyncErrorJson,
+        p.archived_at AS archivedAt,
         r.repo_name AS repoName, r.repo_key AS repoKey,
         v.id AS versionId, v.branch, v.commit_sha AS commitSha, v.file_hash AS fileHash,
+        v.html_blob_path AS htmlBlobPath,
         v.source_mtime_ms AS sourceMtimeMs, v.source_size AS sourceSize, v.sync_origin AS syncOrigin,
         p.updated_at AS planUpdatedAt,
         SUM(CASE WHEN c.status = 'pending' THEN 1 ELSE 0 END) AS pending,
@@ -476,12 +545,15 @@ export class PlanReviewStore {
         SELECT id FROM plan_versions WHERE plan_id = p.id ORDER BY created_at DESC LIMIT 1
       )
       LEFT JOIN comments c ON c.plan_id = p.id
+      ${archiveFilter}
       GROUP BY p.id
     `).all() as Array<Record<string, unknown>>;
     return rows.map(row => {
       const planUpdatedAt = String(row.planUpdatedAt ?? '');
       const commentActivityAt = row.commentActivityAt ? String(row.commentActivityAt) : '';
       const activityAt = commentActivityAt > planUpdatedAt ? commentActivityAt : planUpdatedAt;
+      const htmlBlobPath = optionalString(row.htmlBlobPath);
+      const progress = htmlBlobPath ? extractPlanProgress(fs.readFileSync(htmlBlobPath, 'utf8')) : { totalPhases: 0, completedPhases: 0, phases: [] };
       return {
       plan: {
         id: row.id,
@@ -493,7 +565,8 @@ export class PlanReviewStore {
         watchMode: (row.watchMode ?? 'snapshot') as 'filesystem' | 'snapshot',
         lastSyncAt: optionalString(row.lastSyncAt),
         lastSyncStatus: optionalString(row.lastSyncStatus),
-        lastSyncError: parseJson(row.lastSyncErrorJson as string | null, null)
+        lastSyncError: parseJson(row.lastSyncErrorJson as string | null, null),
+        archivedAt: optionalString(row.archivedAt)
       },
       latestVersion: {
         id: row.versionId,
@@ -510,6 +583,7 @@ export class PlanReviewStore {
         acknowledged: Number(row.acknowledged ?? 0),
         resolved: Number(row.resolved ?? 0)
       },
+      progress,
       activityAt,
       reviewUrl: `/p/${row.id}`
       };
@@ -538,7 +612,7 @@ export class PlanReviewStore {
     const row = this.db.prepare(`
       SELECT p.id, p.repo_id AS repoId, p.slug, p.plan_path AS planPath, p.source_path AS sourcePath,
         p.watch_mode AS watchMode, p.last_sync_at AS lastSyncAt, p.last_sync_status AS lastSyncStatus,
-        p.last_sync_error_json AS lastSyncErrorJson, r.repo_name AS repoName, r.repo_key AS repoKey,
+        p.last_sync_error_json AS lastSyncErrorJson, p.archived_at AS archivedAt, r.repo_name AS repoName, r.repo_key AS repoKey,
         v.id AS versionId, v.file_hash AS fileHash, v.branch, v.commit_sha AS commitSha,
         v.html_blob_path AS htmlBlobPath, v.rendered_blob_path AS renderedBlobPath,
         v.render_warnings_json AS renderWarningsJson, v.source_mtime_ms AS sourceMtimeMs,
@@ -554,7 +628,7 @@ export class PlanReviewStore {
     const slugRows = row ? [] : this.db.prepare(`
       SELECT p.id, p.repo_id AS repoId, p.slug, p.plan_path AS planPath, p.source_path AS sourcePath,
         p.watch_mode AS watchMode, p.last_sync_at AS lastSyncAt, p.last_sync_status AS lastSyncStatus,
-        p.last_sync_error_json AS lastSyncErrorJson, r.repo_name AS repoName, r.repo_key AS repoKey,
+        p.last_sync_error_json AS lastSyncErrorJson, p.archived_at AS archivedAt, r.repo_name AS repoName, r.repo_key AS repoKey,
         v.id AS versionId, v.file_hash AS fileHash, v.branch, v.commit_sha AS commitSha,
         v.html_blob_path AS htmlBlobPath, v.rendered_blob_path AS renderedBlobPath,
         v.render_warnings_json AS renderWarningsJson, v.source_mtime_ms AS sourceMtimeMs,
@@ -591,7 +665,8 @@ export class PlanReviewStore {
         watchMode: (selectedRow.watchMode ?? 'snapshot') as 'filesystem' | 'snapshot',
         lastSyncAt: optionalString(selectedRow.lastSyncAt),
         lastSyncStatus: optionalString(selectedRow.lastSyncStatus),
-        lastSyncError: parseJson(selectedRow.lastSyncErrorJson, null)
+        lastSyncError: parseJson(selectedRow.lastSyncErrorJson, null),
+        archivedAt: optionalString(selectedRow.archivedAt)
       },
       version: {
         id: selectedRow.versionId,
@@ -618,8 +693,17 @@ export class PlanReviewStore {
     return fs.readFileSync(row.renderedBlobPath, 'utf8');
   }
 
+  archivePlan(identifier: string): { plan: PlanRecord; event: StoredEvent } {
+    const { plan } = this.getPlan(identifier);
+    const archivedAt = nowIso();
+    this.db.prepare('UPDATE plans SET archived_at = ?, updated_at = ? WHERE id = ?').run(archivedAt, archivedAt, plan.id);
+    const updated = this.getPlan(plan.id).plan;
+    const event = this.addEvent(plan.id, 'plan.archived', { eventType: 'plan.archived', planId: plan.id, archivedAt });
+    return { plan: updated, event };
+  }
+
   listFilesystemPlans(): Array<{ planId: string }> {
-    const rows = this.db.prepare("SELECT id AS planId FROM plans WHERE watch_mode = 'filesystem' AND source_path IS NOT NULL ORDER BY updated_at DESC").all() as Array<{ planId: string }>;
+    const rows = this.db.prepare("SELECT id AS planId FROM plans WHERE watch_mode = 'filesystem' AND source_path IS NOT NULL AND archived_at IS NULL ORDER BY updated_at DESC").all() as Array<{ planId: string }>;
     return rows;
   }
 

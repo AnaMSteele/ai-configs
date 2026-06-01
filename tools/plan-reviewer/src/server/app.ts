@@ -48,24 +48,36 @@ function escapeHtml(value: unknown): string {
   return String(value ?? '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]!));
 }
 
+function progressHtml(progress: ReturnType<PlanReviewStore['listPlans']>[number]['progress']): string {
+  if (!progress.totalPhases) return '<p class="progress-empty">No phase progress markers found.</p>';
+  const label = `${progress.completedPhases} of ${progress.totalPhases} phases complete`;
+  const segments = progress.phases.map((phase, index) => `<span class="progress-segment${phase.complete ? ' complete' : ''}" title="${escapeHtml(phase.label || `Phase ${index + 1}`)}"></span>`).join('');
+  return `<div class="progress-row"><div class="progress-bar" aria-label="${escapeHtml(label)}">${segments}</div><span class="progress-count">${escapeHtml(label)}</span></div>`;
+}
+
 function indexHtml(plans: ReturnType<PlanReviewStore['listPlans']>): string {
   const repos = [...new Set(plans.map(item => item.plan.repoName))].sort();
   const rows = repos
     .map(repoName => {
       const repoPlans = plans.filter(item => item.plan.repoName === repoName);
-      return `<section class="repo-group" data-repo-group="${escapeHtml(repoName)}"><h2>${escapeHtml(repoName)}</h2>${repoPlans.map(item => `<article class="plan-card" data-repo="${escapeHtml(item.plan.repoName)}" data-search="${escapeHtml(`${item.plan.repoName} ${item.plan.slug} ${item.plan.planPath}`.toLowerCase())}">
-      <h2><a href="/p/${escapeHtml(item.plan.id)}">${escapeHtml(item.plan.repoName)} / ${escapeHtml(item.plan.slug)}</a></h2>
+      return `<section class="repo-group" data-repo-group="${escapeHtml(repoName)}"><h2>${escapeHtml(repoName)}</h2>${repoPlans.map(item => {
+        const complete = item.progress.totalPhases > 0 && item.progress.completedPhases === item.progress.totalPhases;
+        return `<article class="plan-card ${complete ? 'complete' : 'incomplete'}" data-plan-id="${escapeHtml(item.plan.id)}" data-repo="${escapeHtml(item.plan.repoName)}" data-search="${escapeHtml(`${item.plan.repoName} ${item.plan.slug} ${item.plan.planPath}`.toLowerCase())}">
+      <div class="plan-card-header"><h2><a href="/p/${escapeHtml(item.plan.id)}">${escapeHtml(item.plan.repoName)} / ${escapeHtml(item.plan.slug)}</a></h2><button class="archive-plan" type="button" data-archive-plan="${escapeHtml(item.plan.id)}">Archive</button></div>
       <p><code>${escapeHtml(item.plan.planPath)}</code></p>
-      <p>Branch <code>${escapeHtml(item.latestVersion.branch)}</code> · pending ${item.counts.pending} · claimed ${item.counts.claimed} · acknowledged ${item.counts.acknowledged} · resolved ${item.counts.resolved} · activity ${escapeHtml(item.activityAt)}</p>
-    </article>`).join('\n')}</section>`;
+      ${progressHtml(item.progress)}
+      <p><span class="status-pill">${complete ? 'Complete' : 'Incomplete'}</span> Branch <code>${escapeHtml(item.latestVersion.branch)}</code> · pending ${item.counts.pending} · claimed ${item.counts.claimed} · acknowledged ${item.counts.acknowledged} · resolved ${item.counts.resolved} · activity ${escapeHtml(item.activityAt)}</p>
+    </article>`;
+      }).join('\n')}</section>`;
     })
     .join('\n');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Plan Review Index</title>
-    <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}main{max-width:980px;margin:0 auto;padding:32px}a{color:#7dd3fc}.toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin:18px 0}.toolbar input,.toolbar select{background:#0f172a;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:10px}.plan-card{border:1px solid #2b364d;background:#111827;border-radius:8px;padding:16px;margin:12px 0}code{background:#0f172a;color:#dbeafe;padding:.1rem .25rem;border-radius:4px}@media(max-width:680px){.toolbar{grid-template-columns:1fr}}</style>
+    <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}main{max-width:980px;margin:0 auto;padding:32px}a{color:#7dd3fc}.toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin:18px 0}.toolbar input,.toolbar select{background:#0f172a;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:10px}.plan-card{border:1px solid #2563eb;border-left:5px solid #2563eb;background:#111827;border-radius:8px;padding:16px;margin:12px 0}.plan-card.complete{border-color:#16a34a;border-left-color:#16a34a}.plan-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.plan-card-header h2{margin-top:0}.archive-plan{background:#1e293b;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:8px 10px;cursor:pointer}.archive-plan:hover{border-color:#93c5fd}.progress-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:12px 0}.progress-bar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}.progress-segment{height:14px;border:1px solid #64748b;border-radius:3px;background:transparent}.progress-segment.complete{background:#22c55e;border-color:#22c55e}.progress-count,.progress-empty{color:#a7b0c0;font-size:13px}.status-pill{display:inline-block;margin-right:8px;border-radius:999px;padding:2px 8px;background:#1d4ed8;color:#dbeafe;font-size:12px;font-weight:700}.complete .status-pill{background:#166534;color:#dcfce7}code{background:#0f172a;color:#dbeafe;padding:.1rem .25rem;border-radius:4px}@media(max-width:680px){.toolbar,.progress-row{grid-template-columns:1fr}.plan-card-header{display:block}.archive-plan{margin-bottom:8px}}</style>
   </head><body><main><h1>Plan Review Index</h1><div class="toolbar"><input id="q" placeholder="Filter plans" aria-label="Filter plans"><select id="repo" aria-label="Filter by repo"><option value="">All repos</option>${repos.map(repo => `<option value="${escapeHtml(repo)}">${escapeHtml(repo)}</option>`).join('')}</select></div><div id="plans">${rows || '<p>No plans registered.</p>'}</div><script>
   const q=document.getElementById('q'), repo=document.getElementById('repo'), cards=[...document.querySelectorAll('.plan-card')];
   function apply(){const text=q.value.toLowerCase(), r=repo.value; cards.forEach(card=>{card.hidden=!!((r&&card.dataset.repo!==r)||(text&&!card.dataset.search.includes(text)));}); document.querySelectorAll('.repo-group').forEach(group=>{group.hidden=!group.querySelector('.plan-card:not([hidden])');});}
   q.addEventListener('input',apply); repo.addEventListener('change',apply);
+  document.addEventListener('click',async event=>{const target=event.target; const button=target instanceof Element ? target.closest('[data-archive-plan]') : null; if(!button) return; if(!confirm('Archive this plan?')) return; button.disabled=true; const planId=button.dataset.archivePlan; const res=await fetch('/api/plans/'+encodeURIComponent(planId)+'/archive',{method:'POST'}); if(!res.ok){button.disabled=false; alert('Unable to archive plan.'); return;} button.closest('.plan-card')?.remove(); const index=cards.findIndex(card=>card.dataset.planId===planId); if(index>=0) cards.splice(index,1); apply();});
   </script></main></body></html>`;
 }
 
@@ -104,6 +116,7 @@ function reviewShell(planId: string): string {
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'">
     <link rel="stylesheet" href="/client.css">
   </head><body data-plan-id="${escapedPlanId}">
+    <nav id="plan-navbar" aria-label="Plan actions"><a href="/">← Plan index</a><button id="archive-plan" type="button">Archive plan</button></nav>
     <div id="app">
       <aside id="sidebar"><h1>Comments</h1><div id="sync-warning" hidden></div><div id="comments"></div></aside>
       <main id="review"><iframe id="plan-frame" sandbox="allow-same-origin" src="/render/${escapedPlanId}"></iframe><div id="hover-selection-box" class="selection-box hover" hidden></div><div id="active-selection-box" class="selection-box active" hidden></div></main>
@@ -121,9 +134,10 @@ function resolvedModuleFile(specifier: string): string {
 
 const clientCss = `
 body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}
-#app{display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:100vh}
+#plan-navbar{height:52px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 16px;border-bottom:1px solid #2b364d;background:#0f172a}#plan-navbar a{color:#7dd3fc;text-decoration:none;font-weight:700}#plan-navbar button{background:#1e293b;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:8px 10px;cursor:pointer}#plan-navbar button:hover{border-color:#93c5fd}
+#app{display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:calc(100vh - 52px)}
 #review{grid-column:1;position:relative}#sidebar{grid-column:2;grid-row:1;border-left:1px solid #2b364d;padding:16px;background:#111827}
-#plan-frame{width:100%;height:100vh;border:0;background:white}.selection-box,.comment-anchor{position:fixed;pointer-events:none;border-radius:6px;transition:left .08s ease,top .08s ease,width .08s ease,height .08s ease}.selection-box{z-index:8;box-shadow:0 0 0 9999px rgba(2,6,23,.08),0 10px 24px rgba(0,0,0,.25)}.selection-box.hover{border:2px solid rgba(125,211,252,.9);background:rgba(56,189,248,.10)}.selection-box.active{z-index:9;border:3px solid #38bdf8;background:rgba(56,189,248,.16);box-shadow:0 0 0 4px rgba(56,189,248,.18),0 12px 32px rgba(0,0,0,.35)}.comment-anchor{z-index:7}.comment-anchor.pending{border:3px solid #a855f7;background:rgba(168,85,247,.22);box-shadow:0 0 0 4px rgba(168,85,247,.16),0 12px 30px rgba(0,0,0,.28)}.comment-anchor.addressed{border:2px dotted rgba(216,180,254,.9);background:transparent;box-shadow:none}.comment-anchor-label{position:absolute;right:-10px;top:-12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;padding:0 6px;background:#7e22ce;color:white;border:2px solid #f3e8ff;font-weight:800;font-size:12px;box-shadow:0 8px 18px rgba(0,0,0,.35)}.comment-anchor.addressed .comment-anchor-label{display:none}.comment-row{border:1px solid #2b364d;padding:10px;margin:8px 0;border-radius:8px;background:#0f172a}.comment-row small{color:#a7b0c0}.marker{position:absolute;z-index:9;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#0ea5e9;color:white;border:2px solid #dbeafe;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.35);pointer-events:none}
+#plan-frame{width:100%;height:calc(100vh - 52px);border:0;background:white}.selection-box,.comment-anchor{position:fixed;pointer-events:none;border-radius:6px;transition:left .08s ease,top .08s ease,width .08s ease,height .08s ease}.selection-box{z-index:8;box-shadow:0 0 0 9999px rgba(2,6,23,.08),0 10px 24px rgba(0,0,0,.25)}.selection-box.hover{border:2px solid rgba(125,211,252,.9);background:rgba(56,189,248,.10)}.selection-box.active{z-index:9;border:3px solid #38bdf8;background:rgba(56,189,248,.16);box-shadow:0 0 0 4px rgba(56,189,248,.18),0 12px 32px rgba(0,0,0,.35)}.comment-anchor{z-index:7}.comment-anchor.pending{border:3px solid #a855f7;background:rgba(168,85,247,.22);box-shadow:0 0 0 4px rgba(168,85,247,.16),0 12px 30px rgba(0,0,0,.28)}.comment-anchor.addressed{border:2px dotted rgba(216,180,254,.9);background:transparent;box-shadow:none}.comment-anchor-label{position:absolute;right:-10px;top:-12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;padding:0 6px;background:#7e22ce;color:white;border:2px solid #f3e8ff;font-weight:800;font-size:12px;box-shadow:0 8px 18px rgba(0,0,0,.35)}.comment-anchor.addressed .comment-anchor-label{display:none}.comment-row{border:1px solid #2b364d;padding:10px;margin:8px 0;border-radius:8px;background:#0f172a}.comment-row small{color:#a7b0c0}.marker{position:absolute;z-index:9;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#0ea5e9;color:white;border:2px solid #dbeafe;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.35);pointer-events:none}
 #sync-warning{border:1px solid #f59e0b;background:rgba(245,158,11,.12);color:#fde68a;border-radius:8px;padding:10px;margin:8px 0 14px;font-size:13px}#composer{position:fixed;right:340px;top:80px;background:#0f172a;border:1px solid #38bdf8;padding:12px;border-radius:8px;z-index:20;box-shadow:0 12px 32px rgba(0,0,0,.4)}
 #composer textarea{width:260px;height:90px;background:#020617;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:8px;display:block}
 	#composer button{margin-top:8px;margin-right:8px}.plan-review-selected{outline:3px solid #38bdf8!important;box-shadow:0 0 0 4px rgba(56,189,248,.2)!important}.lightbox{position:fixed;inset:36px 360px 36px 36px;background:#020617;border:1px solid #38bdf8;z-index:12;display:grid;grid-template-rows:auto 1fr}.lightbox[hidden]{display:none}.lightbox header{display:flex;gap:8px;padding:10px;border-bottom:1px solid #2b364d}.lightbox img{max-width:100%;max-height:100%;place-self:center;transform-origin:center}.lightbox-stage{display:grid;overflow:hidden;position:relative}#image-selection-box{position:absolute;border:2px solid #38bdf8;background:rgba(56,189,248,.2);pointer-events:none}
@@ -135,6 +149,7 @@ import { Washi } from '/vendor/washi.js';
 
 const planId = document.body.dataset.planId;
 const frame = document.getElementById('plan-frame');
+const archivePlanButton = document.getElementById('archive-plan');
 const composer = document.getElementById('composer');
 const body = document.getElementById('comment-body');
 const comments = document.getElementById('comments');
@@ -160,6 +175,17 @@ let versionId = null;
 let lightboxDragStart = null;
 let lightboxPanStart = null;
 let washi = null;
+archivePlanButton?.addEventListener('click', async () => {
+  if (!confirm('Archive this plan?')) return;
+  archivePlanButton.disabled = true;
+  const res = await fetch('/api/plans/'+encodeURIComponent(planId)+'/archive', { method: 'POST' });
+  if (!res.ok) {
+    archivePlanButton.disabled = false;
+    alert('Unable to archive plan.');
+    return;
+  }
+  window.location.href = '/';
+});
 async function loadMeta(options = {}){
   const res = await fetch('/api/plans/'+planId);
   const json = await res.json();
@@ -610,10 +636,8 @@ document.getElementById('submit-comment').addEventListener('click', async () => 
   let screenshot;
   try {
     screenshot = await markerScreenshot(pendingAnchor);
-  } catch {
-    marker.remove();
-    alert('Unable to capture marker screenshot. Please retry after the plan finishes rendering.');
-    return;
+  } catch (error) {
+    console.warn('Unable to capture marker screenshot; submitting comment without screenshot.', error);
   }
   const res = await fetch('/api/plans/'+planId+'/comments', {
     method:'POST',
@@ -697,8 +721,8 @@ export function createApp(options: AppOptions): FastifyInstance {
 
   app.get('/api/plans', async (request, reply) => {
     try {
-      const query = request.query as { q?: string; repoKey?: string; status?: string; limit?: string; cursor?: string };
-      const { plans, nextCursor } = filterPlans(store.listPlans(), query);
+      const query = request.query as { q?: string; repoKey?: string; status?: string; limit?: string; cursor?: string; includeArchived?: string };
+      const { plans, nextCursor } = filterPlans(store.listPlans({ includeArchived: query.includeArchived === 'true' }), query);
       return ok({ plans, nextCursor });
     } catch (error) {
       sendError(reply, error);
@@ -767,10 +791,23 @@ export function createApp(options: AppOptions): FastifyInstance {
         latestVersion: version,
         assets: store.listPlanAssets(version.id),
         versions: [version],
-        counts: store.listPlans().find(item => item.plan.id === plan.id)?.counts ?? { pending: 0, claimed: 0, acknowledged: 0, resolved: 0 },
+        counts: store.listPlans({ includeArchived: true }).find(item => item.plan.id === plan.id)?.counts ?? { pending: 0, claimed: 0, acknowledged: 0, resolved: 0 },
+        progress: store.listPlans({ includeArchived: true }).find(item => item.plan.id === plan.id)?.progress ?? { totalPhases: 0, completedPhases: 0, phases: [] },
         comments: store.listComments(plan.id),
         reviewUrl: `/p/${plan.id}`
       });
+    } catch (error) {
+      sendError(reply, error);
+    }
+  });
+
+  app.post('/api/plans/:planId/archive', async (request, reply) => {
+    try {
+      const { planId } = request.params as { planId: string };
+      const { plan } = store.getPlan(planId);
+      const result = store.archivePlan(plan.id);
+      bus.emitEvent(result.event);
+      return ok({ plan: result.plan });
     } catch (error) {
       sendError(reply, error);
     }

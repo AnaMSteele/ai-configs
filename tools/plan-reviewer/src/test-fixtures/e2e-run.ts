@@ -78,10 +78,14 @@ try {
     const page = await browser.newPage();
     await page.goto(`${baseUrl}/p/${registered.planId}`);
     await page.evaluate(() => {
-      const globals = window as typeof window & { html2canvas?: unknown; __html2canvasCalls?: number };
+      const globals = window as typeof window & { html2canvas?: unknown; __html2canvasCalls?: number; __html2canvasMode?: 'success' | 'fail' };
       globals.__html2canvasCalls = 0;
+      globals.__html2canvasMode = 'success';
       globals.html2canvas = async (element: HTMLElement) => {
         globals.__html2canvasCalls = (globals.__html2canvasCalls ?? 0) + 1;
+        if (globals.__html2canvasMode === 'fail') {
+          throw new Error('forced marker screenshot failure');
+        }
         const canvas = document.createElement('canvas');
         canvas.width = 360;
         canvas.height = 220;
@@ -118,6 +122,19 @@ try {
     );
     await page.evaluate(() => document.querySelector<HTMLIFrameElement>('#plan-frame')?.contentWindow?.scrollTo(0, 0));
 
+    await page.evaluate(() => { (window as typeof window & { __html2canvasMode?: 'success' | 'fail' }).__html2canvasMode = 'fail'; });
+    await page.evaluate(() => {
+      const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
+      const target = iframe?.contentDocument?.querySelector('#dom-annotation');
+      target?.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: iframe?.contentWindow ?? window }));
+    });
+    await page.waitForFunction(() => document.querySelector<HTMLElement>('#composer')?.hidden === false);
+    await page.fill('#comment-body', 'Browser DOM annotation without screenshot');
+    await page.click('#submit-comment');
+    await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser DOM annotation without screenshot'));
+    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 2);
+    await page.evaluate(() => { (window as typeof window & { __html2canvasMode?: 'success' | 'fail' }).__html2canvasMode = 'success'; });
+
     await page.evaluate(() => {
       const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame')!;
       const doc = iframe.contentDocument!;
@@ -135,7 +152,7 @@ try {
     await page.fill('#comment-body', 'Browser text annotation comment');
     await page.click('#submit-comment');
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser text annotation comment'));
-    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 2);
+    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 3);
 
     await page.evaluate(() => {
       const iframe = document.querySelector<HTMLIFrameElement>('#plan-frame');
@@ -163,7 +180,7 @@ try {
     await page.fill('#comment-body', 'Browser image annotation comment');
     await page.click('#submit-comment');
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
-    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 3);
+    assert.equal(await page.evaluate(() => (window as typeof window & { __html2canvasCalls?: number }).__html2canvasCalls), 4);
     assert.match(await page.locator('#comments').innerText(), /image · mapped/);
     await page.reload();
     await page.waitForFunction(() => document.querySelector('#comments')?.textContent?.includes('Browser image annotation comment'));
@@ -250,6 +267,9 @@ try {
   const commentData = (await comments.json()).data.comments as Array<{ body: string; screenshotAssetId?: string; anchor?: { selectedText?: string; planNodeId?: string; domPath?: string; xpath?: string; textQuote?: unknown; normalizedPoint?: unknown; normalizedRect?: { width: number; height: number }; displayedRect?: unknown; zoomState?: { scale: number; panX?: number; panY?: number }; imageHash?: string } }>;
   const uiComment = commentData.find(comment => comment.body === 'Browser DOM annotation comment');
   assert.ok(uiComment?.screenshotAssetId);
+  const uiFallbackComment = commentData.find(comment => comment.body === 'Browser DOM annotation without screenshot');
+  assert.ok(uiFallbackComment);
+  assert.equal(uiFallbackComment.screenshotAssetId, undefined);
   const uiTextComment = commentData.find(comment => comment.body === 'Browser text annotation comment');
   assert.equal(uiTextComment?.anchor?.selectedText, 'Text range context');
   assert.equal(uiTextComment.anchor.planNodeId, 'text-target');

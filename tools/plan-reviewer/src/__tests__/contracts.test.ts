@@ -123,6 +123,47 @@ test('registration upserts by default and creates a distinct plan for new-thread
   }
 });
 
+test('index exposes phase progress and archive hides plans by default', async () => {
+  const app = createApp({ dbPath: tempDbPath('archive-progress') });
+  const html = `<!doctype html><html><body><section id="progress"><h2>Progress</h2><ul>
+    <li><input type="checkbox" checked /> P1 - Done</li>
+    <li><input type="checkbox" /> P2 - Pending</li>
+    <li><input type="checkbox" checked /> P3 - Done</li>
+  </ul></section></body></html>`;
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({ html, fileHash: sha256(html) })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+
+    const apiIndex = await app.inject({ method: 'GET', url: '/api/plans' });
+    assert.equal(apiIndex.statusCode, 200);
+    assert.equal(apiIndex.json().data.plans[0].progress.totalPhases, 3);
+    assert.equal(apiIndex.json().data.plans[0].progress.completedPhases, 2);
+
+    const htmlIndex = await app.inject({ method: 'GET', url: '/' });
+    assert.equal(htmlIndex.statusCode, 200);
+    assert.match(htmlIndex.body, /2 of 3 phases complete/);
+    assert.match(htmlIndex.body, /data-archive-plan=/);
+
+    const archived = await app.inject({ method: 'POST', url: `/api/plans/${planId}/archive` });
+    assert.equal(archived.statusCode, 200);
+    assert.ok(archived.json().data.plan.archivedAt);
+
+    const hidden = await app.inject({ method: 'GET', url: '/api/plans' });
+    assert.equal(hidden.json().data.plans.length, 0);
+
+    const included = await app.inject({ method: 'GET', url: '/api/plans?includeArchived=true' });
+    assert.equal(included.json().data.plans.length, 1);
+    assert.ok(included.json().data.plans[0].plan.archivedAt);
+  } finally {
+    await app.close();
+  }
+});
+
 test('HTTP API reports schema errors as validation_failed and renders canonical escaped plan ids', async () => {
   const app = createApp({ dbPath: tempDbPath('validation-shell') });
   try {
