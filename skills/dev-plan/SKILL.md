@@ -38,6 +38,7 @@ Before writing the plan:
 2. Read `thoughts/specs/product_intent.md` if the repo uses it.
 3. Read `thoughts/plans/AGENTS.md` only if it exists for local planning overrides.
 4. Load relevant skills:
+   - `html-plan-reviewer` before writing, serving, registering, linking, or monitoring any `thoughts/plans/*.html` artifact; use its `plan-review` workflow for reviewer-facing HTML plans
    - `product-principles` when the plan affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy; use it to define the golden path, self-healing expectations, fail-closed boundaries, agent-legible errors, and to audit repo guidance/tests for dissonance
    - `tdd-test-writer` when phases will depend on tests-first delivery
    - `dependency-selection` when introducing non-trivial functionality
@@ -85,7 +86,9 @@ Non-negotiable requirements:
 - Ready plans have no unresolved `Open Questions`
 - `### Verify` steps are copy/paste ready and match actual repo reality
 - The plan is resumable by another agent without inventing missing semantics
-- If the plan is rendered or delivered as HTML, use a dark-mode visual theme with an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not let the agent choose light mode.
+- If the plan is rendered or delivered as HTML, load `html-plan-reviewer` and use a dark-mode visual theme with an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not let the agent choose light mode.
+- If the plan is rendered, served, registered, linked, or monitored as HTML, use the `plan-review` tooling from `html-plan-reviewer` for reviewer-facing artifacts: health check, `plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --json`, returned review/index URL, and `plan-review watch` / queue commands for comments.
+- Every user-facing HTML plan URL must use the Tailscale hostname, not `localhost` or `127.0.0.1`. On the default host use `http://mbp:<port>/...`; `localhost` / `127.0.0.1` is allowed only for private health checks such as `curl -fsS http://127.0.0.1:4317/health`.
 - For product-facing work, the plan explicitly documents the default workflow, inferred defaults, self-healing expectations, fail-closed boundaries, actionable agent-legible error guidance, and any repo-doc/test updates needed to stay aligned
 - When this repo uses the reviewed-plan flow, the plan assumes explicit handoff rather than hidden recovery paths. In this repo the canonical continuation is `/skill:adn-dev-wf <plan>`.
 - The plan does not normalize routine "run this other command to inspect/fix it" operator loops unless the work is explicitly about a high-risk or ambiguous exception path

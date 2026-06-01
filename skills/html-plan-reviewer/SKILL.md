@@ -17,6 +17,8 @@ Default service URL on this host:
 http://mbp:4317
 ```
 
+Use that Tailscale-hostname URL in all user-facing plan links. `localhost` and `127.0.0.1` are allowed only for private health checks or curl diagnostics, never for URLs shared with the user or browser-review handoff.
+
 Local health check:
 
 ```bash
@@ -44,14 +46,16 @@ The MVP is intentionally unauthenticated. Treat `0.0.0.0:4317` as trusted-networ
 
 When asked to create a plan for this reviewer:
 
-1. Load the repo's planning guidance first, especially `AGENTS.md` and any planning workflow skill that applies.
-2. Write the plan under `thoughts/plans/<slug>.html` unless repo-local instructions say otherwise.
-3. Use an HTML document, not Markdown renamed as HTML.
-4. Use a dark-mode default theme: explicit dark background, light foreground, readable muted text, accessible accent/link colors, and `color-scheme: dark`.
-5. Add stable `id` attributes to sections, phases, acceptance criteria, diagrams, figures, mockups, and other likely comment targets.
-6. Prefer semantic HTML: `section`, `article`, `figure`, `figcaption`, headings, lists, tables, and code blocks.
-7. Keep plan-authored scripts, event handlers, forms, and active embeds out of the artifact; the reviewer shell owns interactivity.
-8. Keep images as relative repo assets when possible, with useful `alt`, `width`, and `height` attributes.
+1. Load this skill before writing or serving any `thoughts/plans/*.html` artifact, even if a repo-local planning skill is also loaded.
+2. Load the repo's planning guidance, especially `AGENTS.md` and any planning workflow skill that applies.
+3. Write the plan under `thoughts/plans/<slug>.html` unless repo-local instructions say otherwise.
+4. Use an HTML document, not Markdown renamed as HTML.
+5. Mandatory visual baseline: use a dark-mode default theme with an explicit dark background, light foreground, readable muted text, accessible accent/link colors, and `color-scheme: dark`. Do not create light-mode HTML plans unless the user explicitly asks for a light-mode artifact.
+6. Mandatory URL baseline: every plan URL shown to the user, opened in the browser, posted to Linear, or recorded in handoff must use the Tailscale hostname, not `localhost` or `127.0.0.1`. On this host the canonical base is `http://mbp:4317/`; if using a temporary alternate port, keep the hostname and change only the port, e.g. `http://mbp:4318/...`.
+7. Add stable `id` attributes to sections, phases, acceptance criteria, diagrams, figures, mockups, and other likely comment targets.
+8. Prefer semantic HTML: `section`, `article`, `figure`, `figcaption`, headings, lists, tables, and code blocks.
+9. Keep plan-authored scripts, event handlers, forms, and active embeds out of the artifact; the reviewer shell owns interactivity.
+10. Keep images as relative repo assets when possible, with useful `alt`, `width`, and `height` attributes.
 
 Important reviewer-friendly structure:
 

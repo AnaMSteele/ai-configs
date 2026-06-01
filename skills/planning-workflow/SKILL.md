@@ -32,6 +32,7 @@ If required repo guidance or product intent is missing, stop and ask the user or
 
 Always consider which additional skills are needed before writing the plan.
 
+- Load `html-plan-reviewer` before writing, serving, registering, linking, or monitoring any `thoughts/plans/*.html` artifact. Use its `plan-review` tooling instructions for reviewer-facing HTML plans.
 - Load `product-principles` for planning work that affects user/operator/agent workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy. Use it to define the golden path, safe defaults, self-healing expectations, actionable error guidance, and a quick dissonance audit against repo guidance (`AGENTS.md`, product-intent docs, onboarding docs, config/status surfaces, and tests).
 - Load `tdd-test-writer` when phases will rely on tests-first delivery or when the RED-phase contract needs strengthening.
 - Load repo-recommended skills from `AGENTS.md` for the relevant surface or stack.
@@ -68,7 +69,9 @@ Write plans as execution artifacts, not brainstorming notes. A ready plan must b
 - Preserve the validated source scope. A ready plan should include only work that is critical to achieving the stated goal and verifying it.
 - When the requested scope is vague, tighten it by sharpening the Goal / Non-goals or other scoped language instead of widening the phase list to absorb adjacent surfaces.
 - Do not promote adjacent cleanup, optional follow-ups, broader parity not required by the source intent, or extra explicitness that does not materially change go/no-go confidence into required plan work unless source requirements or validated repo evidence show they are necessary for success.
-- When a plan is rendered or delivered as HTML, use a dark-mode visual theme by default. Set an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not leave the plan to browser, OS, or agent-selected light/dark defaults.
+- When a plan is rendered or delivered as HTML, load `html-plan-reviewer` and use a dark-mode visual theme by default. Set an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not leave the plan to browser, OS, or agent-selected light/dark defaults.
+- When a plan is rendered, delivered, served, or reviewed as HTML, use `plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --json` for reviewer-facing artifacts when available, open the returned review/index URL, and use `plan-review watch` / queue commands when monitoring reviewer annotations.
+- Every user-facing HTML plan URL must use the Tailscale hostname, not `localhost` or `127.0.0.1`. On the default host use `http://mbp:<port>/...` (canonical plan-reviewer base: `http://mbp:4317/`). `localhost` / `127.0.0.1` may appear only in private health checks such as `curl -fsS http://127.0.0.1:4317/health`.
 
 Required sections for new plans unless repo-local overrides say otherwise:
 
