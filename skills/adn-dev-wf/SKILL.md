@@ -15,7 +15,7 @@ Use `dev-plan` when the user explicitly wants planning only, and use `review-cha
 Accept any of these starting points:
 - a raw task description
 - a plan slug
-- a path to `thoughts/plans/<slug>.md`
+- a path to the repo's active plan artifact
 
 Resolve the input to a single canonical plan file under `thoughts/plans/`.
 If the user gives a raw request or a slug without an existing plan, create or update the plan first.
@@ -34,7 +34,7 @@ Load `product-principles` when the work affects workflows, defaults, onboarding,
 
 ## Workflow contract
 
-- Keep one canonical plan file: `thoughts/plans/<slug>.md`
+- Keep one canonical plan file in the repo's active plan format
 - Keep all plan checkboxes in `## Progress` only
 - Keep review comments inline as `[REVIEW:...] ... [/REVIEW]` until integrated
 - Do not begin implementation while the plan still has unresolved inline review comments or non-ready status

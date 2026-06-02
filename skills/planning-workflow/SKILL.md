@@ -5,12 +5,13 @@ description: Shared planning doctrine for creating or updating executable softwa
 
 # Planning Workflow
 
-Use this skill as the canonical source of truth for plan-writing methodology across repos.
+Use this skill as the canonical source of truth for plan-writing methodology across repos. This skill has no default plan file format. Repo-local planning guidance must define the active plan artifact and serving workflow; when it says active plans are HTML or must use a checked-in plan service, follow that local contract exactly.
 
 ## Boundaries
 
 - `plan mode` is for discovery only: inspect the codebase, validate assumptions, gather evidence, and identify ambiguities.
 - `dev:plan` (or equivalent plan-materialization step) writes the actual plan file once discovery has produced enough evidence to choose the correct readiness state: `execution-ready` when foundational decisions are resolved, or a single non-ready `research-ready` artifact when further research is the next handoff. Before that handoff point, the work remains `discovery`.
+- There is no default shared artifact path or extension. Resolve the single-file active plan artifact from repo-local guidance or an existing plan path supplied by the user. If local guidance does not define the active artifact and the user did not supply an existing plan path, ask one targeted question and stop. Do not assume markdown.
 - `dev:plan` ends when the plan artifact is written or updated; execution starts only after a separate explicit execution command or a new user instruction.
 - In Pi-style reviewed-plan workflows, keep the handoff explicit and prefer the repo's canonical workflow skill. In this repo that path is `/skill:adn-dev-wf <plan>` after review integration. Do not assume a hidden fallback to Claude Code or any other alternate review surface.
 - During plan writing, edit only the target plan artifact unless the repo's `AGENTS.md` explicitly allows another planning-side file.
@@ -25,6 +26,8 @@ Before writing a plan, read in this order:
 2. `thoughts/specs/product_intent.md` when the repo requires product-intent alignment.
 3. Optional `thoughts/plans/AGENTS.md` only when the repo uses local planning overrides beyond this shared skill.
 4. Existing plan file, legacy plan bundle, task list, issue, or source specification that the plan must preserve.
+
+When local guidance defines an active HTML plan workflow, also read its referenced contract/template docs before writing the plan. Do not create markdown companions for a repo whose active plan authority is HTML.
 
 If required repo guidance or product intent is missing, stop and ask the user or tell them the repo bootstrap needs to be completed first.
 
@@ -196,6 +199,7 @@ If any item above is still missing, the plan is `not ready`: stay in `discovery`
 When the plan is complete:
 
 - leave the repo ready for the repo's canonical execution workflow,
+- if repo-local guidance requires serving the plan over HTTP, use the checked-in plan server it names; reuse an already-running instance for the target plan and do not start ad hoc replacement servers,
 - `ready for` means handoff-ready, not permission to start execution in the current command,
 - if the active command is planning-only, stop after updating the plan and reporting the next suggested command,
 - ensure the plan reflects repo-specific commands from `AGENTS.md`,

@@ -1,19 +1,19 @@
 ---
 description: Materialize or update the actual single-file plan artifact after discovery, using shared planning doctrine plus repo-specific guidance
-argument-hint: '<slug | "short description" | existing-plan.md>'
+argument-hint: '<slug | "short description" | existing-plan-path>'
 ---
 
 # Materialize Plan
 
 You are leaving read-only discovery mode and entering plan-materialization mode. This is still non-execution work: synthesize validated research into the actual plan artifact.
 
+This command has no default plan file format. Determine the active plan artifact from repo-local guidance (`AGENTS.md`, `thoughts/plans/AGENTS.md`, local planning skills, or an existing plan path supplied by the user). If local guidance says active plans are HTML or names a checked-in plan server/validator, obey that local contract exactly. If repo guidance does not define the active plan artifact format/path and the user did not supply an existing plan path, ask one targeted question and stop. Do not assume markdown.
+
 Treat this command as planning-only work even though normal file writes are available. You may inspect the repo and write the plan artifact, but you must not change product code, tests, app config, docs, generated files, or environment files.
 
 Your job ends after writing or updating the single plan file and reporting the result. If safe plan materialization is blocked on new user intent, ask one targeted question and stop without writing the plan. Do not create execution todos, do not begin implementation, and do not run execution-oriented verification once the plan file is complete.
 
-This command produces (or updates):
-
-- `plan_path` (normally `thoughts/plans/<slug>.md` when `$ARGUMENTS` is not an existing plan path)
+This command produces (or updates) exactly one `plan_path`, resolved from repo-local guidance or an existing plan path supplied by the user.
 
 ## Inputs
 
@@ -21,18 +21,18 @@ Argument (`$ARGUMENTS`) is either:
 
 - A slug (recommended), e.g. `worktree-cleanup`
 - A short description (derive a slug)
-- A path to an existing `.md` plan file (treat it as the plan path)
+- A path to an existing plan file (treat it as the plan path)
 
 ## Output Contract
 
 When plan materialization is safe in this invocation, write exactly one file:
 
-- `plan_path` (normally `thoughts/plans/<slug>.md` when `$ARGUMENTS` is not an existing plan path)
+- `plan_path`, resolved from repo-local guidance or an existing plan path supplied by the user
 - If unresolved foundational decisions remain, still preserve the single-file contract by writing exactly one non-ready `research-ready` plan artifact at `plan_path` instead of pretending the work is `execution-ready`.
 - The written non-ready artifact must set `Status:` to `research-ready`, explicitly list the unresolved decisions, the exact next research action, and the condition for later promotion to `execution-ready`.
 - If a foundational decision needs new user intent before any safe plan can be written, ask exactly one targeted question and stop without writing `plan_path`.
 
-Do not create `spec.md`, `tasks.md`, per-plan directories, or any non-plan file unless the user explicitly asks.
+Do not create `spec.md`, `tasks.md`, per-plan directories, same-slug markdown/JSON companions for an HTML-plan repo, or any non-plan file unless the user explicitly asks.
 
 Completion condition for this command when a plan artifact can be written safely:
 
@@ -64,11 +64,11 @@ Legacy bundles:
 
 ### 1) Resolve Plan Path
 
-1. If `$ARGUMENTS` looks like a path to an existing `.md` file, treat it as `plan_path`.
+1. If `$ARGUMENTS` looks like a path to an existing plan file, treat it as `plan_path`.
 2. Otherwise derive `slug` from `$ARGUMENTS`.
    - Use lowercase, digits, and hyphens only.
    - If multiple plausible slugs exist, ask the user exactly one targeted question, explain the slug ambiguity, and stop; use the answer on the next invocation.
-3. Set `plan_path` to `thoughts/plans/<slug>.md`.
+3. Set `plan_path` to the repo's active plan path from local guidance. If local guidance does not define one and the user did not supply an existing plan path, ask one targeted question and stop. Do not infer a markdown path.
 4. Ensure the parent directory for `plan_path` exists (create it if missing).
 
 ### 2) Re-establish Planning Context
@@ -78,9 +78,10 @@ Before writing the plan:
 1. Read the repo root `AGENTS.md`.
 2. Read `thoughts/specs/product_intent.md` if the repo uses it.
 3. Read `thoughts/plans/AGENTS.md` only if it exists and the repo uses it for local planning overrides.
-4. Load the shared `planning-workflow` skill.
-5. Load the shared `product-principles` skill whenever the plan affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy. Use it to define the golden path, safe defaults, self-healing expectations, actionable error guidance, and a quick dissonance audit against repo guidance/tests.
-6. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
+4. If local guidance names an HTML plan contract, template, validator, or plan service, read those docs before writing and use the checked-in tooling they name. Do not substitute an ad hoc plan server.
+5. Load the shared `planning-workflow` skill.
+6. Load the shared `product-principles` skill whenever the plan affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy. Use it to define the golden path, safe defaults, self-healing expectations, actionable error guidance, and a quick dissonance audit against repo guidance/tests.
+7. Load any repo-recommended or surface-specific skills that are clearly relevant to the plan being written.
    - Use `tdd-test-writer` when the phases will depend on tests-first delivery.
    - When the planned work introduces or replaces non-trivial functionality with real build-vs-buy choices, perform an explicit dependency/library evaluation during planning by naming the official SDKs and well-maintained libraries considered, even if no dedicated repo skill covers that check.
    - Use frontend, React/Next, Rust, MCP, browser, or other domain skills when the work clearly spans those domains.

@@ -14,7 +14,7 @@ The goal is autonomous execution with explicit gates. Ask the user only when pro
 Accept any of:
 
 - Linear issue key or URL, such as `HUD-123`.
-- Existing plan path or slug, such as `thoughts/plans/foo.md` or `foo`.
+- Existing plan path or slug resolvable by repo-local active plan guidance.
 - Natural-language plan description.
 
 If the input is a Linear issue, fetch it with `ltui`. Do not use a browser or another Linear client as the primary source.
@@ -69,7 +69,7 @@ For `LINEAR_ISSUE`:
 
 For `EXISTING_PLAN`:
 
-1. Resolve slugs to `thoughts/plans/<slug>.md`.
+1. Resolve slugs using repo-local active plan guidance; do not infer a markdown path.
 2. Read the plan fully.
 3. If it is already execution-ready, still run the dual plan review gate unless the plan records passing equivalent reviews.
 4. If it is not execution-ready, update it under the repo planning rules before review.
@@ -98,7 +98,7 @@ Proceed once the answers are enough to write a plan with concrete acceptance cri
 Write or update one plan artifact following repo guidance. In this repo, default to:
 
 ```text
-thoughts/plans/<slug>.md
+<plan_path>
 ```
 
 Use `planning-workflow` and the repo's `AGENTS.md` required structure. For this repo, a non-trivial execution-ready plan must include:

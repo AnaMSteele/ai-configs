@@ -1,6 +1,6 @@
 ---
 description: Run blocker-focused review-only plan review using GPT and Kimi K2.5 in parallel
-argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
+argument-hint: '<existing-plan-path | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Multi-Model Plan Review Process

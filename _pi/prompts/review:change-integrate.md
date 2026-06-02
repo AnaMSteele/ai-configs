@@ -1,6 +1,6 @@
 ---
 description: Integrate review comments into a change plan (single-file spec + phases + progress)
-argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
+argument-hint: '<existing-plan-path | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Integrate Change Review Comments (Single Plan File)
@@ -34,7 +34,7 @@ Treat review comments as required only when they identify a blocker, material ri
 
 Preferred input:
 
-- A single plan file: `thoughts/plans/<slug>.md`
+- A single plan file in the repo's active plan format
 
 Accept legacy inputs for migration only:
 
@@ -44,9 +44,9 @@ Accept legacy inputs for migration only:
 Rules:
 
 - If `$ARGUMENTS` starts with `@`, strip the leading `@` and treat as workspace-relative.
-- If a single argument is an existing `.md` file, treat it as `plan_path`.
-- If a single argument is a slug, resolve to `thoughts/plans/<slug>.md`.
-- If the plan file does not exist but a legacy bundle exists for the slug, migrate to `thoughts/plans/<slug>.md` (do not modify legacy files) and integrate into the migrated plan.
+- If a single argument is an existing plan file, treat it as `plan_path`.
+- If a single argument is a slug, resolve it using repo-local active plan guidance. Do not infer a markdown path; if guidance does not define slug resolution, ask for an explicit plan path.
+- Only migrate a legacy bundle when repo-local guidance explicitly allows migration to the repo's active plan format; otherwise ask for an explicit existing plan path.
 
 If multiple candidates match or a required file is missing, ask for an explicit plan file path.
 

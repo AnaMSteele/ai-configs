@@ -1,6 +1,6 @@
 ---
 description: Run adversarial second-pass plan review using parallel Claude Code and GPT review, then GPT synthesis and integration
-argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
+argument-hint: '<existing-plan-path | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Adversarial Plan Review Process

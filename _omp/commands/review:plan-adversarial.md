@@ -1,6 +1,6 @@
 ---
 description: Run adversarial second-pass plan review using GPT and Opus 4.6 after the standard multi-model review
-argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
+argument-hint: '<existing-plan-path | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Adversarial Plan Review Process

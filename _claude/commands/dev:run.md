@@ -1,6 +1,6 @@
 ---
 description: Execute a single-file plan with resumable progress tracking
-argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
+argument-hint: '<slug | existing-plan-path>'
 ---
 
 # Run Plan (Single File)
@@ -15,7 +15,7 @@ Execute a single plan document (spec + phases + progress) in a straightforward, 
 `$ARGUMENTS` may be:
 
 - A slug
-- A direct path to a plan file (`.md`)
+- A direct path to a plan file in the repo's active plan format
 
 ## Process
 
@@ -43,11 +43,11 @@ Rules:
 
 - If `$ARGUMENTS` starts with `@`, treat it as a workspace-relative path and strip the leading `@`.
 - If `$ARGUMENTS` is a path to an existing file, use it as `plan_path`.
-- If `$ARGUMENTS` is a slug, use `thoughts/plans/<slug>.md`.
+- If `$ARGUMENTS` is a slug, resolve it using repo-local active plan guidance. Do not infer a markdown path. If repo guidance does not define slug-to-plan-path resolution, ask for the explicit existing plan path and stop.
 
 Legacy migration support (do not delete legacy files):
 
-- If `thoughts/plans/<slug>.md` does not exist but `thoughts/plans/<slug>/spec.md` exists, migrate by creating `thoughts/plans/<slug>.md` from the legacy bundle (spec is authoritative; convert task completion into coarse `## Progress`). Then proceed.
+- Only migrate legacy bundles when repo-local guidance explicitly allows migration to the repo's active plan format.
 
 ### 2) Read Plan
 

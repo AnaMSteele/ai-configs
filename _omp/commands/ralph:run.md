@@ -1,6 +1,6 @@
 ---
 description: Execute a plan with quality-gated phases - each phase gets 1 implementation pass and repeated review/fix passes until only low-risk items remain
-argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
+argument-hint: '<slug | existing-plan-path>'
 ---
 
 # Run Plan (Quality-Gated Loop)
@@ -11,7 +11,7 @@ Execute a plan document phase-by-phase: do 1 implementation pass, then repeat re
 
 `$ARGUMENTS` may be:
 
-- A slug (resolves to `thoughts/plans/<slug>.md`)
+- A slug (resolve using repo-local active plan guidance; do not infer a markdown path)
 - A direct path to a plan file (`.md`)
 
 ## Process
@@ -37,7 +37,7 @@ Resolve to `plan_path`:
 
 - If `$ARGUMENTS` starts with `@`, treat it as a workspace-relative path and strip the leading `@`.
 - If `$ARGUMENTS` is a path to an existing file, use it as `plan_path`.
-- If `$ARGUMENTS` is a slug, use `thoughts/plans/<slug>.md`.
+- If `$ARGUMENTS` is a slug, resolve it using repo-local active plan guidance. Do not infer a markdown path.
 
 ### 2) Read Plan
 

@@ -14,7 +14,7 @@ Do not restate the full shared planning doctrine here. This file is for repo-loc
 
 - Product intent path if different from `thoughts/specs/product_intent.md`.
 - Required docs or directories planners must read before writing a plan.
-- Canonical plan output path if different from `thoughts/plans/<slug>.md`.
+- Canonical plan output path and file format for this repo.
 
 ## Repo-specific plan additions or overrides
 

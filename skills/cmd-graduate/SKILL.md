@@ -27,7 +27,7 @@ Graduated features move to:
 
 If argument is:
 - A path: use it directly
-- A slug: look at `thoughts/plans/<slug>.md`
+- A slug: resolve using repo-local active plan guidance; do not infer a markdown path
 
 ### 2) Read and Summarize
 
@@ -45,7 +45,7 @@ Write to `spec/architecture/[feature-slug].md`:
 ---
 date: [YYYY-MM-DD]
 author: [author from plan]
-original_plan: thoughts/plans/[slug].md
+original_plan: <plan_path>
 status: graduated
 ---
 
@@ -64,7 +64,7 @@ status: graduated
 [Technical details for future reference]
 
 ## Related
-- Original plan: `thoughts/plans/[slug].md`
+- Original plan: `<plan_path>`
 - [Other related docs]
 ```
 
@@ -79,7 +79,7 @@ Append to `CHANGELOG.md`:
 ```markdown
 ## [YYYY-MM-DD] - [Feature Name]
 
-- Graduated from: `thoughts/plans/[slug].md`
+- Graduated from: `<plan_path>`
 - Summary: [Brief description]
 - Architecture: `spec/architecture/[feature-slug].md`
 ```

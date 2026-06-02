@@ -1,6 +1,6 @@
 ---
 description: Post-implementation verification against a single plan file (spec + phases + progress)
-argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md>'
+argument-hint: '<slug | existing-plan-path>'
 ---
 
 # Validate Implementation (Single Plan File)
@@ -13,7 +13,7 @@ Target: $ARGUMENTS
 
 ### 1. Locate Plan and Read Inputs
 
-If no argument provided, search `thoughts/plans/` for the most recently modified `*.md` plan file.
+If no argument is provided, use repo-local active plan guidance to find the most recently modified active plan artifact; if guidance does not define a pattern, ask for an explicit plan path.
 
 Resolve to:
 
@@ -21,12 +21,12 @@ Resolve to:
 
 Resolution rules:
 
-- If argument is a slug: `thoughts/plans/<slug>.md`
+- If argument is a slug: resolve it using repo-local active plan guidance; do not infer a markdown path
 - If argument is a `*.md` file path: use it as-is
 
 Legacy support (read-only; do not modify legacy files):
 
-- If `thoughts/plans/<slug>.md` does not exist but `thoughts/plans/<slug>/spec.md` exists, treat this as a legacy bundle and validate against `spec.md` as intent and `tasks.md` as progress.
+- Only treat legacy bundles as plan input when repo-local guidance explicitly allows migration or validation from legacy bundles.
 
 Read `plan_path` completely. Extract:
 

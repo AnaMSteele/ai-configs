@@ -1,15 +1,15 @@
 ---
 description: Create or update a single-file execution plan (spec + phases + progress) from validated codebase research
-argument-hint: '<slug | "short description" | thoughts/plans/<slug>.md>'
+argument-hint: '<slug | "short description" | existing-plan-path>'
 ---
 
 # Plan (Single File)
 
 Turn the validated research from this conversation into a single resumable plan document that contains both the specification and the execution guidance.
 
-This command produces (or updates):
+This command has no default plan file format. Determine the active plan artifact from repo-local guidance (`AGENTS.md`, `thoughts/plans/AGENTS.md`, local planning skills, or an existing plan path supplied by the user). If local guidance says active plans are HTML or names a checked-in plan server/validator, obey that local contract exactly.
 
-- `thoughts/plans/<slug>.md`
+If repo guidance does not define the active plan artifact format/path and the user did not supply an existing plan path, ask one targeted question and stop. Do not assume markdown.
 
 ## Inputs
 
@@ -17,15 +17,13 @@ Argument (`$ARGUMENTS`) is either:
 
 - A slug (recommended), e.g. `worktree-cleanup`
 - A short description (derive a slug)
-- A path to an existing `.md` plan file (treat it as the plan path)
+- A path to an existing plan file (treat it as the plan path)
 
 ## Output Contract
 
-Write exactly one file:
+Write exactly one active plan file: `plan_path`, resolved from repo-local guidance or an existing plan path supplied by the user.
 
-- `thoughts/plans/<slug>.md`
-
-Do not create `spec.md`, `tasks.md`, or per-plan directories unless the user explicitly asks.
+Do not create `spec.md`, `tasks.md`, per-plan directories, same-slug markdown/JSON companions for an HTML-plan repo, or any non-plan file unless the user explicitly asks.
 
 Legacy bundles:
 
@@ -36,12 +34,12 @@ Legacy bundles:
 
 ### 1) Resolve Plan Path
 
-1. If `$ARGUMENTS` looks like a path to an existing `.md` file, treat it as `plan_path`.
+1. If `$ARGUMENTS` looks like a path to an existing plan file, treat it as `plan_path`.
 2. Otherwise derive `slug` from `$ARGUMENTS`.
    - Use lowercase, digits, and hyphens only.
    - If multiple plausible slugs exist, ask once with `question` and use the user's choice.
-3. Set `plan_path` to `thoughts/plans/<slug>.md`.
-4. Ensure `thoughts/plans/` exists (create it if missing).
+3. Set `plan_path` to the repo's active plan path from local guidance. If local guidance does not define one and the user did not supply an existing plan path, ask one targeted question and stop. Do not infer a markdown path.
+4. Ensure the parent directory for `plan_path` exists (create it if missing).
 
 ### 2) Read Existing Plan (If Present)
 
@@ -61,6 +59,8 @@ Legacy migration support (read-only; do not delete legacy files):
   - Do not copy long checklists into the new plan.
 
 ### 3) Deep Research and Validation
+
+If local guidance names an HTML plan contract, template, validator, or plan service, read those docs now. Use the checked-in tooling they name; do not create markdown companions for an HTML-plan repo and do not substitute an ad hoc plan server.
 
 Validate key claims from the conversation by directly inspecting the codebase:
 
@@ -122,6 +122,6 @@ Before finishing:
 ## Next Steps
 
 - Review the plan:
-  - `/review:change thoughts/plans/<slug>.md`
+  - `/review:change <plan_path>`
 - After the reviewed plan is ready to continue, use the canonical handoff:
-  - `/cmd:execute-plan thoughts/plans/<slug>.md`
+  - `/cmd:execute-plan <plan_path>`

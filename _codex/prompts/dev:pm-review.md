@@ -1,6 +1,6 @@
 ---
 description: Adversarial product-manager review that reshapes a plan to fully satisfy intended outcomes and stage-fit
-argument-hint: '<path to plan.md | plan slug> [mode: auto|plan|implementation]'
+argument-hint: '<existing-plan-path | plan slug> [mode: auto|plan|implementation]'
 ---
 
 # PM Review (Intent, Product Principles, and Stage Fit)
@@ -57,9 +57,9 @@ Otherwise, resolve the issue yourself and continue.
 
 Resolve the target plan as follows:
 
-- If `$ARGUMENTS` includes a path to an existing `.md` file, use it as `plan_path`.
-- If `$ARGUMENTS` includes a slug, resolve to `thoughts/plans/<slug>.md`.
-- If no argument is provided, choose the most recently modified `thoughts/plans/*.md` plan file.
+- If `$ARGUMENTS` includes a path to an existing plan file, use it as `plan_path`.
+- If `$ARGUMENTS` includes a slug, resolve it using repo-local active plan guidance. Do not infer a markdown path.
+- If no argument is provided, choose the most recently modified active plan artifact using repo-local guidance; if guidance does not define a pattern, ask for an explicit plan path.
 
 Mode handling:
 

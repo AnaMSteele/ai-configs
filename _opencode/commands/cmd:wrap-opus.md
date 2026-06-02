@@ -32,7 +32,7 @@ This is useful when:
 Examples:
 
 - `dev:plan worktree-cleanup`
-- `review:change thoughts/plans/foo.md`
+- `review:change <plan_path>`
 - `@.opencode/commands/my-new-command.md some args here`
 
 ## Resolution Rules

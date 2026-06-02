@@ -31,7 +31,7 @@ Resolution rules:
 
 - If `$ARGUMENTS` starts with `@`, strip the leading `@` and treat it as workspace-relative.
 - If a single argument is an existing `.md` file, treat it as `prd_path`.
-- If a single argument is a slug that already starts with `prd-`, resolve to `thoughts/plans/<slug>.md`.
+- If a single argument is a slug that already starts with `prd-`, resolve it using repo-local active plan guidance; do not infer a markdown path.
 - Otherwise resolve the slug to `thoughts/plans/prd-<slug>.md`.
 - If the PRD file does not exist or multiple candidates match, ask for an explicit PRD file path.
 

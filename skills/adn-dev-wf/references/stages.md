@@ -5,7 +5,7 @@ This reference file defines the exact stage behavior for `adn-dev-wf`.
 ## 1. Plan materialization
 
 Use the single-file plan contract already established in this repo:
-- one file at `thoughts/plans/<slug>.md`
+- one file in the repo's active plan format
 - preserve existing completed progress items and append-only logs
 - each phase includes `### Tests first`, `### End State`, `### Work`, `### Expected files`, and `### Verify`
 - execution-ready plans must not leave unresolved open questions

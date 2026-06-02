@@ -1,6 +1,6 @@
 ---
 description: Reflect on a completed phase and propagate decisions into future phases (single plan file)
-argument-hint: '<slug | thoughts/plans/<slug>.md | path/to/plan.md> [--phase N] [--dry-run]'
+argument-hint: '<slug | existing-plan-path> [--phase N] [--dry-run]'
 ---
 
 # Phase Reflection (Single Plan File)
@@ -27,7 +27,7 @@ PARSE -> READ -> GATHER_EVIDENCE -> EXTRACT_DECISIONS -> ANALYZE_IMPACT -> PROPO
 
 Resolve:
 
-- `plan_path`: `thoughts/plans/<slug>.md` (or the provided path)
+- `plan_path`: resolved from repo-local active plan guidance (or the provided existing path)
 
 Determine the completed phase:
 

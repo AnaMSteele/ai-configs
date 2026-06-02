@@ -48,7 +48,7 @@ out=/tmp/codex-claude-review-output.txt
 window=claude-plan-review
 
 cat > "$prompt" <<'PROMPT'
-Review thoughts/plans/foo.md against AGENTS.md and thoughts/specs/product_intent.md.
+Review <plan_path> against AGENTS.md and thoughts/specs/product_intent.md.
 This is read-only. Do not edit files. Return a concise review with Verdict, Findings, Required Changes, Residual Risks.
 PROMPT
 
@@ -96,7 +96,7 @@ out=/tmp/codex-claude-plan-review-output.txt
 window=claude-plan-review
 
 cat > "$prompt" <<'PROMPT'
-Review thoughts/plans/foo.md against thoughts/plans/AGENTS.md and thoughts/specs/product_intent.md.
+Review <plan_path> against thoughts/plans/AGENTS.md and thoughts/specs/product_intent.md.
 This is a read-only plan review. Do not edit files.
 Return concise sections: Verdict, Strengths, Issues, Required Changes.
 PROMPT

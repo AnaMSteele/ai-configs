@@ -1,6 +1,6 @@
 ---
 description: Canonical reviewed-plan handoff that routes an explicit plan into /dev:run or /ralph:run
-argument-hint: '<plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]'
+argument-hint: '<plan slug | existing-plan-path> [--target dev:run|ralph:run]'
 ---
 
 # Execute Reviewed Plan
@@ -11,7 +11,7 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 
 ## Contract
 
-- Accept a plan slug or an explicit `.md` plan path.
+- Accept a plan slug or an explicit existing plan path in the repo's active plan format.
 - Accept workspace-relative input that starts with `@` by stripping the leading `@`.
 - Accept an optional target suffix: `--target dev:run` or `--target ralph:run`.
 - Present exactly two execution choices: `/dev:run` and `/ralph:run`.
@@ -25,13 +25,13 @@ This command is a reviewed-plan handoff wrapper. It does not replace `/dev:run` 
 If no argument is provided, respond with:
 
 ```text
-Usage: /cmd:execute-plan <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|ralph:run]
+Usage: /cmd:execute-plan <plan slug | existing-plan-path> [--target dev:run|ralph:run]
 
 Examples:
   /cmd:execute-plan review-execution-handoff
-  /cmd:execute-plan thoughts/plans/review-execution-handoff.md
-  /cmd:execute-plan @thoughts/plans/review-execution-handoff.md
-  /cmd:execute-plan thoughts/plans/review-execution-handoff.md --target dev:run
+  /cmd:execute-plan thoughts/plans/review-execution-handoff.html
+  /cmd:execute-plan @thoughts/plans/review-execution-handoff.html
+  /cmd:execute-plan thoughts/plans/review-execution-handoff.html --target dev:run
 ```
 
 Do not infer “the current plan” from conversation state.
@@ -52,10 +52,11 @@ Do not infer “the current plan” from conversation state.
 6. If `PLAN_ARGUMENT` starts with `@`, strip the leading `@`.
 7. Preserve that normalized string as `PLAN_DISPATCH_ARGUMENT`.
 8. Resolve `PLAN_PATH` for validation only:
-   - If `PLAN_DISPATCH_ARGUMENT` is an existing `.md` file path, use it as `PLAN_PATH`.
-   - Otherwise treat it as a slug and resolve `PLAN_PATH=thoughts/plans/<slug>.md`.
+   - If `PLAN_DISPATCH_ARGUMENT` is an existing plan file path, use it as `PLAN_PATH`.
+   - Otherwise treat it as a slug and resolve it using repo-local active plan guidance. Do not infer a markdown path.
+   - If repo guidance does not define slug-to-plan-path resolution, stop and ask for the explicit existing plan path.
 9. Read `PLAN_PATH` to confirm the reviewed plan exists.
-10. If `PLAN_PATH` does not exist, stop and tell the user that `/cmd:execute-plan` requires an explicit existing reviewed plan file or slug.
+10. If `PLAN_PATH` does not exist, stop and tell the user that `/cmd:execute-plan` requires an explicit existing reviewed plan file or a slug resolvable by repo-local guidance.
 
 Do not rewrite a slug into a path for dispatch. Forward the same normalized `PLAN_DISPATCH_ARGUMENT` that the user supplied.
 

@@ -1,6 +1,6 @@
 ---
 description: Create or update a single-file execution plan from a reviewed PRD delta
-argument-hint: '<prd slug | thoughts/plans/prd-<slug>.md | path/to/prd.md>'
+argument-hint: '<prd slug | existing-prd-path>'
 ---
 
 # Run Plan from PRD (Single File)
@@ -9,7 +9,7 @@ Turn a reviewed PRD delta into a single resumable execution plan document.
 
 This command produces (or updates):
 
-- `thoughts/plans/<slug>.md`
+- `<plan_path>`
 
 ## Inputs
 
@@ -22,9 +22,9 @@ Argument (`$ARGUMENTS`) is either:
 
 Write exactly one file:
 
-- `thoughts/plans/<slug>.md`
+- `<plan_path>`
 
-Do not create `spec.md`, `tasks.md`, or per-plan directories unless the user explicitly asks.
+Do not create `spec.md`, `tasks.md`, per-plan directories, same-slug markdown/JSON companions for an HTML-plan repo, or any non-plan file unless the user explicitly asks.
 
 ## 1) Resolve PRD Path and Plan Path
 
@@ -37,9 +37,11 @@ Do not create `spec.md`, `tasks.md`, or per-plan directories unless the user exp
 5. Derive `prd_slug` from the PRD filename by stripping only the `.md` suffix.
 6. Derive `plan_slug` from the PRD filename by stripping a leading `prd-` prefix when present.
 7. Set:
-   - `plan_path` = `thoughts/plans/<plan_slug>.md`
+   - `plan_path` = the repo-local active plan path for `plan_slug`; do not infer a markdown path
    - `review_dir` = `thoughts/validation/prd-reviews/<prd_slug>/`
    - `review_status_path` = `thoughts/validation/prd-reviews/<prd_slug>/review-status.json`
+
+If repo guidance does not define the active plan artifact format/path, ask one targeted question and stop.
 
 If the reviewed PRD file cannot be resolved, stop and tell the user that `/dev:plan-from-prd` requires an explicit existing reviewed PRD file or slug.
 

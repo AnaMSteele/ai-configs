@@ -64,6 +64,12 @@ def main() -> None:
             "execution plan file",
             "delegate research immediately or write a non-ready `research-ready` plan artifact",
             "delegate research or produce a non-ready `research-ready` artifact",
+            "defaults to markdown",
+            "markdown defaults",
+            "Default output:",
+            "default: `thoughts/plans/<slug>.md`",
+            "Default is `thoughts/plans/<slug>.md`",
+            "normally `thoughts/plans/<slug>.md`",
         ],
     )
 
@@ -72,9 +78,11 @@ def main() -> None:
         "resolve path",
         resolve_path,
         [
-            "If `$ARGUMENTS` looks like a path to an existing `.md` file, treat it as `plan_path`.",
+            "If `$ARGUMENTS` looks like a path to an existing plan file, treat it as `plan_path`.",
             "If multiple plausible slugs exist, ask the user exactly one targeted question, explain the slug ambiguity, and stop; use the answer on the next invocation.",
-            "Set `plan_path` to `thoughts/plans/<slug>.md`.",
+            "Set `plan_path` to the repo's active plan path from local guidance.",
+            "If local guidance does not define one and the user did not supply an existing plan path, ask one targeted question and stop.",
+            "Do not infer a markdown path.",
             "Ensure the parent directory for `plan_path` exists (create it if missing).",
         ],
     )
@@ -85,12 +93,12 @@ def main() -> None:
         output_contract,
         [
             "When plan materialization is safe in this invocation, write exactly one file:",
-            "`plan_path` (normally `thoughts/plans/<slug>.md` when `$ARGUMENTS` is not an existing plan path)",
+            "`plan_path`, resolved from repo-local guidance or an existing plan path supplied by the user",
             "If unresolved foundational decisions remain, still preserve the single-file contract by writing exactly one non-ready `research-ready` plan artifact at `plan_path` instead of pretending the work is `execution-ready`.",
             "The written non-ready artifact must set `Status:` to `research-ready`, explicitly list the unresolved decisions, the exact next research action, and the condition for later promotion to `execution-ready`.",
             "If a foundational decision needs new user intent before any safe plan can be written, ask exactly one targeted question and stop without writing `plan_path`.",
             "If a foundational decision needs new user intent, ask exactly one targeted question, explain why the plan is not yet safe to materialize, and do not write or partially rewrite `plan_path`.",
-            "Do not create `spec.md`, `tasks.md`, per-plan directories, or any non-plan file unless the user explicitly asks.",
+            "Do not create `spec.md`, `tasks.md`, per-plan directories, same-slug markdown/JSON companions for an HTML-plan repo, or any non-plan file unless the user explicitly asks.",
         ],
     )
 
@@ -100,7 +108,7 @@ def main() -> None:
         [
             "Completion condition for this command when a plan artifact can be written safely:",
             "The final response reports the plan path and readiness state, then suggests follow-up work that matches that state without running anything.",
-            "Only suggest `/ralph:run <plan_path>` when the written plan is `execution-ready`.",
+            "Only suggest `/cmd:execute-plan <plan_path>` when the written plan is `execution-ready`.",
             "For a written `research-ready` artifact, point the user to the exact next research action captured in the plan instead of suggesting execution.",
         ],
     )
@@ -191,8 +199,8 @@ def main() -> None:
         [
             "If the written plan is `execution-ready`, suggest:",
             "`/review:change <plan_path>`",
-            "`/ralph:run <plan_path>`",
-            "If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/ralph:run`.",
+            "`/cmd:execute-plan <plan_path>`",
+            "If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in that artifact instead of `/cmd:execute-plan`.",
         ],
     )
 

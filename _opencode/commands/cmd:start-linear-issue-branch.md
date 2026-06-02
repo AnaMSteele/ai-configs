@@ -120,7 +120,7 @@ Compute:
 
 - `plan_slug`: `${ISSUE_LOWER}-${TITLE_SLUG}` (same as `branch_name`)
 - If `TITLE_SLUG` is empty, use just `${ISSUE_LOWER}`
-- `plan_path`: `thoughts/plans/${plan_slug}.md`
+- `plan_path`: resolve from repo-local active plan guidance for `${plan_slug}`; do not infer a markdown path
 
 Ensure the directory exists:
 

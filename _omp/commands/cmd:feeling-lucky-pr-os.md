@@ -219,7 +219,7 @@ Compute:
 - `TITLE_SLUG`: slug of the title (lowercase, non `[a-z0-9]` -> `-`, collapse repeats, trim, max ~40)
 - `branch_name`: `${ISSUE_LOWER}-${TITLE_SLUG}` (or `${ISSUE_LOWER}` if slug empty)
 - `plan_slug`: same as `branch_name`
-- `plan_path`: `thoughts/plans/${plan_slug}.md`
+- `plan_path`: resolve from repo-local active plan guidance for `${plan_slug}`; do not infer a markdown path
 
 ```bash
 ISSUE_LOWER="$(python3 -c 'import sys; print(sys.argv[1].lower())' "$ISSUE_KEY")"
@@ -241,7 +241,7 @@ else
 fi
 
 plan_slug="$branch_name"
-plan_path="thoughts/plans/${plan_slug}.md"
+# Resolve plan_path from repo-local active plan guidance if a later step needs an explicit path; do not infer a markdown path.
 
 mkdir -p thoughts/plans
 

@@ -1,6 +1,6 @@
 ---
 description: Run blocker-focused multi-model plan review using GPT, Kimi K2.5, and Opus 4.6
-argument-hint: '<path to plan.md | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
+argument-hint: '<existing-plan-path | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Multi-Model Plan Review Process

@@ -23,7 +23,7 @@ Execute complex implementation work using a parallel team structure:
 
 Parse input specification:
 - If file path: read specification from file
-- If slug: read from `thoughts/plans/<slug>.md`
+- If slug: resolve using repo-local active plan guidance; do not infer a markdown path
 - If plain text: treat as inline specification
 
 Determine parallelization:

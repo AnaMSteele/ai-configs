@@ -7,6 +7,8 @@ description: Materialize or update a single-file execution plan after discovery.
 
 You are leaving read-only discovery mode and entering plan-materialization mode. This is still non-execution work: synthesize validated research into the actual execution plan file.
 
+This shared skill has no default plan file format. Determine the active plan artifact from repo-local guidance (`AGENTS.md`, `thoughts/plans/AGENTS.md`, local planning skills, or an existing plan path supplied by the user). Follow the local artifact format exactly; do not create markdown companions for an HTML-plan repo. If repo guidance does not define the active plan artifact format/path and the user did not supply an existing plan path, ask one targeted question and stop. Do not assume markdown.
+
 Treat this command as planning-only work even though normal file writes are available. You may inspect the repo and write the plan artifact, but you must not change product code, tests, app config, docs, generated files, or environment files.
 
 Your job ends after writing or updating the single plan file and reporting the result. Do not create execution todos, do not begin implementation, and do not run execution-oriented verification once the plan file is complete.
@@ -14,21 +16,21 @@ Your job ends after writing or updating the single plan file and reporting the r
 ## Usage
 
 ```
-/skill:dev-plan <slug | "short description" | thoughts/plans/<slug>.md>
+/skill:dev-plan <slug | "short description" | existing-plan-path>
 ```
 
 ## Output
 
-This command produces (or updates): `thoughts/plans/<slug>.md`
+Output: exactly one `plan_path`, resolved from repo-local guidance or an existing plan path supplied by the user.
 
 ## Process
 
 ### 1) Resolve Plan Path
 
-1. If arguments look like a path to an existing `.md` file, treat it as `plan_path`.
+1. If arguments look like a path to an existing plan file, treat it as `plan_path`.
 2. Otherwise derive `slug` from arguments (lowercase, digits, hyphens only).
-3. Set `plan_path` to `thoughts/plans/<slug>.md`.
-4. Ensure `thoughts/plans/` exists (create it if missing).
+3. Set `plan_path` to the repo's active plan path from local guidance. If local guidance does not define one and the user did not supply an existing plan path, ask one targeted question and stop. Do not infer a markdown path.
+4. Ensure the parent directory for `plan_path` exists (create it if missing).
 
 ### 2) Re-establish Planning Context
 
@@ -37,7 +39,8 @@ Before writing the plan:
 1. Read the repo root `AGENTS.md`.
 2. Read `thoughts/specs/product_intent.md` if the repo uses it.
 3. Read `thoughts/plans/AGENTS.md` only if it exists for local planning overrides.
-4. Load relevant skills:
+4. If local guidance names an HTML plan contract, template, validator, or plan service, read those docs before writing and use the checked-in tooling they name.
+5. Load relevant skills:
    - `html-plan-reviewer` before writing, serving, registering, linking, or monitoring any `thoughts/plans/*.html` artifact; use its `plan-review` workflow for reviewer-facing HTML plans
    - `product-principles` when the plan affects workflows, defaults, onboarding, recovery behavior, error handling, architecture, or regression strategy; use it to define the golden path, self-healing expectations, fail-closed boundaries, agent-legible errors, and to audit repo guidance/tests for dissonance
    - `tdd-test-writer` when phases will depend on tests-first delivery
@@ -91,6 +94,7 @@ Non-negotiable requirements:
 - Every user-facing HTML plan URL must use the full Tailscale MagicDNS name, not a shortname, `localhost`, or `127.0.0.1`. On the default host use `http://mbp.braid-python.ts.net:<port>/...`; `localhost` / `127.0.0.1` is allowed only for private health checks such as `curl -fsS http://127.0.0.1:4317/health`.
 - For product-facing work, the plan explicitly documents the default workflow, inferred defaults, self-healing expectations, fail-closed boundaries, actionable agent-legible error guidance, and any repo-doc/test updates needed to stay aligned
 - When this repo uses the reviewed-plan flow, the plan assumes explicit handoff rather than hidden recovery paths. In this repo the canonical continuation is `/skill:adn-dev-wf <plan>`.
+- If repo guidance requires a checked-in plan server, validate/serve/open the plan with that server, reuse an already-running instance for the target plan, and never substitute Vite, file URLs, Python/Node static servers, or a custom plan service.
 - The plan does not normalize routine "run this other command to inspect/fix it" operator loops unless the work is explicitly about a high-risk or ambiguous exception path
 
 ### 6) Consistency Pass
@@ -114,7 +118,7 @@ Before finishing:
 ## Suggested Next Steps
 
 After this skill completes, the user may:
-- Review the plan: `/review:plan thoughts/plans/<slug>.md`
-- Integrate review feedback: `/review:change-integrate thoughts/plans/<slug>.md`
-- Optionally run an adversarial second pass: `/review:plan-adversarial thoughts/plans/<slug>.md`
-- Continue the reviewed-plan workflow: `/skill:adn-dev-wf thoughts/plans/<slug>.md`
+- Review the plan: `/review:plan <plan_path>`
+- Integrate review feedback: `/review:change-integrate <plan_path>`
+- Optionally run an adversarial second pass: `/review:plan-adversarial <plan_path>`
+- Continue the reviewed-plan workflow: `/skill:adn-dev-wf <plan_path>`

@@ -14,10 +14,10 @@ This skill is goal-backed in Codex and Pi. A scoped plan run is not complete at 
 ## Invocation
 
 ```text
-Use $scoped-plan-run to execute thoughts/plans/<slug>.md
+Use $scoped-plan-run to execute an explicit plan path or a slug resolvable by repo-local active plan guidance
 ```
 
-Accept either a plan path or a slug. For a slug, resolve `thoughts/plans/<slug>.md`.
+Accept either a plan path or a slug. For a slug, resolve using repo-local active plan guidance; do not infer a markdown path.
 
 ## Non-Negotiable Rules
 
