@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan Reviewer Favicon Options</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b16;
+      --panel: #101827;
+      --panel-2: #0d1424;
+      --border: #263248;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --accent: #7dd3fc;
+      --green: #22c55e;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(56,189,248,.14), transparent 32rem),
+        radial-gradient(circle at 88% 12%, rgba(244,63,94,.12), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    main { max-width: 1080px; margin: 0 auto; padding: 40px 24px 64px; }
+    header.hero { border: 1px solid var(--border); background: rgba(16,24,39,.78); border-radius: 22px; padding: 28px; box-shadow: 0 24px 60px rgba(0,0,0,.28); }
+    .eyebrow { color: var(--accent); font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 8px 0 10px; font-size: clamp(32px, 5vw, 58px); line-height: 1; letter-spacing: -.045em; }
+    h2 { margin: 0 0 10px; font-size: 22px; }
+    p { margin: 0; color: var(--muted); }
+    code { color: #dbeafe; background: #0f172a; padding: .12rem .35rem; border-radius: 6px; }
+    .progress { margin: 22px 0 30px; display: grid; gap: 10px; color: var(--muted); }
+    .progress label { display: flex; gap: 10px; align-items: center; }
+    .progress input { accent-color: var(--green); }
+    .grid { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 18px; }
+    article.option { position: relative; border: 1px solid var(--border); border-radius: 20px; background: linear-gradient(180deg, rgba(17,24,39,.94), rgba(12,18,32,.94)); padding: 20px; overflow: hidden; }
+    article.option::before { content: ""; position: absolute; inset: 0 0 auto; height: 4px; background: var(--accent); opacity: .9; }
+    article.recommended::before { background: linear-gradient(90deg, var(--rose), var(--amber)); }
+    .badge { display: inline-block; margin-bottom: 12px; border: 1px solid rgba(125,211,252,.35); color: #bae6fd; border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 800; }
+    .recommended .badge { border-color: rgba(251,113,133,.45); color: #fecdd3; }
+    .sizes { display: flex; align-items: center; gap: 16px; margin: 18px 0; padding: 16px; border-radius: 16px; background: #070b16; border: 1px solid #1f2937; }
+    .icon-64 { width: 64px; height: 64px; }
+    .icon-32 { width: 32px; height: 32px; }
+    .icon-16 { width: 16px; height: 16px; image-rendering: auto; }
+    .meta { display: grid; gap: 8px; margin-top: 14px; font-size: 14px; }
+    .meta div { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; }
+    .meta strong { color: #cbd5e1; }
+    .verdict { margin-top: 30px; border: 1px solid rgba(251,191,36,.35); background: rgba(251,191,36,.08); border-radius: 18px; padding: 20px; }
+    .verdict h2 { color: #fde68a; }
+    .swatch-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    .swatch { width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(255,255,255,.18); }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero" id="hero">
+      <div class="eyebrow">Plan reviewer favicon candidates</div>
+      <h1>Pick a browser-tab icon for planning work.</h1>
+      <p>These options are optimized for fast recognition in a crowded tab strip. Each card shows the same SVG at 64px, 32px, and 16px so the small-tab read is easy to judge.</p>
+    </header>
+
+    <section class="progress" id="progress">
+      <label id="progress-p1"><input type="checkbox" checked disabled> Drafted four favicon directions.</label>
+      <label id="progress-p2"><input type="checkbox" checked disabled> Published candidates in the plan viewer for visual review.</label>
+      <label id="progress-p3"><input type="checkbox" checked disabled> Wire selected favicon into <code>tools/plan-reviewer</code>.</label>
+    </section>
+
+    <section class="grid" id="favicon-options" aria-label="Favicon options">
+      <article class="option" id="option-plan-spark">
+        <span class="badge">Option 1</span>
+        <h2>Plan Spark</h2>
+        <p>Document, spark, and green status dot. Best if the tab should read as “active plan document.”</p>
+        <figure class="sizes" id="figure-plan-spark">
+          <img class="icon-64" src="assets/plan-reviewer-favicons/option-1-plan-spark.svg" alt="Plan Spark favicon at 64 pixels" width="64" height="64">
+          <img class="icon-32" src="assets/plan-reviewer-favicons/option-1-plan-spark.svg" alt="Plan Spark favicon at 32 pixels" width="32" height="32">
+          <img class="icon-16" src="assets/plan-reviewer-favicons/option-1-plan-spark.svg" alt="Plan Spark favicon at 16 pixels" width="16" height="16">
+        </figure>
+        <div class="meta"><div><strong>Signal</strong><span>Plan document</span></div><div><strong>Tab read</strong><span>Bright, optimistic, slightly busy at 16px</span></div></div>
+      </article>
+
+      <article class="option recommended" id="option-comment-pin">
+        <span class="badge">Option 2 · recommended</span>
+        <h2>Comment Pin</h2>
+        <p>Comment bubble with a red location pin. Best match for reviewing plans and leaving anchored comments.</p>
+        <figure class="sizes" id="figure-comment-pin">
+          <img class="icon-64" src="assets/plan-reviewer-favicons/option-2-comment-pin.svg" alt="Comment Pin favicon at 64 pixels" width="64" height="64">
+          <img class="icon-32" src="assets/plan-reviewer-favicons/option-2-comment-pin.svg" alt="Comment Pin favicon at 32 pixels" width="32" height="32">
+          <img class="icon-16" src="assets/plan-reviewer-favicons/option-2-comment-pin.svg" alt="Comment Pin favicon at 16 pixels" width="16" height="16">
+        </figure>
+        <div class="meta"><div><strong>Signal</strong><span>Review comment + anchor</span></div><div><strong>Tab read</strong><span>Most distinctive and recognizable</span></div></div>
+      </article>
+
+      <article class="option" id="option-roadmap-flag">
+        <span class="badge">Option 3</span>
+        <h2>Roadmap Flag</h2>
+        <p>Dotted path with milestones and a flag. Best if the tab should emphasize execution phases.</p>
+        <figure class="sizes" id="figure-roadmap-flag">
+          <img class="icon-64" src="assets/plan-reviewer-favicons/option-3-roadmap-flag.svg" alt="Roadmap Flag favicon at 64 pixels" width="64" height="64">
+          <img class="icon-32" src="assets/plan-reviewer-favicons/option-3-roadmap-flag.svg" alt="Roadmap Flag favicon at 32 pixels" width="32" height="32">
+          <img class="icon-16" src="assets/plan-reviewer-favicons/option-3-roadmap-flag.svg" alt="Roadmap Flag favicon at 16 pixels" width="16" height="16">
+        </figure>
+        <div class="meta"><div><strong>Signal</strong><span>Roadmap / phase path</span></div><div><strong>Tab read</strong><span>Strong color, less comment-specific</span></div></div>
+      </article>
+
+      <article class="option" id="option-review-grid">
+        <span class="badge">Option 4</span>
+        <h2>Review Grid</h2>
+        <p>Four review tiles with checkmarks and a notification dot. Best if the tab should read as “review dashboard.”</p>
+        <figure class="sizes" id="figure-review-grid">
+          <img class="icon-64" src="assets/plan-reviewer-favicons/option-4-review-grid.svg" alt="Review Grid favicon at 64 pixels" width="64" height="64">
+          <img class="icon-32" src="assets/plan-reviewer-favicons/option-4-review-grid.svg" alt="Review Grid favicon at 32 pixels" width="32" height="32">
+          <img class="icon-16" src="assets/plan-reviewer-favicons/option-4-review-grid.svg" alt="Review Grid favicon at 16 pixels" width="16" height="16">
+        </figure>
+        <div class="meta"><div><strong>Signal</strong><span>Review grid / task board</span></div><div><strong>Tab read</strong><span>Clean geometry, more generic</span></div></div>
+      </article>
+    </section>
+
+    <section class="verdict" id="recommendation">
+      <h2>Recommendation</h2>
+      <p>Use <strong>Option 2: Comment Pin</strong>. It is the clearest planning-review metaphor at browser-tab size: the bubble says “comment,” the pin says “anchored to a plan,” and the red accent separates it from generic document or dashboard favicons.</p>
+      <div class="swatch-row" aria-label="Recommended palette">
+        <span class="swatch" style="background:#111827"></span>
+        <span class="swatch" style="background:#312e81"></span>
+        <span class="swatch" style="background:#7dd3fc"></span>
+        <span class="swatch" style="background:#f43f5e"></span>
+        <span class="swatch" style="background:#fff1f2"></span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

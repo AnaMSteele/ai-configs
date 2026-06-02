@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Roadmap flag favicon">
+  <defs>
+    <linearGradient id="bg" x1="5" y1="5" x2="59" y2="59" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#020617"/>
+      <stop offset="1" stop-color="#164e63"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <path d="M15 48c8-18 18 1 28-17 3-5 5-9 6-15" fill="none" stroke="#bae6fd" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 10"/>
+  <circle cx="15" cy="48" r="7" fill="#22c55e" stroke="#dcfce7" stroke-width="3"/>
+  <circle cx="33" cy="39" r="6" fill="#fbbf24" stroke="#fde68a" stroke-width="3"/>
+  <path d="M44 12v32" stroke="#e0f2fe" stroke-width="4" stroke-linecap="round"/>
+  <path d="M45 13h15l-5 8 5 8H45z" fill="#f43f5e" stroke="#fecdd3" stroke-width="2" stroke-linejoin="round"/>
+</svg>
