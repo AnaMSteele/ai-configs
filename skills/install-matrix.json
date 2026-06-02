@@ -538,6 +538,15 @@
       "notes": "Pi-only: depends on subagent-based review orchestration.",
       "sourceType": "repo"
     },
+    "reviewed-html-plan": {
+      "class": "consumer-specific-installable",
+      "allowedConsumers": [
+        "pi"
+      ],
+      "canonicalSource": "skills/reviewed-html-plan",
+      "notes": "Pi-only: creates and gates HTML plans through plan-review browser feedback, PM product-intent review, and read-only Claude Code plus Codex plan reviews before execution.",
+      "sourceType": "repo"
+    },
     "review-change-integrate": {
       "class": "consumer-specific-installable",
       "allowedConsumers": [

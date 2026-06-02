@@ -190,6 +190,10 @@ Pi now supports both:
 # Canonical reviewed-plan workflow
 /skill:adn-dev-wf <task | plan-slug | thoughts/plans/<plan>.md>
 
+# Browser-reviewed HTML plan gate
+/dev:reviewed-html-plan <task | plan-slug | thoughts/plans/<plan>.html>
+/skill:reviewed-html-plan <task | plan-slug | thoughts/plans/<plan>.html>
+
 # Planning-only / direct execution-only escape hatches
 /skill:dev-plan "feature-name"
 /dev:run thoughts/plans/<plan>.md
@@ -217,6 +221,7 @@ unless it already satisfies that format.
 Expected Pi reviewed-plan flow in this repo:
 - `/skill:adn-dev-wf <task | plan>` is the canonical single-entry workflow
 - It internally owns plan refresh, blocker-only review, review integration, direct execution, and bounded implementation-stage PM follow-up
+- `/dev:reviewed-html-plan <task | plan>` / `/skill:reviewed-html-plan <task | plan>` is the browser-reviewed HTML pre-execution gate for plan-review feedback plus PM, Claude Code, and Codex plan review
 - `/skill:dev-plan <task>` remains available for planning-only work
 - `/dev:run <plan>` remains available when you already have an execution-ready reviewed plan and want execution only
 
@@ -284,6 +289,7 @@ This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-s
 
 **Reviews:**
 - `/skill:adn-dev-wf` — Canonical reviewed-plan development workflow
+- `/skill:reviewed-html-plan` — Create/register browser-reviewed HTML plans, process plan-review feedback, run PM plus Claude Code and Codex plan reviews, and stop at execution-ready handoff
 - `/skill:omp-review-partner` — Use OMP with OpenCode Zen Kimi models for read-only plan and implementation reviews
 - `/skill:review-change` — Review code changes against plan
 - `/skill:review-change-integrate` — Integrate code-review feedback

@@ -216,6 +216,7 @@ Example installed agents:
 
 ### Canonical workflow
 - `adn-dev-wf` — end-to-end reviewed-plan workflow from plan creation through direct execution and PM follow-up
+- `reviewed-html-plan` / `/dev:reviewed-html-plan` — creates/registers HTML plans in plan-review, processes browser feedback, runs PM plus Claude/Codex plan reviews, and stops at execution-ready handoff
 
 ### Dev / execution
 - `dev:run` — direct high-reasoning execution with one `quality-reviewer` pass after each phase
@@ -252,6 +253,7 @@ Prompt templates:
 ```text
 /cmd:debug login flake in CI
 /dev:plan feature-name
+/dev:reviewed-html-plan feature-name
 /dev:pm-review thoughts/plans/my-plan.md
 /dev:pm-review thoughts/plans/my-plan.md implementation
 /prd
@@ -320,6 +322,7 @@ Skills:
 
 ```text
 /skill:adn-dev-wf user-profile-redesign
+/skill:reviewed-html-plan user-profile-redesign
 /skill:cmd-start-linear-issue-branch ENG-123
 /skill:doct-document-ops
 /skill:sentry-cli
