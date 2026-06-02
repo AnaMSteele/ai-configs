@@ -72,6 +72,7 @@ function indexHtml(plans: ReturnType<PlanReviewStore['listPlans']>): string {
     })
     .join('\n');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Plan Review Index</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}main{max-width:980px;margin:0 auto;padding:32px}a{color:#7dd3fc}.toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin:18px 0}.toolbar input,.toolbar select{background:#0f172a;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:10px}.plan-card{border:1px solid #2563eb;border-left:5px solid #2563eb;background:#111827;border-radius:8px;padding:16px;margin:12px 0}.plan-card.complete{border-color:#16a34a;border-left-color:#16a34a}.plan-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.plan-card-header h2{margin-top:0}.archive-plan{background:#1e293b;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:8px 10px;cursor:pointer}.archive-plan:hover{border-color:#93c5fd}.progress-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:12px 0}.progress-bar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}.progress-segment{height:14px;border:1px solid #64748b;border-radius:3px;background:transparent}.progress-segment.complete{background:#22c55e;border-color:#22c55e}.progress-count,.progress-empty{color:#a7b0c0;font-size:13px}.status-pill{display:inline-block;margin-right:8px;border-radius:999px;padding:2px 8px;background:#1d4ed8;color:#dbeafe;font-size:12px;font-weight:700}.complete .status-pill{background:#166534;color:#dcfce7}code{background:#0f172a;color:#dbeafe;padding:.1rem .25rem;border-radius:4px}@media(max-width:680px){.toolbar,.progress-row{grid-template-columns:1fr}.plan-card-header{display:block}.archive-plan{margin-bottom:8px}}</style>
   </head><body><main><h1>Plan Review Index</h1><div class="toolbar"><input id="q" placeholder="Filter plans" aria-label="Filter plans"><select id="repo" aria-label="Filter by repo"><option value="">All repos</option>${repos.map(repo => `<option value="${escapeHtml(repo)}">${escapeHtml(repo)}</option>`).join('')}</select></div><div id="plans">${rows || '<p>No plans registered.</p>'}</div><script>
   const q=document.getElementById('q'), repo=document.getElementById('repo'), cards=[...document.querySelectorAll('.plan-card')];
@@ -114,6 +115,7 @@ function reviewShell(planId: string): string {
   const escapedPlanId = escapeHtml(planId);
   return `<!doctype html><html><head><meta charset="utf-8"><title>Plan ${escapedPlanId}</title>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/client.css">
   </head><body data-plan-id="${escapedPlanId}">
     <nav id="plan-navbar" aria-label="Plan actions"><a href="/">← Plan index</a><button id="archive-plan" type="button">Archive plan</button></nav>
@@ -131,6 +133,20 @@ function reviewShell(planId: string): string {
 function resolvedModuleFile(specifier: string): string {
   return fileURLToPath(import.meta.resolve(specifier));
 }
+
+const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Plan review comments">
+  <defs>
+    <linearGradient id="bg" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111827"/>
+      <stop offset="1" stop-color="#312e81"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <path d="M14 16h34a6 6 0 0 1 6 6v18a6 6 0 0 1-6 6H31L19 56v-10h-5a6 6 0 0 1-6-6V22a6 6 0 0 1 6-6z" fill="#7dd3fc"/>
+  <path d="M18 27h26M18 35h18" stroke="#0f172a" stroke-width="5" stroke-linecap="round"/>
+  <path d="M43 11c7 0 12 5 12 12 0 9-12 22-12 22S31 32 31 23c0-7 5-12 12-12z" fill="#f43f5e" stroke="#fecdd3" stroke-width="3"/>
+  <circle cx="43" cy="23" r="4" fill="#fff1f2"/>
+</svg>`;
 
 const clientCss = `
 body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}
@@ -788,7 +804,8 @@ export function createApp(options: AppOptions): FastifyInstance {
   });
 
   app.get('/health', async () => ok({ status: 'ok' }));
-  app.get('/favicon.ico', async (_request, reply) => reply.code(204).send());
+  app.get('/favicon.ico', async (_request, reply) => reply.header('Cache-Control', 'no-store').type('image/svg+xml').send(faviconSvg));
+  app.get('/favicon.svg', async (_request, reply) => reply.header('Cache-Control', 'no-store').type('image/svg+xml').send(faviconSvg));
   app.get('/client.css', async (_request, reply) => reply.header('Cache-Control', 'no-store').type('text/css').send(clientCss));
   app.get('/client.js', async (_request, reply) => reply.header('Cache-Control', 'no-store').type('application/javascript').send(clientJs));
   app.get('/vendor/html2canvas.js', async (_request, reply) => {

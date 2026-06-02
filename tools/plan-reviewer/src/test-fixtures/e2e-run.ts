@@ -36,10 +36,23 @@ try {
 
   const index = await context.get('/');
   assert.equal(index.ok(), true);
-  assert.match(await index.text(), /Plan Review Index/);
+  const indexHtml = await index.text();
+  assert.match(indexHtml, /Plan Review Index/);
+  assert.match(indexHtml, /rel="icon" type="image\/svg\+xml" href="\/favicon\.svg"/);
+  const favicon = await context.get('/favicon.svg');
+  assert.equal(favicon.ok(), true);
+  assert.equal(favicon.headers()['cache-control'], 'no-store');
+  assert.match(favicon.headers()['content-type'] ?? '', /^image\/svg\+xml/);
+  const faviconSvg = await favicon.text();
+  assert.match(faviconSvg, /Plan review comments/);
+  assert.match(faviconSvg, /#f43f5e/);
+  const faviconIco = await context.get('/favicon.ico');
+  assert.equal(faviconIco.ok(), true);
+  assert.match(faviconIco.headers()['content-type'] ?? '', /^image\/svg\+xml/);
   const shellResponse = await context.get(`/p/${registered.planId}`);
   assert.equal(shellResponse.ok(), true);
   assert.equal(shellResponse.headers()['cache-control'], 'no-store');
+  assert.match(await shellResponse.text(), /rel="icon" type="image\/svg\+xml" href="\/favicon\.svg"/);
   const clientJsResponse = await context.get('/client.js');
   assert.equal(clientJsResponse.ok(), true);
   assert.equal(clientJsResponse.headers()['cache-control'], 'no-store');
