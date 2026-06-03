@@ -10,6 +10,7 @@ import { claimCommentsSchema, createCommentSchema, registerPlanSchema } from '..
 import { renderPlan } from '../render/render.js';
 import { PlanReviewStore } from '../storage/database.js';
 import { createApp } from '../server/app.js';
+import { SourceSyncService } from '../server/sourceSync.js';
 import { findImageSources } from '../htmlImages.js';
 import { resolveServiceUrl } from '../config.js';
 import { discoverImageAssets } from '../cli.js';
@@ -159,8 +160,359 @@ test('index exposes phase progress and archive hides plans by default', async ()
     const included = await app.inject({ method: 'GET', url: '/api/plans?includeArchived=true' });
     assert.equal(included.json().data.plans.length, 1);
     assert.ok(included.json().data.plans[0].plan.archivedAt);
+
+    const restored = await app.inject({ method: 'POST', url: `/api/plans/${planId}/unarchive` });
+    assert.equal(restored.statusCode, 200);
+    assert.equal(restored.json().data.plan.archivedAt, undefined);
+
+    const restoredAgain = await app.inject({ method: 'POST', url: `/api/plans/${planId}/unarchive` });
+    assert.equal(restoredAgain.statusCode, 200);
+    assert.equal(restoredAgain.json().data.plan.archivedAt, undefined);
+
+    const visibleAgain = await app.inject({ method: 'GET', url: '/api/plans' });
+    assert.equal(visibleAgain.json().data.plans.length, 1);
+    assert.equal(visibleAgain.json().data.plans[0].plan.archivedAt, undefined);
   } finally {
     await app.close();
+  }
+});
+
+test('archive page renders archived plans and restore controls without mixing active plans', async () => {
+  const app = createApp({ dbPath: tempDbPath('archive-page') });
+  try {
+    const active = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload({ slug: 'active-plan', planPath: 'thoughts/plans/active.html', fileHash: 'active-hash' }) });
+    assert.equal(active.statusCode, 200);
+    const older = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload({ slug: 'older-archive', planPath: 'thoughts/plans/older.html', fileHash: 'older-hash' }) });
+    assert.equal(older.statusCode, 200);
+    const newer = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload({ slug: 'newer-archive', planPath: 'thoughts/plans/newer.html', fileHash: 'newer-hash' }) });
+    assert.equal(newer.statusCode, 200);
+
+    const olderId = older.json().data.planId;
+    const newerId = newer.json().data.planId;
+    assert.equal((await app.inject({ method: 'POST', url: `/api/plans/${olderId}/archive` })).statusCode, 200);
+    assert.equal((await app.inject({ method: 'POST', url: `/api/plans/${newerId}/archive` })).statusCode, 200);
+
+    const index = await app.inject({ method: 'GET', url: '/' });
+    assert.match(index.body, /Archived \(2\) →/);
+    assert.match(index.body, /active-plan/);
+    assert.doesNotMatch(index.body, /older-archive/);
+    assert.doesNotMatch(index.body, /newer-archive/);
+
+    const archive = await app.inject({ method: 'GET', url: '/archive' });
+    assert.equal(archive.statusCode, 200);
+    assert.match(archive.body, /Archived Plans/);
+    assert.match(archive.body, /newer-archive/);
+    assert.match(archive.body, /older-archive/);
+    assert.doesNotMatch(archive.body, /active-plan/);
+    assert.match(archive.body, /data-restore-plan=/);
+    assert.match(archive.body, /No archived plans match the current filters/);
+    assert.equal(archive.body.indexOf('newer-archive') < archive.body.indexOf('older-archive'), true);
+
+    const restored = await app.inject({ method: 'POST', url: `/api/plans/${newerId}/unarchive` });
+    assert.equal(restored.statusCode, 200);
+    const postRestoreIndex = await app.inject({ method: 'GET', url: '/' });
+    assert.match(postRestoreIndex.body, /newer-archive/);
+    const postRestoreArchive = await app.inject({ method: 'GET', url: '/archive' });
+    assert.doesNotMatch(postRestoreArchive.body, /newer-archive/);
+    assert.match(postRestoreArchive.body, /older-archive/);
+  } finally {
+    await app.close();
+  }
+});
+
+test('empty archive page is quiet and archived shell shows restore state', async () => {
+  const app = createApp({ dbPath: tempDbPath('archive-empty-shell') });
+  try {
+    const empty = await app.inject({ method: 'GET', url: '/archive' });
+    assert.equal(empty.statusCode, 200);
+    assert.match(empty.body, /No archived plans yet/);
+
+    const registered = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload() });
+    const planId = registered.json().data.planId;
+    await app.inject({ method: 'POST', url: `/api/plans/${planId}/archive` });
+    const shell = await app.inject({ method: 'GET', url: `/p/${planId}` });
+    assert.equal(shell.statusCode, 200);
+    assert.match(shell.body, /Archived/);
+    assert.match(shell.body, /id="restore-plan"/);
+    assert.doesNotMatch(shell.body, />Archive plan</);
+  } finally {
+    await app.close();
+  }
+});
+
+test('register and filesystem discovery preserve archived state until explicit restore', () => {
+  const store = new PlanReviewStore(tempDbPath('archive-register-preserve'));
+  try {
+    const payload = sampleRegisterPayload({ watchMode: 'filesystem', sourcePath: '/tmp/sample/plan.html', sourceMtimeMs: 1, sourceSize: 10 });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    const archived = store.archivePlan(registered.planId).plan;
+    assert.ok(archived.archivedAt);
+    assert.deepEqual(store.listFilesystemPlans(), []);
+
+    const changedPayload = { ...payload, html: sampleHtml().replace('Register the plan.', 'Register the archived plan.'), fileHash: 'archived-sync-change', sourceMtimeMs: 2, sourceSize: 20 };
+    const changedRendered = renderPlan(changedPayload);
+    store.registerPlan(changedPayload, changedRendered.renderedHtml, changedRendered.warnings, 'filesystem_watch');
+
+    const stillArchived = store.getPlan(registered.planId).plan;
+    assert.equal(stillArchived.archivedAt, archived.archivedAt);
+    assert.equal(store.listPlans().length, 0);
+    assert.equal(store.listPlans({ includeArchived: true })[0].plan.archivedAt, archived.archivedAt);
+
+    const restored = store.unarchivePlan(registered.planId).plan;
+    assert.equal(restored.archivedAt, undefined);
+    assert.equal(store.listPlans().length, 1);
+    assert.equal(store.listFilesystemPlans()[0].planId, registered.planId);
+  } finally {
+    store.close();
+  }
+});
+
+test('restored filesystem plans resume watching after archived startup skip', async () => {
+  const dbPath = tempDbPath('archive-restore-watch');
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-restore-watch-'));
+  const sourcePath = path.join(sourceDir, 'restore-watch.html');
+  const html = '<!doctype html><html><body><main><p>Before restore watch.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for restored source sync');
+  };
+  const initialApp = createApp({ dbPath });
+  let initialClosed = false;
+  let restoredApp: ReturnType<typeof createApp> | undefined;
+  try {
+    const registered = await initialApp.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'restore-watch.html',
+        slug: 'restore-watch',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    assert.equal((await initialApp.inject({ method: 'POST', url: `/api/plans/${planId}/archive` })).statusCode, 200);
+    await initialApp.close();
+    initialClosed = true;
+
+    const archivedChangeHtml = '<!doctype html><html><body><main><p>Archived change before restore.</p></main></body></html>';
+    fs.writeFileSync(sourcePath, archivedChangeHtml);
+    restoredApp = createApp({ dbPath });
+    const hidden = await restoredApp.inject({ method: 'GET', url: '/api/plans' });
+    assert.equal(hidden.json().data.plans.length, 0);
+    const restored = await restoredApp.inject({ method: 'POST', url: `/api/plans/${planId}/unarchive` });
+    assert.equal(restored.statusCode, 200);
+    const restoredRender = await restoredApp.inject({ method: 'GET', url: `/render/${planId}` });
+    assert.match(restoredRender.body, /Archived change before restore/);
+    assert.doesNotMatch(restoredRender.body, /Before restore watch/);
+    const restoreSynced = await restoredApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(restoreSynced.json().data.latestVersion.syncOrigin, 'filesystem_watch');
+
+    const changedHtml = '<!doctype html><html><body><main><p>After restore watch.</p></main></body></html>';
+    fs.writeFileSync(sourcePath, changedHtml);
+    await waitFor(async () => {
+      const rendered = await restoredApp!.inject({ method: 'GET', url: `/render/${planId}` });
+      return rendered.body.includes('After restore watch.');
+    });
+    const synced = await restoredApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(synced.json().data.latestVersion.syncOrigin, 'filesystem_watch');
+  } finally {
+    if (!initialClosed) await initialApp.close();
+    if (restoredApp) await restoredApp.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('archived filesystem re-register stays inactive until explicit restore', async () => {
+  const app = createApp({ dbPath: tempDbPath('archive-reregister-watch') });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-reregister-'));
+  const sourcePath = path.join(sourceDir, 'archive-reregister.html');
+  const html = '<!doctype html><html><body><main><p>Initial filesystem plan.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'archive-reregister.html',
+        slug: 'archive-reregister',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    assert.equal(registered.json().data.sourceSync.active, true);
+    const planId = registered.json().data.planId;
+    assert.equal((await app.inject({ method: 'POST', url: `/api/plans/${planId}/archive` })).statusCode, 200);
+
+    const archivedHtml = '<!doctype html><html><body><main><p>Archived manual registration.</p></main></body></html>';
+    fs.writeFileSync(sourcePath, archivedHtml);
+    const archivedStat = fs.statSync(sourcePath);
+    const reregistered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'archive-reregister.html',
+        slug: 'archive-reregister',
+        html: archivedHtml,
+        fileHash: sha256(archivedHtml),
+        sourcePath,
+        sourceMtimeMs: archivedStat.mtimeMs,
+        sourceSize: archivedStat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(reregistered.statusCode, 200);
+    assert.equal(reregistered.json().data.sourceSync.active, false);
+    assert.ok((await app.inject({ method: 'GET', url: `/api/plans/${planId}` })).json().data.plan.archivedAt);
+
+    fs.writeFileSync(sourcePath, '<!doctype html><html><body><main><p>Should not sync while archived.</p></main></body></html>');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const rendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+    assert.match(rendered.body, /Archived manual registration/);
+    assert.doesNotMatch(rendered.body, /Should not sync while archived/);
+  } finally {
+    await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('source sync register rechecks archive state after unregister', async () => {
+  const store = new PlanReviewStore(tempDbPath('archive-register-race'));
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-register-race-'));
+  const sourcePath = path.join(sourceDir, 'archive-register-race.html');
+  const html = '<!doctype html><html><body><main><p>Register race.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const sourceSync = new SourceSyncService(store, { emitEvent() {} });
+  try {
+    const payload = sampleRegisterPayload({
+      planPath: 'archive-register-race.html',
+      slug: 'archive-register-race',
+      html,
+      fileHash: sha256(html),
+      sourcePath,
+      sourceMtimeMs: stat.mtimeMs,
+      sourceSize: stat.size,
+      watchMode: 'filesystem',
+      assets: []
+    });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    const originalUnregister = sourceSync.unregister.bind(sourceSync);
+    sourceSync.unregister = (async (planId: string) => {
+      await originalUnregister(planId);
+      store.archivePlan(registered.planId);
+    }) as typeof sourceSync.unregister;
+
+    await sourceSync.register(registered.planId);
+
+    assert.ok(store.getPlan(registered.planId).plan.archivedAt);
+    assert.equal((sourceSync as unknown as { watchers: Map<string, unknown> }).watchers.has(registered.planId), false);
+  } finally {
+    await sourceSync.close();
+    store.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('queued filesystem sync does not update archived plans', async () => {
+  const store = new PlanReviewStore(tempDbPath('archive-queued-sync'));
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-queued-sync-'));
+  const sourcePath = path.join(sourceDir, 'archive-queued-sync.html');
+  const html = '<!doctype html><html><body><main><p>Before queued sync.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const sourceSync = new SourceSyncService(store, { emitEvent() {} });
+  try {
+    const payload = sampleRegisterPayload({
+      planPath: 'archive-queued-sync.html',
+      slug: 'archive-queued-sync',
+      html,
+      fileHash: sha256(html),
+      sourcePath,
+      sourceMtimeMs: stat.mtimeMs,
+      sourceSize: stat.size,
+      watchMode: 'filesystem',
+      assets: []
+    });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    store.archivePlan(registered.planId);
+
+    fs.writeFileSync(sourcePath, '<!doctype html><html><body><main><p>Queued sync should not update archived content.</p></main></body></html>');
+    await sourceSync.syncNow(registered.planId, 'manual');
+
+    assert.ok(store.getPlan(registered.planId).plan.archivedAt);
+    assert.match(store.getRenderedHtml(registered.planId), /Before queued sync/);
+    assert.doesNotMatch(store.getRenderedHtml(registered.planId), /Queued sync should not update/);
+  } finally {
+    await sourceSync.close();
+    store.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('in-flight filesystem sync rechecks archive state before committing', async () => {
+  const store = new PlanReviewStore(tempDbPath('archive-inflight-commit'));
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-inflight-commit-'));
+  const sourcePath = path.join(sourceDir, 'archive-inflight-commit.html');
+  const html = '<!doctype html><html><body><main><p>Before in-flight sync.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const sourceSync = new SourceSyncService(store, { emitEvent() {} });
+  try {
+    const payload = sampleRegisterPayload({
+      planPath: 'archive-inflight-commit.html',
+      slug: 'archive-inflight-commit',
+      html,
+      fileHash: sha256(html),
+      sourcePath,
+      sourceMtimeMs: stat.mtimeMs,
+      sourceSize: stat.size,
+      watchMode: 'filesystem',
+      assets: []
+    });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    const originalGetPlan = store.getPlan.bind(store);
+    let getPlanCalls = 0;
+    store.getPlan = ((identifier: string) => {
+      getPlanCalls += 1;
+      if (getPlanCalls === 2) store.archivePlan(registered.planId);
+      return originalGetPlan(identifier);
+    }) as typeof store.getPlan;
+
+    fs.writeFileSync(sourcePath, '<!doctype html><html><body><main><p>In-flight sync should not commit after archive.</p></main></body></html>');
+    await sourceSync.syncNow(registered.planId, 'manual');
+
+    assert.ok(originalGetPlan(registered.planId).plan.archivedAt);
+    assert.match(store.getRenderedHtml(registered.planId), /Before in-flight sync/);
+    assert.doesNotMatch(store.getRenderedHtml(registered.planId), /In-flight sync should not commit/);
+  } finally {
+    await sourceSync.close();
+    store.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
   }
 });
 

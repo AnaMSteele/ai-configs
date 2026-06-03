@@ -82,9 +82,9 @@ export class SourceSyncService {
   }
 
   async register(planId: string): Promise<void> {
-    const { plan } = this.store.getPlan(planId);
     await this.unregister(planId);
-    if (plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
+    const { plan } = this.store.getPlan(planId);
+    if (plan.archivedAt || plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
     const watchPaths = [plan.sourcePath];
     try {
       const html = fs.readFileSync(plan.sourcePath, 'utf8');
@@ -160,7 +160,7 @@ export class SourceSyncService {
 
   private async performSync(planId: string, reason: string): Promise<void> {
     const { plan, version } = this.store.getPlan(planId);
-    if (plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
+    if (plan.archivedAt || plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
     try {
       const stat = fs.statSync(plan.sourcePath);
       if (!stat.isFile()) throw new Error(`Source path is not a file: ${plan.sourcePath}`);
@@ -187,13 +187,15 @@ export class SourceSyncService {
       };
       const rendered = renderPlan(payload);
       if (fileHash === version.fileHash && sha256(rendered.renderedHtml) === sha256(this.store.getRenderedHtml(plan.id, version.id))) {
+        if (this.store.getPlan(plan.id).plan.archivedAt) return;
         this.bus.emitEvent(this.store.markPlanSyncSucceeded(plan.id, version.id));
-        if (needsWatcherRefresh) void this.register(plan.id);
+        if (needsWatcherRefresh) await this.register(plan.id);
         return;
       }
+      if (this.store.getPlan(plan.id).plan.archivedAt) return;
       const result = this.store.registerPlan(payload, rendered.renderedHtml, rendered.warnings, 'filesystem_watch');
       this.bus.emitEvent(result.event);
-      if (htmlChanged || needsWatcherRefresh) void this.register(plan.id);
+      if (htmlChanged || needsWatcherRefresh) await this.register(plan.id);
     } catch (error) {
       this.fail(plan.id, error, reason);
     }

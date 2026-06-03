@@ -311,6 +311,28 @@ try {
     assert.equal(resolvedAnchor.borderStyle, 'dotted');
     assert.equal(Math.abs(resolvedAnchor.anchorY - resolvedAnchor.targetY) <= 1, true);
     assert.equal(Math.abs(resolvedAnchor.anchorWidth - resolvedAnchor.targetWidth) <= 1, true);
+
+    await page.goto(`${baseUrl}/`);
+    await page.once('dialog', dialog => dialog.accept());
+    await page.click(`[data-archive-plan="${registered.planId}"]`);
+    await page.waitForFunction(planId => !document.querySelector(`[data-plan-id="${planId}"]`), registered.planId);
+    await page.goto(`${baseUrl}/archive`);
+    await page.waitForSelector(`[data-plan-id="${registered.planId}"]`);
+    await page.click(`[data-plan-id="${registered.planId}"] a[href="/p/${registered.planId}"]`);
+    await page.waitForSelector('#restore-plan');
+    assert.equal(await page.locator('#archive-plan').count(), 0);
+    assert.match(await page.locator('#plan-navbar').innerText(), /Archived/);
+
+    await page.goto(`${baseUrl}/archive`);
+    await page.route('**/api/plans/*/unarchive', route => route.abort('failed'));
+    await page.click(`[data-plan-id="${registered.planId}"] [data-restore-plan]`);
+    await page.waitForSelector(`[data-plan-id="${registered.planId}"] .restore-error:not([hidden])`);
+    assert.equal(await page.locator(`[data-plan-id="${registered.planId}"]`).count(), 1);
+    await page.unroute('**/api/plans/*/unarchive');
+    await page.click(`[data-plan-id="${registered.planId}"] [data-restore-plan]`);
+    await page.waitForFunction(planId => !document.querySelector(`[data-plan-id="${planId}"]`), registered.planId);
+    await page.goto(`${baseUrl}/`);
+    await page.waitForSelector(`[data-plan-id="${registered.planId}"]`);
   } finally {
     await browser.close();
   }
