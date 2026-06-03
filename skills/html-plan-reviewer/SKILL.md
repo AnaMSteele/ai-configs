@@ -31,7 +31,15 @@ If the service is not running, start it:
 brew services start plan-reviewer
 ```
 
-If it is not installed, install from the standalone `plan-reviewer` tap:
+If it is not installed, install from the standalone `plan-reviewer` tap. If this machine previously installed the old `local/ai-configs/plan-reviewer` formula, remove that local tap install first so Homebrew does not keep launching the stale cellar service:
+
+```bash
+brew services stop plan-reviewer || true
+brew uninstall local/ai-configs/plan-reviewer || brew uninstall plan-reviewer || true
+brew untap local/ai-configs || true
+```
+
+Then install from the standalone tap:
 
 ```bash
 brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git
