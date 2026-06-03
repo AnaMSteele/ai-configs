@@ -1963,16 +1963,66 @@ install_vendored_pi_vcc_package() {
         echo "  - Vendored pi-vcc already registered with Pi, updating..."
         pi update "$normalized_source" 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
     else
-        echo "  - Installing vendored pi-vcc from local path ($source_rel)..."
-        if (cd "$REPO_ROOT" && pi install "$source_rel" 2>/dev/null); then
+        echo "  - Installing vendored pi-vcc from absolute local path ($normalized_source)..."
+        if pi install "$normalized_source" 2>/dev/null; then
             echo -e "    ${GREEN}✓ vendored pi-vcc installed${NC}"
         else
             echo -e "    ${YELLOW}⚠ Failed to install vendored pi-vcc via pi package manager${NC}"
-            echo "      To install manually, run from the repo root:"
-            echo "        pi install $source_rel"
+            echo "      To install manually, run:"
+            echo "        pi install $normalized_source"
             return 1
         fi
     fi
+
+    local settings_path="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/settings.json"
+    mkdir -p "$(dirname "$settings_path")"
+    python3 - "$settings_path" "$normalized_source" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+settings_path = Path(sys.argv[1])
+source = sys.argv[2]
+try:
+    data = json.loads(settings_path.read_text()) if settings_path.exists() else {}
+except json.JSONDecodeError:
+    data = {}
+
+packages = data.get("packages")
+if not isinstance(packages, list):
+    packages = []
+
+next_packages = []
+found = False
+for item in packages:
+    item_source = item.get("source") if isinstance(item, dict) else item if isinstance(item, str) else None
+    if isinstance(item_source, str) and "pi-vcc" in item_source:
+        if isinstance(item, dict):
+            replacement = dict(item)
+            replacement["source"] = source
+            next_packages.append(replacement)
+        else:
+            next_packages.append(source)
+        found = True
+    else:
+        next_packages.append(item)
+
+if not found:
+    next_packages.append(source)
+
+seen = set()
+deduped = []
+for item in next_packages:
+    key = item.get("source") if isinstance(item, dict) else item if isinstance(item, str) else json.dumps(item, sort_keys=True)
+    if key in seen:
+        continue
+    seen.add(key)
+    deduped.append(item)
+
+data["packages"] = deduped
+settings_path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+    echo "  - Pinned vendored pi-vcc to absolute path in $settings_path"
 
     report_pi_vcc_upstream_status
 }

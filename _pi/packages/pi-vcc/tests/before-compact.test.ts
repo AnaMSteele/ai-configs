@@ -6,7 +6,7 @@ import {
   userMsg,
 } from "./fixtures";
 
-mock.module("@mariozechner/pi-coding-agent", () => ({
+mock.module("@earendil-works/pi-coding-agent", () => ({
   convertToLlm: (messages: any[]) => messages,
 }));
 

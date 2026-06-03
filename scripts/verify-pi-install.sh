@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-PI_AGENT_DIR="${PI_AGENT_DIR:-$HOME/.pi/agent}"
+PI_AGENT_DIR="${PI_AGENT_DIR:-${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}}"
 PI_EXT_DIR="$PI_AGENT_DIR/extensions"
 
 EXPECTED_GIT_PACKAGES=(
@@ -133,7 +133,7 @@ if command -v pi >/dev/null 2>&1; then
         if [[ "$source" == npm:* || "$source" == git:* ]]; then
           printf '%s\n' "$source"
         else
-          python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$source"
+          python3 -c 'import os, sys; source = sys.argv[1]; base = sys.argv[2]; print(os.path.realpath(source if os.path.isabs(source) else os.path.join(base, source)))' "$source" "$PI_AGENT_DIR"
         fi
       done |
       sort -u
