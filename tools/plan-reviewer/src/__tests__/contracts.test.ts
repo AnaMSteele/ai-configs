@@ -328,6 +328,67 @@ test('restored filesystem plans resume watching after archived startup skip', as
   }
 });
 
+test('archived filesystem re-register stays inactive until explicit restore', async () => {
+  const app = createApp({ dbPath: tempDbPath('archive-reregister-watch') });
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-reregister-'));
+  const sourcePath = path.join(sourceDir, 'archive-reregister.html');
+  const html = '<!doctype html><html><body><main><p>Initial filesystem plan.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  try {
+    const registered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'archive-reregister.html',
+        slug: 'archive-reregister',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    assert.equal(registered.json().data.sourceSync.active, true);
+    const planId = registered.json().data.planId;
+    assert.equal((await app.inject({ method: 'POST', url: `/api/plans/${planId}/archive` })).statusCode, 200);
+
+    const archivedHtml = '<!doctype html><html><body><main><p>Archived manual registration.</p></main></body></html>';
+    fs.writeFileSync(sourcePath, archivedHtml);
+    const archivedStat = fs.statSync(sourcePath);
+    const reregistered = await app.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'archive-reregister.html',
+        slug: 'archive-reregister',
+        html: archivedHtml,
+        fileHash: sha256(archivedHtml),
+        sourcePath,
+        sourceMtimeMs: archivedStat.mtimeMs,
+        sourceSize: archivedStat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(reregistered.statusCode, 200);
+    assert.equal(reregistered.json().data.sourceSync.active, false);
+    assert.ok((await app.inject({ method: 'GET', url: `/api/plans/${planId}` })).json().data.plan.archivedAt);
+
+    fs.writeFileSync(sourcePath, '<!doctype html><html><body><main><p>Should not sync while archived.</p></main></body></html>');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const rendered = await app.inject({ method: 'GET', url: `/render/${planId}` });
+    assert.match(rendered.body, /Archived manual registration/);
+    assert.doesNotMatch(rendered.body, /Should not sync while archived/);
+  } finally {
+    await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
 test('HTTP API reports schema errors as validation_failed and renders canonical escaped plan ids', async () => {
   const app = createApp({ dbPath: tempDbPath('validation-shell') });
   try {

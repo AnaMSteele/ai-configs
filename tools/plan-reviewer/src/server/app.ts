@@ -912,7 +912,7 @@ export function createApp(options: AppOptions): FastifyInstance {
           sourcePath: plan.sourcePath,
           status: plan.lastSyncStatus,
           error: plan.lastSyncError,
-          active: plan.watchMode === 'filesystem' && plan.lastSyncStatus !== 'failed'
+          active: !plan.archivedAt && plan.watchMode === 'filesystem' && plan.lastSyncStatus !== 'failed'
         },
         renderedWithWarnings: rendered.warnings
       });
@@ -970,6 +970,7 @@ export function createApp(options: AppOptions): FastifyInstance {
       const { plan } = store.getPlan(planId);
       const result = store.archivePlan(plan.id);
       bus.emitEvent(result.event);
+      await sourceSync.unregister(result.plan.id);
       return ok({ plan: result.plan });
     } catch (error) {
       sendError(reply, error);

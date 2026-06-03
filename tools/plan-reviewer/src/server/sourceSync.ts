@@ -84,7 +84,7 @@ export class SourceSyncService {
   async register(planId: string): Promise<void> {
     const { plan } = this.store.getPlan(planId);
     await this.unregister(planId);
-    if (plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
+    if (plan.archivedAt || plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
     const watchPaths = [plan.sourcePath];
     try {
       const html = fs.readFileSync(plan.sourcePath, 'utf8');
