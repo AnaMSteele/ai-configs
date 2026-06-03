@@ -29,8 +29,8 @@ What is missing is a repo-local command for one explicit issue that performs the
 - `_opencode/commands/README.md`
 - `_opencode/commands/cmd:workplanner.md`
 - `_pi/prompts/cmd:feeling-lucky-pr.md`
-- `tools/ltui/README.md`
-- `tools/ltui/SPEC.md`
+- `Nodaste-Lab/ltui/README.md`
+- `Nodaste-Lab/ltui/SPEC.md`
 
 ## Current implementation reality
 
@@ -44,9 +44,9 @@ What is missing is a repo-local command for one explicit issue that performs the
 - The current workplanner command is intentionally broad: it resolves the DocThingy project, lists candidates, iterates, and is designed for cron/headless use.
 - `_pi/prompts/cmd:feeling-lucky-pr.md` and `_pi/prompts/cmd:feeling-lucky-pr-os.md` are downstream automation flows from a `Ready to pull` issue to branch/plan/review/implementation/PR. They should not be copied wholesale into the new triage command.
 - `ltui` repo evidence confirms structured JSON support:
-  - `tools/ltui/SPEC.md` documents `ltui issues view <issue> [--include-comments] [--include-history]`
-  - `tools/ltui/SPEC.md` documents JSON envelope output for `--format json`
-  - repo code/tests under `tools/ltui/src` reference `issues view json` and the include flags
+  - `Nodaste-Lab/ltui/SPEC.md` documents `ltui issues view <issue> [--include-comments] [--include-history]`
+  - `Nodaste-Lab/ltui/SPEC.md` documents JSON envelope output for `--format json`
+  - repo code/tests under `Nodaste-Lab/ltui/src` reference `issues view json` and the include flags
 - Product-intent docs are absent (`PRODUCT_INTENT.md` and `thoughts/specs/product_intent.md` do not exist), so this plan aligns to the validated repo workflow docs and the user’s constraints.
 
 ## Product intent alignment
@@ -183,7 +183,7 @@ If parity remains cheap after the Pi prompt is correct, mirror the command into 
 - Confirm the compatibility source:
   - `rg -n "\[workplanner\]|clarification-needed|review-marker|needs-feedback|ready-to-pull" _opencode/commands/cmd:workplanner.md`
 - Confirm structured ltui support:
-  - `rg -n "include-comments|include-history|issues view json|--format json" tools/ltui/SPEC.md tools/ltui/src tools/ltui/README.md`
+  - `rg -n "include-comments|include-history|issues view json|--format json" Nodaste-Lab/ltui/SPEC.md Nodaste-Lab/ltui/src Nodaste-Lab/ltui/README.md`
 - Confirm the downstream flows that must not be copied into this command:
   - `rg -n "branch|dev:plan|create-pr|Ready to pull" _pi/prompts/cmd:feeling-lucky-pr*.md`
 
@@ -212,7 +212,7 @@ If parity remains cheap after the Pi prompt is correct, mirror the command into 
 - `_pi/prompts/cmd:triage-feeling-lucky-issue.md`
 - `_opencode/commands/cmd:workplanner.md`
 - `_pi/prompts/cmd:feeling-lucky-pr.md`
-- `tools/ltui/SPEC.md`
+- `Nodaste-Lab/ltui/SPEC.md`
 
 ### Verify
 

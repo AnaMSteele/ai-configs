@@ -47,7 +47,7 @@ print_usage() {
     echo "  --opencode  Install OpenCode configuration and refresh shared skills for OpenCode"
     echo "  --pi        Install Pi prompt templates, subagents, and extensions, then refresh shared skills"
     echo "  --omp       Install Oh My Pi configuration and refresh shared skills"
-    echo "  --tools     Install CLI tools only (e.g., ltui)"
+    echo "  --tools     Install external CLI tools only (ltui via Homebrew)"
     echo "  --skills    Sync repo-owned and package-managed shared skills into ~/.agents/skills"
     echo "  --all       Install everything: Claude, Codex, Gemini, Oh My Pi, OpenCode, Pi, tools, and shared skills"
     echo "  --update    Update globally installed skills tracked by skills.sh before shared-skill sync"
@@ -61,6 +61,7 @@ print_usage() {
     echo "Notes:"
     echo "  - OpenCode does NOT auto-install opencode.json (copy config-template.json manually if needed)"
     echo "  - Shared installable skills are declared in skills/install-matrix.json and synced into ~/.agents/skills"
+    echo "  - ltui is maintained separately at https://github.com/Nodaste-Lab/ltui and installed via Homebrew"
     echo "  - Codex discovers shared skills directly from ~/.agents/skills"
     echo "  - Claude/OpenCode consume compatible shared skills via per-skill links into ~/.agents/skills"
     echo "  - When using --omp or --all, commands, agents, and repo-managed extensions are installed to ~/.omp/agent"
@@ -554,60 +555,27 @@ install_claude() {
 
 install_tools() {
     echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}  Installing CLI Tools${NC}"
+    echo -e "${GREEN}  Installing External CLI Tools${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════${NC}"
     echo ""
 
-    # Install ltui
-    if [ -d "$REPO_ROOT/tools/ltui" ]; then
-        echo "Installing ltui..."
-
-        # Check for Bun
-        local bun_cmd=""
-        if command -v bun &> /dev/null; then
-            bun_cmd="$(command -v bun)"
-        elif [ -x "$HOME/.bun/bin/bun" ]; then
-            bun_cmd="$HOME/.bun/bin/bun"
-        fi
-
-        if [ -z "$bun_cmd" ]; then
-            echo -e "${RED}Error: Bun is required to build ltui${NC}"
-            echo "Install from: https://bun.sh"
-            return 1
-        fi
-
-        local install_bin_dir="$HOME/.local/bin"
-        mkdir -p "$install_bin_dir"
-
-        local current_dir=$(pwd)
-        cd "$REPO_ROOT/tools/ltui"
-
-        echo "  - Installing dependencies..."
-        "$bun_cmd" install
-
-        echo "  - Building ltui..."
-        "$bun_cmd" run build
-
-        echo "  - Installing ltui into $install_bin_dir..."
-        ln -sfn "$REPO_ROOT/tools/ltui/bin/ltui" "$install_bin_dir/ltui"
-
-        cd "$current_dir"
-        echo -e "${GREEN}✓ ltui installed successfully${NC}"
-        echo ""
-
-        if [[ ":$PATH:" != *":$install_bin_dir:"* ]]; then
-            echo -e "${YELLOW}⚠  NOTE: $install_bin_dir is not in your PATH${NC}"
-            echo "  Add this to your shell profile (~/.bashrc, ~/.zshrc, etc.):"
-            echo "    export PATH=\"$install_bin_dir:\$PATH\""
-            echo ""
-            echo "  After updating, run: source ~/.zshrc  (or restart your shell)"
-            echo "  Then verify with: ltui --help"
-        else
-            echo "  ltui is now available globally. Try: ltui --help"
-        fi
-    else
-        echo -e "${YELLOW}No tools directory found, skipping...${NC}"
+    echo "Installing ltui from https://github.com/Nodaste-Lab/ltui..."
+    if ! command -v brew >/dev/null 2>&1; then
+        echo -e "${RED}Error: Homebrew is required to install ltui${NC}"
+        echo "Install Homebrew from: https://brew.sh"
+        echo "Then run: brew tap Nodaste-Lab/ltui https://github.com/Nodaste-Lab/ltui && brew install Nodaste-Lab/ltui/ltui"
+        return 1
     fi
+
+    brew tap Nodaste-Lab/ltui https://github.com/Nodaste-Lab/ltui
+    if brew list --formula ltui >/dev/null 2>&1; then
+        brew upgrade Nodaste-Lab/ltui/ltui
+    else
+        brew install Nodaste-Lab/ltui/ltui
+    fi
+
+    echo -e "${GREEN}✓ ltui installed from Nodaste-Lab/ltui${NC}"
+    echo "  Verify with: ltui --help"
 }
 
 skill_matrix_path() {

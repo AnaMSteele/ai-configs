@@ -75,10 +75,10 @@ This document captures key architectural decisions and their rationale.
 - Retain plaintext pagination headers for paginated JSON output instead of emitting a JSON envelope.
 
 **Current state:**
-- `tools/ltui/src/commands/issues.ts`
-- `tools/ltui/src/format.ts`
-- `tools/ltui/src/__tests__/cli-regression.test.ts`
-- `tools/ltui/src/__tests__/output.test.ts`
+- `Nodaste-Lab/ltui/src/commands/issues.ts`
+- `Nodaste-Lab/ltui/src/format.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
+- `Nodaste-Lab/ltui/src/__tests__/output.test.ts`
 
 ---
 

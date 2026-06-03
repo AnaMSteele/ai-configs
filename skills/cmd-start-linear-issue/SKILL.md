@@ -9,8 +9,10 @@ Bootstrap work on a Linear issue with worktree management. This creates a dedica
 
 ## Prerequisites
 
-Requires `ltui` (Linear CLI for AI agents) configured:
+Requires `ltui` from https://github.com/Nodaste-Lab/ltui configured:
 ```bash
+brew tap Nodaste-Lab/ltui https://github.com/Nodaste-Lab/ltui
+brew install Nodaste-Lab/ltui/ltui
 ltui auth list
 ltui teams list
 ```

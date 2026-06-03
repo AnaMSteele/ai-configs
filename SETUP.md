@@ -36,7 +36,7 @@ bash ~/ai-configs/install.sh --omp
 bash ~/ai-configs/install.sh --pi
 bash ~/ai-configs/install.sh --opencode
 bash ~/ai-configs/install.sh --skills
-bash ~/ai-configs/install.sh --tools
+bash ~/ai-configs/install.sh --tools  # installs ltui from https://github.com/Nodaste-Lab/ltui via Homebrew
 ```
 
 ## Global install

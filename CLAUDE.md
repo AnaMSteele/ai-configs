@@ -395,7 +395,7 @@ If you have the Linear MCP server configured in your global Claude Desktop confi
 
 ### Available ltui Commands
 
-For full documentation, see the [ltui tool README](tools/ltui/README.md) or run:
+For full documentation, see the public ltui repository at https://github.com/Nodaste-Lab/ltui or run:
 ```bash
 ltui --help
 ltui issues --help

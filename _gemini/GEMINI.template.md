@@ -8,8 +8,13 @@
 `ltui` is the token-efficient Linear CLI for AI agents (replaces the legacy linear CLI/MCP). Use it for all Linear interactions.
 
 ### Setup
-1. Get a Linear API key: https://linear.app/settings/api
-2. Configure authentication:
+1. Install ltui from its public repository:
+   ```bash
+   brew tap Nodaste-Lab/ltui https://github.com/Nodaste-Lab/ltui
+   brew install Nodaste-Lab/ltui/ltui
+   ```
+2. Get a Linear API key: https://linear.app/settings/api
+3. Configure authentication:
    ```bash
    ltui auth add --name default --key <api-key>
    ltui auth list

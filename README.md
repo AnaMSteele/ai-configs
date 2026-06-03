@@ -23,7 +23,7 @@ ai-configs/
 ├── _pi/          # Pi source config
 ├── scripts/      # Shared helper scripts fanned out by install.sh
 ├── skills/       # Repo-owned shared skills + install matrix for package-backed skills
-├── tools/        # Distributable CLIs (for example ltui)
+├── tools/        # Repo-owned tools (for example plan-reviewer)
 ├── docs/         # Fetched/reference docs kept in repo
 ├── thoughts/     # Working plans, handoffs, research, validation
 └── install.sh    # Main installer / updater
@@ -125,8 +125,8 @@ Current shared scripts include:
 ### `skills/`
 Repo-owned shared skill tree plus `skills/install-matrix.json`, which also inventories package-backed shared skills fetched via `npx skills` during install.
 
-### `tools/ltui/`
-Token-efficient Linear CLI for AI agents.
+### `tools/plan-reviewer/`
+Local HTML plan review daemon and CLI for agent comment workflows.
 
 ## Skills and tools
 
@@ -144,11 +144,14 @@ Consumer-specific compatibility links are created where needed, but `~/.agents/s
 bash ./install.sh --skills --update
 ```
 
-`ltui` lives under `tools/ltui/` and can be installed with:
+`ltui` now lives in the public `Nodaste-Lab/ltui` repository. Install it directly with Homebrew:
 
 ```bash
-bash ./install.sh --tools
+brew tap Nodaste-Lab/ltui https://github.com/Nodaste-Lab/ltui
+brew install Nodaste-Lab/ltui/ltui
 ```
+
+`bash ./install.sh --tools` runs the same Homebrew-based ltui install from this repo.
 
 ## Working docs
 

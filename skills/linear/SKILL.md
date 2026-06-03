@@ -26,7 +26,14 @@ Use `ltui` when the user asks you to:
 - View project or team details
 - Align a git repository with a Linear project
 
-## Authentication
+## Installation and Authentication
+
+`ltui` is maintained in the public repository https://github.com/Nodaste-Lab/ltui. Install it with Homebrew if it is not already available:
+
+```bash
+brew tap Nodaste-Lab/ltui https://github.com/Nodaste-Lab/ltui
+brew install Nodaste-Lab/ltui/ltui
+```
 
 Before using ltui, ensure authentication is configured:
 

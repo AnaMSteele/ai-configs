@@ -232,8 +232,13 @@ Expected Pi reviewed-plan flow in this repo:
 `ltui` is the token-efficient Linear CLI for AI agents (replaces the legacy linear CLI/MCP). Use it for all Linear interactions.
 
 ### Setup
-1. Get a Linear API key: https://linear.app/settings/api
-2. Configure authentication:
+1. Install ltui from its public repository:
+   ```bash
+   brew tap Nodaste-Lab/ltui https://github.com/Nodaste-Lab/ltui
+   brew install Nodaste-Lab/ltui/ltui
+   ```
+2. Get a Linear API key: https://linear.app/settings/api
+3. Configure authentication:
    ```bash
    ltui auth add --name default --key <api-key>
    ltui auth list
@@ -263,7 +268,7 @@ ltui issues comment <ISSUE_KEY> --body "Comment text"
 ltui issues link <ISSUE_KEY> --url <pr-url> --title "PR #123"
 ```
 
-For more, run `ltui --help` or see the ltui README in this configuration repo.
+For more, run `ltui --help` or see https://github.com/Nodaste-Lab/ltui.
 
 ## Pi Skills (pi Agent)
 

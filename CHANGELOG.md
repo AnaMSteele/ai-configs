@@ -55,7 +55,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Technical Notes
 
 - Downloads are opt-in, streamed to disk, guarded against unsafe paths/symlinks, and capped by timeout and max-size checks.
-- Verified with `bun run test` in `tools/ltui`, including attachment and JSON-envelope regression coverage.
+- Verified with `bun run test` in `Nodaste-Lab/ltui`, including attachment and JSON-envelope regression coverage.
 
 <!--
 Entries are added by /cmd:graduate after completing features.

@@ -117,7 +117,7 @@ plan-review watch &lt;plan-id-or-slug&gt; --mode queue</code></pre>
     <ul>
       <li>This repo stores working plans under <code>thoughts/plans</code>, currently mostly markdown.</li>
       <li>No existing plan-review service code is present in this repo.</li>
-      <li>The repo has a TypeScript CLI precedent under <code>tools/ltui</code>, using Node 20, ESM, <code>commander</code>, <code>typescript</code>, and <code>node --test</code>.</li>
+      <li>The repo has a TypeScript CLI precedent under <code>Nodaste-Lab/ltui</code>, using Node 20, ESM, <code>commander</code>, <code>typescript</code>, and <code>node --test</code>.</li>
       <li>No product-intent document exists under <code>thoughts/specs/product_intent.md</code>; this plan aligns directly to the user request and repo instructions.</li>
     </ul>
   </section>
@@ -162,12 +162,12 @@ plan-review watch &lt;plan-id-or-slug&gt; --mode queue</code></pre>
       <li><strong>No-auth MVP:</strong> there is no authentication, reviewer token, share-token, or obfuscated review URL in the initial product. Anyone who can reach the service can view the index, open plans, create comments, and use queue endpoints. The service should print a startup warning when bound to non-loopback addresses so the operator understands the exposure.</li>
       <li><strong>Plan index:</strong> <code>GET /</code> serves a browsable index of all registered plans grouped by repo and sorted by most recent registration/comment activity. The index supports text filtering, repo filtering, status counts, latest version metadata, links to open each plan, and comment-count badges.</li>
       <li><strong>Repo identity:</strong> a repo is keyed by canonical git remote URL when available, otherwise absolute repo root path plus machine hostname. The API stores <code>repoKey</code>, <code>repoName</code>, <code>remoteUrl</code>, <code>rootPath</code>, <code>branch</code>, and <code>commitSha</code> on each registration so one SQLite file can safely hold many repos.</li>
-      <li><strong>Runtime/tooling:</strong> implementation targets Node 20+ ESM TypeScript at runtime. Bun is the package manager/script runner for this package to match the existing <code>tools/ltui</code> lockfile pattern.</li>
+      <li><strong>Runtime/tooling:</strong> implementation targets Node 20+ ESM TypeScript at runtime. Bun is the package manager/script runner for this package to match the existing <code>Nodaste-Lab/ltui</code> lockfile pattern.</li>
       <li><strong>HTTP framework:</strong> use Fastify with TypeScript route schemas. Do not reopen Express/Hono during execution unless Fastify cannot satisfy an explicitly tested contract.</li>
       <li><strong>Schema validation:</strong> use Zod as the single source for runtime validation and TypeScript request/response types.</li>
       <li><strong>Storage:</strong> use <code>better-sqlite3</code> for local synchronous SQLite access behind a narrow repository interface so a future hosted deployment can move to Postgres without changing API contracts.</li>
       <li><strong>HTML parsing/sanitization:</strong> use <code>parse5</code> for server-side HTML parsing/rewriting and <code>sanitize-html</code> for removing unsafe active content from the review artifact. Use Playwright for browser verification, not server-side DOM emulation.</li>
-      <li><strong>CLI:</strong> use <code>commander</code>, matching existing <code>tools/ltui</code>.</li>
+      <li><strong>CLI:</strong> use <code>commander</code>, matching existing <code>Nodaste-Lab/ltui</code>.</li>
       <li><strong>Realtime default:</strong> use Server-Sent Events for plan/comment streams because browser and agent clients mostly need server-to-client updates. Keep REST writes for comments and acknowledgements. Do not introduce WebSockets unless bidirectional live collaboration becomes required.</li>
       <li><strong>Plan render safety:</strong> serve uploaded HTML inside an iframe with <code>sandbox="allow-same-origin"</code> only and no <code>allow-scripts</code>. The review shell, annotation layer, zoom popovers, and event handlers run entirely in the parent document; parent code reads the same-origin sanitized iframe DOM via <code>contentDocument</code>/<code>elementFromPoint</code> and attaches parent-owned listeners to iframe scroll/resize. Do not inject scripts or postMessage hooks into the iframe. Set CSP to <code>default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'</code> for the review shell. Sanitized plan artifacts strip <code>&lt;script&gt;</code>, event-handler attributes, javascript/data navigation URLs except safe images, forms, object/embed, and external active resources. Blocked content is reported in registration/render metadata.</li>
       <li><strong>Image support:</strong> registered plans must display safe local/relative images and safe data/blob images. The renderer copies relative image assets referenced by the HTML into content-addressed service storage when possible; unresolved images render as visible placeholders with actionable warnings.</li>
@@ -769,7 +769,7 @@ bun run build
       <li><strong>Schema validation:</strong> Zod.</li>
       <li><strong>SQLite:</strong> better-sqlite3 behind a storage repository interface.</li>
       <li><strong>HTML parsing/sanitization:</strong> parse5 plus sanitize-html.</li>
-      <li><strong>CLI:</strong> commander, matching existing <code>tools/ltui</code>.</li>
+      <li><strong>CLI:</strong> commander, matching existing <code>Nodaste-Lab/ltui</code>.</li>
       <li><strong>Browser testing:</strong> Playwright for UI selection flows.</li>
       <li><strong>Overlay/annotation:</strong> use <code>@washi-ui/core</code> for iframe pin/comment overlay mechanics and <code>@medv/finder</code> for robust CSS selector generation. Use <code>html2canvas</code> from the parent review shell for marker screenshots. Implement only the service-specific adapter, anchor enrichment, and API wiring under <code>src/client</code>.</li>
     </ul>

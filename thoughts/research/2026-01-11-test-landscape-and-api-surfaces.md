@@ -42,7 +42,7 @@ The `ltui` tool includes an **auth bypass mechanism** for testing that uses a mo
 
 #### 1.1 ltui CLI Integration Tests
 
-**Location:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/`
+**Location:** `https://github.com/Nodaste-Lab/ltui/src/__tests__/`
 
 **Framework:** Node.js builtin `node:test` with `assert/strict`
 
@@ -108,7 +108,7 @@ This is a configuration repository, not a web application. The only API-related 
 
 #### 3.1 Linear API Client (ltui tool)
 
-**Location:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/client.ts`
+**Location:** `https://github.com/Nodaste-Lab/ltui/src/client.ts`
 
 **Lines:** 26
 
@@ -145,7 +145,7 @@ The ltui tool implements an authentication bypass mechanism designed for testing
 
 **Bypass Trigger:** `LTUI_TEST_CLIENT_MODULE` environment variable
 
-**Client Factory Location:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/client.ts`
+**Client Factory Location:** `https://github.com/Nodaste-Lab/ltui/src/client.ts`
 
 **Lines:** 11-20
 
@@ -172,11 +172,11 @@ export function createLinearClient(resolved: ResolvedConfig): LinearClient {
 
 #### 4.3 Mock Client Implementation
 
-**Source File:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/test-utils/mockLinearClient.ts`
+**Source File:** `https://github.com/Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts`
 
 **Lines:** 469
 
-**Compiled File:** `/Users/anichols/code/adn-claude-configs/tools/ltui/dist/test-utils/mockLinearClient.js`
+**Compiled File:** `https://github.com/Nodaste-Lab/ltui/dist/test-utils/mockLinearClient.js`
 
 **Factory Function:** Lines 100-103
 ```typescript
@@ -204,7 +204,7 @@ The `MockLinearClient` class implements all Linear SDK methods with in-memory da
 #### 4.4 Usage in Tests
 
 **Example 1: CLI Regression Test**
-**File:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-regression.test.ts`
+**File:** `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
 **Lines:** 30-42
 
 ```typescript
@@ -224,7 +224,7 @@ function runCli(ctx: EnvContext, args: string[], extraEnv: Record<string, string
 ```
 
 **Example 2: Test Isolation Setup**
-**File:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-regression.test.ts`
+**File:** `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
 **Lines:** 44-58
 
 ```typescript
@@ -248,7 +248,7 @@ function createContext(): EnvContext {
 
 #### 5.1 ltui Test Configuration
 
-**Package File:** `/Users/anichols/code/adn-claude-configs/tools/ltui/package.json`
+**Package File:** `https://github.com/Nodaste-Lab/ltui/package.json`
 
 **Test Runner:** Node.js builtin `node:test`
 
@@ -258,9 +258,9 @@ function createContext(): EnvContext {
 
 #### 5.2 Test Utilities
 
-**Mock Client Module:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/test-utils/mockLinearClient.ts`
+**Mock Client Module:** `https://github.com/Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts`
 
-**Test Context Helpers:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-regression.test.ts`
+**Test Context Helpers:** `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
 - Line 44-58: `createContext()` - Creates isolated test directories
 - Line 60-62: `cleanupContext()` - Cleans up test directories
 - Line 30-42: `runCli()` - Runs CLI commands with test environment
@@ -285,7 +285,7 @@ The repository does not contain web application code or UI components. The only 
 
 #### 6.1 CLI Output Formatting Tests
 
-**File:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/output.test.ts`
+**File:** `https://github.com/Nodaste-Lab/ltui/src/__tests__/output.test.ts`
 
 **Lines:** 174
 
@@ -295,7 +295,7 @@ The repository does not contain web application code or UI components. The only 
 - JSON output formatting
 - Pagination metadata
 
-**Code Being Tested:** `/Users/anichols/code/adn-claude-configs/tools/ltui/src/format.ts`
+**Code Being Tested:** `https://github.com/Nodaste-Lab/ltui/src/format.ts`
 
 **Lines:** 142
 
@@ -320,30 +320,30 @@ The repository contains Playwright references in configuration files, but these 
 ## Code References
 
 ### Test Files
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-regression.test.ts:1-270` - CLI integration tests
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-args.test.ts:1-86` - CLI argument parsing tests
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/output.test.ts:1-174` - CLI output formatting tests
+- `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts:1-270` - CLI integration tests
+- `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-args.test.ts:1-86` - CLI argument parsing tests
+- `https://github.com/Nodaste-Lab/ltui/src/__tests__/output.test.ts:1-174` - CLI output formatting tests
 - `/Users/anichols/code/adn-claude-configs/test_install.sh:1-523` - Installation script tests
 
 ### Auth Bypass
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/client.ts:9-26` - Client factory with bypass logic
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/test-utils/mockLinearClient.ts:1-469` - Mock client implementation
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/test-utils/mockLinearClient.ts:100-103` - Mock client factory
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/test-utils/mockLinearClient.ts:105-205` - Mock data structure
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/test-utils/mockLinearClient.ts:207-468` - Mock methods
+- `https://github.com/Nodaste-Lab/ltui/src/client.ts:9-26` - Client factory with bypass logic
+- `https://github.com/Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts:1-469` - Mock client implementation
+- `https://github.com/Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts:100-103` - Mock client factory
+- `https://github.com/Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts:105-205` - Mock data structure
+- `https://github.com/Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts:207-468` - Mock methods
 
 ### Test Infrastructure
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/package.json` - Test configuration
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-regression.test.ts:30-42` - runCli helper
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-regression.test.ts:44-58` - createContext helper
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/__tests__/cli-regression.test.ts:60-62` - cleanupContext helper
+- `https://github.com/Nodaste-Lab/ltui/package.json` - Test configuration
+- `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts:30-42` - runCli helper
+- `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts:44-58` - createContext helper
+- `https://github.com/Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts:60-62` - cleanupContext helper
 
 ### Output Formatting
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/format.ts:1-142` - CLI output formatting functions
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/format.ts:38-61` - renderList function
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/format.ts:93-99` - renderTsv function
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/format.ts:101-119` - renderTable function
-- `/Users/anichols/code/adn-claude-configs/tools/ltui/src/format.ts:121-130` - renderJson function
+- `https://github.com/Nodaste-Lab/ltui/src/format.ts:1-142` - CLI output formatting functions
+- `https://github.com/Nodaste-Lab/ltui/src/format.ts:38-61` - renderList function
+- `https://github.com/Nodaste-Lab/ltui/src/format.ts:93-99` - renderTsv function
+- `https://github.com/Nodaste-Lab/ltui/src/format.ts:101-119` - renderTable function
+- `https://github.com/Nodaste-Lab/ltui/src/format.ts:121-130` - renderJson function
 
 ### Configuration
 - `/Users/anichols/code/adn-claude-configs/claude/mcp-servers.json:3-5` - Playwright MCP server config

@@ -25,17 +25,17 @@ The research artifact at `thoughts/research/2026-05-04-linear-api-usage-and-ltui
 - Planning doctrine: `planning-workflow` and `dev-plan` skills.
 - Product workflow doctrine: `product-principles` skill.
 - Implementation surfaces:
-  - `tools/ltui/src/commands/issues.ts`
-  - `tools/ltui/src/linear.ts`
-  - `tools/ltui/src/client.ts`
-  - `tools/ltui/src/options.ts`
-  - `tools/ltui/src/format.ts`
-  - `tools/ltui/src/test-utils/mockLinearClient.ts`
-  - `tools/ltui/src/__tests__/cli-regression.test.ts`
-  - `tools/ltui/src/__tests__/cli-args.test.ts`
-  - `tools/ltui/src/__tests__/output.test.ts`
-  - `tools/ltui/SPEC.md`
-  - `tools/ltui/README.md`
+  - `Nodaste-Lab/ltui/src/commands/issues.ts`
+  - `Nodaste-Lab/ltui/src/linear.ts`
+  - `Nodaste-Lab/ltui/src/client.ts`
+  - `Nodaste-Lab/ltui/src/options.ts`
+  - `Nodaste-Lab/ltui/src/format.ts`
+  - `Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts`
+  - `Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
+  - `Nodaste-Lab/ltui/src/__tests__/cli-args.test.ts`
+  - `Nodaste-Lab/ltui/src/__tests__/output.test.ts`
+  - `Nodaste-Lab/ltui/SPEC.md`
+  - `Nodaste-Lab/ltui/README.md`
   - `skills/linear/SKILL.md`
   - `_opencode/commands/cmd:workplanner.md`
   - `_pi/prompts/cmd:feeling-lucky-pr*.md`
@@ -45,13 +45,13 @@ Product-intent docs are absent (`thoughts/specs/product_intent.md` and `thoughts
 
 ## Current implementation reality
 
-- `tools/ltui/src/commands/issues.ts` builds issue list filters, calls `client.issues(...)` or `client.searchIssues(...)`, then maps nodes through `mapIssueToRow(...)`.
+- `Nodaste-Lab/ltui/src/commands/issues.ts` builds issue list filters, calls `client.issues(...)` or `client.searchIssues(...)`, then maps nodes through `mapIssueToRow(...)`.
 - `mapIssueToRow(...)` awaits `issue.team`, `issue.state`, `issue.project`, `issue.assignee`, and `issue.labels(...)` regardless of the caller’s selected fields.
-- `tools/ltui/src/format.ts` applies `--fields` after rows are mapped, so fields are currently output-only.
+- `Nodaste-Lab/ltui/src/format.ts` applies `--fields` after rows are mapped, so fields are currently output-only.
 - The installed Linear SDK exposes `client.client.rawRequest(...)`, and the raw response type includes `headers`, so ltui can use custom GraphQL without adding a new HTTP stack.
-- `tools/ltui/src/linear.ts` already contains one raw GraphQL lookup pattern for teams, which is a useful local precedent.
-- `tools/ltui/src/test-utils/mockLinearClient.ts` does not currently expose `client.client.rawRequest(...)` or request-count assertions, so tests need a small mock upgrade before the implementation can prove API-request reductions.
-- `tools/ltui/SPEC.md`, `tools/ltui/README.md`, and `skills/linear/SKILL.md` already warn that `--fields` saves tokens but not necessarily API requests; those warnings should change once the implementation makes `--fields` an API-efficiency control.
+- `Nodaste-Lab/ltui/src/linear.ts` already contains one raw GraphQL lookup pattern for teams, which is a useful local precedent.
+- `Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts` does not currently expose `client.client.rawRequest(...)` or request-count assertions, so tests need a small mock upgrade before the implementation can prove API-request reductions.
+- `Nodaste-Lab/ltui/SPEC.md`, `Nodaste-Lab/ltui/README.md`, and `skills/linear/SKILL.md` already warn that `--fields` saves tokens but not necessarily API requests; those warnings should change once the implementation makes `--fields` an API-efficiency control.
 
 ## Progress
 
@@ -85,7 +85,7 @@ Fail-closed boundaries:
 
 ## Locked decisions
 
-1. The first implementation target is `issues list`; it is the dominant request multiplier and already called out in `tools/ltui/SPEC.md`.
+1. The first implementation target is `issues list`; it is the dominant request multiplier and already called out in `Nodaste-Lab/ltui/SPEC.md`.
 2. Use `@linear/sdk`’s existing `client.client.rawRequest(...)` for custom GraphQL instead of introducing another GraphQL or HTTP dependency.
 3. `--fields` must shape the GraphQL selection set for `issues list`.
 4. Preserve existing output field names and JSON envelope shape for compatible fields.
@@ -107,7 +107,7 @@ Fail-closed boundaries:
 7. `issues view` has an API-budget-saving path that avoids default attachment/comment probing unless requested.
 8. Grooming prompt/docs use narrow server-side filters and bounded detail reads instead of broad list plus local filtering.
 9. Tests prove API request-shape behavior, not only output token shape.
-10. `bun run test` passes in `tools/ltui`.
+10. `bun run test` passes in `Nodaste-Lab/ltui`.
 
 ## BDD scenarios
 
@@ -186,11 +186,11 @@ Add failing tests that demonstrate the desired contract before implementation:
 
 ### Expected files
 
-- `tools/ltui/src/test-utils/mockLinearClient.ts`
-- `tools/ltui/src/__tests__/cli-regression.test.ts`
-- `tools/ltui/src/__tests__/output.test.ts`
-- likely `tools/ltui/src/linear.ts`
-- optional new helper file under `tools/ltui/src/`
+- `Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
+- `Nodaste-Lab/ltui/src/__tests__/output.test.ts`
+- likely `Nodaste-Lab/ltui/src/linear.ts`
+- optional new helper file under `Nodaste-Lab/ltui/src/`
 
 ### Work
 
@@ -213,7 +213,7 @@ Add failing tests that demonstrate the desired contract before implementation:
 ### Verify
 
 ```bash
-cd tools/ltui && bun run test
+cd Nodaste-Lab/ltui && bun run test
 ```
 
 Expected before implementation in this phase: newly added tests fail for missing raw request/accounting behavior. Expected after implementation: the harness-level tests pass, while later behavior tests may still be pending.
@@ -238,15 +238,15 @@ Add or complete failing tests for these outcomes:
 
 ### Expected files
 
-- `tools/ltui/src/commands/issues.ts`
-- `tools/ltui/src/linear.ts`
-- `tools/ltui/src/cli.ts`
-- `tools/ltui/src/options.ts`
-- `tools/ltui/src/format.ts`
-- `tools/ltui/src/__tests__/cli-regression.test.ts`
-- `tools/ltui/src/__tests__/cli-args.test.ts`
-- `tools/ltui/src/__tests__/output.test.ts`
-- `tools/ltui/src/test-utils/mockLinearClient.ts`
+- `Nodaste-Lab/ltui/src/commands/issues.ts`
+- `Nodaste-Lab/ltui/src/linear.ts`
+- `Nodaste-Lab/ltui/src/cli.ts`
+- `Nodaste-Lab/ltui/src/options.ts`
+- `Nodaste-Lab/ltui/src/format.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-args.test.ts`
+- `Nodaste-Lab/ltui/src/__tests__/output.test.ts`
+- `Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts`
 
 ### Work
 
@@ -269,13 +269,13 @@ Add or complete failing tests for these outcomes:
 ### Verify
 
 ```bash
-cd tools/ltui && bun run test
+cd Nodaste-Lab/ltui && bun run test
 ```
 
 Manual spot checks with the mock client:
 
 ```bash
-cd tools/ltui
+cd Nodaste-Lab/ltui
 tmp_config=$(mktemp -d)
 export LTUI_CONFIG_DIR="$tmp_config"
 export LINEAR_API_KEY=lin_api_test
@@ -304,12 +304,12 @@ Add failing tests for:
 
 ### Expected files
 
-- `tools/ltui/src/commands/issues.ts`
-- `tools/ltui/src/options.ts`
-- `tools/ltui/src/__tests__/cli-args.test.ts`
-- `tools/ltui/src/__tests__/cli-regression.test.ts`
-- `tools/ltui/src/test-utils/mockLinearClient.ts`
-- `tools/ltui/SPEC.md`
+- `Nodaste-Lab/ltui/src/commands/issues.ts`
+- `Nodaste-Lab/ltui/src/options.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-args.test.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
+- `Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts`
+- `Nodaste-Lab/ltui/SPEC.md`
 
 ### Work
 
@@ -324,13 +324,13 @@ Add failing tests for:
 ### Verify
 
 ```bash
-cd tools/ltui && bun run test
+cd Nodaste-Lab/ltui && bun run test
 ```
 
 Manual spot checks with the mock client:
 
 ```bash
-cd tools/ltui
+cd Nodaste-Lab/ltui
 tmp_config=$(mktemp -d)
 export LTUI_CONFIG_DIR="$tmp_config"
 export LINEAR_API_KEY=lin_api_test
@@ -358,8 +358,8 @@ Use static checks to define the desired documentation and prompt contract before
 
 ### Expected files
 
-- `tools/ltui/SPEC.md`
-- `tools/ltui/README.md`
+- `Nodaste-Lab/ltui/SPEC.md`
+- `Nodaste-Lab/ltui/README.md`
 - `skills/linear/SKILL.md`
 - `skills/linear/references/ltui-command-reference.md`
 - `_opencode/commands/cmd:workplanner.md`
@@ -387,11 +387,11 @@ Use static checks to define the desired documentation and prompt contract before
 ### Verify
 
 ```bash
-rg -n -- '--fields|--show-rate-limit|rate-limit|RATE_LIMIT|x-ratelimit|--state|no-attachment-probe|issues list' tools/ltui/SPEC.md tools/ltui/README.md skills/linear/SKILL.md skills/linear/references/ltui-command-reference.md _opencode/commands/cmd:workplanner.md _pi/prompts _opencode/commands
+rg -n -- '--fields|--show-rate-limit|rate-limit|RATE_LIMIT|x-ratelimit|--state|no-attachment-probe|issues list' Nodaste-Lab/ltui/SPEC.md Nodaste-Lab/ltui/README.md skills/linear/SKILL.md skills/linear/references/ltui-command-reference.md _opencode/commands/cmd:workplanner.md _pi/prompts _opencode/commands
 ```
 
 ```bash
-rg -n "fields.*tokens|output only|not necessarily API|local state|allowed_states|--limit 100" tools/ltui/README.md skills/linear/SKILL.md _opencode/commands/cmd:workplanner.md
+rg -n "fields.*tokens|output only|not necessarily API|local state|allowed_states|--limit 100" Nodaste-Lab/ltui/README.md skills/linear/SKILL.md _opencode/commands/cmd:workplanner.md
 ```
 
 Review any matches from the second command and confirm they are either removed, intentionally scoped to non-optimized commands, or still accurate.
@@ -422,15 +422,15 @@ No new RED tests are expected in this phase. If a behavior or docs gap is found 
 ### Verify
 
 ```bash
-cd tools/ltui && bun run test
+cd Nodaste-Lab/ltui && bun run test
 ```
 
 ```bash
-git diff -- tools/ltui/src tools/ltui/README.md tools/ltui/SPEC.md skills/linear _opencode/commands/cmd:workplanner.md _pi/prompts _opencode/commands thoughts/plans/ltui-linear-api-usage-optimization.md
+git diff -- Nodaste-Lab/ltui/src Nodaste-Lab/ltui/README.md Nodaste-Lab/ltui/SPEC.md skills/linear _opencode/commands/cmd:workplanner.md _pi/prompts _opencode/commands thoughts/plans/ltui-linear-api-usage-optimization.md
 ```
 
 ```bash
-rg -n "fields.*tokens|output only|not necessarily API|broad polling|--limit 100|allowed_states" tools/ltui/README.md tools/ltui/SPEC.md skills/linear _opencode/commands/cmd:workplanner.md _pi/prompts _opencode/commands
+rg -n "fields.*tokens|output only|not necessarily API|broad polling|--limit 100|allowed_states" Nodaste-Lab/ltui/README.md Nodaste-Lab/ltui/SPEC.md skills/linear _opencode/commands/cmd:workplanner.md _pi/prompts _opencode/commands
 ```
 
 ## Verification strategy
@@ -439,7 +439,7 @@ rg -n "fields.*tokens|output only|not necessarily API|broad polling|--limit 100|
 - Mock request accounting proves the API usage reduction directly instead of relying on token output as a proxy.
 - CLI help tests prove new flags are discoverable.
 - Static docs/prompt checks catch stale guidance that would cause agents to keep expensive grooming habits.
-- Final `bun run test` in `tools/ltui` is the primary implementation gate.
+- Final `bun run test` in `Nodaste-Lab/ltui` is the primary implementation gate.
 
 ## Delivery order
 
@@ -472,7 +472,7 @@ rg -n "fields.*tokens|output only|not necessarily API|broad polling|--limit 100|
 | AC7, B6 | `issues view --no-attachment-probe` regression with attachment/comment probe accounting |
 | AC8, B7 | Static prompt/doc checks for server-side state filters and bounded detail fetch |
 | AC9 | Mock accounting assertions in cli regression tests |
-| AC10 | `cd tools/ltui && bun run test` |
+| AC10 | `cd Nodaste-Lab/ltui && bun run test` |
 
 ## Decisions / Deviations log
 

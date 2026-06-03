@@ -13,7 +13,7 @@ The shipped behavior covers both native Linear link attachments and `uploads.lin
 
 ### `ltui issues attachments <identifier>`
 
-Implemented in `tools/ltui/src/commands/issues.ts`.
+Implemented in `Nodaste-Lab/ltui/src/commands/issues.ts`.
 
 Supported options:
 - `--only-images`
@@ -83,7 +83,7 @@ The image probe pages through issue attachments until an image is found or the a
 
 ## Configuration
 
-Implemented defaults in `tools/ltui/src/commands/issues.ts`:
+Implemented defaults in `Nodaste-Lab/ltui/src/commands/issues.ts`:
 - download timeout: `30_000` ms
 - maximum download size: `100 * 1024 * 1024` bytes
 
@@ -98,14 +98,14 @@ Implemented defaults in `tools/ltui/src/commands/issues.ts`:
 
 ## Testing
 
-Verified in `tools/ltui` with:
+Verified in `Nodaste-Lab/ltui` with:
 - `bun run test`
 
 Relevant coverage includes:
-- `tools/ltui/src/__tests__/cli-args.test.ts`
-- `tools/ltui/src/__tests__/cli-regression.test.ts`
-- `tools/ltui/src/__tests__/output.test.ts`
-- `tools/ltui/src/test-utils/mockLinearClient.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-args.test.ts`
+- `Nodaste-Lab/ltui/src/__tests__/cli-regression.test.ts`
+- `Nodaste-Lab/ltui/src/__tests__/output.test.ts`
+- `Nodaste-Lab/ltui/src/test-utils/mockLinearClient.ts`
 
 The current regression suite covers attachment command help, pagination envelopes, issue-detail guidance fields, and end-to-end command success.
 
@@ -113,8 +113,8 @@ The current regression suite covers attachment command help, pagination envelope
 
 - `skills/linear/SKILL.md`
 - `skills/linear/references/ltui-command-reference.md`
-- `tools/ltui/src/commands/issues.ts`
-- `tools/ltui/src/format.ts`
+- `Nodaste-Lab/ltui/src/commands/issues.ts`
+- `Nodaste-Lab/ltui/src/format.ts`
 
 ## Implementation Notes
 

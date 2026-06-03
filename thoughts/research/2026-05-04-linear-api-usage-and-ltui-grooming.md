@@ -35,17 +35,17 @@ Sources:
 - https://linear.app/developers/rate-limiting
 - https://linear.app/developers/filtering
 - https://linear.app/developers/graphql
-- `tools/ltui/node_modules/@linear/sdk/dist/index.d.mts`
+- `Nodaste-Lab/ltui/node_modules/@linear/sdk/dist/index.d.mts`
 
 ### Current `issues list` Request Shape
 
 `issues list` builds a Linear filter, requests issues or search results, and then maps rows:
 
-- `tools/ltui/src/commands/issues.ts:92` builds effective filters.
-- `tools/ltui/src/commands/issues.ts:101` calls `client.searchIssues(...)` or `client.issues(...)`.
-- `tools/ltui/src/commands/issues.ts:105` turns each search result into `client.issue(node.id)`, adding one request per result for search.
-- `tools/ltui/src/commands/issues.ts:109` maps all nodes through `mapIssueToRow(...)`.
-- `tools/ltui/src/commands/issues.ts:1112` awaits team, state, project, assignee, and labels for every row.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:92` builds effective filters.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:101` calls `client.searchIssues(...)` or `client.issues(...)`.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:105` turns each search result into `client.issue(node.id)`, adding one request per result for search.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:109` maps all nodes through `mapIssueToRow(...)`.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:1112` awaits team, state, project, assignee, and labels for every row.
 
 This means `--fields id,identifier,title` saves output tokens but does not prevent relation fetches, because field filtering happens after rows are already fully mapped.
 
@@ -53,11 +53,11 @@ This means `--fields id,identifier,title` saves output tokens but does not preve
 
 `issues view` resolves a single issue, then always resolves related state/team/project/assignee and probes attachments/comments for image guidance:
 
-- `tools/ltui/src/commands/issues.ts:262` resolves the issue.
-- `tools/ltui/src/commands/issues.ts:272` resolves state/team/project/assignee.
-- `tools/ltui/src/commands/issues.ts:294` probes assets, which can call `issue.attachments(...)` and `issue.comments(...)`.
-- `tools/ltui/src/commands/issues.ts:331` fetches comments when requested.
-- `tools/ltui/src/commands/issues.ts:345` fetches history when requested.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:262` resolves the issue.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:272` resolves state/team/project/assignee.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:294` probes assets, which can call `issue.attachments(...)` and `issue.comments(...)`.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:331` fetches comments when requested.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:345` fetches history when requested.
 
 This is reasonable for a single selected issue, but it is costly inside loops across many candidate issues.
 
@@ -165,14 +165,14 @@ Until ltui changes:
 
 ## Code References
 
-- `tools/ltui/src/commands/issues.ts:101` - issue list/search API call.
-- `tools/ltui/src/commands/issues.ts:105` - search result per-node issue fetch.
-- `tools/ltui/src/commands/issues.ts:1112` - row mapping awaits relation promises for every issue.
-- `tools/ltui/src/commands/issues.ts:294` - default issue view probes assets.
-- `tools/ltui/src/commands/issues.ts:331` - optional comments fetch.
-- `tools/ltui/src/commands/issues.ts:345` - optional history fetch.
-- `tools/ltui/src/linear.ts:21` - existing custom team lookup query pattern.
-- `tools/ltui/src/cache.ts:1` - current local cache implementation.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:101` - issue list/search API call.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:105` - search result per-node issue fetch.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:1112` - row mapping awaits relation promises for every issue.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:294` - default issue view probes assets.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:331` - optional comments fetch.
+- `Nodaste-Lab/ltui/src/commands/issues.ts:345` - optional history fetch.
+- `Nodaste-Lab/ltui/src/linear.ts:21` - existing custom team lookup query pattern.
+- `Nodaste-Lab/ltui/src/cache.ts:1` - current local cache implementation.
 - `_opencode/commands/cmd:workplanner.md:109` - broad candidate list.
 - `_opencode/commands/cmd:workplanner.md:180` - per-candidate full context fetch.
 
