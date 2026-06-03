@@ -82,13 +82,20 @@
   <p class="badge">Status: execution-ready plan</p>
   <h1>HTML Plan Review Service</h1>
   <p class="muted">A local-network review surface for HTML development plans stored in <code>thoughts/plans</code>, with a browsable plan index, DOM/image-anchored comments, and comments delivered back to coding agents through REST, CLI, and near-real-time streams.</p>
+  <section id="superseded-install-location">
+    <h2>Current ownership</h2>
+    <p><strong>Superseded location:</strong> this historical plan originally built the service inside this config repository. The daemon, CLI, and Homebrew formula now live in the standalone repository <code>Nodaste-Lab/plan-reviewer</code>. Use <code>ai-configs</code> only for workflow guidance such as <code>skills/html-plan-reviewer</code>.</p>
+    <pre><code>brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git
+brew install Nodaste-Lab/plan-reviewer/plan-reviewer
+brew services start plan-reviewer</code></pre>
+  </section>
 
   <section id="goal">
     <h2>Goal</h2>
     <p>Build a simple unauthenticated local-network service where agents register HTML development plans from any repo, users browse an index of registered plans, review a plan in a browser by selecting DOM elements or images and leaving comments, and agents can monitor, claim, and process those comments as a durable queue.</p>
     <p>The golden path should be:</p>
-    <pre><code>brew tap local/ai-configs &lt;repo-checkout-path&gt;
-brew install local/ai-configs/plan-reviewer
+    <pre><code>brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git
+brew install Nodaste-Lab/plan-reviewer/plan-reviewer
 brew services start plan-reviewer
 plan-review register thoughts/plans/my-plan.html --repo auto --branch auto --commit auto
 plan-review watch &lt;plan-id-or-slug&gt; --mode queue</code></pre>
@@ -154,10 +161,10 @@ plan-review watch &lt;plan-id-or-slug&gt; --mode queue</code></pre>
   <section id="locked-decisions">
     <h2>Locked decisions</h2>
     <ol>
-      <li><strong>MVP shape:</strong> create a repo-owned TypeScript package at <code>tools/plan-reviewer</code> containing the daemon and CLI, plus Homebrew formula/install wiring in this <code>ai-configs</code> repo.</li>
+      <li><strong>MVP shape:</strong> create a TypeScript package in the standalone <code>Nodaste-Lab/plan-reviewer</code> repo containing the daemon, CLI, and Homebrew formula/install wiring.</li>
       <li><strong>Scope approval:</strong> the user request is explicit approval to build a new service/CLI in this repo even though the implementation will exceed 100 lines of custom code. The dependency-selection rule still applies to reusable libraries; do not hand-roll package-manager, HTTP, SQLite, selector, screenshot, or browser-test primitives.</li>
       <li><strong>Deployment topology:</strong> MVP is one shared local-network service instance that can register plans from many repos. It listens on <code>0.0.0.0:4317</code> by default with SQLite at <code>~/.plan-reviewer/plan-reviewer.sqlite</code>. Local-only binding is an optional override, not the default.</li>
-      <li><strong>Persistent install:</strong> install via Homebrew from a repo checkout for now. The formula lives at <code>Formula/plan-reviewer.rb</code>; because Homebrew 5.1 requires local formulae to live in a tap, <code>brew tap local/ai-configs &lt;repo-checkout-path&gt;</code> followed by <code>brew install local/ai-configs/plan-reviewer</code> installs the CLI/daemon, and <code>brew services start plan-reviewer</code> installs the formula service through launchctl. The formula service block must set <code>run [opt_bin/"plan-review", "serve", "--host", "0.0.0.0", "--port", "4317", "--db", "#{Dir.home}/.plan-reviewer/plan-reviewer.sqlite"]</code>, <code>keep_alive true</code>, <code>log_path var/"log/plan-reviewer.log"</code>, and <code>error_log_path var/"log/plan-reviewer.err.log"</code>. MVP service management is macOS/Homebrew-only; Linux service units are future work.</li>
+      <li><strong>Persistent install:</strong> install via Homebrew from a repo checkout for now. The formula now lives in the standalone <code>Nodaste-Lab/plan-reviewer</code> tap; <code>brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git</code> followed by <code>brew install Nodaste-Lab/plan-reviewer/plan-reviewer</code> installs the CLI/daemon, and <code>brew services start plan-reviewer</code> installs the formula service through launchctl. The formula service block must set <code>run [opt_bin/"plan-review", "serve", "--host", "0.0.0.0", "--port", "4317", "--db", "#{Dir.home}/.plan-reviewer/plan-reviewer.sqlite"]</code>, <code>keep_alive true</code>, <code>log_path var/"log/plan-reviewer.log"</code>, and <code>error_log_path var/"log/plan-reviewer.err.log"</code>. MVP service management is macOS/Homebrew-only; Linux service units are future work.</li>
       <li><strong>CLI service discovery:</strong> resolve service URL in this order: <code>--url</code> flag, <code>PLAN_REVIEW_URL</code>, project <code>.plan-reviewer.json</code>, user config <code>~/.config/plan-reviewer/config.json</code>, then <code>http://127.0.0.1:4317</code>. The CLI never requires auth for MVP.</li>
       <li><strong>No-auth MVP:</strong> there is no authentication, reviewer token, share-token, or obfuscated review URL in the initial product. Anyone who can reach the service can view the index, open plans, create comments, and use queue endpoints. The service should print a startup warning when bound to non-loopback addresses so the operator understands the exposure.</li>
       <li><strong>Plan index:</strong> <code>GET /</code> serves a browsable index of all registered plans grouped by repo and sorted by most recent registration/comment activity. The index supports text filtering, repo filtering, status counts, latest version metadata, links to open each plan, and comment-count badges.</li>
@@ -429,7 +436,7 @@ data: {"sequence":43,"planId":"plan_01...","commentId":"cmt_01...","comment":{..
   <section id="acceptance">
     <h2>Acceptance criteria</h2>
     <ol>
-      <li>Homebrew installs the daemon/CLI from this repo checkout as a local tap with <code>brew tap local/ai-configs &lt;repo-checkout-path&gt;</code> and <code>brew install local/ai-configs/plan-reviewer</code>, and <code>brew services start plan-reviewer</code> runs it persistently through launchctl on <code>0.0.0.0:4317</code> by default.</li>
+      <li>Homebrew installs the daemon/CLI from the standalone tap with <code>brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git</code> and <code>brew install Nodaste-Lab/plan-reviewer/plan-reviewer</code>, and <code>brew services start plan-reviewer</code> runs it persistently through launchctl on <code>0.0.0.0:4317</code> by default.</li>
       <li>Agents can register an HTML plan from <code>thoughts/plans</code> via CLI and REST, receiving a stable plan ID, index URL, and review URL.</li>
       <li>The index at <code>GET /</code> lists registered plans across repos with search/filtering, latest metadata, status counts, and links to open/comment on each plan.</li>
       <li>The review URL renders the plan in a dark-compatible review shell without executing arbitrary plan-authored JavaScript.</li>
@@ -511,34 +518,34 @@ data: {"sequence":43,"planId":"plan_01...","commentId":"cmt_01...","comment":{..
     <section id="phase-p1">
       <h3>Phase 1 - Bootstrap package, Homebrew, and launchctl service</h3>
       <h4>End State</h4>
-      <p><code>tools/plan-reviewer</code> contains a buildable TypeScript CLI/API skeleton, and this repo contains Homebrew/launchctl install wiring for a persistent daemon that defaults to <code>0.0.0.0:4317</code>.</p>
+      <p><code>~/code/plan-reviewer</code> contains a buildable TypeScript CLI/API skeleton plus Homebrew/launchctl install wiring for a persistent daemon that defaults to <code>0.0.0.0:4317</code>.</p>
       <h4>Tests first</h4>
       <ul>
         <li>Schema tests for plan registration, plan index, DOM/image comment anchors, queue claim, ack, and SSE event payloads.</li>
         <li>CLI argument parsing tests for <code>serve</code>, <code>register</code>, <code>index</code>, <code>watch</code>, <code>queue claim</code>, <code>ack</code>, and <code>resolve</code>.</li>
-        <li>Install tests or fixture checks for <code>Formula/plan-reviewer.rb</code>, asserting service label, <code>keep_alive true</code>, default host <code>0.0.0.0</code>, port <code>4317</code>, database path, and log paths.</li>
+        <li>Install tests or fixture checks in <code>Nodaste-Lab/plan-reviewer</code>, asserting service label, <code>keep_alive true</code>, default host <code>0.0.0.0</code>, port <code>4317</code>, database path, and log paths.</li>
         <li>Dependency smoke tests that import Fastify, Zod, better-sqlite3, parse5, sanitize-html, commander, <code>@washi-ui/core</code>, <code>@medv/finder</code>, <code>html2canvas</code>, and Playwright from the package.</li>
       </ul>
       <h4>Work</h4>
       <ul>
-        <li>Create <code>tools/plan-reviewer/package.json</code>, <code>tsconfig.json</code>, source layout, Bun lockfile, and Node test wiring.</li>
+        <li>Create <code>~/code/plan-reviewer/package.json</code>, <code>tsconfig.json</code>, source layout, Bun lockfile, and Node test wiring.</li>
         <li>Install and wire the locked dependencies: Fastify, Zod, better-sqlite3, parse5, sanitize-html, commander, <code>@washi-ui/core</code>, <code>@medv/finder</code>, and Playwright.</li>
         <li>Add package scripts for <code>test</code>, <code>test:e2e</code>, <code>test:fixtures</code>, <code>build</code>, and <code>dev</code>, runnable via <code>bun run</code>.</li>
         <li>Define shared TypeScript schemas and OpenAPI-compatible route contracts for every endpoint in this plan.</li>
         <li>Add a minimal health endpoint, config resolution, CLI <code>--help</code>, and <code>serve</code> defaults for <code>0.0.0.0:4317</code>.</li>
-        <li>Add <code>Formula/plan-reviewer.rb</code> with a Homebrew service block matching the locked persistent-install contract; include uninstall/caveat text for stopping the service and deleting <code>~/.plan-reviewer</code> data manually if desired.</li>
+        <li>Add the Homebrew formula in <code>Nodaste-Lab/plan-reviewer</code> with a service block matching the locked persistent-install contract; include uninstall/caveat text for stopping the service and deleting <code>~/.plan-reviewer</code> data manually if desired.</li>
       </ul>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/**</code></li><li><code>Formula/plan-reviewer.rb</code></li></ul>
+      <ul><li><code>~/code/plan-reviewer/**</code></li><li>Homebrew formula in <code>Nodaste-Lab/plan-reviewer</code></li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun install
 bun run test
 bun run build
 node dist/bin/plan-review.js --help
 cd ../..
-brew tap local/ai-configs &lt;repo-checkout-path&gt;
-brew install local/ai-configs/plan-reviewer
+brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git
+brew install Nodaste-Lab/plan-reviewer/plan-reviewer
 brew services start plan-reviewer
 brew services list | grep plan-reviewer
 brew services stop plan-reviewer</code></pre>
@@ -563,9 +570,9 @@ brew services stop plan-reviewer</code></pre>
         <li>Serve <code>/</code> plan index, <code>/api/plans</code> JSON index, <code>/assets/:assetId</code> image assets, and <code>/p/:planId</code> review shell plus sandboxed plan iframe.</li>
       </ul>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/src/server/**</code></li><li><code>tools/plan-reviewer/src/cli/**</code></li><li><code>tools/plan-reviewer/src/storage/**</code></li><li><code>tools/plan-reviewer/src/render/**</code></li></ul>
+      <ul><li><code>~/code/plan-reviewer/src/server/**</code></li><li><code>~/code/plan-reviewer/src/cli/**</code></li><li><code>~/code/plan-reviewer/src/storage/**</code></li><li><code>~/code/plan-reviewer/src/render/**</code></li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test
 bun run build
 # Start this with the process tool, then run register/index checks in a separate shell; kill the process after verification:
@@ -597,9 +604,9 @@ curl -fsS http://127.0.0.1:4317/ &gt;/tmp/plan-reviewer-index.html</code></pre>
         <li>Use parent-owned <code>html2canvas</code> capture for marker screenshots; persist DOM/text-range/image comments, screenshot assets, selected-region highlights, numbered sidebar/marker entries, and status labels.</li>
       </ul>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/src/client/**</code></li><li><code>tools/plan-reviewer/src/anchors/**</code></li></ul>
+      <ul><li><code>~/code/plan-reviewer/src/client/**</code></li><li><code>~/code/plan-reviewer/src/anchors/**</code></li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test
 bun run test:e2e -- --grep "dom annotation|image annotation|plan index"</code></pre>
     </section>
@@ -626,9 +633,9 @@ bun run test:e2e -- --grep "dom annotation|image annotation|plan index"</code></
         <li>Make reviewer UI subscribe to the same event stream for status changes.</li>
       </ul>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/src/server/events*</code></li><li><code>tools/plan-reviewer/src/cli/watch*</code></li></ul>
+      <ul><li><code>~/code/plan-reviewer/src/server/events*</code></li><li><code>~/code/plan-reviewer/src/cli/watch*</code></li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test
 bun run test:fixtures -- --scenario seeded-comment-stream
 bun run test:fixtures -- --scenario sse-latency --samples 50 --p95-ms 1000
@@ -653,9 +660,9 @@ node dist/bin/plan-review.js watch &lt;plan-id&gt; --url http://127.0.0.1:4317 -
         <li>Attach optional agent action metadata: run ID, handoff URL/path, commit SHA, changed files, response summary, or resolution note.</li>
       </ul>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/src/queue/**</code></li><li><code>tools/plan-reviewer/src/cli/queue*</code></li></ul>
+      <ul><li><code>~/code/plan-reviewer/src/queue/**</code></li><li><code>~/code/plan-reviewer/src/cli/queue*</code></li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test
 bun run test:fixtures -- --scenario queue-claim-ack
 node dist/bin/plan-review.js queue claim &lt;plan-id&gt; --url http://127.0.0.1:4317 --all --json
@@ -681,9 +688,9 @@ node dist/bin/plan-review.js ack &lt;comment-id&gt; --url http://127.0.0.1:4317 
         <li>Dogfood the full flow with this plan and at least one image-rich fixture plan; record low-risk follow-ups separately instead of expanding MVP scope.</li>
       </ul>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/README.md</code></li><li>Optional prompt/skill docs if the workflow is wired into Pi/Claude/Codex after MVP validation.</li></ul>
+      <ul><li><code>~/code/plan-reviewer/README.md</code></li><li>Optional prompt/skill docs if the workflow is wired into Pi/Claude/Codex after MVP validation.</li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test
 bun run build
 # plus manual dogfood: register this plan, open the index, create DOM/text/image comments, bridge one browser comment into the active agent conversation, claim/ack it from CLI</code></pre>
@@ -797,10 +804,11 @@ bun run build
       <li>2026-05-30: Locked at-least-once queue delivery with claim/ack/lease semantics instead of exactly-once delivery because it is simpler, recoverable, and agent-friendly.</li>
       <li>2026-05-30: Integrated first Codex and Claude Code review blockers by locking dependencies, deployment/discovery, render safety policy, concrete API payloads, queue numerics, SSE replay semantics, claim precedence, CLI output shapes, and runnable verification gates.</li>
       <li>2026-05-30: Integrated second Codex blockers by defining a no-scripts parent-owned iframe overlay contract, overlay dependency evaluation with <code>@washi-ui/core</code>/<code>@medv/finder</code> reuse, and Bun-based verification commands aligned with the existing tools package pattern.</li>
-      <li>2026-05-30: Superseded the reviewed auth-heavy MVP after user clarification: initial service is now no-auth, Homebrew-installed from this repo, launchctl-persistent, bound to <code>0.0.0.0</code> by default, index-first, and includes image display, zoom, and image-region comments.</li>
+      <li>2026-05-30: Superseded the reviewed auth-heavy MVP after user clarification: initial service is no-auth, Homebrew-installed, launchctl-persistent, bound to <code>0.0.0.0</code> by default, index-first, and includes image display, zoom, and image-region comments.</li>
       <li>2026-05-31: Added the review UX visual contract and main-conversation bridge so browser comments can wake the agent, be answered in the active chat through a host adapter, and reflect response metadata back in the review UI.</li>
       <li>2026-05-31: Integrated Codex/Claude execution-readiness blockers by specifying Homebrew formula layout, claim-required ack semantics, text-range anchors, marker screenshot storage, reviewer identity defaulting, anchor-state mapping, host-bridge NDJSON handoff, CLI/API flag mappings, latency tests, and dependency verification evidence.</li>
-      <li>2026-05-31: Execution discovered Homebrew 5.1 rejects arbitrary local formula paths outside taps; the install contract was narrowed to a local tap install from this repo checkout while preserving the same formula and launchctl service behavior.</li>
+      <li>2026-05-31: Execution discovered Homebrew 5.1 rejects arbitrary local formula paths outside taps; the install contract was narrowed to a tap install while preserving the same formula and launchctl service behavior.</li>
+      <li>2026-06-03: Superseded the in-repo implementation location. The plan-reviewer daemon, CLI, and formula now live in <code>Nodaste-Lab/plan-reviewer</code>; <code>ai-configs</code> retains only workflow guidance.</li>
       <li>2026-05-31: Second-pass Codex and Claude reviews both returned <code>Execution-ready</code> with no blocking findings; only low-risk implementation notes remained.</li>
       <li>2026-05-31: Third-pass Codex and Claude reviews after the agent watch contract update both returned <code>Execution-ready</code> with no blocking findings.</li>
     </ul>

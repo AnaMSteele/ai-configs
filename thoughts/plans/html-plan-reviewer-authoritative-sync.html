@@ -62,7 +62,7 @@
 
   <section id="goal">
     <h2>Goal</h2>
-    <p>Change <code>tools/plan-reviewer</code> so registering <code>thoughts/plans/&lt;plan&gt;.html</code> creates a durable link to that repo file, not a one-time detached snapshot. After registration, edits to the file should update the service-rendered plan automatically and notify open review pages.</p>
+    <p>Change <code>~/code/plan-reviewer</code> so registering <code>thoughts/plans/&lt;plan&gt;.html</code> creates a durable link to that repo file, not a one-time detached snapshot. After registration, edits to the file should update the service-rendered plan automatically and notify open review pages.</p>
     <p>The golden path should become:</p>
     <pre><code>plan-review register thoughts/plans/my-plan.html --repo auto --branch auto --commit auto
 # edit thoughts/plans/my-plan.html
@@ -177,7 +177,7 @@
     <ul>
       <li id="p5-cli-default">Make <code>plan-review register</code> default to live filesystem sync when it can resolve an absolute source path. Print “Source sync: active” with the watched path.</li>
       <li id="p5-cli-flags">Add explicit flags only if needed: <code>--snapshot</code> for detached historical review and <code>--sync-now</code> for manual repair. Do not add helper daemon commands.</li>
-      <li id="p5-readme">Update <code>tools/plan-reviewer/README.md</code> to state that repo files are authoritative and service blobs are derived cache/history.</li>
+      <li id="p5-readme">Update <code>~/code/plan-reviewer/README.md</code> to state that repo files are authoritative and service blobs are derived cache/history.</li>
       <li id="p5-skill">Update <code>/Users/anichols/.agents/skills/html-plan-reviewer/SKILL.md</code> so agents know they no longer need to re-register after every edit once source sync is active.</li>
     </ul>
   </section>
@@ -196,7 +196,7 @@
       </tbody>
     </table>
     <p>Run:</p>
-    <pre><code>cd tools/plan-reviewer
+    <pre><code>cd ~/code/plan-reviewer
 bun install
 bun run test
 bun run test:e2e -- --grep "plan sync|plan index"</code></pre>
