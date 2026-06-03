@@ -446,7 +446,7 @@ export class PlanReviewStore {
             source_path = excluded.source_path, watch_mode = excluded.watch_mode,
             last_sync_at = excluded.last_sync_at, last_sync_status = excluded.last_sync_status,
             last_sync_error_json = excluded.last_sync_error_json,
-            archived_at = NULL`)
+            archived_at = plans.archived_at`)
         .run(planId, repoId, slug, input.planPath, input.sourcePath ?? null, watchMode, now, lastSyncStatus, null, now, now);
 
       const htmlName = `${input.fileHash}.html`;
@@ -695,10 +695,23 @@ export class PlanReviewStore {
 
   archivePlan(identifier: string): { plan: PlanRecord; event: StoredEvent } {
     const { plan } = this.getPlan(identifier);
-    const archivedAt = nowIso();
-    this.db.prepare('UPDATE plans SET archived_at = ?, updated_at = ? WHERE id = ?').run(archivedAt, archivedAt, plan.id);
+    const archivedAt = plan.archivedAt ?? nowIso();
+    if (!plan.archivedAt) {
+      this.db.prepare('UPDATE plans SET archived_at = ?, updated_at = ? WHERE id = ?').run(archivedAt, archivedAt, plan.id);
+    }
     const updated = this.getPlan(plan.id).plan;
     const event = this.addEvent(plan.id, 'plan.archived', { eventType: 'plan.archived', planId: plan.id, archivedAt });
+    return { plan: updated, event };
+  }
+
+  unarchivePlan(identifier: string): { plan: PlanRecord; event: StoredEvent } {
+    const { plan } = this.getPlan(identifier);
+    const unarchivedAt = nowIso();
+    if (plan.archivedAt) {
+      this.db.prepare('UPDATE plans SET archived_at = NULL, updated_at = ? WHERE id = ?').run(unarchivedAt, plan.id);
+    }
+    const updated = this.getPlan(plan.id).plan;
+    const event = this.addEvent(plan.id, 'plan.unarchived', { eventType: 'plan.unarchived', planId: plan.id, unarchivedAt });
     return { plan: updated, event };
   }
 

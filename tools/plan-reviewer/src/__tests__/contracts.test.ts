@@ -159,8 +159,111 @@ test('index exposes phase progress and archive hides plans by default', async ()
     const included = await app.inject({ method: 'GET', url: '/api/plans?includeArchived=true' });
     assert.equal(included.json().data.plans.length, 1);
     assert.ok(included.json().data.plans[0].plan.archivedAt);
+
+    const restored = await app.inject({ method: 'POST', url: `/api/plans/${planId}/unarchive` });
+    assert.equal(restored.statusCode, 200);
+    assert.equal(restored.json().data.plan.archivedAt, undefined);
+
+    const restoredAgain = await app.inject({ method: 'POST', url: `/api/plans/${planId}/unarchive` });
+    assert.equal(restoredAgain.statusCode, 200);
+    assert.equal(restoredAgain.json().data.plan.archivedAt, undefined);
+
+    const visibleAgain = await app.inject({ method: 'GET', url: '/api/plans' });
+    assert.equal(visibleAgain.json().data.plans.length, 1);
+    assert.equal(visibleAgain.json().data.plans[0].plan.archivedAt, undefined);
   } finally {
     await app.close();
+  }
+});
+
+test('archive page renders archived plans and restore controls without mixing active plans', async () => {
+  const app = createApp({ dbPath: tempDbPath('archive-page') });
+  try {
+    const active = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload({ slug: 'active-plan', planPath: 'thoughts/plans/active.html', fileHash: 'active-hash' }) });
+    assert.equal(active.statusCode, 200);
+    const older = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload({ slug: 'older-archive', planPath: 'thoughts/plans/older.html', fileHash: 'older-hash' }) });
+    assert.equal(older.statusCode, 200);
+    const newer = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload({ slug: 'newer-archive', planPath: 'thoughts/plans/newer.html', fileHash: 'newer-hash' }) });
+    assert.equal(newer.statusCode, 200);
+
+    const olderId = older.json().data.planId;
+    const newerId = newer.json().data.planId;
+    assert.equal((await app.inject({ method: 'POST', url: `/api/plans/${olderId}/archive` })).statusCode, 200);
+    assert.equal((await app.inject({ method: 'POST', url: `/api/plans/${newerId}/archive` })).statusCode, 200);
+
+    const index = await app.inject({ method: 'GET', url: '/' });
+    assert.match(index.body, /Archived \(2\) →/);
+    assert.match(index.body, /active-plan/);
+    assert.doesNotMatch(index.body, /older-archive/);
+    assert.doesNotMatch(index.body, /newer-archive/);
+
+    const archive = await app.inject({ method: 'GET', url: '/archive' });
+    assert.equal(archive.statusCode, 200);
+    assert.match(archive.body, /Archived Plans/);
+    assert.match(archive.body, /newer-archive/);
+    assert.match(archive.body, /older-archive/);
+    assert.doesNotMatch(archive.body, /active-plan/);
+    assert.match(archive.body, /data-restore-plan=/);
+    assert.match(archive.body, /No archived plans match the current filters/);
+    assert.equal(archive.body.indexOf('newer-archive') < archive.body.indexOf('older-archive'), true);
+
+    const restored = await app.inject({ method: 'POST', url: `/api/plans/${newerId}/unarchive` });
+    assert.equal(restored.statusCode, 200);
+    const postRestoreIndex = await app.inject({ method: 'GET', url: '/' });
+    assert.match(postRestoreIndex.body, /newer-archive/);
+    const postRestoreArchive = await app.inject({ method: 'GET', url: '/archive' });
+    assert.doesNotMatch(postRestoreArchive.body, /newer-archive/);
+    assert.match(postRestoreArchive.body, /older-archive/);
+  } finally {
+    await app.close();
+  }
+});
+
+test('empty archive page is quiet and archived shell shows restore state', async () => {
+  const app = createApp({ dbPath: tempDbPath('archive-empty-shell') });
+  try {
+    const empty = await app.inject({ method: 'GET', url: '/archive' });
+    assert.equal(empty.statusCode, 200);
+    assert.match(empty.body, /No archived plans yet/);
+
+    const registered = await app.inject({ method: 'POST', url: '/api/plans/register', payload: sampleRegisterPayload() });
+    const planId = registered.json().data.planId;
+    await app.inject({ method: 'POST', url: `/api/plans/${planId}/archive` });
+    const shell = await app.inject({ method: 'GET', url: `/p/${planId}` });
+    assert.equal(shell.statusCode, 200);
+    assert.match(shell.body, /Archived/);
+    assert.match(shell.body, /id="restore-plan"/);
+    assert.doesNotMatch(shell.body, />Archive plan</);
+  } finally {
+    await app.close();
+  }
+});
+
+test('register and filesystem discovery preserve archived state until explicit restore', () => {
+  const store = new PlanReviewStore(tempDbPath('archive-register-preserve'));
+  try {
+    const payload = sampleRegisterPayload({ watchMode: 'filesystem', sourcePath: '/tmp/sample/plan.html', sourceMtimeMs: 1, sourceSize: 10 });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    const archived = store.archivePlan(registered.planId).plan;
+    assert.ok(archived.archivedAt);
+    assert.deepEqual(store.listFilesystemPlans(), []);
+
+    const changedPayload = { ...payload, html: sampleHtml().replace('Register the plan.', 'Register the archived plan.'), fileHash: 'archived-sync-change', sourceMtimeMs: 2, sourceSize: 20 };
+    const changedRendered = renderPlan(changedPayload);
+    store.registerPlan(changedPayload, changedRendered.renderedHtml, changedRendered.warnings, 'filesystem_watch');
+
+    const stillArchived = store.getPlan(registered.planId).plan;
+    assert.equal(stillArchived.archivedAt, archived.archivedAt);
+    assert.equal(store.listPlans().length, 0);
+    assert.equal(store.listPlans({ includeArchived: true })[0].plan.archivedAt, archived.archivedAt);
+
+    const restored = store.unarchivePlan(registered.planId).plan;
+    assert.equal(restored.archivedAt, undefined);
+    assert.equal(store.listPlans().length, 1);
+    assert.equal(store.listFilesystemPlans()[0].planId, registered.planId);
+  } finally {
+    store.close();
   }
 });
 

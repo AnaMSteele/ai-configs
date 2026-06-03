@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan Reviewer Archive Viewer Plan</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b16;
+      --panel: #101827;
+      --panel-2: #0d1424;
+      --panel-3: #111827;
+      --border: #263248;
+      --border-strong: #334155;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --faint: #64748b;
+      --accent: #7dd3fc;
+      --accent-strong: #38bdf8;
+      --blue: #2563eb;
+      --green: #22c55e;
+      --green-dark: #166534;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --slate: #475569;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 6%, rgba(56,189,248,.15), transparent 30rem),
+        radial-gradient(circle at 84% 10%, rgba(251,113,133,.12), transparent 28rem),
+        linear-gradient(180deg, #070b16, #0b1020 45%, #070b16);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 40px 24px 72px; }
+    header.hero, section, article.phase, .decision-box {
+      border: 1px solid var(--border);
+      background: rgba(16,24,39,.82);
+      border-radius: 22px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.24);
+    }
+    header.hero { padding: 30px; margin-bottom: 22px; }
+    section { padding: 24px; margin: 18px 0; }
+    .eyebrow { color: var(--accent); font-size: 13px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 8px 0 12px; font-size: clamp(34px, 6vw, 68px); line-height: .95; letter-spacing: -.055em; }
+    h2 { margin: 0 0 12px; font-size: 26px; letter-spacing: -.02em; }
+    h3 { margin: 18px 0 8px; font-size: 20px; }
+    h4 { margin: 16px 0 6px; font-size: 16px; color: #dbeafe; }
+    p { color: var(--muted); margin: 0 0 12px; }
+    a { color: var(--accent); }
+    code { color: #dbeafe; background: #0f172a; padding: .12rem .35rem; border-radius: 6px; }
+    ul, ol { color: var(--muted); }
+    li + li { margin-top: 6px; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 18px; }
+    .meta-card { border: 1px solid var(--border); background: rgba(13,20,36,.78); border-radius: 16px; padding: 16px; }
+    .meta-card strong { color: var(--text); display: block; margin-bottom: 4px; }
+    .status-pill, .tag, .button, .seg-button, .mock-pill {
+      display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    }
+    .status-pill { background: rgba(251,191,36,.12); color: #fde68a; border: 1px solid rgba(251,191,36,.32); padding: 5px 10px; }
+    .tag { border: 1px solid rgba(125,211,252,.28); color: #bae6fd; padding: 3px 9px; margin: 2px 4px 2px 0; }
+    .progress-list { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; }
+    .progress-list label { display: flex; gap: 10px; align-items: flex-start; color: var(--muted); }
+    .progress-list input { margin-top: 4px; accent-color: var(--green); }
+    .decision-box { padding: 18px; background: linear-gradient(135deg, rgba(34,197,94,.12), rgba(56,189,248,.08)); border-color: rgba(34,197,94,.35); }
+    .mock-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-top: 18px; }
+    figure.mock { margin: 0; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; background: #0b1020; }
+    figure.mock.recommended { border-color: rgba(34,197,94,.55); box-shadow: 0 0 0 1px rgba(34,197,94,.18), 0 28px 70px rgba(0,0,0,.30); }
+    .mock-title { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); background: rgba(15,23,42,.86); }
+    .mock-title strong { color: var(--text); }
+    figcaption { color: var(--muted); padding: 14px 16px 16px; border-top: 1px solid var(--border); font-size: 14px; }
+    .mock-screen { padding: 16px; min-height: 380px; }
+    .mock-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .mock-h1 { font-size: 20px; font-weight: 850; color: var(--text); letter-spacing: -.025em; }
+    .toolbar { display: grid; gap: 8px; margin-bottom: 14px; }
+    .toolbar.three { grid-template-columns: auto minmax(0,1fr) 110px; }
+    .toolbar.two { grid-template-columns: minmax(0,1fr) 110px; }
+    .field { border: 1px solid var(--border-strong); color: var(--muted); background: #0f172a; border-radius: 9px; padding: 8px 10px; min-height: 36px; font-size: 12px; }
+    .segments { display: inline-grid; grid-auto-flow: column; border: 1px solid var(--border-strong); background: #0f172a; border-radius: 999px; padding: 3px; }
+    .seg-button { padding: 5px 10px; color: var(--muted); }
+    .seg-button.active { background: #1d4ed8; color: #dbeafe; }
+    .repo-label { color: var(--text); font-size: 13px; font-weight: 850; margin: 12px 0 8px; }
+    .plan-card { border: 1px solid var(--blue); border-left: 5px solid var(--blue); background: var(--panel-3); border-radius: 12px; padding: 12px; margin: 8px 0; }
+    .plan-card.complete { border-color: var(--green); border-left-color: var(--green); }
+    .plan-card.archived { border-color: var(--slate); border-left-color: var(--slate); opacity: .92; }
+    .plan-card-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .plan-card h4 { margin: 0 0 6px; color: var(--text); font-size: 15px; }
+    .path { color: #cbd5e1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: #0f172a; padding: 4px 6px; border-radius: 6px; display: inline-block; }
+    .button { background: #1e293b; border: 1px solid var(--slate); color: var(--text); padding: 6px 9px; white-space: nowrap; }
+    .button.primary { border-color: rgba(125,211,252,.55); color: #bae6fd; }
+    .button.restore { border-color: rgba(34,197,94,.5); color: #bbf7d0; }
+    .progress-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; margin: 10px 0; }
+    .progress-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+    .segment { height: 10px; border: 1px solid var(--faint); border-radius: 3px; }
+    .segment.done { background: var(--green); border-color: var(--green); }
+    .count { color: var(--muted); font-size: 11px; }
+    .mock-pill { padding: 3px 8px; background: #1d4ed8; color: #dbeafe; }
+    .mock-pill.green { background: var(--green-dark); color: #dcfce7; }
+    .mock-pill.archived { background: rgba(71,85,105,.35); color: #cbd5e1; border: 1px solid rgba(148,163,184,.25); }
+    .archive-drawer { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .drawer-summary { display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; background: rgba(15,23,42,.7); color: var(--text); font-weight: 800; }
+    .archive-row { display: grid; grid-template-columns: minmax(0,1fr) auto auto; gap: 10px; align-items: center; border-bottom: 1px solid rgba(38,50,72,.75); padding: 10px 2px; color: var(--muted); font-size: 13px; }
+    .archive-row strong { color: var(--text); }
+    .toast { display: inline-flex; gap: 10px; align-items: center; margin-top: 12px; border: 1px solid rgba(34,197,94,.45); background: rgba(34,197,94,.12); color: #dcfce7; border-radius: 12px; padding: 9px 11px; font-size: 12px; }
+    .split-link { color: var(--accent); font-weight: 800; font-size: 13px; }
+    .mock.wide { grid-column: 1 / -1; }
+    .browser-frame { border: 1px solid var(--border); border-radius: 18px; overflow: hidden; background: #020617; box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
+    .browser-topbar { display: grid; grid-template-columns: 72px minmax(0,1fr); gap: 12px; align-items: center; padding: 10px 14px; background: #0f172a; border-bottom: 1px solid var(--border); }
+    .traffic { display: flex; gap: 7px; }
+    .traffic span { width: 11px; height: 11px; border-radius: 50%; background: #475569; }
+    .traffic span:nth-child(1) { background: #fb7185; }
+    .traffic span:nth-child(2) { background: #fbbf24; }
+    .traffic span:nth-child(3) { background: #22c55e; }
+    .urlbar { color: #94a3b8; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; background: #020617; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .archive-page { padding: 28px; min-height: 560px; background: radial-gradient(circle at 18% 0%, rgba(56,189,248,.10), transparent 26rem), #0b1020; }
+    .archive-page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 22px; }
+    .archive-title { font-size: 34px; line-height: 1; letter-spacing: -.04em; color: var(--text); font-weight: 900; }
+    .archive-subtitle { max-width: 620px; color: var(--muted); margin-top: 8px; }
+    .archive-layout { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 18px; }
+    .archive-filters { border: 1px solid var(--border); border-radius: 16px; background: rgba(15,23,42,.72); padding: 14px; display: grid; gap: 10px; align-self: start; }
+    .archive-results { display: grid; gap: 12px; }
+    .archive-card-wide { border: 1px solid var(--slate); border-left: 5px solid var(--slate); border-radius: 16px; background: rgba(17,24,39,.92); padding: 16px; }
+    .archive-card-wide header { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+    .archive-card-wide h4 { font-size: 18px; margin: 0 0 6px; }
+    .archive-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .archive-card-grid { display: grid; grid-template-columns: minmax(0,1fr) 170px; gap: 14px; align-items: center; }
+    .flow-split { display: grid; grid-template-columns: minmax(0,1fr) 76px minmax(0,1fr); gap: 14px; align-items: stretch; }
+    .flow-arrow { display: grid; place-items: center; color: var(--accent); font-weight: 900; font-size: 30px; }
+    .index-page { padding: 24px; min-height: 540px; background: radial-gradient(circle at 22% 0%, rgba(37,99,235,.11), transparent 24rem), #0b1020; }
+    .index-page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+    .index-title { font-size: 28px; line-height: 1; letter-spacing: -.04em; color: var(--text); font-weight: 900; }
+    .nav-callout { border: 1px solid rgba(125,211,252,.45); background: rgba(56,189,248,.10); color: #bae6fd; border-radius: 12px; padding: 8px 10px; font-size: 12px; font-weight: 800; }
+    .phase { padding: 20px; margin: 14px 0; }
+    .phase h3 { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; color: var(--muted); font-size: 14px; }
+    th, td { border: 1px solid var(--border); padding: 10px; vertical-align: top; }
+    th { color: var(--text); background: rgba(15,23,42,.74); text-align: left; }
+    .callout { border: 1px solid rgba(251,191,36,.34); background: rgba(251,191,36,.08); border-radius: 16px; padding: 16px; color: #fde68a; }
+    @media (max-width: 760px) {
+      main { padding: 24px 14px 52px; }
+      .toolbar.three, .toolbar.two, .archive-row, .progress-row { grid-template-columns: 1fr; }
+      .mock-screen { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero" id="title">
+      <div class="eyebrow">Plan-reviewer UI plan</div>
+      <h1>Add an archive viewer to the plan index.</h1>
+      <p>This is a planning artifact only. It does not change product code. It uses Claude Code’s read-only UI design pass as an input, with the selected dedicated archive-page direction now shown as the definitive mock set.</p>
+      <div class="meta-grid" id="summary-cards">
+        <div class="meta-card"><strong>Status</strong><span class="status-pill">execution-ready</span></div>
+        <div class="meta-card"><strong>Selected option</strong><span>Dedicated <code>/archive</code> page with index navigation.</span></div>
+        <div class="meta-card"><strong>Primary code surface</strong><span><code>tools/plan-reviewer/src/server/app.ts</code> and <code>storage/database.ts</code>.</span></div>
+      </div>
+    </header>
+
+    <section id="goal">
+      <h2>Goal</h2>
+      <p>Make archived plans discoverable from the plan viewer so a user can switch from active plans to archived plans, inspect what was archived, and recover from accidental archive without relying on re-registering a plan as hidden tribal knowledge.</p>
+    </section>
+
+    <section id="why-this-plan-exists">
+      <h2>Why this plan exists</h2>
+      <p>The archive backend already exists enough to hide archived plans from the index, but the user-facing workflow is incomplete: once a plan is archived, the normal index no longer exposes an archive view or restore path. This plan defines the UI direction before implementation.</p>
+    </section>
+
+    <section id="authority-inputs">
+      <h2>Authority and inputs</h2>
+      <ul>
+        <li>User request: create an HTML plan, include a few UI variations, use Claude Code to design the UI, present it through the viewer, and do not change product code.</li>
+        <li>Repo guidance: <code>AGENTS.md</code> says this repo works directly on main, reviewed HTML plans live under <code>thoughts/plans/</code>, and product code should not change during planning.</li>
+        <li>Skill guidance: <code>planning-workflow</code>, <code>html-plan-reviewer</code>, <code>reviewed-html-plan</code>, <code>product-principles</code>, and <code>claude-code-review</code>.</li>
+        <li>Claude Code read-only design pass: compared three directions; user selected the dedicated archive page direction and removed the alternatives.</li>
+      </ul>
+    </section>
+
+    <section id="current-implementation-reality">
+      <h2>Current implementation reality</h2>
+      <ul>
+        <li><code>indexHtml()</code> renders the plan review index as a server-generated dark page with search, repo filter, progress bars, comment counts, and an <strong>Archive</strong> button per card.</li>
+        <li><code>GET /</code> currently calls <code>store.listPlans()</code>, which excludes archived plans by default.</li>
+        <li><code>GET /api/plans?includeArchived=true</code> already includes archived plans and exposes <code>plan.archivedAt</code>.</li>
+        <li><code>POST /api/plans/:planId/archive</code> exists and sets <code>archived_at</code>.</li>
+        <li>There is no explicit unarchive/restore endpoint. Re-registering a plan currently clears <code>archived_at</code>, but that is not an obvious recovery workflow.</li>
+        <li>The review shell can open an archived plan by ID, but its nav button still presents <strong>Archive plan</strong> rather than restore-aware state.</li>
+      </ul>
+    </section>
+
+    <section id="progress">
+      <h2>Progress</h2>
+      <ul class="progress-list">
+        <li id="progress-p1"><label><input type="checkbox" checked disabled> P1 — Repo reality inspected for archive support.</label></li>
+        <li id="progress-p2"><label><input type="checkbox" checked disabled> P2 — Claude Code UI design variations gathered.</label></li>
+        <li id="progress-p3"><label><input type="checkbox" checked disabled> P3 — User selected the dedicated archive page direction.</label></li>
+        <li id="progress-p4"><label><input type="checkbox" checked disabled> P4 — Implementation plan is finalized for /archive.</label></li>
+        <li id="progress-p5"><label><input type="checkbox" checked disabled> P5 — Product code implementation completed in scoped execution run.</label></li>
+      </ul>
+    </section>
+
+    <section id="resume-instructions">
+      <h2>Resume instructions</h2>
+      <p>Read this document fully, then begin execution at <a href="#phase-p1-contracts">P1 — Archive restore contract</a> and continue phase-by-phase through P3. Treat the Progress checkboxes as planning history only; P5 marks that product-code implementation is a separate future run, not the first execution phase. Do not reintroduce removed UI variations. The implementation scope is locked to the dedicated <code>/archive</code> page, active-index navigation, explicit restore support, truthful archived state in the review shell, and tests that prove the active/archive partition.</p>
+    </section>
+
+    <section id="product-intent-alignment">
+      <h2>Product intent alignment</h2>
+      <p>The right action should be obvious and recoverable. Archiving should remove noise from the active index, but not make plans feel lost. The plan viewer should show archived state where the user naturally looks, provide a safe restore path, and avoid exporting recovery to a separate re-registration command.</p>
+    </section>
+
+    <section id="locked-decisions">
+      <h2>Locked decisions</h2>
+      <ul>
+        <li>Archived plans remain hidden from the default active index and are viewed from a dedicated <code>/archive</code> page.</li>
+        <li>The dedicated archive page must reuse existing plan card metadata: repo, slug, path, progress, comment counts, activity, and <code>archivedAt</code>.</li>
+        <li>Recovery must become explicit as <strong>Restore</strong>/<strong>Unarchive</strong>, not implicit through re-registration.</li>
+        <li>The archive UI should keep the current dark-mode plan-reviewer visual language and provide a clear return path to the active index.</li>
+        <li>Plan-authored mocks in this file are static. The reviewer shell owns interactivity.</li>
+        <li>Re-registering or filesystem source sync must preserve archive state; only the explicit Restore/Unarchive action should move a plan back to active.</li>
+        <li>Archive and restore should be safe for stale tabs: repeat Archive or Restore calls should be idempotent enough to leave the plan in the requested final state and return truthful metadata.</li>
+      </ul>
+    </section>
+
+    <section id="design-mocks">
+      <h2>Definitive dedicated archive viewer mocks</h2>
+      <p>Option C is selected. This section now shows only the definitive dedicated archive viewer direction: the archive page itself and the main-index navigation path into it.</p>
+      <div class="mock-grid">
+        <figure class="mock wide" id="mock-dedicated-archive-page">
+          <div class="mock-title"><strong>Dedicated archive page · normal browser viewport</strong><span class="tag">selected direction</span></div>
+          <div class="mock-screen" aria-label="Dedicated archive page browser viewport mock">
+            <div class="browser-frame">
+              <div class="browser-topbar"><div class="traffic"><span></span><span></span><span></span></div><div class="urlbar">http://mbp.braid-python.ts.net:4317/archive</div></div>
+              <div class="archive-page">
+                <div class="archive-page-head">
+                  <div>
+                    <div class="eyebrow">Plan Review Archive</div>
+                    <div class="archive-title">Archived Plans</div>
+                    <p class="archive-subtitle">A dedicated archive page gives older plans room to breathe: full-width cards, explicit restore actions, and enough context to inspect before moving a plan back to active.</p>
+                  </div>
+                  <a class="button primary" href="#mock-dedicated-archive-page">← Active index</a>
+                </div>
+                <div class="archive-layout">
+                  <aside class="archive-filters" aria-label="Archive filters">
+                    <div class="field">Search archived plans</div>
+                    <div class="field">Repo: ai-configs ▾</div>
+                    <div class="field">Sort: newest archived ▾</div>
+                    <span class="mock-pill archived">12 archived</span>
+                    <p>Archived plans stay out of the default index but remain inspectable by repo, status, and recent activity.</p>
+                  </aside>
+                  <div class="archive-results">
+                    <article class="archive-card-wide">
+                      <header>
+                        <div><h4>ai-configs / html-plan-review-service</h4><span class="path">thoughts/plans/html-plan-review-service.html</span></div>
+                        <div class="archive-actions"><span class="button primary">Open</span><span class="button restore">Restore</span></div>
+                      </header>
+                      <div class="archive-card-grid">
+                        <div><div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment"></span></div><span class="count">2 of 3 phases</span></div><p><span class="mock-pill archived">Archived 2h ago</span> pending 0 · claimed 0 · acknowledged 1 · resolved 4 · activity today</p></div>
+                        <p>Use <strong>Open</strong> when the user wants to inspect comments or plan content before restoring. Use <strong>Restore</strong> when the archive action was accidental.</p>
+                      </div>
+                    </article>
+                    <article class="archive-card-wide">
+                      <header>
+                        <div><h4>ai-configs / plan-reviewer-favicon-options</h4><span class="path">thoughts/plans/plan-reviewer-favicon-options.html</span></div>
+                        <div class="archive-actions"><span class="button primary">Open</span><span class="button restore">Restore</span></div>
+                      </header>
+                      <div class="archive-card-grid">
+                        <div><div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment done"></span></div><span class="count">3 of 3 phases</span></div><p><span class="mock-pill archived">Archived yesterday</span> pending 0 · resolved 1 · activity yesterday</p></div>
+                        <p>The full page can absorb archive-only controls such as sort by archived date without crowding the active index.</p>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>The selected archive viewer is a dedicated <code>/archive</code> page with a filter rail, full-width archived plan cards, and separate Open versus Restore actions.</figcaption>
+        </figure>
+
+        <figure class="mock wide" id="mock-main-index-full-width">
+          <div class="mock-title"><strong>Main index · full-width browser layout</strong><span class="tag">entry point</span></div>
+          <div class="mock-screen" aria-label="Full-width main index mock with archive navigation">
+            <div class="browser-frame">
+              <div class="browser-topbar"><div class="traffic"><span></span><span></span><span></span></div><div class="urlbar">http://mbp.braid-python.ts.net:4317/</div></div>
+              <div class="index-page">
+                <div class="index-page-head">
+                  <div>
+                    <div class="index-title">Plan Review Index</div>
+                    <p>Active plans stay as the default landing view. The archive entry is a page-level navigation target, not a per-card mode.</p>
+                  </div>
+                  <span class="nav-callout">Archived (12) →</span>
+                </div>
+                <div class="toolbar two"><div class="field">Filter plans</div><div class="field">All repos ▾</div></div>
+                <div class="repo-label">ai-configs</div>
+                <article class="plan-card complete">
+                  <div class="plan-card-head"><h4>ai-configs / archive-viewer</h4><span class="button">Archive</span></div>
+                  <span class="path">thoughts/plans/plan-reviewer-archive-viewer.html</span>
+                  <div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment"></span></div><span class="count">2 of 3</span></div>
+                  <p><span class="mock-pill green">Complete</span> pending 0 · claimed 0 · resolved 2 · activity today</p>
+                </article>
+                <article class="plan-card">
+                  <div class="plan-card-head"><h4>ai-configs / source-sync</h4><span class="button">Archive</span></div>
+                  <span class="path">thoughts/plans/html-plan-reviewer-authoritative-sync.html</span>
+                  <div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment"></span><span class="segment"></span></div><span class="count">1 of 3</span></div>
+                  <p><span class="mock-pill">Incomplete</span> pending 1 · claimed 0 · resolved 3</p>
+                </article>
+                <article class="plan-card complete">
+                  <div class="plan-card-head"><h4>ai-configs / ltui-linear-api-usage</h4><span class="button">Archive</span></div>
+                  <span class="path">thoughts/plans/ltui-linear-api-usage-optimization.md</span>
+                  <div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment done"></span></div><span class="count">3 of 3</span></div>
+                  <p><span class="mock-pill green">Complete</span> pending 0 · resolved 5</p>
+                </article>
+                <p class="nav-callout">Clicking <strong>Archived (12) →</strong> navigates to the full archive page shown below.</p>
+              </div>
+            </div>
+          </div>
+          <figcaption>The main index remains full-width and active-only. The archive affordance lives in the page header so users can switch to archived plans before choosing a specific plan.</figcaption>
+        </figure>
+
+        <div class="flow-arrow" aria-hidden="true">↓</div>
+
+        <figure class="mock wide" id="mock-archive-page-from-index-full-width">
+          <div class="mock-title"><strong>Archive page from index · full-width browser layout</strong><span class="tag">destination</span></div>
+          <div class="mock-screen" aria-label="Full-width archive page reached from main index">
+            <div class="browser-frame">
+              <div class="browser-topbar"><div class="traffic"><span></span><span></span><span></span></div><div class="urlbar">http://mbp.braid-python.ts.net:4317/archive</div></div>
+              <div class="archive-page">
+                <div class="archive-page-head">
+                  <div><div class="archive-title">Archived Plans</div><p class="archive-subtitle">The archive page keeps the familiar index data but changes the page status and actions for archived plans.</p></div>
+                  <a class="button primary" href="#mock-main-index-full-width">← Active index</a>
+                </div>
+                <div class="archive-layout">
+                  <aside class="archive-filters" aria-label="Archive filters">
+                    <div class="field">Filter archived plans</div>
+                    <div class="field">Repo: ai-configs ▾</div>
+                    <div class="field">Sort: newest archived ▾</div>
+                    <span class="mock-pill archived">12 archived</span>
+                    <p>Filters mirror the active index, with archive-specific sorting available because this page has room for it.</p>
+                  </aside>
+                  <div class="archive-results">
+                    <article class="archive-card-wide">
+                      <header>
+                        <div><h4>ai-configs / html-plan-review-service</h4><span class="path">thoughts/plans/html-plan-review-service.html</span></div>
+                        <div class="archive-actions"><span class="button primary">Open</span><span class="button restore">Restore</span></div>
+                      </header>
+                      <div class="archive-card-grid">
+                        <div><div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment"></span></div><span class="count">2 of 3 phases</span></div><p><span class="mock-pill archived">Archived 2h ago</span> pending 0 · claimed 0 · resolved 4</p></div>
+                        <p><strong>Open</strong> inspects the archived plan; <strong>Restore</strong> moves it back to the active index.</p>
+                      </div>
+                    </article>
+                    <article class="archive-card-wide">
+                      <header>
+                        <div><h4>ai-configs / favicon-options</h4><span class="path">thoughts/plans/plan-reviewer-favicon-options.html</span></div>
+                        <div class="archive-actions"><span class="button primary">Open</span><span class="button restore">Restore</span></div>
+                      </header>
+                      <div class="archive-card-grid">
+                        <div><div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment done"></span></div><span class="count">3 of 3 phases</span></div><p><span class="mock-pill archived">Archived yesterday</span> pending 0 · resolved 1</p></div>
+                        <p>The dedicated page can grow archive-only controls without compressing the active index.</p>
+                      </div>
+                    </article>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption>The archive destination is also full-width, matching a normal browser viewport rather than a compressed side-by-side comparison.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="selected-direction">
+      <h2>Selected direction</h2>
+      <div class="decision-box">
+        <h3>Build the dedicated archive page.</h3>
+        <p>The selected design is the former Option C: a dedicated <code>/archive</code> page reached from a header-level <strong>Archived (count) →</strong> link on the normal active index. The active index remains the default golden path, while archived plans get a full browser page with search, repo filter, sort, Open, and Restore actions.</p>
+      </div>
+    </section>
+
+    <section id="acceptance-criteria">
+      <h2>Acceptance criteria</h2>
+      <ol>
+        <li id="ac-1">The default index continues to show only active plans in the same card layout users have today.</li>
+        <li id="ac-2">The user can reveal archived plans from the index without knowing an API flag or plan ID.</li>
+        <li id="ac-3">Archived plans show enough context to identify them: repo, slug, path, archived timestamp, progress, and comment counts.</li>
+        <li id="ac-4">The user can restore an archived plan explicitly from the archive viewer.</li>
+        <li id="ac-5">After restore, the plan appears in the active index and no longer appears in the archived view.</li>
+        <li id="ac-6">Empty archived state is clear and non-alarming.</li>
+        <li id="ac-7">Opening an archived plan directly does not show a misleading archive-only primary action.</li>
+        <li id="ac-8">Re-registering or filesystem source sync for an archived plan does not silently restore it to the active index.</li>
+        <li id="ac-9">Restore failures keep the archived card visible and provide retry guidance.</li>
+      </ol>
+    </section>
+
+    <section id="bdd-scenarios">
+      <h2>BDD scenarios</h2>
+      <article id="bdd-archive-discovery">
+        <h3>Archived plan discovery</h3>
+        <p><strong>Given</strong> at least one plan has <code>archivedAt</code>, <strong>when</strong> the user opens the plan index and follows the <strong>Archived (count) →</strong> link, <strong>then</strong> <code>/archive</code> shows the archived plan with repo, slug, path, archive time, progress, and comment counts.</p>
+      </article>
+      <article id="bdd-active-default">
+        <h3>Active index remains default</h3>
+        <p><strong>Given</strong> active and archived plans exist, <strong>when</strong> the user opens <code>/</code>, <strong>then</strong> active plans remain primary and archived plans are not mixed into active card groups; archived plans are reached through the index-level archive link.</p>
+      </article>
+      <article id="bdd-restore">
+        <h3>Restore from archive</h3>
+        <p><strong>Given</strong> a plan is archived, <strong>when</strong> the user clicks Restore on <code>/archive</code>, <strong>then</strong> the system clears <code>archivedAt</code>, removes the card from archived results, and the plan is available in active results.</p>
+      </article>
+      <article id="bdd-empty-archive">
+        <h3>Empty archive</h3>
+        <p><strong>Given</strong> there are no archived plans, <strong>when</strong> the user opens the archive page, <strong>then</strong> the page shows a quiet empty state: “No archived plans yet.”</p>
+      </article>
+      <article id="bdd-archive-count-staleness">
+        <h3>Archive count accuracy and staleness</h3>
+        <p><strong>Given</strong> the index header shows <strong>Archived (N) →</strong>, <strong>when</strong> a plan is archived, restored, or re-registered, <strong>then</strong> the count reflects the current archived set after reload and never counts active plans.</p>
+      </article>
+      <article id="bdd-active-archive-partition">
+        <h3>Active/archive partition is strict</h3>
+        <p><strong>Given</strong> one active and one archived plan share similar slugs or paths, <strong>when</strong> the user searches either page, <strong>then</strong> active results appear only on <code>/</code> and archived results appear only on <code>/archive</code>.</p>
+      </article>
+      <article id="bdd-filter-no-results">
+        <h3>Filtered archive has no matches</h3>
+        <p><strong>Given</strong> archived plans exist, <strong>when</strong> the user applies a repo or text filter that matches none of them, <strong>then</strong> <code>/archive</code> shows a scoped empty state explaining that no archived plans match the current filters and offers a clear way to clear filters.</p>
+      </article>
+      <article id="bdd-sort-order">
+        <h3>Archive sort order is deterministic</h3>
+        <p><strong>Given</strong> multiple archived plans have different archive and activity times, <strong>when</strong> the user opens <code>/archive</code>, <strong>then</strong> the default sort is newest archived first and ties are stable so cards do not jump unpredictably across reloads.</p>
+      </article>
+      <article id="bdd-restore-failure">
+        <h3>Restore failure is recoverable</h3>
+        <p><strong>Given</strong> a restore request fails because the plan no longer exists, the service is unavailable, or validation fails, <strong>when</strong> the user clicks Restore, <strong>then</strong> the card is not silently removed and the UI shows an actionable error with retry guidance.</p>
+      </article>
+      <article id="bdd-double-restore">
+        <h3>Double restore and stale tabs are safe</h3>
+        <p><strong>Given</strong> two browser tabs show the same archived plan, <strong>when</strong> the plan is restored in one tab and the user clicks Restore in the stale tab, <strong>then</strong> the operation is idempotent or returns a clear already-restored state without re-archiving, duplicating, or erroring cryptically.</p>
+      </article>
+      <article id="bdd-open-archived-plan">
+        <h3>Open archived plan preserves context</h3>
+        <p><strong>Given</strong> an archived plan has comments and progress, <strong>when</strong> the user clicks Open from <code>/archive</code>, <strong>then</strong> the existing review shell opens that plan and clearly indicates the plan is archived with a path back to <code>/archive</code> or the active index.</p>
+      </article>
+      <article id="bdd-review-shell-archive-state">
+        <h3>Review shell handles archived state</h3>
+        <p><strong>Given</strong> the user opens an archived plan directly at <code>/p/:planId</code>, <strong>when</strong> the shell loads metadata, <strong>then</strong> it does not present a misleading “Archive plan” primary action; it should show Restore or archived status instead.</p>
+      </article>
+      <article id="bdd-register-clears-archive">
+        <h3>Re-registering an archived plan does not surprise the user</h3>
+        <p><strong>Given</strong> current storage clears <code>archivedAt</code> on register, <strong>when</strong> an archived plan is re-registered after this work, <strong>then</strong> <code>archivedAt</code> is preserved and only the explicit Restore/Unarchive action moves the plan back to active.</p>
+      </article>
+      <article id="bdd-source-sync-archived">
+        <h3>Archived source-sync plans stay quiet</h3>
+        <p><strong>Given</strong> an archived plan has filesystem source sync enabled, <strong>when</strong> the source file changes or the watcher scans filesystem plans, <strong>then</strong> source sync does not silently restore the plan to active; continuous syncing of archived plans remains out of scope.</p>
+      </article>
+      <article id="bdd-comments-on-archived">
+        <h3>Comments on archived plans remain reachable</h3>
+        <p><strong>Given</strong> an archived plan has pending or resolved comments, <strong>when</strong> the user opens it from <code>/archive</code>, <strong>then</strong> comment counts, anchors, and queue status remain visible and no comment data is lost or hidden by the archive state.</p>
+      </article>
+      <article id="bdd-keyboard-accessibility">
+        <h3>Keyboard and accessible navigation</h3>
+        <p><strong>Given</strong> a keyboard-only user opens the index or archive page, <strong>when</strong> they tab through controls, <strong>then</strong> Archived, Active index, Open, Restore, filters, and sort controls are reachable in a logical order with descriptive labels.</p>
+      </article>
+      <article id="bdd-small-viewport">
+        <h3>Small viewport layout remains usable</h3>
+        <p><strong>Given</strong> the archive page is viewed on a narrow browser window, <strong>when</strong> filters and archived cards wrap, <strong>then</strong> critical actions remain visible, cards do not overflow horizontally, and the Active index return path remains near the top.</p>
+      </article>
+      <article id="bdd-direct-route-refresh">
+        <h3>Direct archive route and refresh work</h3>
+        <p><strong>Given</strong> the user bookmarks or refreshes <code>/archive</code>, <strong>when</strong> the route loads without prior index state, <strong>then</strong> it fetches/renders archived plans directly and does not depend on client state from <code>/</code>.</p>
+      </article>
+    </section>
+
+    <section id="phase-plan">
+      <h2>Phase-by-phase execution plan</h2>
+      <p class="callout">This section is scoped to the selected dedicated <code>/archive</code> direction. No alternate UI variations remain in scope, and product-code implementation must happen only in a separate execution run.</p>
+
+      <article class="phase" id="phase-p1-contracts">
+        <h3>P1 — Archive restore contract</h3>
+        <h4>End State</h4>
+        <p>The storage and API contracts make archive state explicit, recoverable, and stable across registration and filesystem-watch scans.</p>
+        <h4>Tests first</h4>
+        <p>Add contract coverage for AC-4, AC-5, and the re-register/source-sync BDD cases: archive a plan, restore it, verify default <code>/api/plans</code> includes it again without <code>archivedAt</code>, verify <code>includeArchived=true</code> remains truthful, verify re-registering an archived plan does not clear <code>archivedAt</code>, and verify filesystem-watch discovery does not promote archived plans back to active.</p>
+        <h4>Expected files</h4>
+        <p><code>tools/plan-reviewer/src/storage/database.ts</code>, <code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code>.</p>
+        <h4>Work</h4>
+        <p>Add <code>unarchivePlan()</code> to clear <code>archived_at</code>, emit <code>plan.unarchived</code>, and add <code>POST /api/plans/:planId/unarchive</code>. Make archive and unarchive leave the plan in the requested final state for repeat/stale-tab calls. Update <code>registerPlan()</code> so upserts preserve existing <code>archived_at</code> unless the explicit unarchive endpoint is called. Preserve the current boundary that filesystem-watch discovery skips archived plans; this phase only tests that the watcher path does not restore archived plans accidentally.</p>
+        <h4>Verify</h4>
+        <p><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></p>
+      </article>
+
+      <article class="phase" id="phase-p2-archive-page">
+        <h3>P2 — Dedicated archive page and index navigation</h3>
+        <h4>End State</h4>
+        <p>The normal index exposes an <strong>Archived (count) →</strong> navigation affordance, and <code>/archive</code> renders only archived plans as full-width cards with Open and Restore controls.</p>
+        <h4>Tests first</h4>
+        <p>Extend contract tests for AC-1 through AC-6: active cards still render by default, archived cards do not render on <code>/</code>, the index exposes archive navigation/count, <code>/archive</code> renders archived plans newest-archived-first with stable ties, empty and filtered-empty states are clear, and Restore controls appear on archived cards.</p>
+        <h4>Expected files</h4>
+        <p><code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code>.</p>
+        <h4>Work</h4>
+        <p>Add archived counts/navigation to <code>GET /</code>. Add <code>GET /archive</code> using <code>store.listPlans({ includeArchived: true })</code> filtered to plans with <code>archivedAt</code>, with search, repo filter, newest-archived-first sort, stable tie-breaking, full-width archived cards, Open links, Restore controls, and clear empty/filter-empty states. Wire Restore on the archive page to <code>POST /api/plans/:planId/unarchive</code>, then remove the restored card and update visible counts after success. If restore fails on <code>/archive</code>, leave the card visible and show actionable retry guidance.</p>
+        <h4>Verify</h4>
+        <p><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></p>
+      </article>
+
+      <article class="phase" id="phase-p3-browser-flow">
+        <h3>P3 — Review shell state and browser flow verification</h3>
+        <h4>End State</h4>
+        <p>The real browser flow proves accidental archive can be reversed, and the review shell no longer shows misleading archive-only actions for archived plans.</p>
+        <h4>Tests first</h4>
+        <p>Extend the existing Playwright e2e fixture to cover archive from index, follow the Archived link to <code>/archive</code>, open an archived plan, confirm the shell exposes archived status or Restore instead of a misleading Archive primary action, simulate a failed Restore to confirm the archived card remains visible with actionable retry guidance, restore the plan successfully, and confirm the active card returns.</p>
+        <h4>Expected files</h4>
+        <p><code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code>.</p>
+        <h4>Work</h4>
+        <p>Update review-shell metadata handling so archived plans show archived status plus Restore/return navigation instead of a misleading <strong>Archive plan</strong> action. Keep the interaction simple: successful archive/restore may reload or remove the relevant card; failed restore must leave the card visible with actionable retry guidance.</p>
+        <h4>Verify</h4>
+        <p><code>cd tools/plan-reviewer &amp;&amp; bun run test:e2e</code></p>
+      </article>
+    </section>
+
+    <section id="test-coverage-matrix">
+      <h2>Test coverage matrix</h2>
+      <table>
+        <thead><tr><th>Acceptance / scenarios</th><th>Planned test layer</th><th>Expected files</th><th>Verify</th></tr></thead>
+        <tbody>
+          <tr><td>AC-1, AC-2, AC-3, AC-6; discovery, active default, strict partition, empty/filter-empty, deterministic sort</td><td>HTTP contract assertions against rendered <code>/</code>, <code>/archive</code>, and <code>/api/plans</code></td><td><code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></td></tr>
+          <tr><td>AC-4, AC-5, AC-8, AC-9; restore, double restore, re-register/source-sync archive stability, restore failure</td><td>Store/API contract tests for archive lifecycle, idempotent final state, register upsert behavior, and filesystem-watch discovery not restoring archived plans</td><td><code>tools/plan-reviewer/src/storage/database.ts</code>, <code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></td></tr>
+          <tr><td>AC-7; open archived plan, review-shell archived state, comments remain reachable</td><td>HTTP shell assertion plus Playwright e2e check when browser behavior changes</td><td><code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test:e2e</code></td></tr>
+          <tr><td>Keyboard accessibility, small viewport, direct route refresh</td><td>Playwright/browser fixture and manual visual check of the shipped plan-reviewer UI</td><td><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test:e2e</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="verification-strategy">
+      <h2>Verification strategy</h2>
+      <ul>
+        <li>Contract tests prove archive/unarchive state transitions and API/index visibility rules.</li>
+        <li>HTML index assertions prove archived controls are rendered without regressing active cards.</li>
+        <li>Browser fixture verifies the real operator flow: archive from the active index, navigate to <code>/archive</code>, inspect archived state, restore, and confirm active visibility returns.</li>
+        <li>Manual visual check in the plan-reviewer UI confirms the dedicated archive page preserves the current dark index style and navigation is obvious.</li>
+      </ul>
+    </section>
+
+    <section id="readiness-gates">
+      <h2>Readiness gates</h2>
+      <ul>
+        <li>No unresolved product questions remain for the selected dedicated <code>/archive</code> direction.</li>
+        <li>Codex and Claude Code plan reviews must agree by substance that this plan is execution-ready before a later execution run starts.</li>
+        <li>Browser-review comments for this plan should remain acknowledged/resolved before execution handoff.</li>
+      </ul>
+    </section>
+
+    <section id="delivery-order">
+      <h2>Delivery order</h2>
+      <ol>
+        <li>Use the selected dedicated archive page direction.</li>
+        <li>Implement restore and archive-state persistence contract first.</li>
+        <li>Implement archive route/index navigation second.</li>
+        <li>Implement review-shell archived state and browser-flow verification third.</li>
+      </ol>
+    </section>
+
+    <section id="non-goals">
+      <h2>Non-goals</h2>
+      <ul>
+        <li>No authentication, permissions, or private archive visibility changes.</li>
+        <li>No bulk archive management.</li>
+        <li>No archive retention policy or deletion flow.</li>
+        <li>No Markdown companion plan.</li>
+        <li>No product-code changes as part of this planning request.</li>
+      </ul>
+    </section>
+
+    <section id="decisions-deviations-log">
+      <h2>Decisions / Deviations log</h2>
+      <ul>
+        <li><strong>2026-06-02:</strong> Created an HTML design-selection plan because the user initially asked for multiple mock variations to choose from.</li>
+        <li><strong>2026-06-02:</strong> Claude Code compared three directions and flagged explicit unarchive as the shared backend prerequisite.</li>
+        <li><strong>2026-06-02:</strong> User selected the dedicated archive page direction, so the plan removed the unselected variations and now shows only definitive mocks for that direction.</li>
+        <li><strong>2026-06-02:</strong> First Codex and Claude Code readiness reviews found stale verify commands, ambiguous re-register behavior, missing BDD-to-phase mapping, source-sync scope mismatch, and resume/status ambiguity; the plan was revised to lock those contracts before implementation.</li>
+        <li><strong>2026-06-02:</strong> Second Codex and Claude Code readiness reviews both returned <code>PLAN_EXECUTION_READY</code>. Non-blocking restore-failure test clarity was folded into P2/P3.</li>
+        <li><strong>2026-06-02:</strong> Scoped implementation completed the dedicated <code>/archive</code> page, explicit restore endpoint, archive-state preservation, archived review-shell state, contract tests, and browser-flow verification.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

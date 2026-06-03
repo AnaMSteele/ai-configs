@@ -55,14 +55,22 @@ function progressHtml(progress: ReturnType<PlanReviewStore['listPlans']>[number]
   return `<div class="progress-row"><div class="progress-bar" aria-label="${escapeHtml(label)}">${segments}</div><span class="progress-count">${escapeHtml(label)}</span></div>`;
 }
 
-function indexHtml(plans: ReturnType<PlanReviewStore['listPlans']>): string {
+function baseIndexStyles(): string {
+  return `body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}main{max-width:1100px;margin:0 auto;padding:32px}a{color:#7dd3fc}.page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.page-header h1{margin:0 0 8px}.nav-link,.restore-plan,.archive-plan{background:#1e293b;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:8px 10px;cursor:pointer;text-decoration:none;font-weight:700}.nav-link.primary,.restore-plan{border-color:#38bdf8;color:#bae6fd}.restore-plan{border-color:#22c55e;color:#bbf7d0}.toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin:18px 0}.toolbar input,.toolbar select{background:#0f172a;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:10px}.plan-card{border:1px solid #2563eb;border-left:5px solid #2563eb;background:#111827;border-radius:8px;padding:16px;margin:12px 0}.plan-card.complete{border-color:#16a34a;border-left-color:#16a34a}.plan-card.archived{border-color:#64748b;border-left-color:#64748b}.plan-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.plan-card-header h2{margin-top:0}.plan-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.archive-plan:hover,.restore-plan:hover,.nav-link:hover{border-color:#93c5fd}.progress-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:12px 0}.progress-bar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}.progress-segment{height:14px;border:1px solid #64748b;border-radius:3px;background:transparent}.progress-segment.complete{background:#22c55e;border-color:#22c55e}.progress-count,.progress-empty,.muted{color:#a7b0c0;font-size:13px}.status-pill{display:inline-block;margin-right:8px;border-radius:999px;padding:2px 8px;background:#1d4ed8;color:#dbeafe;font-size:12px;font-weight:700}.complete .status-pill{background:#166534;color:#dcfce7}.archived .status-pill{background:#334155;color:#cbd5e1}.empty-state,.restore-error{border:1px solid #475569;border-radius:8px;background:#0f172a;padding:14px;margin:12px 0;color:#cbd5e1}.restore-error{border-color:#fb7185;color:#fecdd3}code{background:#0f172a;color:#dbeafe;padding:.1rem .25rem;border-radius:4px}@media(max-width:680px){.page-header,.toolbar,.progress-row{grid-template-columns:1fr;display:grid}.plan-card-header{display:block}.plan-actions{justify-content:flex-start;margin-bottom:8px}}`;
+}
+
+function planCardSearch(item: ReturnType<PlanReviewStore['listPlans']>[number]): string {
+  return `${item.plan.repoName} ${item.plan.repoKey} ${item.plan.slug} ${item.plan.planPath}`.toLowerCase();
+}
+
+function indexHtml(plans: ReturnType<PlanReviewStore['listPlans']>, archivedCount: number): string {
   const repos = [...new Set(plans.map(item => item.plan.repoName))].sort();
   const rows = repos
     .map(repoName => {
       const repoPlans = plans.filter(item => item.plan.repoName === repoName);
       return `<section class="repo-group" data-repo-group="${escapeHtml(repoName)}"><h2>${escapeHtml(repoName)}</h2>${repoPlans.map(item => {
         const complete = item.progress.totalPhases > 0 && item.progress.completedPhases === item.progress.totalPhases;
-        return `<article class="plan-card ${complete ? 'complete' : 'incomplete'}" data-plan-id="${escapeHtml(item.plan.id)}" data-repo="${escapeHtml(item.plan.repoName)}" data-search="${escapeHtml(`${item.plan.repoName} ${item.plan.slug} ${item.plan.planPath}`.toLowerCase())}">
+        return `<article class="plan-card ${complete ? 'complete' : 'incomplete'}" data-plan-id="${escapeHtml(item.plan.id)}" data-repo="${escapeHtml(item.plan.repoName)}" data-search="${escapeHtml(planCardSearch(item))}">
       <div class="plan-card-header"><h2><a href="/p/${escapeHtml(item.plan.id)}">${escapeHtml(item.plan.repoName)} / ${escapeHtml(item.plan.slug)}</a></h2><button class="archive-plan" type="button" data-archive-plan="${escapeHtml(item.plan.id)}">Archive</button></div>
       <p><code>${escapeHtml(item.plan.planPath)}</code></p>
       ${progressHtml(item.progress)}
@@ -73,12 +81,40 @@ function indexHtml(plans: ReturnType<PlanReviewStore['listPlans']>): string {
     .join('\n');
   return `<!doctype html><html><head><meta charset="utf-8"><title>Plan Review Index</title>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <style>body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}main{max-width:980px;margin:0 auto;padding:32px}a{color:#7dd3fc}.toolbar{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:10px;margin:18px 0}.toolbar input,.toolbar select{background:#0f172a;color:#e5e7eb;border:1px solid #2b364d;border-radius:6px;padding:10px}.plan-card{border:1px solid #2563eb;border-left:5px solid #2563eb;background:#111827;border-radius:8px;padding:16px;margin:12px 0}.plan-card.complete{border-color:#16a34a;border-left-color:#16a34a}.plan-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.plan-card-header h2{margin-top:0}.archive-plan{background:#1e293b;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:8px 10px;cursor:pointer}.archive-plan:hover{border-color:#93c5fd}.progress-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:12px 0}.progress-bar{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}.progress-segment{height:14px;border:1px solid #64748b;border-radius:3px;background:transparent}.progress-segment.complete{background:#22c55e;border-color:#22c55e}.progress-count,.progress-empty{color:#a7b0c0;font-size:13px}.status-pill{display:inline-block;margin-right:8px;border-radius:999px;padding:2px 8px;background:#1d4ed8;color:#dbeafe;font-size:12px;font-weight:700}.complete .status-pill{background:#166534;color:#dcfce7}code{background:#0f172a;color:#dbeafe;padding:.1rem .25rem;border-radius:4px}@media(max-width:680px){.toolbar,.progress-row{grid-template-columns:1fr}.plan-card-header{display:block}.archive-plan{margin-bottom:8px}}</style>
-  </head><body><main><h1>Plan Review Index</h1><div class="toolbar"><input id="q" placeholder="Filter plans" aria-label="Filter plans"><select id="repo" aria-label="Filter by repo"><option value="">All repos</option>${repos.map(repo => `<option value="${escapeHtml(repo)}">${escapeHtml(repo)}</option>`).join('')}</select></div><div id="plans">${rows || '<p>No plans registered.</p>'}</div><script>
+    <style>${baseIndexStyles()}</style>
+  </head><body><main><div class="page-header"><div><h1>Plan Review Index</h1><p class="muted">Active plans are shown by default.</p></div><a class="nav-link primary" href="/archive">Archived (${archivedCount}) →</a></div><div class="toolbar"><input id="q" placeholder="Filter plans" aria-label="Filter plans"><select id="repo" aria-label="Filter by repo"><option value="">All repos</option>${repos.map(repo => `<option value="${escapeHtml(repo)}">${escapeHtml(repo)}</option>`).join('')}</select></div><div id="plans">${rows || '<p>No plans registered.</p>'}</div><script>
   const q=document.getElementById('q'), repo=document.getElementById('repo'), cards=[...document.querySelectorAll('.plan-card')];
   function apply(){const text=q.value.toLowerCase(), r=repo.value; cards.forEach(card=>{card.hidden=!!((r&&card.dataset.repo!==r)||(text&&!card.dataset.search.includes(text)));}); document.querySelectorAll('.repo-group').forEach(group=>{group.hidden=!group.querySelector('.plan-card:not([hidden])');});}
   q.addEventListener('input',apply); repo.addEventListener('change',apply);
   document.addEventListener('click',async event=>{const target=event.target; const button=target instanceof Element ? target.closest('[data-archive-plan]') : null; if(!button) return; if(!confirm('Archive this plan?')) return; button.disabled=true; const planId=button.dataset.archivePlan; const res=await fetch('/api/plans/'+encodeURIComponent(planId)+'/archive',{method:'POST'}); if(!res.ok){button.disabled=false; alert('Unable to archive plan.'); return;} button.closest('.plan-card')?.remove(); const index=cards.findIndex(card=>card.dataset.planId===planId); if(index>=0) cards.splice(index,1); apply();});
+  </script></main></body></html>`;
+}
+
+function archiveHtml(plans: ReturnType<PlanReviewStore['listPlans']>): string {
+  const archivedPlans = plans
+    .filter(item => item.plan.archivedAt)
+    .sort((a, b) => String(b.plan.archivedAt).localeCompare(String(a.plan.archivedAt)) || String(b.activityAt).localeCompare(String(a.activityAt)) || String(a.plan.repoName).localeCompare(String(b.plan.repoName)) || String(a.plan.slug).localeCompare(String(b.plan.slug)) || String(a.plan.id).localeCompare(String(b.plan.id)));
+  const repos = [...new Set(archivedPlans.map(item => item.plan.repoName))].sort();
+  const rows = archivedPlans.map(item => {
+    const complete = item.progress.totalPhases > 0 && item.progress.completedPhases === item.progress.totalPhases;
+    return `<article class="plan-card archived ${complete ? 'complete' : 'incomplete'}" data-plan-id="${escapeHtml(item.plan.id)}" data-repo="${escapeHtml(item.plan.repoName)}" data-search="${escapeHtml(planCardSearch(item))}">
+      <div class="plan-card-header"><h2>${escapeHtml(item.plan.repoName)} / ${escapeHtml(item.plan.slug)}</h2><div class="plan-actions"><a class="nav-link primary" href="/p/${escapeHtml(item.plan.id)}">Open</a><button class="restore-plan" type="button" data-restore-plan="${escapeHtml(item.plan.id)}">Restore</button></div></div>
+      <p><code>${escapeHtml(item.plan.planPath)}</code></p>
+      ${progressHtml(item.progress)}
+      <p><span class="status-pill">Archived ${escapeHtml(item.plan.archivedAt)}</span> pending ${item.counts.pending} · claimed ${item.counts.claimed} · acknowledged ${item.counts.acknowledged} · resolved ${item.counts.resolved} · activity ${escapeHtml(item.activityAt)}</p>
+      <p class="restore-error" hidden>Restore failed. The plan is still archived; check the service and try Restore again.</p>
+    </article>`;
+  }).join('\n');
+  const empty = '<p class="empty-state" id="archive-empty">No archived plans yet.</p>';
+  const filteredEmpty = '<p class="empty-state" id="archive-filter-empty" hidden>No archived plans match the current filters. <button type="button" id="clear-filters">Clear filters</button></p>';
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Archived Plans</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <style>${baseIndexStyles()}</style>
+  </head><body><main><div class="page-header"><div><h1>Archived Plans</h1><p class="muted">Archived plans stay out of the active index but remain inspectable and restorable.</p></div><a class="nav-link primary" href="/">← Active index</a></div><div class="toolbar"><input id="q" placeholder="Filter archived plans" aria-label="Filter archived plans"><select id="repo" aria-label="Filter by repo"><option value="">All repos</option>${repos.map(repo => `<option value="${escapeHtml(repo)}">${escapeHtml(repo)}</option>`).join('')}</select></div><p class="muted" id="archive-count">${archivedPlans.length} archived</p><div id="plans">${rows || empty}</div>${rows ? filteredEmpty : ''}<script>
+  const q=document.getElementById('q'), repo=document.getElementById('repo'), cards=[...document.querySelectorAll('.plan-card')], filteredEmpty=document.getElementById('archive-filter-empty'), count=document.getElementById('archive-count');
+  function apply(){const text=q.value.toLowerCase(), r=repo.value; let visible=0; cards.forEach(card=>{card.hidden=!!((r&&card.dataset.repo!==r)||(text&&!card.dataset.search.includes(text))); if(!card.hidden) visible++;}); if(filteredEmpty) filteredEmpty.hidden=visible>0||cards.length===0; if(count) count.textContent=visible+' archived';}
+  q?.addEventListener('input',apply); repo?.addEventListener('change',apply); document.getElementById('clear-filters')?.addEventListener('click',()=>{q.value=''; repo.value=''; apply();});
+  document.addEventListener('click',async event=>{const target=event.target; const button=target instanceof Element ? target.closest('[data-restore-plan]') : null; if(!button) return; button.disabled=true; const card=button.closest('.plan-card'); const error=card?.querySelector('.restore-error'); if(error) error.hidden=true; const planId=button.dataset.restorePlan; let res; try{res=await fetch('/api/plans/'+encodeURIComponent(planId)+'/unarchive',{method:'POST'});}catch{button.disabled=false; if(error) error.hidden=false; return;} if(!res.ok){button.disabled=false; if(error) error.hidden=false; return;} card?.remove(); const index=cards.findIndex(item=>item.dataset.planId===planId); if(index>=0) cards.splice(index,1); apply();});
   </script></main></body></html>`;
 }
 
@@ -111,14 +147,17 @@ function filterPlans(plans: ReturnType<PlanReviewStore['listPlans']>, query: { q
   };
 }
 
-function reviewShell(planId: string): string {
-  const escapedPlanId = escapeHtml(planId);
+function reviewShell(plan: ReturnType<PlanReviewStore['getPlan']>['plan']): string {
+  const escapedPlanId = escapeHtml(plan.id);
+  const navActions = plan.archivedAt
+    ? `<a href="/archive">← Archive</a><span id="archive-status" class="archive-status">Archived</span><button id="restore-plan" type="button">Restore plan</button>`
+    : `<a href="/">← Plan index</a><span id="archive-status" class="archive-status" hidden></span><button id="archive-plan" type="button">Archive plan</button>`;
   return `<!doctype html><html><head><meta charset="utf-8"><title>Plan ${escapedPlanId}</title>
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="stylesheet" href="/client.css">
   </head><body data-plan-id="${escapedPlanId}">
-    <nav id="plan-navbar" aria-label="Plan actions"><a href="/">← Plan index</a><button id="archive-plan" type="button">Archive plan</button></nav>
+    <nav id="plan-navbar" aria-label="Plan actions">${navActions}</nav>
     <div id="app">
       <aside id="sidebar"><h1>Comments</h1><div id="sync-warning" hidden></div><div id="deferred-refresh-notice" hidden>Plan updated in the background. Finish or cancel this comment to refresh.</div><div id="comments"></div></aside>
       <main id="review"><iframe id="plan-frame" sandbox="allow-same-origin" src="/render/${escapedPlanId}"></iframe><div id="hover-selection-box" class="selection-box hover" hidden></div><div id="active-selection-box" class="selection-box active" hidden></div></main>
@@ -150,7 +189,7 @@ const faviconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" 
 
 const clientCss = `
 body{margin:0;background:#0b1020;color:#e5e7eb;font-family:system-ui,sans-serif}
-#plan-navbar{height:52px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 16px;border-bottom:1px solid #2b364d;background:#0f172a}#plan-navbar a{color:#7dd3fc;text-decoration:none;font-weight:700}#plan-navbar button{background:#1e293b;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:8px 10px;cursor:pointer}#plan-navbar button:hover{border-color:#93c5fd}
+#plan-navbar{height:52px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 16px;border-bottom:1px solid #2b364d;background:#0f172a}#plan-navbar a{color:#7dd3fc;text-decoration:none;font-weight:700}#plan-navbar button{background:#1e293b;color:#e5e7eb;border:1px solid #475569;border-radius:6px;padding:8px 10px;cursor:pointer}#plan-navbar button:hover{border-color:#93c5fd}.archive-status{color:#cbd5e1;border:1px solid #475569;background:#1e293b;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:800;margin-left:auto}#restore-plan{border-color:#22c55e;color:#bbf7d0}
 #app{display:grid;grid-template-columns:minmax(0,1fr) 320px;min-height:calc(100vh - 52px)}
 #review{grid-column:1;position:relative}#sidebar{grid-column:2;grid-row:1;border-left:1px solid #2b364d;padding:16px;background:#111827}
 #plan-frame{width:100%;height:calc(100vh - 52px);border:0;background:white}.selection-box,.comment-anchor{position:fixed;pointer-events:none;border-radius:6px;transition:left .08s ease,top .08s ease,width .08s ease,height .08s ease}.selection-box{z-index:8;box-shadow:0 0 0 9999px rgba(2,6,23,.08),0 10px 24px rgba(0,0,0,.25)}.selection-box.hover{border:2px solid rgba(125,211,252,.9);background:rgba(56,189,248,.10)}.selection-box.active{z-index:9;border:3px solid #38bdf8;background:rgba(56,189,248,.16);box-shadow:0 0 0 4px rgba(56,189,248,.18),0 12px 32px rgba(0,0,0,.35)}.comment-anchor{z-index:7}.comment-anchor.pending{border:3px solid #a855f7;background:rgba(168,85,247,.22);box-shadow:0 0 0 4px rgba(168,85,247,.16),0 12px 30px rgba(0,0,0,.28)}.comment-anchor.addressed{border:2px dotted rgba(216,180,254,.9);background:transparent;box-shadow:none}.comment-anchor-label{position:absolute;right:-10px;top:-12px;min-width:24px;height:24px;border-radius:999px;display:grid;place-items:center;padding:0 6px;background:#7e22ce;color:white;border:2px solid #f3e8ff;font-weight:800;font-size:12px;box-shadow:0 8px 18px rgba(0,0,0,.35)}.comment-anchor.addressed .comment-anchor-label{display:none}.comment-row{border:1px solid #2b364d;padding:10px;margin:8px 0;border-radius:8px;background:#0f172a}.comment-row small{color:#a7b0c0}.marker{position:absolute;z-index:9;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:#0ea5e9;color:white;border:2px solid #dbeafe;font-weight:700;box-shadow:0 8px 18px rgba(0,0,0,.35);pointer-events:none}
@@ -167,6 +206,7 @@ import { Washi } from '/vendor/washi.js';
 const planId = document.body.dataset.planId;
 const frame = document.getElementById('plan-frame');
 const archivePlanButton = document.getElementById('archive-plan');
+const restorePlanButton = document.getElementById('restore-plan');
 const composer = document.getElementById('composer');
 const body = document.getElementById('comment-body');
 const discardWarning = document.getElementById('comment-discard-warning');
@@ -202,6 +242,16 @@ archivePlanButton?.addEventListener('click', async () => {
   if (!res.ok) {
     archivePlanButton.disabled = false;
     alert('Unable to archive plan.');
+    return;
+  }
+  window.location.href = '/';
+});
+restorePlanButton?.addEventListener('click', async () => {
+  restorePlanButton.disabled = true;
+  const res = await fetch('/api/plans/'+encodeURIComponent(planId)+'/unarchive', { method: 'POST' });
+  if (!res.ok) {
+    restorePlanButton.disabled = false;
+    alert('Unable to restore plan.');
     return;
   }
   window.location.href = '/';
@@ -822,7 +872,14 @@ export function createApp(options: AppOptions): FastifyInstance {
 
   app.get('/', async (request, reply) => {
     const query = request.query as { q?: string; repoKey?: string; status?: string };
-    reply.type('text/html').send(indexHtml(filterPlans(store.listPlans(), query).plans));
+    const allPlans = store.listPlans({ includeArchived: true });
+    const activePlans = allPlans.filter(item => !item.plan.archivedAt);
+    const archivedCount = allPlans.length - activePlans.length;
+    reply.type('text/html').send(indexHtml(filterPlans(activePlans, query).plans, archivedCount));
+  });
+
+  app.get('/archive', async (_request, reply) => {
+    reply.type('text/html').send(archiveHtml(store.listPlans({ includeArchived: true })));
   });
 
   app.get('/api/plans', async (request, reply) => {
@@ -868,7 +925,7 @@ export function createApp(options: AppOptions): FastifyInstance {
     try {
       const { planId } = request.params as { planId: string };
       const { plan } = store.getPlan(planId);
-      reply.header('Cache-Control', 'no-store').type('text/html').send(reviewShell(plan.id));
+      reply.header('Cache-Control', 'no-store').type('text/html').send(reviewShell(plan));
     } catch (error) {
       sendError(reply, error);
     }
@@ -912,6 +969,18 @@ export function createApp(options: AppOptions): FastifyInstance {
       const { planId } = request.params as { planId: string };
       const { plan } = store.getPlan(planId);
       const result = store.archivePlan(plan.id);
+      bus.emitEvent(result.event);
+      return ok({ plan: result.plan });
+    } catch (error) {
+      sendError(reply, error);
+    }
+  });
+
+  app.post('/api/plans/:planId/unarchive', async (request, reply) => {
+    try {
+      const { planId } = request.params as { planId: string };
+      const { plan } = store.getPlan(planId);
+      const result = store.unarchivePlan(plan.id);
       bus.emitEvent(result.event);
       return ok({ plan: result.plan });
     } catch (error) {
