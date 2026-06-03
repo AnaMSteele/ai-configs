@@ -82,8 +82,8 @@ export class SourceSyncService {
   }
 
   async register(planId: string): Promise<void> {
-    const { plan } = this.store.getPlan(planId);
     await this.unregister(planId);
+    const { plan } = this.store.getPlan(planId);
     if (plan.archivedAt || plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
     const watchPaths = [plan.sourcePath];
     try {

@@ -390,6 +390,45 @@ test('archived filesystem re-register stays inactive until explicit restore', as
   }
 });
 
+test('source sync register rechecks archive state after unregister', async () => {
+  const store = new PlanReviewStore(tempDbPath('archive-register-race'));
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-register-race-'));
+  const sourcePath = path.join(sourceDir, 'archive-register-race.html');
+  const html = '<!doctype html><html><body><main><p>Register race.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const sourceSync = new SourceSyncService(store, { emitEvent() {} });
+  try {
+    const payload = sampleRegisterPayload({
+      planPath: 'archive-register-race.html',
+      slug: 'archive-register-race',
+      html,
+      fileHash: sha256(html),
+      sourcePath,
+      sourceMtimeMs: stat.mtimeMs,
+      sourceSize: stat.size,
+      watchMode: 'filesystem',
+      assets: []
+    });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    const originalUnregister = sourceSync.unregister.bind(sourceSync);
+    sourceSync.unregister = (async (planId: string) => {
+      await originalUnregister(planId);
+      store.archivePlan(registered.planId);
+    }) as typeof sourceSync.unregister;
+
+    await sourceSync.register(registered.planId);
+
+    assert.ok(store.getPlan(registered.planId).plan.archivedAt);
+    assert.equal((sourceSync as unknown as { watchers: Map<string, unknown> }).watchers.has(registered.planId), false);
+  } finally {
+    await sourceSync.close();
+    store.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
 test('queued filesystem sync does not update archived plans', async () => {
   const store = new PlanReviewStore(tempDbPath('archive-queued-sync'));
   const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-queued-sync-'));
