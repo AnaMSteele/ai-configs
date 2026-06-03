@@ -9,7 +9,7 @@ Use this skill to turn agent-authored HTML plans into reviewable browser artifac
 
 ## Service assumptions
 
-The tool is the Homebrew-installed `plan-review` CLI from `ai-configs/tools/plan-reviewer`.
+The tool is the Homebrew-installed `plan-review` CLI from the standalone `Nodaste-Lab/plan-reviewer` repository. `ai-configs` only owns this workflow skill; it no longer vendors the daemon, CLI, or Homebrew formula.
 
 Default service URL on this host:
 
@@ -28,17 +28,18 @@ curl -fsS http://127.0.0.1:4317/health
 If the service is not running, start it:
 
 ```bash
-brew services start local/ai-configs/plan-reviewer
+brew services start plan-reviewer
 ```
 
-If it is not installed, install from the `ai-configs` checkout:
+If it is not installed, install from the standalone `plan-reviewer` tap:
 
 ```bash
-cd /Users/anichols/code/ai-configs
-brew tap local/ai-configs "$PWD"
-brew install local/ai-configs/plan-reviewer
-brew services start local/ai-configs/plan-reviewer
+brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git
+brew install Nodaste-Lab/plan-reviewer/plan-reviewer
+brew services start plan-reviewer
 ```
+
+Source and development docs live at `https://github.com/Nodaste-Lab/plan-reviewer`.
 
 The MVP is intentionally unauthenticated. Treat `0.0.0.0:4317` as trusted-network only.
 

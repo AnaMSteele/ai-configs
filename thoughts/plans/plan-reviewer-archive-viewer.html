@@ -157,7 +157,7 @@
       <div class="meta-grid" id="summary-cards">
         <div class="meta-card"><strong>Status</strong><span class="status-pill">implemented</span></div>
         <div class="meta-card"><strong>Selected option</strong><span>Dedicated <code>/archive</code> page with index navigation.</span></div>
-        <div class="meta-card"><strong>Primary code surface</strong><span><code>tools/plan-reviewer/src/server/app.ts</code> and <code>storage/database.ts</code>.</span></div>
+        <div class="meta-card"><strong>Primary code surface</strong><span><code>~/code/plan-reviewer/src/server/app.ts</code> and <code>storage/database.ts</code>.</span></div>
       </div>
     </header>
 
@@ -483,11 +483,11 @@
         <h4>Tests first</h4>
         <p>Add contract coverage for AC-4, AC-5, and the re-register/source-sync BDD cases: archive a plan, restore it, verify default <code>/api/plans</code> includes it again without <code>archivedAt</code>, verify <code>includeArchived=true</code> remains truthful, verify re-registering an archived plan does not clear <code>archivedAt</code>, and verify filesystem-watch discovery does not promote archived plans back to active.</p>
         <h4>Expected files</h4>
-        <p><code>tools/plan-reviewer/src/storage/database.ts</code>, <code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code>.</p>
+        <p><code>~/code/plan-reviewer/src/storage/database.ts</code>, <code>~/code/plan-reviewer/src/server/app.ts</code>, <code>~/code/plan-reviewer/src/__tests__/contracts.test.ts</code>.</p>
         <h4>Work</h4>
         <p>Add <code>unarchivePlan()</code> to clear <code>archived_at</code>, emit <code>plan.unarchived</code>, and add <code>POST /api/plans/:planId/unarchive</code>. Make archive and unarchive leave the plan in the requested final state for repeat/stale-tab calls. Update <code>registerPlan()</code> so upserts preserve existing <code>archived_at</code> unless the explicit unarchive endpoint is called. Preserve the current boundary that filesystem-watch discovery skips archived plans; this phase only tests that the watcher path does not restore archived plans accidentally.</p>
         <h4>Verify</h4>
-        <p><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></p>
+        <p><code>cd ~/code/plan-reviewer &amp;&amp; bun run test</code></p>
       </article>
 
       <article class="phase" id="phase-p2-archive-page">
@@ -497,11 +497,11 @@
         <h4>Tests first</h4>
         <p>Extend contract tests for AC-1 through AC-6: active cards still render by default, archived cards do not render on <code>/</code>, the index exposes archive navigation/count, <code>/archive</code> renders archived plans newest-archived-first with stable ties, empty and filtered-empty states are clear, and Restore controls appear on archived cards.</p>
         <h4>Expected files</h4>
-        <p><code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code>.</p>
+        <p><code>~/code/plan-reviewer/src/server/app.ts</code>, <code>~/code/plan-reviewer/src/__tests__/contracts.test.ts</code>.</p>
         <h4>Work</h4>
         <p>Add archived counts/navigation to <code>GET /</code>. Add <code>GET /archive</code> using <code>store.listPlans({ includeArchived: true })</code> filtered to plans with <code>archivedAt</code>, with search, repo filter, newest-archived-first sort, stable tie-breaking, full-width archived cards, Open links, Restore controls, and clear empty/filter-empty states. Wire Restore on the archive page to <code>POST /api/plans/:planId/unarchive</code>, then remove the restored card and update visible counts after success. If restore fails on <code>/archive</code>, leave the card visible and show actionable retry guidance.</p>
         <h4>Verify</h4>
-        <p><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></p>
+        <p><code>cd ~/code/plan-reviewer &amp;&amp; bun run test</code></p>
       </article>
 
       <article class="phase" id="phase-p3-browser-flow">
@@ -511,11 +511,11 @@
         <h4>Tests first</h4>
         <p>Extend the existing Playwright e2e fixture to cover archive from index, follow the Archived link to <code>/archive</code>, open an archived plan, confirm the shell exposes archived status or Restore instead of a misleading Archive primary action, simulate a failed Restore to confirm the archived card remains visible with actionable retry guidance, restore the plan successfully, and confirm the active card returns.</p>
         <h4>Expected files</h4>
-        <p><code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code>.</p>
+        <p><code>~/code/plan-reviewer/src/server/app.ts</code>, <code>~/code/plan-reviewer/src/test-fixtures/e2e-run.ts</code>.</p>
         <h4>Work</h4>
         <p>Update review-shell metadata handling so archived plans show archived status plus Restore/return navigation instead of a misleading <strong>Archive plan</strong> action. Keep the interaction simple: successful archive/restore may reload or remove the relevant card; failed restore must leave the card visible with actionable retry guidance.</p>
         <h4>Verify</h4>
-        <p><code>cd tools/plan-reviewer &amp;&amp; bun run test:e2e</code></p>
+        <p><code>cd ~/code/plan-reviewer &amp;&amp; bun run test:e2e</code></p>
       </article>
     </section>
 
@@ -524,10 +524,10 @@
       <table>
         <thead><tr><th>Acceptance / scenarios</th><th>Planned test layer</th><th>Expected files</th><th>Verify</th></tr></thead>
         <tbody>
-          <tr><td>AC-1, AC-2, AC-3, AC-6; discovery, active default, strict partition, empty/filter-empty, deterministic sort</td><td>HTTP contract assertions against rendered <code>/</code>, <code>/archive</code>, and <code>/api/plans</code></td><td><code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></td></tr>
-          <tr><td>AC-4, AC-5, AC-8, AC-9; restore, double restore, re-register/source-sync archive stability, restore failure</td><td>Store/API contract tests for archive lifecycle, idempotent final state, register upsert behavior, and filesystem-watch discovery not restoring archived plans</td><td><code>tools/plan-reviewer/src/storage/database.ts</code>, <code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test</code></td></tr>
-          <tr><td>AC-7; open archived plan, review-shell archived state, comments remain reachable</td><td>HTTP shell assertion plus Playwright e2e check when browser behavior changes</td><td><code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test:e2e</code></td></tr>
-          <tr><td>Keyboard accessibility, small viewport, direct route refresh</td><td>Playwright/browser fixture and manual visual check of the shipped plan-reviewer UI</td><td><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></td><td><code>cd tools/plan-reviewer &amp;&amp; bun run test:e2e</code></td></tr>
+          <tr><td>AC-1, AC-2, AC-3, AC-6; discovery, active default, strict partition, empty/filter-empty, deterministic sort</td><td>HTTP contract assertions against rendered <code>/</code>, <code>/archive</code>, and <code>/api/plans</code></td><td><code>~/code/plan-reviewer/src/__tests__/contracts.test.ts</code></td><td><code>cd ~/code/plan-reviewer &amp;&amp; bun run test</code></td></tr>
+          <tr><td>AC-4, AC-5, AC-8, AC-9; restore, double restore, re-register/source-sync archive stability, restore failure</td><td>Store/API contract tests for archive lifecycle, idempotent final state, register upsert behavior, and filesystem-watch discovery not restoring archived plans</td><td><code>~/code/plan-reviewer/src/storage/database.ts</code>, <code>~/code/plan-reviewer/src/server/app.ts</code>, <code>~/code/plan-reviewer/src/__tests__/contracts.test.ts</code></td><td><code>cd ~/code/plan-reviewer &amp;&amp; bun run test</code></td></tr>
+          <tr><td>AC-7; open archived plan, review-shell archived state, comments remain reachable</td><td>HTTP shell assertion plus Playwright e2e check when browser behavior changes</td><td><code>~/code/plan-reviewer/src/server/app.ts</code>, <code>~/code/plan-reviewer/src/test-fixtures/e2e-run.ts</code></td><td><code>cd ~/code/plan-reviewer &amp;&amp; bun run test:e2e</code></td></tr>
+          <tr><td>Keyboard accessibility, small viewport, direct route refresh</td><td>Playwright/browser fixture and manual visual check of the shipped plan-reviewer UI</td><td><code>~/code/plan-reviewer/src/test-fixtures/e2e-run.ts</code></td><td><code>cd ~/code/plan-reviewer &amp;&amp; bun run test:e2e</code></td></tr>
         </tbody>
       </table>
     </section>

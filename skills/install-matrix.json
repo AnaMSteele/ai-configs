@@ -361,7 +361,7 @@
       "legacySources": [
         ".agents/skills/html-plan-reviewer"
       ],
-      "notes": "Canonicalized from the installed shared skill; includes Codex-specific long-running watcher guidance for plan-review comment monitoring.",
+      "notes": "Workflow guidance for the standalone `Nodaste-Lab/plan-reviewer` service; includes long-running watcher guidance for plan-review comment monitoring. The daemon, CLI, and Homebrew formula are not vendored in ai-configs.",
       "sourceType": "repo"
     },
     "internal-comms": {

@@ -80,9 +80,9 @@
     <ul>
       <li id="input-user-report">User report: background plan reload clears active comments; reload must wait while a comment dialog is open.</li>
       <li id="input-user-missing-ui">User report: running server does not expose Cmd+Enter submit or a top bar to return to the plan index.</li>
-      <li id="input-source-app"><code>tools/plan-reviewer/src/server/app.ts</code>: review shell, embedded CSS, embedded browser client, SSE refresh handling, composer behavior.</li>
-      <li id="input-e2e"><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code>: existing Playwright coverage for browser comments, Cmd/Ctrl+Enter, plan index, and source sync iframe refresh.</li>
-      <li id="input-readme"><code>tools/plan-reviewer/README.md</code>: current service behavior and development commands.</li>
+      <li id="input-source-app"><code>~/code/plan-reviewer/src/server/app.ts</code>: review shell, embedded CSS, embedded browser client, SSE refresh handling, composer behavior.</li>
+      <li id="input-e2e"><code>~/code/plan-reviewer/src/test-fixtures/e2e-run.ts</code>: existing Playwright coverage for browser comments, Cmd/Ctrl+Enter, plan index, and source sync iframe refresh.</li>
+      <li id="input-readme"><code>~/code/plan-reviewer/README.md</code>: current service behavior and development commands.</li>
       <li id="input-skill"><code>html-plan-reviewer</code> skill: source sync expectation that saving the plan refreshes an already-open review page.</li>
     </ul>
   </section>
@@ -111,7 +111,7 @@
 
   <section id="resume-instructions">
     <h2>Resume instructions (agent)</h2>
-    <p>Read this full plan, then execute the first unchecked Progress item. Stay within <code>tools/plan-reviewer</code> plus the <code>html-plan-reviewer</code> skill/README if the implementation changes operator guidance. Do not start by redesigning source sync. The core contract is: defer render reload while the composer is open; apply it when the composer is submitted or cancelled; prove the running browser sees the current shell.</p>
+    <p>Read this full plan, then execute the first unchecked Progress item. Stay within <code>~/code/plan-reviewer</code> plus the <code>html-plan-reviewer</code> skill/README if the implementation changes operator guidance. Do not start by redesigning source sync. The core contract is: defer render reload while the composer is open; apply it when the composer is submitted or cancelled; prove the running browser sees the current shell.</p>
   </section>
 
   <section id="product-intent-alignment">
@@ -182,13 +182,13 @@
       <h4>End State</h4>
       <p>Playwright coverage fails on current behavior because source sync clears the open composer and draft.</p>
       <h4>Tests first</h4>
-      <p>Extend <code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code> in the existing source-sync scenario. Open a synced plan, click a target to open the composer, type a draft, edit the source file, and assert the old iframe content plus draft remain while a deferred-refresh notice appears. Then submit and assert the new content appears.</p>
+      <p>Extend <code>~/code/plan-reviewer/src/test-fixtures/e2e-run.ts</code> in the existing source-sync scenario. Open a synced plan, click a target to open the composer, type a draft, edit the source file, and assert the old iframe content plus draft remain while a deferred-refresh notice appears. Then submit and assert the new content appears.</p>
       <h4>Work</h4>
       <p>No production work in this phase. Keep test assertions behavior-focused: textarea value, composer visibility, iframe body text before/after resolution, comment creation, and top navbar/hotkey visibility.</p>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></li></ul>
+      <ul><li><code>~/code/plan-reviewer/src/test-fixtures/e2e-run.ts</code></li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run build
 node dist/test-fixtures/e2e-run.js</code></pre>
       <p>Expected RED result before implementation: failure showing the draft/composer was cleared or the iframe refreshed before submit/cancel.</p>
@@ -210,9 +210,9 @@ node dist/test-fixtures/e2e-run.js</code></pre>
         <li id="p2-notice">Add a small <code>#deferred-refresh-notice</code> element in the shell/sidebar/composer area and hide/show it from the queued-refresh state.</li>
       </ul>
       <h4>Expected files</h4>
-      <ul><li><code>tools/plan-reviewer/src/server/app.ts</code></li></ul>
+      <ul><li><code>~/code/plan-reviewer/src/server/app.ts</code></li></ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test:e2e</code></pre>
     </article>
 
@@ -230,12 +230,12 @@ bun run test:e2e</code></pre>
       </ul>
       <h4>Expected files</h4>
       <ul>
-        <li><code>tools/plan-reviewer/src/server/app.ts</code></li>
-        <li><code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code></li>
-        <li><code>tools/plan-reviewer/README.md</code> if operator guidance changes</li>
+        <li><code>~/code/plan-reviewer/src/server/app.ts</code></li>
+        <li><code>~/code/plan-reviewer/src/test-fixtures/e2e-run.ts</code></li>
+        <li><code>~/code/plan-reviewer/README.md</code> if operator guidance changes</li>
       </ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test:e2e
 curl -I http://127.0.0.1:4317/client.js</code></pre>
     </article>
@@ -249,7 +249,7 @@ curl -I http://127.0.0.1:4317/client.js</code></pre>
       <h4>Work</h4>
       <ul>
         <li id="p4-build">Run the normal build/test command from the package, not ad hoc source inspection.</li>
-        <li id="p4-install">If the Homebrew service is the user-facing daemon, reinstall or rebuild the formula from this checkout and restart <code>brew services restart local/ai-configs/plan-reviewer</code> or the actual installed formula name.</li>
+        <li id="p4-install">If the Homebrew service is the user-facing daemon, reinstall or rebuild the formula from this checkout and restart <code>brew services restart plan-reviewer</code> or the actual installed formula name.</li>
         <li id="p4-canonical-url">Verify both <code>http://127.0.0.1:4317</code> and the canonical Tailscale URL <code>http://mbp.braid-python.ts.net:4317</code> return the same current shell.</li>
         <li id="p4-browser">Use Playwright against the running service, not only the ephemeral test server, to confirm the top bar and hotkey in a real browser context.</li>
       </ul>
@@ -258,7 +258,7 @@ curl -I http://127.0.0.1:4317/client.js</code></pre>
         <li>No additional source files unless P3 documentation changes are needed.</li>
       </ul>
       <h4>Verify</h4>
-      <pre><code>cd tools/plan-reviewer
+      <pre><code>cd ~/code/plan-reviewer
 bun run test
 bun run test:e2e
 curl -fsS http://127.0.0.1:4317/p/&lt;planId&gt; | rg 'plan-navbar|Plan index|client.js'

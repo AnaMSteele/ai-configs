@@ -23,7 +23,7 @@ ai-configs/
 ├── _pi/          # Pi source config
 ├── scripts/      # Shared helper scripts fanned out by install.sh
 ├── skills/       # Repo-owned shared skills + install matrix for package-backed skills
-├── tools/        # Distributable CLIs (for example ltui)
+├── tools/        # Repo-owned distributable CLIs (currently ltui)
 ├── docs/         # Fetched/reference docs kept in repo
 ├── thoughts/     # Working plans, handoffs, research, validation
 └── install.sh    # Main installer / updater
@@ -127,6 +127,19 @@ Repo-owned shared skill tree plus `skills/install-matrix.json`, which also inven
 
 ### `tools/ltui/`
 Token-efficient Linear CLI for AI agents.
+
+### Plan Reviewer
+The HTML plan-review daemon and `plan-review` CLI are no longer vendored in this repository. Install and develop them from the standalone repo:
+
+```bash
+brew tap Nodaste-Lab/plan-reviewer https://github.com/Nodaste-Lab/plan-reviewer.git
+brew install Nodaste-Lab/plan-reviewer/plan-reviewer
+brew services start plan-reviewer
+```
+
+Source: <https://github.com/Nodaste-Lab/plan-reviewer>
+
+`ai-configs` still owns workflow guidance such as `skills/html-plan-reviewer`, but any daemon, CLI, service, or formula changes belong in `Nodaste-Lab/plan-reviewer`.
 
 ## Skills and tools
 
