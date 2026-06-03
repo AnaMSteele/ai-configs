@@ -984,6 +984,7 @@ export function createApp(options: AppOptions): FastifyInstance {
       const result = store.unarchivePlan(plan.id);
       bus.emitEvent(result.event);
       await sourceSync.register(result.plan.id);
+      await sourceSync.syncNow(result.plan.id, 'manual');
       return ok({ plan: result.plan });
     } catch (error) {
       sendError(reply, error);

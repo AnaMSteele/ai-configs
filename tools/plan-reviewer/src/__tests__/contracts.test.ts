@@ -308,11 +308,18 @@ test('restored filesystem plans resume watching after archived startup skip', as
     await initialApp.close();
     initialClosed = true;
 
+    const archivedChangeHtml = '<!doctype html><html><body><main><p>Archived change before restore.</p></main></body></html>';
+    fs.writeFileSync(sourcePath, archivedChangeHtml);
     restoredApp = createApp({ dbPath });
     const hidden = await restoredApp.inject({ method: 'GET', url: '/api/plans' });
     assert.equal(hidden.json().data.plans.length, 0);
     const restored = await restoredApp.inject({ method: 'POST', url: `/api/plans/${planId}/unarchive` });
     assert.equal(restored.statusCode, 200);
+    const restoredRender = await restoredApp.inject({ method: 'GET', url: `/render/${planId}` });
+    assert.match(restoredRender.body, /Archived change before restore/);
+    assert.doesNotMatch(restoredRender.body, /Before restore watch/);
+    const restoreSynced = await restoredApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(restoreSynced.json().data.latestVersion.syncOrigin, 'filesystem_watch');
 
     const changedHtml = '<!doctype html><html><body><main><p>After restore watch.</p></main></body></html>';
     fs.writeFileSync(sourcePath, changedHtml);

@@ -189,13 +189,13 @@ export class SourceSyncService {
       if (fileHash === version.fileHash && sha256(rendered.renderedHtml) === sha256(this.store.getRenderedHtml(plan.id, version.id))) {
         if (this.store.getPlan(plan.id).plan.archivedAt) return;
         this.bus.emitEvent(this.store.markPlanSyncSucceeded(plan.id, version.id));
-        if (needsWatcherRefresh) void this.register(plan.id);
+        if (needsWatcherRefresh) await this.register(plan.id);
         return;
       }
       if (this.store.getPlan(plan.id).plan.archivedAt) return;
       const result = this.store.registerPlan(payload, rendered.renderedHtml, rendered.warnings, 'filesystem_watch');
       this.bus.emitEvent(result.event);
-      if (htmlChanged || needsWatcherRefresh) void this.register(plan.id);
+      if (htmlChanged || needsWatcherRefresh) await this.register(plan.id);
     } catch (error) {
       this.fail(plan.id, error, reason);
     }
