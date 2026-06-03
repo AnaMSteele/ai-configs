@@ -267,6 +267,67 @@ test('register and filesystem discovery preserve archived state until explicit r
   }
 });
 
+test('restored filesystem plans resume watching after archived startup skip', async () => {
+  const dbPath = tempDbPath('archive-restore-watch');
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-restore-watch-'));
+  const sourcePath = path.join(sourceDir, 'restore-watch.html');
+  const html = '<!doctype html><html><body><main><p>Before restore watch.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const waitFor = async (predicate: () => Promise<boolean>) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    assert.fail('timed out waiting for restored source sync');
+  };
+  const initialApp = createApp({ dbPath });
+  let initialClosed = false;
+  let restoredApp: ReturnType<typeof createApp> | undefined;
+  try {
+    const registered = await initialApp.inject({
+      method: 'POST',
+      url: '/api/plans/register',
+      payload: sampleRegisterPayload({
+        planPath: 'restore-watch.html',
+        slug: 'restore-watch',
+        html,
+        fileHash: sha256(html),
+        sourcePath,
+        sourceMtimeMs: stat.mtimeMs,
+        sourceSize: stat.size,
+        watchMode: 'filesystem',
+        assets: []
+      })
+    });
+    assert.equal(registered.statusCode, 200);
+    const planId = registered.json().data.planId;
+    assert.equal((await initialApp.inject({ method: 'POST', url: `/api/plans/${planId}/archive` })).statusCode, 200);
+    await initialApp.close();
+    initialClosed = true;
+
+    restoredApp = createApp({ dbPath });
+    const hidden = await restoredApp.inject({ method: 'GET', url: '/api/plans' });
+    assert.equal(hidden.json().data.plans.length, 0);
+    const restored = await restoredApp.inject({ method: 'POST', url: `/api/plans/${planId}/unarchive` });
+    assert.equal(restored.statusCode, 200);
+
+    const changedHtml = '<!doctype html><html><body><main><p>After restore watch.</p></main></body></html>';
+    fs.writeFileSync(sourcePath, changedHtml);
+    await waitFor(async () => {
+      const rendered = await restoredApp!.inject({ method: 'GET', url: `/render/${planId}` });
+      return rendered.body.includes('After restore watch.');
+    });
+    const synced = await restoredApp.inject({ method: 'GET', url: `/api/plans/${planId}` });
+    assert.equal(synced.json().data.latestVersion.syncOrigin, 'filesystem_watch');
+  } finally {
+    if (!initialClosed) await initialApp.close();
+    if (restoredApp) await restoredApp.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
 test('HTTP API reports schema errors as validation_failed and renders canonical escaped plan ids', async () => {
   const app = createApp({ dbPath: tempDbPath('validation-shell') });
   try {
