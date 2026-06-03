@@ -427,6 +427,49 @@ test('queued filesystem sync does not update archived plans', async () => {
   }
 });
 
+test('in-flight filesystem sync rechecks archive state before committing', async () => {
+  const store = new PlanReviewStore(tempDbPath('archive-inflight-commit'));
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-inflight-commit-'));
+  const sourcePath = path.join(sourceDir, 'archive-inflight-commit.html');
+  const html = '<!doctype html><html><body><main><p>Before in-flight sync.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const sourceSync = new SourceSyncService(store, { emitEvent() {} });
+  try {
+    const payload = sampleRegisterPayload({
+      planPath: 'archive-inflight-commit.html',
+      slug: 'archive-inflight-commit',
+      html,
+      fileHash: sha256(html),
+      sourcePath,
+      sourceMtimeMs: stat.mtimeMs,
+      sourceSize: stat.size,
+      watchMode: 'filesystem',
+      assets: []
+    });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    const originalGetPlan = store.getPlan.bind(store);
+    let getPlanCalls = 0;
+    store.getPlan = ((identifier: string) => {
+      getPlanCalls += 1;
+      if (getPlanCalls === 2) store.archivePlan(registered.planId);
+      return originalGetPlan(identifier);
+    }) as typeof store.getPlan;
+
+    fs.writeFileSync(sourcePath, '<!doctype html><html><body><main><p>In-flight sync should not commit after archive.</p></main></body></html>');
+    await sourceSync.syncNow(registered.planId, 'manual');
+
+    assert.ok(originalGetPlan(registered.planId).plan.archivedAt);
+    assert.match(store.getRenderedHtml(registered.planId), /Before in-flight sync/);
+    assert.doesNotMatch(store.getRenderedHtml(registered.planId), /In-flight sync should not commit/);
+  } finally {
+    await sourceSync.close();
+    store.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
 test('HTTP API reports schema errors as validation_failed and renders canonical escaped plan ids', async () => {
   const app = createApp({ dbPath: tempDbPath('validation-shell') });
   try {
