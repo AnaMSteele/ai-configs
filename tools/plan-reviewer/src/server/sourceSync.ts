@@ -160,7 +160,7 @@ export class SourceSyncService {
 
   private async performSync(planId: string, reason: string): Promise<void> {
     const { plan, version } = this.store.getPlan(planId);
-    if (plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
+    if (plan.archivedAt || plan.watchMode !== 'filesystem' || !plan.sourcePath) return;
     try {
       const stat = fs.statSync(plan.sourcePath);
       if (!stat.isFile()) throw new Error(`Source path is not a file: ${plan.sourcePath}`);

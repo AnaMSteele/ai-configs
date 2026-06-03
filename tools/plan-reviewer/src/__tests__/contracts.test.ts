@@ -10,6 +10,7 @@ import { claimCommentsSchema, createCommentSchema, registerPlanSchema } from '..
 import { renderPlan } from '../render/render.js';
 import { PlanReviewStore } from '../storage/database.js';
 import { createApp } from '../server/app.js';
+import { SourceSyncService } from '../server/sourceSync.js';
 import { findImageSources } from '../htmlImages.js';
 import { resolveServiceUrl } from '../config.js';
 import { discoverImageAssets } from '../cli.js';
@@ -385,6 +386,43 @@ test('archived filesystem re-register stays inactive until explicit restore', as
     assert.doesNotMatch(rendered.body, /Should not sync while archived/);
   } finally {
     await app.close();
+    fs.rmSync(sourceDir, { recursive: true, force: true });
+  }
+});
+
+test('queued filesystem sync does not update archived plans', async () => {
+  const store = new PlanReviewStore(tempDbPath('archive-queued-sync'));
+  const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-review-archive-queued-sync-'));
+  const sourcePath = path.join(sourceDir, 'archive-queued-sync.html');
+  const html = '<!doctype html><html><body><main><p>Before queued sync.</p></main></body></html>';
+  fs.writeFileSync(sourcePath, html);
+  const stat = fs.statSync(sourcePath);
+  const sourceSync = new SourceSyncService(store, { emitEvent() {} });
+  try {
+    const payload = sampleRegisterPayload({
+      planPath: 'archive-queued-sync.html',
+      slug: 'archive-queued-sync',
+      html,
+      fileHash: sha256(html),
+      sourcePath,
+      sourceMtimeMs: stat.mtimeMs,
+      sourceSize: stat.size,
+      watchMode: 'filesystem',
+      assets: []
+    });
+    const rendered = renderPlan(payload);
+    const registered = store.registerPlan(payload, rendered.renderedHtml, rendered.warnings);
+    store.archivePlan(registered.planId);
+
+    fs.writeFileSync(sourcePath, '<!doctype html><html><body><main><p>Queued sync should not update archived content.</p></main></body></html>');
+    await sourceSync.syncNow(registered.planId, 'manual');
+
+    assert.ok(store.getPlan(registered.planId).plan.archivedAt);
+    assert.match(store.getRenderedHtml(registered.planId), /Before queued sync/);
+    assert.doesNotMatch(store.getRenderedHtml(registered.planId), /Queued sync should not update/);
+  } finally {
+    await sourceSync.close();
+    store.close();
     fs.rmSync(sourceDir, { recursive: true, force: true });
   }
 });
