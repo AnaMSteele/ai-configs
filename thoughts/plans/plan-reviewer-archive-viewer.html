@@ -153,9 +153,9 @@
     <header class="hero" id="title">
       <div class="eyebrow">Plan-reviewer UI plan</div>
       <h1>Add an archive viewer to the plan index.</h1>
-      <p>This is a planning artifact only. It does not change product code. It uses Claude Code’s read-only UI design pass as an input, with the selected dedicated archive-page direction now shown as the definitive mock set.</p>
+      <p>This document started as the planning artifact for the archive viewer and now records the scoped execution outcome. Product-code changes live in the implementation files listed below; the selected dedicated archive-page direction remains the definitive mock set.</p>
       <div class="meta-grid" id="summary-cards">
-        <div class="meta-card"><strong>Status</strong><span class="status-pill">execution-ready</span></div>
+        <div class="meta-card"><strong>Status</strong><span class="status-pill">implemented</span></div>
         <div class="meta-card"><strong>Selected option</strong><span>Dedicated <code>/archive</code> page with index navigation.</span></div>
         <div class="meta-card"><strong>Primary code surface</strong><span><code>tools/plan-reviewer/src/server/app.ts</code> and <code>storage/database.ts</code>.</span></div>
       </div>
@@ -168,7 +168,7 @@
 
     <section id="why-this-plan-exists">
       <h2>Why this plan exists</h2>
-      <p>The archive backend already exists enough to hide archived plans from the index, but the user-facing workflow is incomplete: once a plan is archived, the normal index no longer exposes an archive view or restore path. This plan defines the UI direction before implementation.</p>
+      <p>The archive backend already existed enough to hide archived plans from the index, but the user-facing workflow was incomplete: once a plan was archived, the normal index no longer exposed an archive view or restore path. This plan defined the UI direction before implementation and now records the implemented outcome.</p>
     </section>
 
     <section id="authority-inputs">
@@ -206,7 +206,7 @@
 
     <section id="resume-instructions">
       <h2>Resume instructions</h2>
-      <p>Read this document fully, then begin execution at <a href="#phase-p1-contracts">P1 — Archive restore contract</a> and continue phase-by-phase through P3. Treat the Progress checkboxes as planning history only; P5 marks that product-code implementation is a separate future run, not the first execution phase. Do not reintroduce removed UI variations. The implementation scope is locked to the dedicated <code>/archive</code> page, active-index navigation, explicit restore support, truthful archived state in the review shell, and tests that prove the active/archive partition.</p>
+      <p>Read this document fully before changing the archive-viewer behavior. Treat the Progress checkboxes as execution history; P5 marks that the scoped product-code implementation completed after the planning phases. Do not reintroduce removed UI variations. The implementation scope is locked to the dedicated <code>/archive</code> page, active-index navigation, explicit restore support, truthful archived state in the review shell, and tests that prove the active/archive partition.</p>
     </section>
 
     <section id="product-intent-alignment">
@@ -474,7 +474,7 @@
 
     <section id="phase-plan">
       <h2>Phase-by-phase execution plan</h2>
-      <p class="callout">This section is scoped to the selected dedicated <code>/archive</code> direction. No alternate UI variations remain in scope, and product-code implementation must happen only in a separate execution run.</p>
+      <p class="callout">This section is scoped to the selected dedicated <code>/archive</code> direction. No alternate UI variations remain in scope; the product-code implementation completed in the scoped execution run recorded by this document.</p>
 
       <article class="phase" id="phase-p1-contracts">
         <h3>P1 — Archive restore contract</h3>
@@ -546,8 +546,8 @@
       <h2>Readiness gates</h2>
       <ul>
         <li>No unresolved product questions remain for the selected dedicated <code>/archive</code> direction.</li>
-        <li>Codex and Claude Code plan reviews must agree by substance that this plan is execution-ready before a later execution run starts.</li>
-        <li>Browser-review comments for this plan should remain acknowledged/resolved before execution handoff.</li>
+        <li>Codex and Claude Code scoped reviews must agree by substance that the implementation matches this plan before completion.</li>
+        <li>Browser-review comments for this plan should remain acknowledged/resolved before final handoff.</li>
       </ul>
     </section>
 
@@ -568,7 +568,7 @@
         <li>No bulk archive management.</li>
         <li>No archive retention policy or deletion flow.</li>
         <li>No Markdown companion plan.</li>
-        <li>No product-code changes as part of this planning request.</li>
+        <li>No product-code changes beyond the scoped archive-viewer implementation recorded here.</li>
       </ul>
     </section>
 
