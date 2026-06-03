@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan Reviewer Missing Plan Index Treatment</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b16;
+      --panel: #101827;
+      --panel-2: #0d1424;
+      --border: #263248;
+      --border-strong: #334155;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --faint: #64748b;
+      --accent: #7dd3fc;
+      --accent-strong: #38bdf8;
+      --blue: #2563eb;
+      --green: #22c55e;
+      --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, .13);
+      --warn-pill-bg: #fbbf24;
+      --warn-pill-text: #1c1206;
+      --warn-surface: rgba(245, 158, 11, .08);
+      --rose: #fb7185;
+      --rose-soft: rgba(251, 113, 133, .12);
+      --slate: #475569;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 10% 6%, rgba(56,189,248,.14), transparent 30rem),
+        radial-gradient(circle at 82% 8%, rgba(245,158,11,.16), transparent 28rem),
+        linear-gradient(180deg, #070b16, #0b1020 48%, #070b16);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+    main { max-width: 1180px; margin: 0 auto; padding: 40px 24px 72px; }
+    header.hero, section, article.phase, .decision-box {
+      border: 1px solid var(--border);
+      background: rgba(16,24,39,.84);
+      border-radius: 22px;
+      box-shadow: 0 24px 70px rgba(0,0,0,.24);
+    }
+    header.hero { padding: 30px; margin-bottom: 22px; }
+    section { padding: 24px; margin: 18px 0; }
+    .eyebrow { color: var(--accent); font-size: 13px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 8px 0 12px; font-size: clamp(34px, 6vw, 66px); line-height: .96; letter-spacing: -.055em; }
+    h2 { margin: 0 0 12px; font-size: 26px; letter-spacing: -.02em; }
+    h3 { margin: 18px 0 8px; font-size: 20px; }
+    h4 { margin: 16px 0 6px; font-size: 16px; color: #dbeafe; }
+    p { color: var(--muted); margin: 0 0 12px; }
+    a { color: var(--accent); }
+    code { color: #dbeafe; background: #0f172a; padding: .12rem .35rem; border-radius: 6px; }
+    ul, ol { color: var(--muted); }
+    li + li { margin-top: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; color: var(--muted); font-size: 14px; }
+    th, td { border: 1px solid var(--border); padding: 10px; vertical-align: top; }
+    th { color: var(--text); background: rgba(15,23,42,.74); text-align: left; }
+    .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-top: 18px; }
+    .meta-card { border: 1px solid var(--border); background: rgba(13,20,36,.78); border-radius: 16px; padding: 16px; }
+    .meta-card strong { color: var(--text); display: block; margin-bottom: 4px; }
+    .status-pill, .tag, .button, .mock-pill {
+      display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; font-size: 12px; font-weight: 800;
+    }
+    .status-pill { background: var(--amber-soft); color: #fde68a; border: 1px solid rgba(245,158,11,.35); padding: 5px 10px; }
+    .tag { border: 1px solid rgba(125,211,252,.28); color: #bae6fd; padding: 3px 9px; margin: 2px 4px 2px 0; }
+    .progress-list { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 8px; }
+    .progress-list label { display: flex; gap: 10px; align-items: flex-start; color: var(--muted); }
+    .progress-list input { margin-top: 4px; accent-color: var(--green); }
+    .decision-box { padding: 18px; background: linear-gradient(135deg, rgba(245,158,11,.14), rgba(56,189,248,.08)); border-color: rgba(245,158,11,.38); }
+    .callout { border: 1px solid rgba(245,158,11,.34); background: var(--amber-soft); border-radius: 16px; padding: 16px; color: #fde68a; }
+    .mock-grid { display: grid; grid-template-columns: 1fr; gap: 18px; margin-top: 18px; }
+    figure.mock { margin: 0; border: 1px solid var(--border); border-radius: 20px; overflow: hidden; background: #0b1020; }
+    figure.mock.recommended { border-color: rgba(245,158,11,.55); box-shadow: 0 0 0 1px rgba(245,158,11,.18), 0 28px 70px rgba(0,0,0,.30); }
+    .mock-title { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border); background: rgba(15,23,42,.86); }
+    .mock-title strong { color: var(--text); }
+    figcaption { color: var(--muted); padding: 14px 16px 16px; border-top: 1px solid var(--border); font-size: 14px; }
+    .mock-screen { padding: 16px; min-height: 430px; }
+    .index-page { padding: 24px; min-height: 560px; background: radial-gradient(circle at 18% 0%, rgba(245,158,11,.12), transparent 24rem), #0b1020; }
+    .index-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 18px; }
+    .index-title { font-size: 30px; line-height: 1; letter-spacing: -.04em; color: var(--text); font-weight: 900; }
+    .index-subtitle { color: var(--muted); margin-top: 8px; max-width: 620px; }
+    .needs-attention { border: 1px solid rgba(245,158,11,.42); background: var(--warn-surface); color: #fde68a; border-radius: 14px; padding: 12px 14px; margin: 0 0 14px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .toolbar { display: grid; grid-template-columns: auto minmax(0,1fr) 120px; gap: 8px; margin-bottom: 14px; }
+    .field { border: 1px solid var(--border-strong); color: var(--muted); background: #0f172a; border-radius: 9px; padding: 8px 10px; min-height: 36px; font-size: 12px; }
+    .segments { display: inline-grid; grid-auto-flow: column; border: 1px solid var(--border-strong); background: #0f172a; border-radius: 999px; padding: 3px; }
+    .seg { padding: 5px 10px; color: var(--muted); font-size: 12px; font-weight: 800; border-radius: 999px; }
+    .seg.active { background: #92400e; color: #ffedd5; }
+    .repo-label { color: var(--text); font-size: 13px; font-weight: 850; margin: 12px 0 8px; }
+    .plan-card { border: 1px solid var(--blue); border-left: 5px solid var(--blue); background: #111827; border-radius: 13px; padding: 13px; margin: 8px 0; }
+    .plan-card.complete { border-color: var(--green); border-left-color: var(--green); }
+    .plan-card.missing { border-color: var(--amber); border-left-color: var(--amber); background: linear-gradient(180deg, rgba(245,158,11,.09), rgba(17,24,39,.96)); }
+    .plan-card.missing.severe { border-color: var(--rose); border-left-color: var(--rose); background: linear-gradient(180deg, rgba(251,113,133,.10), rgba(17,24,39,.96)); }
+    .plan-card-head { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+    .plan-card h4 { margin: 0 0 6px; color: var(--text); font-size: 15px; }
+    .path { color: #cbd5e1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; background: #0f172a; padding: 4px 6px; border-radius: 6px; display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; overflow-wrap: anywhere; }
+    .button { background: #1e293b; border: 1px solid var(--slate); color: var(--text); padding: 6px 9px; white-space: nowrap; }
+    .button.primary { border-color: rgba(125,211,252,.55); color: #bae6fd; }
+    .button.warn { border-color: rgba(245,158,11,.62); color: #fde68a; }
+    .progress-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; margin: 10px 0; }
+    .progress-bar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+    .segment { height: 10px; border: 1px solid var(--faint); border-radius: 3px; }
+    .segment.done { background: var(--green); border-color: var(--green); }
+    .count { color: var(--muted); font-size: 11px; }
+    .mock-pill { padding: 3px 8px; background: #1d4ed8; color: #dbeafe; }
+    .mock-pill.green { background: #166534; color: #dcfce7; }
+    .mock-pill.warn { background: var(--warn-pill-bg); color: var(--warn-pill-text); border: 1px solid rgba(255,251,235,.72); box-shadow: 0 0 0 2px rgba(251,191,36,.16); }
+    .mock-pill.warn::before { content: "⚠"; font-size: 11px; }
+    .missing-panel { border: 1px solid rgba(245,158,11,.34); background: var(--warn-surface); border-radius: 12px; padding: 10px; margin-top: 10px; }
+    .missing-title { color: #fde68a; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+    .missing-body { color: #fed7aa; font-size: 12px; margin: 6px 0 0; }
+    .missing-body strong { color: #fffbeb; }
+    .command-row { display: grid; gap: 4px; margin-top: 10px; }
+    .command-label { color: #fde68a; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .command-row code { display: block; color: #fffbeb; border: 1px solid rgba(245,158,11,.28); background: #0f172a; padding: 8px 9px; overflow-wrap: anywhere; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; }
+    .mini-filter { border: 1px solid var(--border-strong); border-radius: 999px; padding: 5px 9px; color: var(--muted); background: #0f172a; font-size: 12px; font-weight: 800; }
+    .mini-filter.warn { color: #fde68a; border-color: rgba(245,158,11,.45); background: rgba(245,158,11,.09); }
+    .phase { padding: 20px; margin: 14px 0; }
+    .phase h3 { margin-top: 0; }
+    @media (max-width: 760px) {
+      main { padding: 24px 14px 52px; }
+      .toolbar, .progress-row, .plan-card-head, .needs-attention { grid-template-columns: 1fr; display: grid; }
+      .mock-screen { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero" id="title">
+      <div class="eyebrow">Plan-reviewer UI plan</div>
+      <h1>Make missing plans obvious in the index.</h1>
+      <p>When a live-linked plan source disappears or becomes unreadable, the plan index should surface that state immediately as a plan-health problem, not hide it inside the individual review page sidebar.</p>
+      <div class="meta-grid" id="summary-cards">
+        <div class="meta-card"><strong>Status</strong><span class="status-pill">execution-ready plan</span></div>
+        <div class="meta-card"><strong>Scope</strong><span>Visual treatment and index behavior for source-sync failures.</span></div>
+        <div class="meta-card"><strong>Primary surface</strong><span><code>tools/plan-reviewer/src/server/app.ts</code> index and archive rendering.</span></div>
+        <div class="meta-card"><strong>This request</strong><span>Planning only. No product code changed.</span></div>
+      </div>
+    </header>
+
+    <section id="goal">
+      <h2>Goal</h2>
+      <p>Add a clear index-level treatment for registered plans whose authoritative source file is unavailable. A user scanning the active plan index must be able to tell which plans are healthy, which are merely incomplete, and which need attention because source sync failed.</p>
+    </section>
+
+    <section id="why-this-plan-exists">
+      <h2>Why this plan exists</h2>
+      <p>The screenshot shows a review page where the sidebar reports <strong>Source sync failed</strong> because the live-linked HTML file no longer exists. That warning is useful after opening the plan, but it is too late: the index still presents the plan as a normal active card. Missing or inaccessible plan sources should be visible before the user chooses a plan.</p>
+    </section>
+
+    <section id="authority-inputs">
+      <h2>Authority and inputs</h2>
+      <ul>
+        <li>User request: write a plan for the visual treatment of a missing plan in the index; do not code.</li>
+        <li>Screenshot: <code>plan.sync.failed</code> warning in the review sidebar for a deleted <code>thoughts/plans/*.html</code> source path.</li>
+        <li>Repo guidance: planning artifacts live under <code>thoughts/plans/</code>; planning work must not modify product code.</li>
+        <li>Current source: <code>tools/plan-reviewer/src/server/app.ts</code>, <code>tools/plan-reviewer/src/server/sourceSync.ts</code>, <code>tools/plan-reviewer/src/storage/database.ts</code>, and <code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code>.</li>
+        <li>Product principle: the correct recovery path should be obvious and should not require hidden tribal knowledge.</li>
+      </ul>
+    </section>
+
+    <section id="current-implementation-reality">
+      <h2>Current implementation reality</h2>
+      <ul>
+        <li><code>SourceSyncService.fail()</code> records <code>lastSyncStatus: failed</code>, <code>lastSyncError</code>, and a next action when the source path cannot be read.</li>
+        <li><code>PlanReviewStore.listPlans()</code> already returns each plan's <code>sourcePath</code>, <code>watchMode</code>, <code>lastSyncAt</code>, <code>lastSyncStatus</code>, and <code>lastSyncError</code>.</li>
+        <li><code>indexHtml()</code> currently uses progress, branch, activity, and comment counts, but it does not visually distinguish sync-failed live-linked plans.</li>
+        <li>The review shell sidebar already shows <code>#sync-warning</code> after <code>plan.sync.failed</code> events, so the visual language can be reused instead of inventing a separate warning system.</li>
+        <li>The active index and archive page share <code>baseIndexStyles()</code>; any missing-state styling should not make archived, complete, or incomplete states ambiguous.</li>
+      </ul>
+    </section>
+
+    <section id="progress">
+      <h2>Progress</h2>
+      <ul class="progress-list">
+        <li id="progress-p1"><label><input type="checkbox" checked disabled> P1 — Add failing index health tests.</label></li>
+        <li id="progress-p2"><label><input type="checkbox" checked disabled> P2 — Render missing-state index cards.</label></li>
+        <li id="progress-p3"><label><input type="checkbox" checked disabled> P3 — Add filtering and recovery guidance.</label></li>
+        <li id="progress-p4"><label><input type="checkbox" checked disabled> P4 — Verify browser and CLI contracts.</label></li>
+      </ul>
+    </section>
+
+    <section id="resume-instructions">
+      <h2>Resume instructions</h2>
+      <p>Read this full plan, then execute the first unchecked Progress item. Stay within <code>tools/plan-reviewer</code> unless tests prove a docs update is necessary. Preserve the existing archive behavior and review-page sync warning. Do not implement a full index redesign; the required outcome is an obvious missing-source state on existing index cards plus enough filtering and guidance to recover.</p>
+    </section>
+
+    <section id="product-intent-alignment">
+      <h2>Product intent alignment</h2>
+      <p>The plan index is the user's triage surface. If a plan cannot be live-synced from its source file, the index should tell the truth without forcing the user to open each card. Recovery should be agent-legible: show what failed, the affected path, what cached content is still available, and the next command or action that repairs the source-of-truth link.</p>
+    </section>
+
+    <section id="locked-decisions">
+      <h2>Locked decisions</h2>
+      <ul>
+        <li><strong>Missing means source-sync failed:</strong> the required index missing state is driven by <code>plan.watchMode === "filesystem"</code> and <code>plan.lastSyncStatus === "failed"</code>, not by progress or comment counts.</li>
+        <li><strong>Keep serving cached content:</strong> a missing-source plan remains openable as the last good cached render; the index must label it as cached/stale rather than removing it.</li>
+        <li><strong>Warning outranks progress:</strong> a missing-source card keeps its progress bar, but the primary visual state becomes <strong>Source missing</strong> instead of Complete or Incomplete.</li>
+        <li><strong>No new severe-state predicate:</strong> the rose/red mock demonstrates a possible future visual tier only. This implementation slice must not invent a separate severe/unopenable state unless existing rendered-content reads already expose it directly.</li>
+        <li><strong>Archive stays secondary:</strong> archiving is not the fix. The card may still expose Archive, but the primary action is to open cached content or repair/re-register the source.</li>
+        <li><strong>No live index SSE in this slice:</strong> the index must render truthful state on load and after its normal client filtering. Full real-time index updates can remain a future enhancement unless tests show stale loaded indexes are causing misleading behavior.</li>
+      </ul>
+    </section>
+
+    <section id="visual-treatment">
+      <h2>Visual treatment</h2>
+      <div class="decision-box" id="selected-treatment">
+        <h3>Selected direction: warning-first card with an index-level needs-attention summary</h3>
+        <p>Use an amber warning state for the executable slice: live-linked source sync failed while the cached plan remains openable. The rose/red example is a visual severity reference only; this plan does not require adding a separate severe-state predicate. The required warning appears in three places: a top summary, a filter chip/count, and the affected plan card.</p>
+      </div>
+
+      <div class="mock-grid" id="mockups">
+        <figure class="mock recommended" id="mock-index-card-warning">
+          <div class="mock-title"><strong>Index warning card</strong><span class="mock-pill warn">Recommended</span></div>
+          <div class="mock-screen">
+            <div class="index-page">
+              <div class="index-head">
+                <div>
+                  <div class="index-title">Plan Review Index</div>
+                  <div class="index-subtitle">Active plans are shown by default.</div>
+                </div>
+                <span class="button primary">Archived (2) →</span>
+              </div>
+              <div class="needs-attention">
+                <strong>2 plans · source files missing</strong>
+                <span>Cached copies still open.</span>
+              </div>
+              <div class="toolbar">
+                <div class="segments"><span class="seg active">Needs attention</span><span class="seg">All</span></div>
+                <div class="field">🔍 Filter plans</div>
+                <div class="field">All repos ▾</div>
+              </div>
+              <div class="repo-label">heddle-dev</div>
+              <div class="plan-card missing">
+                <div class="plan-card-head">
+                  <div>
+                    <h4>NOD-794 Backup, Export, and Import UI Enablement Plan</h4>
+                    <span class="path">thoughts/plans/nod-794-backup-export-import-ui.html</span>
+                  </div>
+                  <span class="mock-pill warn">Source missing</span>
+                </div>
+                <div class="missing-panel">
+                  <div class="missing-title">Live source unavailable</div>
+                  <p class="missing-body"><strong>ENOENT</strong>: no such file. Showing the last cached version from source sync.</p>
+                  <div class="command-row"><span class="command-label">Repair</span><code>plan-review register thoughts/plans/&lt;file&gt;.html</code></div>
+                </div>
+                <div class="progress-row">
+                  <div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment"></span><span class="segment"></span></div>
+                  <span class="count">2 of 4 phases complete</span>
+                </div>
+                <p class="count">Branch <code>export-ui-fixes</code> · pending 0 · resolved 1 · activity 2026-06-03</p>
+                <div class="filter-row"><span class="button primary">Open cached copy</span><span class="button warn">Copy repair command</span><span class="button">Archive</span></div>
+              </div>
+              <div class="plan-card missing severe">
+                <div class="plan-card-head">
+                  <div><h4>Source path unreadable after worktree cleanup</h4><span class="path">/Users/anichols/code/heddle-dev__worktrees/export-ui-fixes/thoughts/plans/nod-794.html</span></div>
+                  <span class="mock-pill warn">Unavailable</span>
+                </div>
+                <div class="missing-panel">
+                  <div class="missing-title">Cached copy only — source unreadable</div>
+                  <p class="missing-body">The authoritative file is gone. Re-register from the intended repo if this plan is still active.</p>
+                </div>
+              </div>
+              <div class="plan-card complete">
+                <div class="plan-card-head"><h4>Plan Reviewer Archive Viewer</h4><span class="mock-pill green">Complete</span></div>
+                <div class="progress-row"><div class="progress-bar"><span class="segment done"></span><span class="segment done"></span><span class="segment done"></span></div><span class="count">3 of 3 phases complete</span></div>
+              </div>
+            </div>
+          </div>
+          <figcaption>The index makes the missing state visible before the user opens the review page. The card keeps enough normal metadata to support triage but the warning controls the visual hierarchy.</figcaption>
+        </figure>
+
+        <figure class="mock" id="mock-filter-chip">
+          <div class="mock-title"><strong>Filter/count treatment</strong><span class="mock-pill">Secondary</span></div>
+          <div class="mock-screen">
+            <div class="index-page">
+              <div class="index-head"><div><div class="index-title">Plan Review Index</div><div class="index-subtitle">Active plans are shown by default.</div></div></div>
+              <div class="filter-row">
+                <span class="mini-filter warn">Needs attention 2</span>
+                <span class="mini-filter">All active 14</span>
+                <span class="mini-filter">Complete 5</span>
+                <span class="mini-filter">Incomplete 9</span>
+              </div>
+              <div class="needs-attention">
+                <strong>Filter state</strong>
+                <span>Shows only warning cards while preserving repo/text filters.</span>
+              </div>
+            </div>
+          </div>
+          <figcaption>This full-width secondary mock isolates the filter/count behavior without competing with the card-detail mock above. A dedicated filter prevents warning cards from being buried in large indexes and can be implemented as static client filtering against existing card data.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="acceptance-criteria">
+      <h2>Acceptance criteria</h2>
+      <ol>
+        <li id="ac-1">A live-linked plan with <code>lastSyncStatus === "failed"</code> is visually marked in the active index with a high-contrast <strong>Source missing</strong> or <strong>Source unavailable</strong> pill.</li>
+        <li id="ac-2">The affected card shows the failure reason when available, including the error code/message and the source path or plan path needed for repair.</li>
+        <li id="ac-3">The affected card explains that the displayed plan remains a cached/last-good copy, so users do not mistake it for current source content.</li>
+        <li id="ac-4">The index includes a top-level count or filter for plans that need attention when at least one active plan has failed source sync.</li>
+        <li id="ac-5">Complete, incomplete, archived, and missing states remain visually distinguishable. Missing source status outranks complete/incomplete styling on active cards.</li>
+        <li id="ac-6">A recovered plan whose source sync succeeds again returns to the normal complete/incomplete card treatment on the next index render.</li>
+        <li id="ac-7">Archive-page cards can show missing-source state without suggesting that archived status is caused by the sync failure.</li>
+        <li id="ac-8">The API contract remains backward compatible: existing <code>GET /api/plans</code> data shape is not broken, and any new UI-only fields are derived server-side or additive.</li>
+      </ol>
+    </section>
+
+    <section id="bdd-scenarios">
+      <h2>BDD scenarios</h2>
+      <article id="bdd-active-missing">
+        <h3>Active live-linked source disappears</h3>
+        <p><strong>Given</strong> an active plan is registered with filesystem watch mode, <strong>when</strong> the source file is deleted and source sync records a failure, <strong>then</strong> the active index card shows <strong>Source missing</strong>, the cached-copy explanation, and a repair command.</p>
+      </article>
+      <article id="bdd-progress-outrank">
+        <h3>Missing status outranks completion</h3>
+        <p><strong>Given</strong> a plan has all progress phases checked, <strong>when</strong> its source sync fails, <strong>then</strong> the card is styled as needing attention rather than as a green complete card, while still showing phase progress as supporting metadata.</p>
+      </article>
+      <article id="bdd-recovery">
+        <h3>Source becomes readable again</h3>
+        <p><strong>Given</strong> a missing-source card is visible after a failed sync, <strong>when</strong> the source file is restored and source sync succeeds, <strong>then</strong> a subsequent index load no longer shows the missing warning or needs-attention count for that plan.</p>
+      </article>
+      <article id="bdd-archive-page">
+        <h3>Archived plan has stale source</h3>
+        <p><strong>Given</strong> an archived plan has a failed source sync status, <strong>when</strong> the user opens <code>/archive</code>, <strong>then</strong> the card can show a muted source-unavailable note but keeps archived state as the primary context.</p>
+      </article>
+      <article id="bdd-filter-large-index">
+        <h3>Large index triage</h3>
+        <p><strong>Given</strong> many repos and plans are registered, <strong>when</strong> at least one active plan needs attention, <strong>then</strong> the user can filter to only missing/unavailable plans without losing the existing text and repo filters.</p>
+      </article>
+    </section>
+
+    <section id="phase-plan">
+      <h2>Phase-by-phase execution plan</h2>
+
+      <article class="phase" id="phase-p1-tests">
+        <h3>P1 — Add failing index health tests</h3>
+        <h4>End State</h4>
+        <p>Tests fail because current index markup does not expose failed source sync state.</p>
+        <h4>Tests first</h4>
+        <p>Add contract coverage that registers a filesystem plan with a missing source path or induces a source sync failure, then asserts the active index HTML contains a warning pill, cached-copy explanation, failure detail, and needs-attention count/filter.</p>
+        <h4>Work</h4>
+        <p>Use existing source-sync test helpers and <code>app.inject({ method: "GET", url: "/" })</code>. Add archive-page expectations only if an archived failed-sync plan currently renders misleadingly.</p>
+        <h4>Expected files</h4>
+        <p><code>tools/plan-reviewer/src/__tests__/contracts.test.ts</code></p>
+        <h4>Verify</h4>
+        <pre><code>cd tools/plan-reviewer && bun run test</code></pre>
+      </article>
+
+      <article class="phase" id="phase-p2-rendering">
+        <h3>P2 — Render missing-state index cards</h3>
+        <h4>End State</h4>
+        <p>Active index cards clearly distinguish source-sync failures from normal complete/incomplete states.</p>
+        <h4>Tests first</h4>
+        <p>Keep P1 tests failing until the rendered index includes the required warning state.</p>
+        <h4>Work</h4>
+        <p>Derive a narrow <code>needsAttention</code> flag inside index rendering from <code>watchMode</code> and <code>lastSyncStatus</code>. Add card classes, accessible labels, warning copy, and cached-copy language. Keep normal progress and comment metadata visible but subordinate.</p>
+        <h4>Expected files</h4>
+        <p><code>tools/plan-reviewer/src/server/app.ts</code></p>
+        <h4>Verify</h4>
+        <pre><code>cd tools/plan-reviewer && bun run test</code></pre>
+      </article>
+
+      <article class="phase" id="phase-p3-filter-guidance">
+        <h3>P3 — Add filtering and recovery guidance</h3>
+        <h4>End State</h4>
+        <p>The index supports quick triage of missing-source plans and gives users an obvious next action.</p>
+        <h4>Tests first</h4>
+        <p>Extend index tests or e2e coverage so missing cards can be filtered without breaking existing text/repo filters.</p>
+        <h4>Work</h4>
+        <p>Add a needs-attention summary only when failed live-linked plans are present. Add a card data attribute for client-side filtering. Present an agent-legible repair command based on the registered <code>planPath</code>; do not make Archive the recommended fix. If adding a copy button requires extra script complexity, prefer visible command text for this slice.</p>
+        <h4>Expected files</h4>
+        <p><code>tools/plan-reviewer/src/server/app.ts</code>; optionally <code>tools/plan-reviewer/src/test-fixtures/e2e-run.ts</code> for browser-level filter behavior.</p>
+        <h4>Verify</h4>
+        <pre><code>cd tools/plan-reviewer && bun run test
+cd tools/plan-reviewer && bun run test:e2e</code></pre>
+      </article>
+
+      <article class="phase" id="phase-p4-verification">
+        <h3>P4 — Verify browser and CLI contracts</h3>
+        <h4>End State</h4>
+        <p>The UI treatment is verified through automated tests and a manual dogfood path that matches the screenshot failure.</p>
+        <h4>Tests first</h4>
+        <p>No new tests first in this phase; it is the validation gate for the completed change.</p>
+        <h4>Work</h4>
+        <p>Build and run the plan-reviewer test suite. Manually register a temporary live-linked HTML plan, delete or move the source file, wait for sync failure, and open the index to confirm the missing-source card and top summary are obvious.</p>
+        <h4>Expected files</h4>
+        <p>No additional files expected beyond test updates from earlier phases.</p>
+        <h4>Verify</h4>
+        <pre><code>cd tools/plan-reviewer && bun run test
+cd tools/plan-reviewer && bun run test:e2e
+# manual dogfood with local service:
+plan-review register thoughts/plans/&lt;temp-plan&gt;.html --repo auto --branch auto --commit auto --json
+rm thoughts/plans/&lt;temp-plan&gt;.html
+open http://mbp.braid-python.ts.net:4317/</code></pre>
+      </article>
+    </section>
+
+    <section id="test-coverage-matrix">
+      <h2>Test coverage matrix</h2>
+      <table>
+        <thead><tr><th>Acceptance</th><th>BDD</th><th>Test layer</th><th>Verify</th></tr></thead>
+        <tbody>
+          <tr><td>AC-1, AC-2, AC-3, AC-5</td><td>Active missing, progress outrank</td><td>Fastify contract test against <code>GET /</code> HTML</td><td><code>cd tools/plan-reviewer && bun run test</code></td></tr>
+          <tr><td>AC-4</td><td>Large index triage</td><td>Contract or e2e assertion for needs-attention count/filter</td><td><code>cd tools/plan-reviewer && bun run test:e2e</code></td></tr>
+          <tr><td>AC-6</td><td>Recovery</td><td>Existing recovery watcher pattern plus index render assertion</td><td><code>cd tools/plan-reviewer && bun run test</code></td></tr>
+          <tr><td>AC-7</td><td>Archive page</td><td>Contract test for <code>GET /archive</code> with archived failed-sync plan</td><td><code>cd tools/plan-reviewer && bun run test</code></td></tr>
+          <tr><td>AC-8</td><td>All</td><td>Existing API contract tests remain green</td><td><code>cd tools/plan-reviewer && bun run test</code></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="verification-strategy">
+      <h2>Verification strategy</h2>
+      <ul>
+        <li>Use contract tests for the server-rendered HTML because the current index is rendered by <code>indexHtml()</code>.</li>
+        <li>Use e2e only for client filtering behavior, not for every visual class.</li>
+        <li>Perform one manual dogfood run that reproduces the screenshot condition: register a live-linked plan, remove the file, observe the review sidebar warning, then confirm the index shows the same state before opening the plan.</li>
+      </ul>
+    </section>
+
+    <section id="delivery-order">
+      <h2>Delivery order</h2>
+      <ol>
+        <li>Lock the missing-source contract in tests.</li>
+        <li>Add the warning-first visual state to active index cards.</li>
+        <li>Add the needs-attention summary/filter and repair guidance.</li>
+        <li>Verify archive page, recovery path, and manual dogfood behavior.</li>
+      </ol>
+    </section>
+
+    <section id="non-goals">
+      <h2>Non-goals</h2>
+      <ul>
+        <li>Do not redesign the full plan index layout.</li>
+        <li>Do not change source-sync architecture, watcher recovery semantics, or cached-render storage.</li>
+        <li>Do not remove or auto-archive missing-source plans.</li>
+        <li>Do not add authentication or network exposure changes in this slice.</li>
+        <li>Do not add real-time index SSE unless a later product decision expands the scope.</li>
+      </ul>
+    </section>
+
+    <section id="decisions-deviations-log">
+      <h2>Decisions / Deviations log</h2>
+      <ul>
+        <li><strong>2026-06-03:</strong> Plan created from screenshot and repo inspection. No product code changed.</li>
+        <li><strong>2026-06-03:</strong> Chose warning-first card treatment because it reuses existing source-sync semantics and keeps recovery visible at the index level.</li>
+        <li><strong>2026-06-03:</strong> Integrated Claude Code visual polish feedback: high-contrast warning pills, muted supporting amber surfaces, inline amber/rose severity ladder, and block-style repair command treatment.</li>
+        <li><strong>2026-06-03:</strong> Updated visual mockups to render full-width stacked figures instead of side-by-side cards, preserving readability for dense index examples.</li>
+        <li><strong>2026-06-03:</strong> Integrated Claude and Codex executable-readiness notes: removed unsupported <code>--grep</code> e2e suffixes and clarified that the rose/red visual tier is illustrative, not a required new state predicate.</li>
+        <li><strong>2026-06-03:</strong> Implemented the scoped index treatment: failed filesystem-sync plans now render warning-first active index cards, a needs-attention filter, archived-source notes, and contract/e2e/manual dogfood verification.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
