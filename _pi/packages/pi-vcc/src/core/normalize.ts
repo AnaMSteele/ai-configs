@@ -1,9 +1,8 @@
-import type { Message } from "@earendil-works/pi-ai";
-import type { NormalizedBlock } from "../types";
+import { type NormalizedBlock, type PiMessage, isBashExecutionMessage } from "../types";
 import { textOf } from "./content";
 import { sanitize } from "./sanitize";
 
-const normalizeOne = (msg: Message, msgIndex: number): NormalizedBlock[] => {
+const normalizeOne = (msg: PiMessage, msgIndex: number): NormalizedBlock[] => {
   if (msg.role === "user") {
     const blocks: NormalizedBlock[] = [];
     const text = sanitize(textOf(msg.content));
@@ -16,6 +15,16 @@ const normalizeOne = (msg: Message, msgIndex: number): NormalizedBlock[] => {
       }
     }
     return blocks.length > 0 ? blocks : [{ kind: "user", text: "", sourceIndex: msgIndex }];
+  }
+
+  if (isBashExecutionMessage(msg)) {
+    return [{
+      kind: "bash",
+      command: msg.command ?? "",
+      output: msg.output ?? "",
+      exitCode: msg.exitCode,
+      sourceIndex: msgIndex,
+    }];
   }
 
   if (msg.role === "toolResult") {
@@ -60,7 +69,7 @@ const normalizeOne = (msg: Message, msgIndex: number): NormalizedBlock[] => {
   return [];
 };
 
-export const normalize = (messages: Message[]): NormalizedBlock[] =>
+export const normalize = (messages: PiMessage[]): NormalizedBlock[] =>
   messages.flatMap((msg, i) => normalizeOne(msg, i));
 
 

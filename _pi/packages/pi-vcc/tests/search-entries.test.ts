@@ -46,6 +46,18 @@ describe("searchEntries", () => {
     expect(r[0].snippet).toContain("hidden_keyword");
   });
 
+  it("searches bashExecution command and output text", () => {
+    const bashEntries: RenderedEntry[] = [
+      { index: 0, role: "bash", summary: "$ npm test\nclipped" },
+    ];
+    const bashMessages = [
+      { role: "bashExecution", command: "npm test", output: "rare_failure_marker", exitCode: 1 } as any,
+    ];
+    const r = searchEntries(bashEntries, bashMessages, "rare_failure_marker");
+    expect(r).toHaveLength(1);
+    expect(r[0].snippet).toContain("rare_failure_marker");
+  });
+
   it("returns snippet around matched term", () => {
     const r = searchEntries(entries, messages, "root");
     expect(r).toHaveLength(1);

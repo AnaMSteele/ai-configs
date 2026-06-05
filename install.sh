@@ -1829,21 +1829,21 @@ report_pi_vcc_upstream_status() {
     case "$status" in
         0)
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "    ${BLUE}ℹ vendored pi-vcc matches the pinned upstream snapshot with the expected local patch set${NC}"
-            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
+            echo -e "    ${BLUE}ℹ vendored pi-vcc matches the reviewed upstream baseline with the intentional selective patch/skip manifest${NC}"
+            printf '%s\n' "$output" | sed -n '/^local package version:/p;/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
             echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh --verbose"
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             ;;
         1)
             echo -e "    ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "    ${YELLOW}⚠ vendored pi-vcc has unexpected local drift${NC}"
-            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p;/^unexpected diff count:/p;/^missing expected diff count:/p;/^review details with:/p' | sed 's/^/      /'
+            echo -e "    ${YELLOW}⚠ vendored pi-vcc has unexpected or stale manifest drift${NC}"
+            printf '%s\n' "$output" | sed -n '/^local package version:/p;/^version status:/p;/^commit status:/p;/^drift status:/p;/^unexpected diff count:/p;/^missing expected diff count:/p;/^review details with:/p' | sed 's/^/      /'
             echo -e "    ${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             ;;
         2)
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-            echo -e "    ${BLUE}ℹ vendored pi-vcc has upstream updates available${NC}"
-            printf '%s\n' "$output" | sed -n '/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
+            echo -e "    ${BLUE}ℹ vendored pi-vcc reviewed-upstream metadata is stale; re-review upstream before changing local uptake${NC}"
+            printf '%s\n' "$output" | sed -n '/^local package version:/p;/^version status:/p;/^commit status:/p;/^drift status:/p' | sed 's/^/      /'
             echo "      Review details with: ./scripts/check-pi-vcc-upstream.sh --verbose"
             echo -e "    ${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
             ;;

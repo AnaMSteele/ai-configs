@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { formatSummary } from "../src/core/format";
+import { formatSummary, wrapLongLines } from "../src/core/format";
 import type { SectionData } from "../src/sections";
 
 const empty: SectionData = {
@@ -57,5 +57,10 @@ describe("formatSummary", () => {
     expect(r).toContain("[Session Goal]");
     expect(r).toContain("[Outstanding Context]");
     expect(r).toContain("\n\n");
+  });
+
+  it("wraps long lines so compaction TUI rendering stays bounded", () => {
+    const r = wrapLongLines(`[assistant]\n${"word ".repeat(80)}`);
+    expect(Math.max(...r.split("\n").map((line) => line.length))).toBeLessThanOrEqual(120);
   });
 });

@@ -1,14 +1,13 @@
-import type { Message } from "@earendil-works/pi-ai";
-import type { FileOps } from "../types";
+import type { FileOps, PiMessage } from "../types";
 import { normalize } from "./normalize";
 import { filterNoise } from "./filter-noise";
 import { buildSections } from "./build-sections";
-import { formatSummary, capBrief } from "./format";
+import { formatSummary, capBrief, wrapLongLines } from "./format";
 import { redact } from "./redact";
 import { collapseSkillLines } from "./skill-collapse";
 
 export interface CompileInput {
-  messages: Message[];
+  messages: PiMessage[];
   previousSummary?: string;
   fileOps?: FileOps;
 }
@@ -137,5 +136,6 @@ export const compile = (input: CompileInput): string => {
   const data = buildSections({ blocks });
   const fresh = formatSummary(data);
   const merged = input.previousSummary ? mergePrevious(input.previousSummary, fresh) : fresh;
-  return redact(merged);
+  if (!merged) return "";
+  return redact(wrapLongLines(redact(merged)));
 };

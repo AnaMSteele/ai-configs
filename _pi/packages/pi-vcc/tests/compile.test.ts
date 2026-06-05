@@ -138,4 +138,22 @@ describe("compile", () => {
     expect(r).toContain("earlier lines omitted");
     expect(r).toContain("latest");
   });
+
+  it("wraps final compiled output", () => {
+    const r = compile({
+      messages: [userMsg("check final summary wrapping " + "word ".repeat(80))],
+    });
+    const maxLineLength = Math.max(...r.split("\n").map((line) => line.length));
+    expect(maxLineLength).toBeLessThanOrEqual(120);
+  });
+
+  it("redacts secrets after wrapping-sensitive assembly", () => {
+    const secret = "token=" + "a".repeat(160);
+    const r = compile({
+      messages: [userMsg(`run deploy with ${secret}`)],
+    });
+    expect(r).toContain("token [REDACTED]");
+    expect(r).not.toContain("a".repeat(80));
+    expect(Math.max(...r.split("\n").map((line) => line.length))).toBeLessThanOrEqual(120);
+  });
 });
