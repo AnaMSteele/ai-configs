@@ -147,6 +147,46 @@ describe("compile", () => {
     expect(maxLineLength).toBeLessThanOrEqual(120);
   });
 
+  it("preserves wrapped header bullets across later merges", () => {
+    const previousSummary = [
+      "[Session Goal]",
+      "- Investigate a very long operator-facing compaction behavior where continuation prompts should remain",
+      "  silent after completed assistant turns but resume when interrupted mid-response",
+      "",
+      "---",
+      "",
+      "[user]",
+      "Original request",
+    ].join("\n");
+    const r = compile({
+      previousSummary,
+      messages: [userMsg("New follow-up")],
+    });
+    expect(r).toMatch(/silent after\s+completed assistant turns/);
+    expect(r).toContain("interrupted mid-response");
+    expect(r).toContain("- New follow-up");
+  });
+
+  it("preserves wrapped file bullets across later merges", () => {
+    const previousSummary = [
+      "[Files And Changes]",
+      "- Read: _pi/packages/pi-vcc/src/core/very-long-file-name-that-wrapped-before-the-next-compact.ts,",
+      "  _pi/packages/pi-vcc/src/core/continued-file.ts",
+      "",
+      "---",
+      "",
+      "[assistant]",
+      "* Read files",
+    ].join("\n");
+    const r = compile({
+      previousSummary,
+      messages: [assistantWithToolCall("Read", { path: "fresh.ts" })],
+    });
+    expect(r).toContain("very-long-file-name-that-wrapped-before-the-next-compact.ts");
+    expect(r).toContain("continued-file.ts");
+    expect(r).toContain("fresh.ts");
+  });
+
   it("redacts secrets after wrapping-sensitive assembly", () => {
     const secret = "token=" + "a".repeat(160);
     const r = compile({

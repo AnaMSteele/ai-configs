@@ -37,13 +37,25 @@ const briefOf = (text: string): string => {
   return text.slice(idx + SEPARATOR.length).trim();
 };
 
+const bulletLinesOf = (text: string): string[] => {
+  const lines: string[] = [];
+  for (const rawLine of text.split("\n")) {
+    if (rawLine.startsWith("- ")) {
+      lines.push(rawLine);
+    } else if (/^\s+\S/.test(rawLine) && lines.length > 0) {
+      lines[lines.length - 1] += ` ${rawLine.trim()}`;
+    }
+  }
+  return lines;
+};
+
 const mergeFileLines = (prev: string, fresh: string): string => {
   const categories = ["Modified", "Created", "Read"] as const;
   const merged: Record<string, Set<string>> = {};
   for (const cat of categories) merged[cat] = new Set();
 
   for (const text of [prev, fresh]) {
-    for (const line of text.split("\n")) {
+    for (const line of bulletLinesOf(text)) {
       for (const cat of categories) {
         const prefix = `- ${cat}: `;
         if (!line.startsWith(prefix)) continue;
@@ -82,9 +94,9 @@ const mergeHeaderSection = (header: string, prev: string, fresh: string): string
     return mergeFileLines(prev, fresh);
   }
 
-  const isClean = (l: string) => l.startsWith("- ") && !l.includes("<skill") && !l.includes("</skill");
-  const prevLines = prev.split("\n").filter(isClean);
-  const freshLines = fresh.split("\n").filter(isClean);
+  const isClean = (l: string) => !l.includes("<skill") && !l.includes("</skill");
+  const prevLines = bulletLinesOf(prev).filter(isClean);
+  const freshLines = bulletLinesOf(fresh).filter(isClean);
   const combined = [...new Set([...prevLines, ...freshLines])];
   const CAP = header === "Session Goal" ? 8 : 15;
   const capped = combined.length > CAP ? combined.slice(-CAP) : combined;
