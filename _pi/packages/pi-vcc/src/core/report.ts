@@ -1,4 +1,4 @@
-import type { Message } from "@earendil-works/pi-ai";
+import { type PiMessage, isBashExecutionMessage } from "../types";
 import { buildSections } from "./build-sections";
 import { clip } from "./content";
 import { normalize } from "./normalize";
@@ -12,6 +12,7 @@ interface RoleCounts {
   user: number;
   assistant: number;
   toolResult: number;
+  bashExecution: number;
 }
 
 interface BlockCounts {
@@ -19,6 +20,7 @@ interface BlockCounts {
   assistant: number;
   toolCalls: number;
   toolResults: number;
+  bash: number;
   thinking: number;
 }
 
@@ -64,22 +66,24 @@ export interface CompactReport {
 const estimateTokensFromChars = (chars: number): number =>
   Math.ceil(chars / 4);
 
-const countRoles = (messages: Message[]): RoleCounts => {
-  const counts: RoleCounts = { user: 0, assistant: 0, toolResult: 0 };
+const countRoles = (messages: PiMessage[]): RoleCounts => {
+  const counts: RoleCounts = { user: 0, assistant: 0, toolResult: 0, bashExecution: 0 };
   for (const msg of messages) {
-    if (msg.role === "user") counts.user += 1;
+    if (isBashExecutionMessage(msg)) counts.bashExecution += 1;
+    else if (msg.role === "user") counts.user += 1;
     else if (msg.role === "assistant") counts.assistant += 1;
     else if (msg.role === "toolResult") counts.toolResult += 1;
   }
   return counts;
 };
 
-const countBlocks = (messages: Message[]): BlockCounts => {
+const countBlocks = (messages: PiMessage[]): BlockCounts => {
   const counts: BlockCounts = {
     user: 0,
     assistant: 0,
     toolCalls: 0,
     toolResults: 0,
+    bash: 0,
     thinking: 0,
   };
 
@@ -88,18 +92,19 @@ const countBlocks = (messages: Message[]): BlockCounts => {
     else if (block.kind === "assistant") counts.assistant += 1;
     else if (block.kind === "tool_call") counts.toolCalls += 1;
     else if (block.kind === "tool_result") counts.toolResults += 1;
+    else if (block.kind === "bash") counts.bash += 1;
     else if (block.kind === "thinking") counts.thinking += 1;
   }
 
   return counts;
 };
 
-const inputCharsOf = (messages: Message[]): number =>
+const inputCharsOf = (messages: PiMessage[]): number =>
   messages
     .map((msg, index) => renderMessage(msg, index, true).summary.length)
     .reduce((sum, len) => sum + len, 0);
 
-const topFilesOf = (messages: Message[]): string[] => {
+const topFilesOf = (messages: PiMessage[]): string[] => {
   const files = new Set<string>();
   for (const block of normalize(messages)) {
     if (block.kind === "tool_call") {
@@ -112,7 +117,7 @@ const topFilesOf = (messages: Message[]): string[] => {
   return [...files].slice(0, 10);
 };
 
-const previewOf = (messages: Message[], edgeCount = 3): string => {
+const previewOf = (messages: PiMessage[], edgeCount = 3): string => {
   const rendered = messages.map((msg, index) => renderMessage(msg, index));
   if (rendered.length === 0) return "(empty)";
   if (rendered.length <= edgeCount * 2) {
@@ -159,7 +164,10 @@ const matchesQuery = (text: string, query: string): boolean => {
     .every((term) => hay.includes(term));
 };
 
-const probesOf = (messages: Message[], summary: string): RecallProbe[] => {
+const escapeRegexLiteral = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const probesOf = (messages: PiMessage[], summary: string): RecallProbe[] => {
   const blocks = normalize(messages);
   const data = buildSections({ blocks });
 
@@ -187,12 +195,13 @@ const probesOf = (messages: Message[], summary: string): RecallProbe[] => {
       const sourceText = text.trim();
       const query = queryOf(sourceText);
       if (!query) return null;
+      const recallQuery = label === "file" ? escapeRegexLiteral(query) : query;
       return {
         label,
         sourceText,
         query,
         summaryMentioned: matchesQuery(summary, query),
-        recallHits: searchEntries(rendered, query).length,
+        recallHits: searchEntries(rendered, messages, recallQuery).length,
       };
     })
     .filter((probe): probe is RecallProbe => probe !== null);

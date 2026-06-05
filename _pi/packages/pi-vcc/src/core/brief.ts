@@ -152,6 +152,15 @@ export const buildBriefSections = (blocks: NormalizedBlock[]): BriefLine[] => {
         lastHeader = "[user]";
         break;
       }
+      case "bash": {
+        const cmd = redact(compressBash(b.command));
+        const ref = b.sourceIndex != null ? ` (#${b.sourceIndex})` : "";
+        if (cmd) {
+          push("[user]", `$ ${cmd}${ref}`);
+          lastHeader = "[user]";
+        }
+        break;
+      }
       case "assistant": {
         const text = truncateTokens(b.text, TRUNCATE_ASSISTANT);
         if (text) {

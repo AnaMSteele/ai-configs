@@ -3,14 +3,18 @@
 Vendored into `ai-configs` from `sting8k/pi-vcc` so this repo can ship a pinned local install plus repo-specific compaction behavior.
 
 - Source: `https://github.com/sting8k/pi-vcc`
-- Upstream version: `0.3.6`
-- Upstream commit snapshot: `5c50dfc20189ddbc1459b911ead00e31d2c408dd`
+- Local package version: `0.3.6-ai-configs.1`
+- Reviewed upstream version: `0.3.15`
+- Reviewed upstream commit: `b4c9099c78863769bec8f6f3ee3861c1e094db9e`
 - License: MIT
-- Local changes:
+- Local changes and selective uptake:
   - `/pi-vcc` carries the `__PI_VCC_MANUAL_BYPASS__` marker directly in-source so repo-managed auto-compaction and manual compaction both use pi-vcc without global patching
   - the compaction hook keeps the repo-local agent-only fallback tail and shifts the cut backward so a live `toolResult` never outlives its matching assistant tool call
+  - when pi-vcc compacts before the assistant has finished its response, it sends a follow-up continue prompt after compaction so the agent resumes instead of stalling; compactions at the completed-response boundary stay silent
+  - high-value upstream `0.3.15` uptake is intentionally narrow: TUI-safe wrapping for final compiled summaries plus `bashExecution` normalization/search/report correctness fixes
+  - this vendored copy preserves redaction, including compressed bash command redaction, even though upstream removed `src/core/redact.ts`
   - this vendored copy intentionally does **not** append the upstream `vcc_recall` reminder note to every summary; this repo keeps the pre-existing summary output contract while still stripping older injected note lines during merge
-  - when pi-vcc compacts while an agent turn is still in flight, it sends a follow-up continue prompt after compaction so the agent resumes instead of stalling
+  - this vendored copy intentionally skips upstream active-lineage recall, commits-section extraction, settings scaffold, compact-all sentinel/orphan recovery, broad summary-quality churn, peer dependency range changes, tool-error omission, and binary demo assets
   - local tests and harnesses cover the repo-specific compaction safety contract and package-wide verification flow
 
 Algorithmic conversation compactor for [Pi](https://github.com/badlogic/pi-mono). No LLM calls — produces a brief transcript via extraction and formatting.
@@ -47,7 +51,7 @@ Measured on real session JSONLs under `~/.pi/agent/sessions` (chars = rendered m
 ## Features
 
 - **No LLM** — purely algorithmic, zero extra API cost
-- **Brief transcript** — chronological conversation flow, each tool call collapsed to a one-liner with `(#N)` refs, text truncated to keep it compact
+- **Brief transcript** — chronological conversation flow, each tool call collapsed to a one-liner with `(#N)` refs, `bashExecution` commands rendered as user actions, text truncated to keep it compact
 - **4 semantic sections** — session goal, files & changes, outstanding context, user preferences
 - **Bounded merge** — rolling sections re-capped after merge instead of growing unbounded
 - **Lossless recall** — `vcc_recall` reads raw session JSONL, so old history stays searchable across compactions
@@ -55,7 +59,8 @@ Measured on real session JSONLs under `~/.pi/agent/sessions` (chars = rendered m
 - **Result ranking** — search results ranked by term relevance, rare terms weighted higher than common ones
 - **`/pi-vcc-recall`** — slash command to search history directly, results shown as collapsible message and auto-fed to agent as context
 - **Fallback cut** — still works when Pi core returns nothing to summarize
-- **Redaction** — strips passwords, API keys, secrets
+- **TUI-safe wrapping** — wraps long compiled summary lines so Pi's terminal UI stays readable
+- **Redaction** — strips passwords, API keys, secrets, with redaction preserved as the final compiled-output safety transform
 - **`/pi-vcc`** — manual compaction on demand
 
 ## Install
@@ -183,8 +188,8 @@ Typical workflow: **search → find relevant entry indices → expand those indi
 3. **Build sections** — extract goal, file paths, blockers, preferences
 4. **Brief transcript** — chronological conversation flow, tool calls collapsed to one-liners, text truncated
 5. **Format** — render into bracketed sections + transcript
-6. **Redact** — strip passwords, API keys, secrets
-7. **Merge** — if previous summary exists: sticky sections merge, volatile sections replace, transcript rolls
+6. **Merge** — if previous summary exists: sticky sections merge, volatile sections replace, transcript rolls
+7. **Wrap + redact** — wrap long final summary lines and apply final redaction for passwords, API keys, secrets
 
 ## Debug
 

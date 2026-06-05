@@ -138,4 +138,62 @@ describe("compile", () => {
     expect(r).toContain("earlier lines omitted");
     expect(r).toContain("latest");
   });
+
+  it("wraps final compiled output", () => {
+    const r = compile({
+      messages: [userMsg("check final summary wrapping " + "word ".repeat(80))],
+    });
+    const maxLineLength = Math.max(...r.split("\n").map((line) => line.length));
+    expect(maxLineLength).toBeLessThanOrEqual(120);
+  });
+
+  it("preserves wrapped header bullets across later merges", () => {
+    const previousSummary = [
+      "[Session Goal]",
+      "- Investigate a very long operator-facing compaction behavior where continuation prompts should remain",
+      "  silent after completed assistant turns but resume when interrupted mid-response",
+      "",
+      "---",
+      "",
+      "[user]",
+      "Original request",
+    ].join("\n");
+    const r = compile({
+      previousSummary,
+      messages: [userMsg("New follow-up")],
+    });
+    expect(r).toMatch(/silent after\s+completed assistant turns/);
+    expect(r).toContain("interrupted mid-response");
+    expect(r).toContain("- New follow-up");
+  });
+
+  it("preserves wrapped file bullets across later merges", () => {
+    const previousSummary = [
+      "[Files And Changes]",
+      "- Read: _pi/packages/pi-vcc/src/core/very-long-file-name-that-wrapped-before-the-next-compact.ts,",
+      "  _pi/packages/pi-vcc/src/core/continued-file.ts",
+      "",
+      "---",
+      "",
+      "[assistant]",
+      "* Read files",
+    ].join("\n");
+    const r = compile({
+      previousSummary,
+      messages: [assistantWithToolCall("Read", { path: "fresh.ts" })],
+    });
+    expect(r).toContain("very-long-file-name-that-wrapped-before-the-next-compact.ts");
+    expect(r).toContain("continued-file.ts");
+    expect(r).toContain("fresh.ts");
+  });
+
+  it("redacts secrets after wrapping-sensitive assembly", () => {
+    const secret = "token=" + "a".repeat(160);
+    const r = compile({
+      messages: [userMsg(`run deploy with ${secret}`)],
+    });
+    expect(r).toContain("token [REDACTED]");
+    expect(r).not.toContain("a".repeat(80));
+    expect(Math.max(...r.split("\n").map((line) => line.length))).toBeLessThanOrEqual(120);
+  });
 });

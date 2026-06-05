@@ -124,23 +124,30 @@ function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId:
 
 export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
   let agentTurnActive = false;
-  let continueAfterNextCompaction = false;
+  let activeAgentFinishedResponse = false;
   let continueTimer: ReturnType<typeof setTimeout> | undefined;
 
   pi.on("agent_start", () => {
     agentTurnActive = true;
+    activeAgentFinishedResponse = false;
+  });
+
+  pi.on("message_end", (event) => {
+    const message = event.message as { role?: string; stopReason?: string };
+    if (message.role === "assistant" && message.stopReason !== "toolUse") {
+      activeAgentFinishedResponse = true;
+    }
   });
 
   pi.on("agent_end", () => {
     agentTurnActive = false;
+    activeAgentFinishedResponse = false;
   });
 
   pi.on("session_compact", (event, ctx) => {
-    if (!continueAfterNextCompaction) return;
-    continueAfterNextCompaction = false;
-
     const details = event.compactionEntry.details as PiVccCompactionDetails | undefined;
     if (details?.compactor !== "pi-vcc") return;
+    if (!details.interruptedInFlightTurn) return;
     if (continueTimer) return;
 
     const startedAt = Date.now();
@@ -159,12 +166,11 @@ export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
 
   pi.on("session_before_compact", (event) => {
     const { preparation, branchEntries } = event;
-    const compactingActiveTurn = agentTurnActive;
+    const compactingActiveTurn = agentTurnActive && !activeAgentFinishedResponse;
     if (compactingActiveTurn) agentTurnActive = false;
 
     const ownCut = buildOwnCut(branchEntries as any[]);
     if (!ownCut) return { cancel: true };
-    if (compactingActiveTurn) continueAfterNextCompaction = true;
 
     const agentMessages = ownCut.messages;
     const firstKeptEntryId = ownCut.firstKeptEntryId;

@@ -1,4 +1,4 @@
-import type { Message } from "@earendil-works/pi-ai";
+import { type PiMessage, isBashExecutionMessage } from "../types";
 import type { RenderedEntry } from "./render-entries";
 import { textOf } from "./content";
 
@@ -148,16 +148,16 @@ const lineSnippet = (text: string, regex: RegExp, contextLines = 2): string | un
 };
 
 /** Build full searchable text for a message. */
-const fullText = (msg: Message): string => {
-  if ((msg as any).role === "bashExecution") {
-    return `${(msg as any).command ?? ""} ${(msg as any).output ?? ""}`;
+const fullText = (msg: PiMessage): string => {
+  if (isBashExecutionMessage(msg)) {
+    return `${msg.command ?? ""} ${msg.output ?? ""}`;
   }
   return textOf(msg.content);
 };
 
 export const searchEntries = (
   entries: RenderedEntry[],
-  messages: Message[],
+  messages: PiMessage[],
   query?: string,
 ): SearchHit[] => {
   if (!query?.trim()) return entries;

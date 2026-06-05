@@ -19,6 +19,35 @@ describe("compileBrief", () => {
     expect(r).toContain("Let me look at the auth module.");
   });
 
+  it("renders bash commands as user actions", () => {
+    const blocks: NormalizedBlock[] = [
+      { kind: "bash", command: "npm test", output: "FAIL noisy output", exitCode: 1, sourceIndex: 2 },
+    ];
+    const r = compileBrief(blocks);
+    expect(r).toContain("[user]\n$ npm test (#2)");
+    expect(r).not.toContain("FAIL noisy output");
+  });
+
+  it("redacts bash commands when rendering user actions", () => {
+    const blocks: NormalizedBlock[] = [
+      { kind: "bash", command: "curl https://example.test?token=abcdefghi", output: "", exitCode: 0, sourceIndex: 3 },
+    ];
+    const r = compileBrief(blocks);
+    expect(r).toContain("token [REDACTED]");
+    expect(r).not.toContain("abcdefghi");
+  });
+
+  it("does not split assistant sections for empty bash commands", () => {
+    const blocks: NormalizedBlock[] = [
+      { kind: "assistant", text: "Checking files." },
+      { kind: "bash", command: "", output: "", exitCode: 0, sourceIndex: 2 },
+      { kind: "tool_call", name: "Read", args: { file_path: "auth.ts" } },
+    ];
+    const r = compileBrief(blocks);
+    expect(r.match(/\[assistant\]/g)?.length).toBe(1);
+    expect(r).toContain("Checking files.\n* Read \"auth.ts\"");
+  });
+
   it("collapses tool calls to one-liners under [assistant]", () => {
     const blocks: NormalizedBlock[] = [
       { kind: "assistant", text: "Let me check." },

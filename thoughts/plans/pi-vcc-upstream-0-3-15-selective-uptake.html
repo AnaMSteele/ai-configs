@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>pi-vcc High-Value Upstream Uptake</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09111f;
+      --panel: #111827;
+      --panel-2: #172033;
+      --text: #e5e7eb;
+      --muted: #a7b0c0;
+      --accent: #7dd3fc;
+      --accent-2: #c084fc;
+      --good: #86efac;
+      --warn: #fbbf24;
+      --bad: #fca5a5;
+      --border: #2b364d;
+      --code: #0f172a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, rgba(125, 211, 252, 0.14), transparent 34rem), var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.58;
+    }
+    main { max-width: 1160px; margin: 0 auto; padding: 48px 24px 88px; }
+    h1, h2, h3, h4 { line-height: 1.18; }
+    h1 { font-size: clamp(2rem, 4vw, 3.2rem); margin: 0 0 0.7rem; }
+    h2 { margin-top: 2.3rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: #f8fafc; }
+    h3 { margin-top: 1.45rem; color: var(--accent); }
+    h4 { margin: 1rem 0 0.35rem; color: #f8fafc; }
+    p, li { color: var(--text); }
+    a { color: var(--accent); }
+    code, pre { background: var(--code); color: #dbeafe; border-radius: 8px; }
+    code { padding: 0.12rem 0.3rem; }
+    pre { padding: 16px; overflow-x: auto; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
+    th { background: var(--panel-2); color: #f8fafc; text-align: left; }
+    .badge { display: inline-block; padding: 0.22rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: var(--accent); font-size: 0.86rem; }
+    .muted { color: var(--muted); }
+    .card { background: rgba(17,24,39,0.88); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin: 18px 0; box-shadow: 0 18px 60px rgba(0,0,0,0.25); }
+    .decision { border-left: 4px solid var(--accent); }
+    .warn { border-left: 4px solid var(--warn); }
+    .bad { color: var(--bad); }
+    .good { color: var(--good); }
+    .phase { border-left: 4px solid var(--accent-2); }
+    input[type="checkbox"] { transform: translateY(1px); }
+  </style>
+</head>
+<body>
+<main>
+  <p class="badge">Status: implementation complete; scoped implementation reviews passed; final verification passed</p>
+  <h1 id="title">pi-vcc High-Value Upstream Uptake</h1>
+  <p class="muted">Narrow plan for taking only high-confidence upstream fixes into <code>_pi/packages/pi-vcc</code>. The default stance is skip unless the value is clear and regression risk is bounded.</p>
+
+  <section id="status">
+    <h2>Status</h2>
+    <p>This plan completed browser review plus independent Codex and Claude Code plan review. Both final reviewers reported execution-ready with no blockers. Implementation may start from the first unchecked Progress item.</p>
+  </section>
+
+  <section id="agent-review-gate">
+    <h2>Agent review gate</h2>
+    <p id="gate-rule"><strong>Rule:</strong> this plan is not execution-ready until both Codex and Claude Code have reviewed the latest saved plan file and any blocking findings have been integrated into the plan.</p>
+    <ul>
+      <li id="gate-codex"><strong>Codex review:</strong> final review completed on 2026-06-04 with verdict <code>execution-ready</code> and no blockers.</li>
+      <li id="gate-claude"><strong>Claude Code review:</strong> final review completed on 2026-06-04 with verdict <code>execution-ready</code> and no blockers.</li>
+      <li id="gate-final-status"><strong>Final promotion:</strong> completed; the status badge is <code>execution-ready</code> and the decision log records both final review outcomes.</li>
+    </ul>
+  </section>
+
+  <section id="goal">
+    <h2>Goal</h2>
+    <p>Preserve the currently working pi-vcc behavior and cherry-pick only upstream <code>0.3.15</code> deltas that have high, concrete value: provider-safe compaction invariants, TUI-safe summary wrapping, and bash/search/report correctness fixes. Skip upstream changes that are merely nice-to-have, uncertain, or mainly aesthetic.</p>
+  </section>
+
+  <section id="why-this-plan-exists">
+    <h2>Why this plan exists</h2>
+    <p><code>bash ./scripts/check-pi-vcc-upstream.sh --verbose</code> reports upstream drift: vendored upstream version <code>0.3.6</code>, npm latest <code>0.3.15</code>, upstream head <code>b4c9099c78863769bec8f6f3ee3861c1e094db9e</code>, and 37 unexpected local diffs against a fresh upstream clone.</p>
+    <p>The drift does not justify a broad uptake by itself. pi-vcc works well right now, and upstream removed or changed behaviors this repo relies on: local auto-compaction expectations, redaction, tool-error summary handling, and the in-flight continuation behavior we just repaired so pi-vcc does not send a continuation prompt after an assistant response has already completed.</p>
+  </section>
+
+  <section id="authority-and-inputs">
+    <h2>Authority and inputs</h2>
+    <ul>
+      <li id="input-user-request">User request: review upstream changes, decide what to pull, make a plan, post it for review, and do no coding yet.</li>
+      <li id="input-review-comment">Browser-review direction: “I don't want to adopt anything in this list that doesn't appear to have high value - pi-vcc works well right now. Anything that may help but isn't certain should be skipped.”</li>
+      <li id="input-root-agents"><code>AGENTS.md</code>: work directly in this repo by default; use checked plans and validate commands against real package paths.</li>
+      <li id="input-skills"><code>planning-workflow</code>, <code>html-plan-reviewer</code>, <code>reviewed-html-plan</code>, and <code>product-principles</code> guidance.</li>
+      <li id="input-current-pkg"><code>_pi/packages/pi-vcc</code> current vendored source and tests.</li>
+      <li id="input-upstream"><code>https://github.com/sting8k/pi-vcc</code> cloned at <code>b4c9099c78863769bec8f6f3ee3861c1e094db9e</code>.</li>
+      <li id="input-upstream-log">Upstream commits since <code>v0.3.6</code>: <code>v0.3.7</code> output quality and redaction removal, <code>v0.3.8</code> compact override docs/config, <code>v0.3.9</code> debug/cancel UX, <code>v0.3.10</code> compact-all sentinel, <code>v0.3.11</code> status wording, <code>v0.3.12</code> active-lineage recall, <code>v0.3.13</code>/<code>v0.3.14</code> TUI line wrapping, <code>v0.3.15</code> dependency and bash/search fixes.</li>
+    </ul>
+  </section>
+
+  <section id="current-implementation-reality">
+    <h2>Current implementation reality</h2>
+    <ul>
+      <li id="reality-vendored-install">This repo installs the local package from <code>./_pi/packages/pi-vcc</code>; it should not switch to direct upstream npm install.</li>
+      <li id="reality-current-hook"><code>src/hooks/before-compact.ts</code> currently handles compactions by default, has repo-local fallback-tail safety, and now tracks <code>interruptedInFlightTurn</code> so continuation prompts are only sent when compaction happened before the assistant finished its response.</li>
+      <li id="reality-current-marker"><code>src/commands/pi-vcc.ts</code> uses <code>__PI_VCC_MANUAL_BYPASS__</code>. <code>_pi/extensions/percentage-compaction.ts</code> also sends this marker for threshold compactions, so this marker is a cross-file local contract.</li>
+      <li id="reality-current-redaction"><code>src/core/summarize.ts</code> calls <code>redact()</code>, and <code>src/core/brief.ts</code> redacts compressed bash commands. Upstream <code>0.3.15</code> removed <code>src/core/redact.ts</code>.</li>
+      <li id="reality-current-errors">Current normalization keeps <code>tool_result.isError</code> and current summary logic includes tool errors in outstanding context. Upstream <code>0.3.15</code> omits tool result bodies entirely.</li>
+      <li id="reality-current-bash">Current code has partial <code>bashExecution</code> handling in rendering and search, but upstream adds normalization/report fixes that close correctness gaps.</li>
+      <li id="reality-upstream-import">Upstream <code>index.ts</code> imports <code>ExtensionAPI</code> from <code>@mariozechner/pi-coding-agent</code> while the rest of this repo and upstream package metadata use <code>@earendil-works/pi-coding-agent</code>. Do not copy that import unmodified.</li>
+    </ul>
+  </section>
+
+  <section id="upstream-delta-assessment">
+    <h2>Upstream delta assessment</h2>
+    <p id="delta-principle"><strong>Adoption rule:</strong> pull only deltas with a concrete correctness/display payoff and bounded blast radius. Skip anything whose value is speculative, cosmetic, or likely to destabilize the working compaction flow.</p>
+    <table>
+      <thead><tr><th>Upstream change</th><th>Decision</th><th>Reason</th></tr></thead>
+      <tbody>
+        <tr id="delta-wrap"><td>TUI-safe line wrapping for final compiled summaries</td><td class="good">Pull</td><td>High value and low risk: compacted summaries are user-visible and long lines are a known TUI/display failure mode. Pin to upstream commits <code>ad1fa01</code> (<code>src/core/format.ts</code>, <code>src/core/summarize.ts</code>, <code>tests/format.test.ts</code>) and <code>ab148ae</code> (<code>src/core/summarize.ts</code>, <code>tests/compile.test.ts</code>), but preserve local redaction as the final transform.</td></tr>
+        <tr id="delta-bash"><td><code>bashExecution</code> normalization and search/report argument-order fix</td><td class="good">Pull</td><td>High value correctness fix: current support is partial, and recall/reporting over bash entries should be reliable. Pin to upstream commits <code>fc21aa7</code> (<code>src/core/brief.ts</code>, <code>src/core/normalize.ts</code>, <code>src/core/report.ts</code>, <code>src/types.ts</code>, <code>tests/normalize.test.ts</code>) and <code>885825c</code> (<code>tests/brief.test.ts</code>, <code>tests/report.test.ts</code>). Do not pull unrelated noise-cleanup or recall-lineage changes.</td></tr>
+        <tr id="delta-deps"><td>Upstream peer dependency metadata ranges</td><td class="bad">Do not pull</td><td>The approved code changes do not require new runtime or peer dependencies. Keep current vendored peer dependency metadata unless implementation proves the package cannot install or test without changing it; that would be a new blocker, not planned uptake.</td></tr>
+        <tr id="delta-lineage"><td>Active-lineage recall with explicit <code>scope:"all"</code></td><td class="warn">Skip for now</td><td>Potentially useful, but no current high-value failure was identified. It changes recall semantics and adds enough surface area to defer.</td></tr>
+        <tr id="delta-commits"><td><code>[Commits]</code> section extraction</td><td class="warn">Skip for now</td><td>Nice context, but not essential to the current compaction workflow.</td></tr>
+        <tr id="delta-quality"><td>File path trimming, goal/preference extraction improvements, self-talk stripping, tool-call cap</td><td class="warn">Skip for now</td><td>Summary-quality improvements are plausible but not clearly high value for the current problem; avoid churn.</td></tr>
+        <tr id="delta-settings"><td><code>overrideDefaultCompaction</code> settings scaffold and upstream marker <code>__pi_vcc__</code></td><td class="bad">Do not pull</td><td>Could change working auto/threshold compaction behavior. Preserve current marker/defaults unless a later explicit task targets settings.</td></tr>
+        <tr id="delta-compact-all"><td>Compact-all sentinel and orphan recovery</td><td class="bad">Do not pull</td><td>May help edge cases, but it interacts with tool-call/result continuity and continuation-prompt semantics. Not worth destabilizing the current flow.</td></tr>
+        <tr id="delta-redaction"><td>Remove redaction</td><td class="bad">Do not pull</td><td>This repo should not make compaction summaries more likely to persist secrets without an explicit product decision.</td></tr>
+        <tr id="delta-tool-errors"><td>Hide all tool result bodies, including errors</td><td class="bad">Do not pull</td><td>Current outstanding-context extraction from tool errors is useful for resuming failed work.</td></tr>
+        <tr id="delta-demo"><td>Vendor <code>demo.gif</code></td><td class="bad">Do not pull</td><td>Large binary docs asset with no runtime value for this vendored package.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="progress">
+    <h2>Progress</h2>
+    <ul>
+      <li id="progress-p1"><input type="checkbox" checked disabled /> P1 — Lock local invariants with regression tests</li>
+      <li id="progress-p2"><input type="checkbox" checked disabled /> P2 — Uptake TUI wrapping and bash/search/report fixes</li>
+      <li id="progress-p3"><input type="checkbox" checked disabled /> P3 — Reconcile docs, checker, and install verification</li>
+    </ul>
+  </section>
+
+  <section id="resume-instructions">
+    <h2>Resume instructions (agent)</h2>
+    <p>Read this full plan, then execute the first unchecked Progress item only after review feedback is processed. Do not start with a wholesale upstream copy. Do not add active-lineage recall, commits, compact-all recovery, settings scaffolding, upstream peer dependency metadata changes, or broad summary-quality churn. Preserve the local continuation guard, redaction, tool-error context, manual/percentage compaction marker compatibility, and tool-call/result cut safety.</p>
+  </section>
+
+  <section id="product-intent-alignment">
+    <h2>Product intent alignment</h2>
+    <div class="card decision" id="intent-default-workflow">
+      <h3>Default workflow</h3>
+      <p>pi-vcc already works well. The safest product move is minimal high-value maintenance: fix clear correctness/display issues while keeping current compaction defaults stable.</p>
+    </div>
+    <div class="card decision" id="intent-safe-resume">
+      <h3>Safe resume context</h3>
+      <p>The compacted live window must remain valid for provider APIs: tool results may not outlive their matching assistant tool calls, and continuation prompts may not be injected after the assistant has already completed the turn.</p>
+    </div>
+    <div class="card warn" id="intent-fail-closed">
+      <h3>Fail-closed boundary</h3>
+      <p>When an upstream change is only plausibly useful rather than clearly valuable, skip it. Ambiguous compaction-trigger semantics, unknown marker inputs, and potential secret exposure are fail-closed areas.</p>
+    </div>
+  </section>
+
+  <section id="locked-decisions">
+    <h2>Locked decisions</h2>
+    <ol>
+      <li id="decision-vendored">Keep vendoring <code>_pi/packages/pi-vcc</code>; do not replace with direct upstream npm.</li>
+      <li id="decision-no-wholesale">Use selective cherry-picks/manual reconciliation, not a wholesale overwrite.</li>
+      <li id="decision-high-value">Only adopt upstream deltas with clear high value and bounded risk.</li>
+      <li id="decision-continuation">Preserve the local continuation contract: prompt only when compaction interrupted an unfinished assistant response; never prompt after a completed assistant response.</li>
+      <li id="decision-tool-pair">Preserve the local tool-call/result live-tail invariant.</li>
+      <li id="decision-marker">Preserve <code>__PI_VCC_MANUAL_BYPASS__</code> compatibility for <code>/pi-vcc</code> and <code>_pi/extensions/percentage-compaction.ts</code>. Do not add upstream settings/marker behavior in this plan.</li>
+      <li id="decision-default-compaction">Do not adopt upstream <code>overrideDefaultCompaction</code> behavior in this plan.</li>
+      <li id="decision-redaction">Keep redaction in compacted summaries and brief bash command rendering.</li>
+      <li id="decision-tool-errors">Keep tool-error evidence available in outstanding context.</li>
+      <li id="decision-imports">Keep <code>@earendil-works/pi-coding-agent</code> imports.</li>
+      <li id="decision-deps">Do not pull upstream peer dependency range changes in this pass; the approved code deltas do not require them.</li>
+      <li id="decision-version">Do not change <code>_pi/packages/pi-vcc/package.json</code> to claim upstream <code>0.3.15</code> parity. Keep the package version as a fork/local package version unless the entire vendored tree actually matches upstream plus documented local patches.</li>
+      <li id="decision-checker-metadata">Record reviewed upstream version/commit separately from package version, and make the upstream checker compare freshness against that reviewed-upstream metadata rather than treating package version as upstream parity.</li>
+      <li id="decision-checker-baseline">Use the pinned reviewed-upstream commit as the checker diff baseline, not the fork-base version and not live moving <code>master</code>. The intentional-diff manifest must therefore include both local fork patches and every deliberately skipped upstream-change path that differs from reviewed upstream.</li>
+      <li id="decision-checker-staleness">Check reviewed-upstream metadata freshness before diff classification. If npm latest or upstream head moves beyond the reviewed metadata, the checker should report stale/re-review required instead of classifying the resulting drift as unexpected local diffs.</li>
+      <li id="decision-redaction-order">Preserve redaction as the final transform in <code>compile()</code>: apply wrapping before the final <code>redact()</code> call or otherwise prove tests cannot split or expose redacted tokens.</li>
+      <li id="decision-demo">Do not vendor upstream <code>demo.gif</code>.</li>
+    </ol>
+  </section>
+
+  <section id="acceptance-criteria">
+    <h2>Acceptance criteria</h2>
+    <ol>
+      <li id="ac-local-continuation">Compaction during an unfinished assistant response sends one follow-up continuation prompt; compaction after a completed assistant response sends none.</li>
+      <li id="ac-tool-pair">Compaction never keeps a live <code>toolResult</code> whose matching assistant tool call was compacted away.</li>
+      <li id="ac-auto-marker"><code>/pi-vcc</code> and percentage-threshold compaction still route through pi-vcc without requiring users to edit config.</li>
+      <li id="ac-wrapping">Compiled summaries wrap long lines safely for Pi's TUI without changing section semantics; wrapping uses the upstream safe-width behavior from <code>ad1fa01</code>/<code>ab148ae</code> unless tests justify a narrower local adaptation.</li>
+      <li id="ac-bash">Bash execution entries normalize, search, and report consistently across summary and recall/report surfaces, including the upstream <code>searchEntries(rendered, messages, query)</code> argument-order fix and explicit <code>bashExecution</code> typing/normalization from <code>fc21aa7</code>.</li>
+      <li id="ac-redaction">Compacted summaries still redact known secret patterns.</li>
+      <li id="ac-tool-errors">Tool errors still appear in outstanding context or equivalent resume-critical section.</li>
+      <li id="ac-tests"><code>cd _pi/packages/pi-vcc &amp;&amp; bun test</code> passes.</li>
+      <li id="ac-drift"><code>bash ./scripts/check-pi-vcc-upstream.sh</code> diffs against the pinned reviewed-upstream commit, clearly distinguishes the intentionally narrow local patch set from intentionally skipped upstream changes, exits successfully when only the documented intentional diff manifest is present, exits stale/re-review when reviewed-upstream metadata no longer matches npm latest or upstream head, and exits unexpected-diff when an unmanifested file differs from the reviewed baseline.</li>
+      <li id="ac-install"><code>bash ./install.sh --pi</code> still installs the vendored package and reports pi-vcc status clearly.</li>
+    </ol>
+  </section>
+
+  <section id="bdd-scenarios">
+    <h2>BDD scenarios</h2>
+    <article class="card" id="bdd-continuation-inflight">
+      <h3>B1 — In-flight compaction resumes the agent</h3>
+      <p><strong>Given</strong> an assistant response is active and has not emitted a final non-tool-use assistant message<br />
+      <strong>When</strong> pi-vcc compacts the session<br />
+      <strong>Then</strong> the compaction details mark <code>interruptedInFlightTurn</code><br />
+      <strong>And</strong> <code>session_compact</code> sends exactly one follow-up continuation prompt.</p>
+    </article>
+    <article class="card" id="bdd-continuation-post-turn">
+      <h3>B2 — Completed-turn compaction stays silent</h3>
+      <p><strong>Given</strong> an assistant response has ended with a final non-<code>toolUse</code> assistant message<br />
+      <strong>When</strong> pi-vcc compacts at that boundary<br />
+      <strong>Then</strong> compaction details do not mark <code>interruptedInFlightTurn</code><br />
+      <strong>And</strong> no continuation prompt is sent.</p>
+    </article>
+    <article class="card" id="bdd-marker-compat">
+      <h3>B3 — Existing percentage compaction marker remains valid</h3>
+      <p><strong>Given</strong> <code>_pi/extensions/percentage-compaction.ts</code> triggers <code>ctx.compact()</code> with <code>__PI_VCC_MANUAL_BYPASS__</code><br />
+      <strong>When</strong> the pi-vcc hook receives <code>session_before_compact</code><br />
+      <strong>Then</strong> pi-vcc handles the compaction using current local behavior<br />
+      <strong>And</strong> the user is not required to set a new upstream config option.</p>
+    </article>
+    <article class="card" id="bdd-wrapping">
+      <h3>B4 — Long summary lines are TUI-safe</h3>
+      <p><strong>Given</strong> a summary section contains a very long line<br />
+      <strong>When</strong> <code>compile()</code> produces the final summary<br />
+      <strong>Then</strong> the line is wrapped at a safe width<br />
+      <strong>And</strong> section headings and bullet semantics remain intact.</p>
+    </article>
+    <article class="card" id="bdd-bash">
+      <h3>B5 — Bash execution is searchable and reportable</h3>
+      <p><strong>Given</strong> a session contains <code>bashExecution</code> entries<br />
+      <strong>When</strong> entries are normalized, searched, and reported<br />
+      <strong>Then</strong> bash commands and relevant output appear in the expected recall/report surfaces<br />
+      <strong>And</strong> no stale argument order causes missed hits or malformed excerpts.</p>
+    </article>
+    <article class="card" id="bdd-redaction">
+      <h3>B6 — Summary safety survives uptake</h3>
+      <p><strong>Given</strong> summarized messages contain password/API-key/token-like text in bash commands or message text<br />
+      <strong>When</strong> <code>compile()</code> produces the compacted summary<br />
+      <strong>Then</strong> known secret patterns are redacted by a final redaction transform after wrapping-sensitive summary assembly<br />
+      <strong>And</strong> wrapping does not unredact or split the secret into visible fragments.</p>
+    </article>
+    <article class="card" id="bdd-tool-errors">
+      <h3>B7 — Tool errors remain resumable context</h3>
+      <p><strong>Given</strong> a recent tool result is marked as an error<br />
+      <strong>When</strong> the summary sections are built<br />
+      <strong>Then</strong> the failure appears in <code>[Outstanding Context]</code> or an equivalent resume-critical section<br />
+      <strong>And</strong> non-error tool result bodies remain omitted from the brief transcript.</p>
+    </article>
+  </section>
+
+  <section id="test-coverage-matrix">
+    <h2>Test coverage matrix</h2>
+    <table>
+      <thead><tr><th>Acceptance / scenario</th><th>Planned test files</th><th>Verification</th></tr></thead>
+      <tbody>
+        <tr><td><code>AC1</code>, <code>B1</code>, <code>B2</code></td><td><code>tests/before-compact.test.ts</code></td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test tests/before-compact.test.ts</code></td></tr>
+        <tr><td><code>AC2</code></td><td><code>tests/before-compact.test.ts</code></td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test tests/before-compact.test.ts</code></td></tr>
+        <tr><td><code>AC3</code>, <code>B3</code></td><td><code>tests/before-compact.test.ts</code>; possibly <code>scripts/percentage-compaction.test.ts</code></td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test tests/before-compact.test.ts</code> and <code>bun test scripts/percentage-compaction.test.ts</code> if touched</td></tr>
+        <tr><td><code>AC4</code>, <code>B4</code></td><td><code>tests/format.test.ts</code>, <code>tests/compile.test.ts</code></td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test tests/format.test.ts tests/compile.test.ts</code></td></tr>
+        <tr><td><code>AC5</code>, <code>B5</code></td><td><code>tests/normalize.test.ts</code>, <code>tests/search-entries.test.ts</code>, <code>tests/report.test.ts</code>, <code>tests/render-entries.test.ts</code></td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test tests/normalize.test.ts tests/search-entries.test.ts tests/report.test.ts tests/render-entries.test.ts</code></td></tr>
+        <tr><td><code>AC6</code>, <code>B6</code></td><td><code>tests/compile.test.ts</code>; add focused redaction tests if missing</td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test tests/compile.test.ts</code></td></tr>
+        <tr><td><code>AC7</code>, <code>B7</code></td><td><code>tests/build-sections.test.ts</code>, <code>tests/normalize.test.ts</code></td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test tests/build-sections.test.ts tests/normalize.test.ts</code></td></tr>
+        <tr><td><code>AC8</code>-<code>AC10</code></td><td>Package-wide tests, checker, installer</td><td><code>cd _pi/packages/pi-vcc &amp;&amp; bun test</code>; <code>bash ./scripts/check-pi-vcc-upstream.sh</code>; <code>bash ./install.sh --pi</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="phase-plan">
+    <h2>Phase-by-phase execution plan</h2>
+
+    <article class="card phase" id="phase-p1-local-invariants">
+      <h3>P1 — Lock local invariants with regression tests</h3>
+      <h4>End State</h4>
+      <p>The local behaviors that upstream must not regress are covered by focused tests before any uptake.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Keep or add tests for in-flight continuation prompt and completed-turn no-prompt behavior.</li>
+        <li>Keep or add tests that fallback-tail compaction never starts at an orphaned <code>toolResult</code>.</li>
+        <li>Keep or add tests that <code>__PI_VCC_MANUAL_BYPASS__</code> still triggers pi-vcc compaction.</li>
+        <li>Add redaction and tool-error-context assertions if existing tests do not pin them tightly enough.</li>
+      </ul>
+      <h4>Work</h4>
+      <p>Only edit tests in this phase. P1 tests should pass against current HEAD; any failure is a real regression signal to investigate before upstream uptake, not an expected RED-phase failure.</p>
+      <h4>Expected files</h4>
+      <ul>
+        <li><code>_pi/packages/pi-vcc/tests/before-compact.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/compile.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/build-sections.test.ts</code></li>
+        <li><code>scripts/percentage-compaction.test.ts</code> only if marker compatibility crosses package boundary</li>
+      </ul>
+      <h4>Verify</h4>
+      <pre><code>cd _pi/packages/pi-vcc
+bun test tests/before-compact.test.ts tests/compile.test.ts tests/build-sections.test.ts
+cd ../../..
+bun test scripts/percentage-compaction.test.ts</code></pre>
+    </article>
+
+    <article class="card phase" id="phase-p2-high-value-fixes">
+      <h3>P2 — Uptake TUI wrapping and bash/search/report fixes</h3>
+      <h4>End State</h4>
+      <p>The vendored package includes only the two approved high-value upstream improvements: safe long-line wrapping and coherent bash execution normalization/search/report behavior. The search/report fix is localized to the defective report recall-hit caller: current <code>searchEntries(entries, messages, query?)</code> call sites in recall tools already pass three arguments correctly, while <code>src/core/report.ts</code> currently passes the query in the messages slot.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Add or adapt wrapping tests from upstream commits <code>ad1fa01</code> and <code>ab148ae</code> for long summary lines and final recall-note output.</li>
+        <li>Add or adapt bash execution normalization tests from upstream commit <code>fc21aa7</code>.</li>
+        <li>Add or adapt report recall-hit and bash command tests from upstream commit <code>885825c</code> so stale argument ordering or missed bash hits are caught.</li>
+        <li>Keep counter-tests proving redaction and tool-error outstanding context still work, including a test that final redaction occurs after wrapping-sensitive assembly.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Update <code>src/core/format.ts</code> with upstream wrapping logic from <code>ad1fa01</code>.</li>
+        <li>Update <code>src/core/summarize.ts</code> with the compile-boundary wrapping from <code>ad1fa01</code>/<code>ab148ae</code>, but preserve local behavior where <code>redact()</code> is the final transform over the compiled output.</li>
+        <li>Update <code>src/types.ts</code> and <code>src/core/normalize.ts</code> for the explicit <code>bashExecution</code> shape from <code>fc21aa7</code>, then remove or reconcile existing <code>(msg as any).role === "bashExecution"</code> casts in touched rendering/search code.</li>
+        <li>Update <code>src/core/report.ts</code> for the upstream <code>searchEntries(rendered, messages, query)</code> argument-order fix from <code>fc21aa7</code>; do not churn already-correct three-argument recall call sites unless typing changes require a mechanical import/signature adjustment.</li>
+        <li>Update <code>src/core/brief.ts</code> only for the <code>bashExecution</code> handling from <code>fc21aa7</code>, while preserving local redaction of compressed bash commands.</li>
+        <li>Update <code>src/core/render-entries.ts</code> and <code>src/core/search-entries.ts</code> only as needed to align with the explicit bash type and avoid duplicate <code>as any</code> handling.</li>
+        <li>Do not add lineage recall, commits section, settings scaffold, compact-all sentinel, broad summary extraction changes, noise-filter changes, or demo assets.</li>
+        <li>Keep <code>src/core/redact.ts</code> and keep compile-time redaction as the final safety boundary.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul>
+        <li><code>_pi/packages/pi-vcc/src/core/format.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/src/core/summarize.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/src/core/brief.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/src/core/normalize.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/src/core/search-entries.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/src/core/report.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/src/core/render-entries.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/src/types.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/format.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/compile.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/brief.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/normalize.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/search-entries.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/report.test.ts</code></li>
+        <li><code>_pi/packages/pi-vcc/tests/render-entries.test.ts</code></li>
+      </ul>
+      <h4>Verify</h4>
+      <pre><code>cd _pi/packages/pi-vcc
+bun test tests/format.test.ts tests/compile.test.ts tests/brief.test.ts tests/normalize.test.ts tests/search-entries.test.ts tests/report.test.ts tests/render-entries.test.ts</code></pre>
+    </article>
+
+    <article class="card phase" id="phase-p3-docs-drift-install">
+      <h3>P3 — Reconcile docs, checker, and install verification</h3>
+      <h4>End State</h4>
+      <p>The vendored package documents the deliberately narrow uptake and the deliberately skipped upstream changes. The checker and installer output are truthful without implying full <code>0.3.15</code> parity.</p>
+      <h4>Tests first</h4>
+      <ul>
+        <li>Run the package test suite before metadata/checker changes to catch semantic regressions.</li>
+        <li>Run the upstream checker before changing expected diffs and record the intentional final patch set.</li>
+        <li>Add or update checker tests if a test harness exists; otherwise validate the checker by captured before/after command output and document that evidence in the implementation notes.</li>
+      </ul>
+      <h4>Work</h4>
+      <ul>
+        <li>Update <code>_pi/packages/pi-vcc/README.md</code> with separate metadata fields for <code>Reviewed upstream version: 0.3.15</code>, <code>Reviewed upstream commit: b4c9099c78863769bec8f6f3ee3861c1e094db9e</code>, the narrow high-value uptake, and skipped-change rationale.</li>
+        <li>Update the checker metadata parser in the same commit as the README field rename so the regex names match exactly; a missing reviewed-commit parse must be a checker failure, not a silent no-op.</li>
+        <li>Do not use <code>_pi/packages/pi-vcc/package.json</code> as the upstream parity source. Keep the current fork package version unless a local suffix bump is required for install/cache semantics, and do not change peer dependency ranges.</li>
+        <li>Update <code>scripts/check-pi-vcc-upstream.sh</code> so it parses reviewed-upstream version/commit metadata from README (or another explicit metadata block), compares those values to npm latest/upstream head for freshness before diff classification, reports package version separately as the local fork package version, and clones/checks out the pinned reviewed commit for byte-diff comparison.</li>
+        <li>Extend or replace <code>EXPECTED_LOCAL_DIFFS</code> with a documented intentional-diff manifest for the exact final selective patch set against the reviewed-upstream baseline. This manifest must include every P2-touched source/test path that differs from reviewed upstream, such as <code>src/core/brief.ts</code>, <code>src/core/normalize.ts</code>, <code>src/core/search-entries.ts</code>, <code>src/core/report.ts</code>, <code>src/core/render-entries.ts</code>, <code>src/types.ts</code>, <code>tests/brief.test.ts</code>, <code>tests/normalize.test.ts</code>, <code>tests/search-entries.test.ts</code>, <code>tests/report.test.ts</code>, and <code>tests/render-entries.test.ts</code>.</li>
+        <li>The same manifest must also include every deliberately skipped upstream-change path that differs from reviewed upstream, with a reason label or adjacent documentation. Known examples include local-only <code>src/core/redact.ts</code>, upstream-only <code>demo.gif</code>, <code>package.json</code> peer dependency range differences, and any skipped lineage/commits/settings/compact-all/tool-error-omission files that remain different after the approved uptake.</li>
+        <li>The checker should pass only when every diff against the reviewed-upstream baseline is intentional, fail on unexpected diffs, and fail stale/re-review before diff classification when reviewed-upstream metadata is older than npm latest or upstream head.</li>
+        <li>Update <code>install.sh</code> only if current installer wording would mislead users into thinking the vendored copy fully matches upstream.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <ul>
+        <li><code>_pi/packages/pi-vcc/README.md</code></li>
+        <li><code>_pi/packages/pi-vcc/package.json</code> only for non-dependency fork/version/description metadata if justified</li>
+        <li><code>scripts/check-pi-vcc-upstream.sh</code></li>
+        <li><code>install.sh</code> only if installer messaging is misleading</li>
+      </ul>
+      <h4>Verify</h4>
+      <pre><code>cd _pi/packages/pi-vcc
+bun test
+cd ../../..
+bash ./scripts/check-pi-vcc-upstream.sh --verbose
+bash ./install.sh --pi
+git diff -- _pi/packages/pi-vcc scripts/check-pi-vcc-upstream.sh install.sh</code></pre>
+    </article>
+  </section>
+
+  <section id="verification-strategy">
+    <h2>Verification strategy</h2>
+    <ul>
+      <li id="verify-unit">Use focused <code>bun test</code> commands per phase for tight feedback.</li>
+      <li id="verify-package">Run full <code>cd _pi/packages/pi-vcc &amp;&amp; bun test</code> before declaring completion.</li>
+      <li id="verify-percentage">Run <code>bun test scripts/percentage-compaction.test.ts</code> in final verification because marker compatibility is a locked invariant, even if the implementation does not edit the percentage compaction extension.</li>
+      <li id="verify-drift">Run <code>bash ./scripts/check-pi-vcc-upstream.sh --verbose</code> before and after expected-diff reconciliation.</li>
+      <li id="verify-install">Run <code>bash ./install.sh --pi</code> only after code/tests/docs are consistent.</li>
+    </ul>
+  </section>
+
+  <section id="delivery-order">
+    <h2>Delivery order</h2>
+    <ol>
+      <li id="delivery-p1">Lock local safety and workflow invariants first.</li>
+      <li id="delivery-p2">Apply only the wrapping and bash/search/report fixes.</li>
+      <li id="delivery-p3">Update docs/checker/install metadata last, making partial uptake explicit.</li>
+    </ol>
+  </section>
+
+  <section id="non-goals">
+    <h2>Non-goals</h2>
+    <ul>
+      <li id="non-goal-direct-npm">Replacing the vendored package with upstream npm.</li>
+      <li id="non-goal-all-upstream">Blindly applying every upstream file.</li>
+      <li id="non-goal-lineage">Adding active-lineage recall in this pass.</li>
+      <li id="non-goal-commits">Adding a <code>[Commits]</code> summary section in this pass.</li>
+      <li id="non-goal-settings">Adding upstream settings/marker behavior in this pass.</li>
+      <li id="non-goal-compact-all">Adding compact-all sentinel/orphan recovery in this pass.</li>
+      <li id="non-goal-summary-churn">Applying broad summary extraction/cleanup changes without a concrete current problem.</li>
+      <li id="non-goal-deps">Changing upstream peer dependency metadata ranges.</li>
+      <li id="non-goal-remove-redaction">Removing redaction or weakening secret handling.</li>
+      <li id="non-goal-omp">Updating the separate <code>_omp/extensions/pi-vcc</code> copy unless review explicitly expands scope.</li>
+      <li id="non-goal-demo">Adding upstream binary demo assets.</li>
+    </ul>
+  </section>
+
+  <section id="decisions-deviations-log">
+    <h2>Decisions / Deviations log</h2>
+    <article class="card" id="log-2026-06-03-plan-created">
+      <h3>2026-06-03 — Plan created from upstream review</h3>
+      <p>Initial recommendation was selective uptake of lineage recall, wrapping, bash/search/report fixes, commits, and summary quality improvements while preserving local continuation guard, auto-compaction marker contract, redaction, and tool-error context.</p>
+    </article>
+    <article class="card" id="log-2026-06-03-review-narrowed">
+      <h3>2026-06-03 — Browser review narrowed adoption threshold</h3>
+      <p>Reviewer clarified that pi-vcc works well and anything not clearly high value should be skipped. Plan narrowed accordingly: keep only TUI-safe wrapping and bash/search/report correctness fixes, plus invariant tests and truthful docs/checker/install updates. Active-lineage recall, commits, settings, compact-all recovery, peer dependency range changes, and broad summary-quality churn are now non-goals for this pass.</p>
+    </article>
+    <article class="card" id="log-2026-06-03-deps-decision">
+      <h3>2026-06-03 — Dependency metadata decision fixed before implementation</h3>
+      <p>Reviewer asked that the plan identify in advance whether dependency metadata updates are included. Decision: they are not included. Upstream <code>0.3.15</code> only tightens peer dependency ranges, and the approved wrapping plus bash/search/report fixes do not require new dependencies.</p>
+    </article>
+    <article class="card" id="log-2026-06-04-agent-review-blockers">
+      <h3>2026-06-04 — Codex and Claude Code plan reviews found blockers</h3>
+      <p>Codex reported the plan was not execution-ready because checker/version metadata semantics were under-specified and both-reviewer agreement was not represented in the status gate. Claude Code reported the plan was not execution-ready because the approved upstream deltas were not pinned to concrete commits/files, wrapping/redaction ordering was ambiguous, and checker expected-diff reconciliation did not name <code>EXPECTED_LOCAL_DIFFS</code>. The first revision integrated those blockers and required both reviewers to re-review the latest saved plan before execution.</p>
+    </article>
+    <article class="card" id="log-2026-06-04-claude-rereview-baseline">
+      <h3>2026-06-04 — Claude rereview clarified checker baseline model</h3>
+      <p>Codex rereview found no blockers, but Claude Code rereview found one remaining checker blocker: the plan mixed a reviewed-upstream baseline with a local-patch-only diff manifest. This revision chooses the reviewed-upstream baseline explicitly, requires stale metadata to fail before diff classification, and requires the intentional manifest to include both adopted local patch paths and deliberately skipped upstream-change paths.</p>
+    </article>
+    <article class="card" id="log-2026-06-04-final-agent-review">
+      <h3>2026-06-04 — Final Codex and Claude Code reviews cleared execution</h3>
+      <p>Final Codex review reported <code>execution-ready</code> with no blockers. Final Claude Code review independently reported <code>execution-ready</code> with no blockers and verified the pinned upstream commits, localized <code>report.ts</code> search fix, redaction-as-final-transform requirement, and reviewed-upstream checker baseline model. The plan is promoted to execution-ready.</p>
+    </article>
+    <article class="card" id="log-2026-06-04-implementation-complete">
+      <h3>2026-06-04 — Scoped implementation completed phases P1-P3</h3>
+      <p>Implemented the approved wrapping and <code>bashExecution</code> fixes, preserved final redaction and local continuation/tool-error behavior, updated the reviewed-upstream checker contract and installer messaging, and completed the plan verification commands. Codex and Claude scoped implementation rereviews passed with no in-scope findings; PR monitoring remains pending under the scoped-plan-run workflow.</p>
+    </article>
+  </section>
+</main>
+</body>
+</html>

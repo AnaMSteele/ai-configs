@@ -144,6 +144,29 @@ describe("active compaction continuation", () => {
     expect(sentUserMessages[0].options).toEqual({ deliverAs: "followUp" });
   });
 
+  it("does not prompt after the assistant has finished the turn", async () => {
+    const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
+
+    handlers.agent_start[0]({ type: "agent_start" });
+    handlers.message_end[0]({ type: "message_end", message: assistantText("Done.") });
+
+    const result = handlers.session_before_compact[0]({
+      preparation: basePreparation,
+      branchEntries: compactableEntries(),
+    });
+
+    expect(result.compaction.details.interruptedInFlightTurn).toBe(false);
+
+    handlers.session_compact[0]({
+      type: "session_compact",
+      compactionEntry: { details: result.compaction.details },
+      fromExtension: true,
+    }, ctx);
+    await delay();
+
+    expect(sentUserMessages).toHaveLength(0);
+  });
+
   it("does not prompt after ordinary idle compaction", async () => {
     const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
 

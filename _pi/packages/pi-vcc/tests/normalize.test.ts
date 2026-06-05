@@ -87,8 +87,16 @@ describe("normalize", () => {
     expect(blocks[1]).toEqual({ kind: "user", text: "[image: image/png]", sourceIndex: 0 });
   });
 
-  it("skips unknown message roles gracefully", () => {
-    const weird = { role: "bashExecution", command: "ls", output: "files", exitCode: 0 } as any;
+  it("normalizes bashExecution messages", () => {
+    const msg = { role: "bashExecution", command: "ls -la", output: "files", exitCode: 0 } as any;
+    const blocks = normalize([msg]);
+    expect(blocks).toEqual([
+      { kind: "bash", command: "ls -la", output: "files", exitCode: 0, sourceIndex: 0 },
+    ]);
+  });
+
+  it("skips truly unknown message roles gracefully", () => {
+    const weird = { role: "custom", content: "hello" } as any;
     const blocks = normalize([weird]);
     expect(blocks).toEqual([]);
   });
