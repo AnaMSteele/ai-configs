@@ -260,18 +260,101 @@ Repeat this loop until the completion criteria are met or a true blocker is reac
 When the run has reached post-PR monitoring, the agent must persist across goal/session turns:
 
 - Keep polling the PR until the qualifying external Codex `:thumbsup:` appears or a real actionable blocker requires user input.
-- Use a reasonable repeated cadence for long waits: wait between checks, then rerun the PR review/comment/reaction/mergeability queries.
+- Poll every 60 seconds while waiting for PR feedback or the qualifying `:thumbsup:`. Do not use a slower default such as five minutes unless the user explicitly asks to reduce polling frequency.
 - Continue monitoring even after all current feedback is addressed, because late feedback can still arrive before the `:thumbsup:`.
 - Do not treat "no new feedback", "review still pending", "checks still running", or "no `:thumbsup:` yet" as completion, failure, or a blocker.
 - In Pi, leave the monitoring todo active and summarize the latest PR URL, mergeability, feedback state, and missing/completed `:thumbsup:` evidence in any handoff or final-in-turn status.
 - A true blocker must be something the agent cannot resolve by continued polling or scoped fixes, such as lost GitHub authentication, a closed/deleted PR, a force-push/base-branch conflict requiring a product decision, or `QUESTION` feedback that needs the user.
 - If a true blocker is reached, report the exact blocker and the latest PR state. Otherwise, keep the active run state open and continue polling.
 
-Use GitHub product surfaces for this check, for example:
+Use GitHub product surfaces for this check. The watcher must inspect both feedback surfaces and `:thumbsup:` reactions on every poll:
+
+- PR issue comments via `gh pr view ... --json comments` and/or `GET /repos/<owner>/<repo>/issues/<pr>/comments`.
+- PR reviews via `gh pr view ... --json reviews`.
+- Inline review comments via `GET /repos/<owner>/<repo>/pulls/<pr>/comments`.
+- Status/mergeability via `gh pr view ... --json mergeable,mergeStateStatus,statusCheckRollup,reviewDecision`.
+- `+1` reactions on the PR issue itself via `GET /repos/<owner>/<repo>/issues/<pr>/reactions`.
+
+Reference implementation for Pi: write this to `/tmp/monitor-pr-<pr>.sh`, start it with the `process` tool, and set `logWatches` for `FEEDBACK_CHANGED` and `QUALIFYING_THUMBSUP_PRESENT`. It polls every 60 seconds, stores snapshots, reports comment/review/status changes, and separately reports `+1` reactions without ever creating one.
 
 ```bash
-gh pr view <pr> --json url,number,baseRefName,headRefName,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,comments,reviews
-gh api repos/<owner>/<repo>/issues/<number>/reactions --jq '.[] | select(.content == "+1") | .user.login'
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo="${1:?owner/repo required}"
+pr="${2:?pr number required}"
+expected_thumb_user="${3:-}" # Optional; if empty, report all +1 users as candidates.
+interval_seconds="${PR_MONITOR_INTERVAL_SECONDS:-60}"
+state_dir="${PR_MONITOR_STATE_DIR:-/tmp/pr-monitor-${repo//\//-}-${pr}}"
+mkdir -p "$state_dir"
+
+fetch_state() {
+  gh pr view "$pr" --repo "$repo" \
+    --json url,number,state,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,comments,reviews \
+    > "$state_dir/pr.json"
+  gh api "repos/$repo/issues/$pr/comments" > "$state_dir/issue-comments.json"
+  gh api "repos/$repo/pulls/$pr/comments" > "$state_dir/review-comments.json"
+  gh api "repos/$repo/issues/$pr/reactions" > "$state_dir/reactions.json"
+}
+
+snapshot_feedback() {
+  jq -S '{
+    pr: {
+      state, mergeable, mergeStateStatus, reviewDecision,
+      checks: [.statusCheckRollup[]? | {name, status, conclusion}],
+      reviews: [.reviews[]? | {id, author:.author.login, state, submittedAt, body}]
+    },
+    prComments: [.comments[]? | {id, author:.author.login, createdAt, updatedAt, body}],
+    issueComments: input | [.[]? | {id, author:.user.login, createdAt:.created_at, updatedAt:.updated_at, body}],
+    reviewComments: input | [.[]? | {id, author:.user.login, path, position, createdAt:.created_at, updatedAt:.updated_at, body}]
+  }' "$state_dir/pr.json" "$state_dir/issue-comments.json" "$state_dir/review-comments.json" > "$state_dir/feedback.current.json"
+}
+
+snapshot_reactions() {
+  jq -S --arg expected "$expected_thumb_user" '[.[] | select(.content == "+1") | {user:.user.login, createdAt:.created_at, qualifies:(($expected == "") or (.user.login == $expected))}]' \
+    "$state_dir/reactions.json" > "$state_dir/thumbs.current.json"
+}
+
+while true; do
+  ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  if ! fetch_state; then
+    echo "$ts MONITOR_ERROR failed to fetch PR state; retrying in ${interval_seconds}s"
+    sleep "$interval_seconds"
+    continue
+  fi
+  snapshot_feedback
+  snapshot_reactions
+
+  if [ -f "$state_dir/feedback.previous.json" ] && ! cmp -s "$state_dir/feedback.previous.json" "$state_dir/feedback.current.json"; then
+    echo "$ts FEEDBACK_CHANGED snapshot=$state_dir/feedback.current.json"
+  fi
+  if [ -s "$state_dir/thumbs.current.json" ] && [ "$(jq 'length' "$state_dir/thumbs.current.json")" -gt 0 ]; then
+    users=$(jq -r '[.[] | select(.qualifies) | .user] | join(",")' "$state_dir/thumbs.current.json")
+    if [ -n "$users" ]; then
+      echo "$ts QUALIFYING_THUMBSUP_PRESENT users=$users snapshot=$state_dir/thumbs.current.json"
+    else
+      all_users=$(jq -r '[.[].user] | join(",")' "$state_dir/thumbs.current.json")
+      echo "$ts NONQUALIFYING_THUMBSUP users=$all_users snapshot=$state_dir/thumbs.current.json"
+    fi
+  fi
+
+  merge=$(jq -r '.mergeable + "/" + .mergeStateStatus' "$state_dir/pr.json")
+  comments=$(jq 'length' "$state_dir/issue-comments.json")
+  review_comments=$(jq 'length' "$state_dir/review-comments.json")
+  reviews=$(jq '.reviews | length' "$state_dir/pr.json")
+  thumbs=$(jq 'length' "$state_dir/thumbs.current.json")
+  echo "$ts PR_MONITOR merge=$merge issue_comments=$comments review_comments=$review_comments reviews=$reviews thumbs_up=$thumbs"
+
+  cp "$state_dir/feedback.current.json" "$state_dir/feedback.previous.json"
+  cp "$state_dir/thumbs.current.json" "$state_dir/thumbs.previous.json"
+  sleep "$interval_seconds"
+done
+```
+
+Start it like this from Pi, leaving it running in the background:
+
+```text
+process.start name="pr-<number>-monitor" command="bash /tmp/monitor-pr-<number>.sh <owner>/<repo> <number> <expected-codex-reviewer-login>" logWatches=[FEEDBACK_CHANGED,QUALIFYING_THUMBSUP_PRESENT]
 ```
 
 The `:thumbsup:` criterion means a `+1` reaction from the expected external Codex reviewer account on the PR issue itself, not a local reviewer verdict pasted into chat and not a reaction from the executing agent. If the expected Codex account is ambiguous, identify the account from the repository's normal PR automation or ask the user before declaring the goal complete. The executing agent must never satisfy this criterion by adding its own `+1` reaction or by asking another agent in this workflow to add one.
