@@ -37,6 +37,17 @@ describe("compileBrief", () => {
     expect(r).not.toContain("abcdefghi");
   });
 
+  it("does not split assistant sections for empty bash commands", () => {
+    const blocks: NormalizedBlock[] = [
+      { kind: "assistant", text: "Checking files." },
+      { kind: "bash", command: "", output: "", exitCode: 0, sourceIndex: 2 },
+      { kind: "tool_call", name: "Read", args: { file_path: "auth.ts" } },
+    ];
+    const r = compileBrief(blocks);
+    expect(r.match(/\[assistant\]/g)?.length).toBe(1);
+    expect(r).toContain("Checking files.\n* Read \"auth.ts\"");
+  });
+
   it("collapses tool calls to one-liners under [assistant]", () => {
     const blocks: NormalizedBlock[] = [
       { kind: "assistant", text: "Let me check." },

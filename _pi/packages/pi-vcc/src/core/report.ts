@@ -164,6 +164,9 @@ const matchesQuery = (text: string, query: string): boolean => {
     .every((term) => hay.includes(term));
 };
 
+const escapeRegexLiteral = (text: string): string =>
+  text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const probesOf = (messages: PiMessage[], summary: string): RecallProbe[] => {
   const blocks = normalize(messages);
   const data = buildSections({ blocks });
@@ -192,12 +195,13 @@ const probesOf = (messages: PiMessage[], summary: string): RecallProbe[] => {
       const sourceText = text.trim();
       const query = queryOf(sourceText);
       if (!query) return null;
+      const recallQuery = label === "file" ? escapeRegexLiteral(query) : query;
       return {
         label,
         sourceText,
         query,
         summaryMentioned: matchesQuery(summary, query),
-        recallHits: searchEntries(rendered, messages, query).length,
+        recallHits: searchEntries(rendered, messages, recallQuery).length,
       };
     })
     .filter((probe): probe is RecallProbe => probe !== null);

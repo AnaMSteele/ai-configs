@@ -157,8 +157,8 @@ export const buildBriefSections = (blocks: NormalizedBlock[]): BriefLine[] => {
         const ref = b.sourceIndex != null ? ` (#${b.sourceIndex})` : "";
         if (cmd) {
           push("[user]", `$ ${cmd}${ref}`);
+          lastHeader = "[user]";
         }
-        lastHeader = "[user]";
         break;
       }
       case "assistant": {

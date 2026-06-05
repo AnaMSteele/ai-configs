@@ -56,6 +56,19 @@ describe("buildCompactReport", () => {
     expect(fileProbe?.recallHits).toBe(1);
   });
 
+  it("matches file probe recall hits literally", () => {
+    const report = buildCompactReport({
+      messages: [
+        userMsg("Handle unrelated setup"),
+        assistantWithToolCall("Read", { path: "unique-auth-file.ts" }),
+        assistantText("Mention unique-auth-fileXts as a separate token"),
+      ],
+    });
+    const fileProbe = report.recall.probes.find((p) => p.label === "file");
+    expect(fileProbe?.query).toBe("unique-auth-file.ts");
+    expect(fileProbe?.recallHits).toBe(1);
+  });
+
   it("counts and previews bashExecution messages", () => {
     const report = buildCompactReport({
       messages: [

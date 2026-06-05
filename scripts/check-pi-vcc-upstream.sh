@@ -135,14 +135,18 @@ if [ -z "$REVIEWED_UPSTREAM_VERSION" ] || [ -z "$REVIEWED_UPSTREAM_COMMIT" ]; th
   printf 'commit status: reviewed upstream metadata missing\n'
   STALE=1
 else
-  if [ -n "$NPM_LATEST_VERSION" ] && [ "$NPM_LATEST_VERSION" != "$REVIEWED_UPSTREAM_VERSION" ]; then
+  if [ -z "$NPM_LATEST_VERSION" ]; then
+    printf 'version status: unknown (npm latest unavailable)\n'
+  elif [ "$NPM_LATEST_VERSION" != "$REVIEWED_UPSTREAM_VERSION" ]; then
     printf 'version status: RE-REVIEW REQUIRED (reviewed %s, npm latest %s)\n' "$REVIEWED_UPSTREAM_VERSION" "$NPM_LATEST_VERSION"
     STALE=1
   else
     printf 'version status: reviewed upstream version matches npm latest\n'
   fi
 
-  if [ -n "$UPSTREAM_HEAD" ] && [ "$UPSTREAM_HEAD" != "$REVIEWED_UPSTREAM_COMMIT" ]; then
+  if [ -z "$UPSTREAM_HEAD" ]; then
+    printf 'commit status: unknown (upstream head unavailable)\n'
+  elif [ "$UPSTREAM_HEAD" != "$REVIEWED_UPSTREAM_COMMIT" ]; then
     printf 'commit status: RE-REVIEW REQUIRED (reviewed %s, upstream %s)\n' "$REVIEWED_UPSTREAM_COMMIT" "$UPSTREAM_HEAD"
     STALE=1
   else
