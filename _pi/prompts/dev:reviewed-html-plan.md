@@ -13,8 +13,8 @@ Use the `reviewed-html-plan` skill as the source of truth for this command.
 
 - Create or update one semantic HTML plan under `thoughts/plans/<slug>.html`.
 - Follow repo `AGENTS.md`, product-intent docs, `planning-workflow`, and `html-plan-reviewer`.
-- Register the HTML plan in the local `plan-review` tool and share the canonical review URL.
-- If browser feedback has not been provided yet, stop after registration and ask the user to annotate the plan before continuing.
+- Register the HTML plan in the local `plan-review` tool with required execution-readiness metadata, parse returned `agentInstructions`, share the canonical review URL, drain pending comments, and start the queue-backed `agent next --wait` monitor in the harness background-process tool.
+- If browser feedback has not been provided yet, stop after registration with the monitor running and ask the user to annotate the plan before continuing.
 - When feedback is ready, claim/process/ack/resolve plan-review comments and update the same HTML plan.
 - Run a PM product-intent/stage-fit review and reshape the plan directly when repo evidence supports the correction.
 - Run read-only Codex and Claude Code plan reviews, then iterate plan edits and rerun both reviewers until both agree by substance that the plan is execution-ready.

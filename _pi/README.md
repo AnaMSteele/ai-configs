@@ -216,7 +216,7 @@ Example installed agents:
 
 ### Canonical workflow
 - `adn-dev-wf` — end-to-end reviewed-plan workflow from plan creation through direct execution and PM follow-up
-- `reviewed-html-plan` / `/dev:reviewed-html-plan` — creates/registers HTML plans in plan-review, processes browser feedback, runs PM plus Claude/Codex plan reviews, and stops at execution-ready handoff
+- `reviewed-html-plan` / `/dev:reviewed-html-plan` — creates/registers HTML plans in plan-review, follows service-returned `agentInstructions`, starts the queue-backed comment monitor, processes browser feedback, runs PM plus Claude/Codex plan reviews, and stops at execution-ready handoff
 
 ### Dev / execution
 - `dev:run` — direct high-reasoning execution with one `quality-reviewer` pass after each phase
@@ -254,25 +254,25 @@ Prompt templates:
 /cmd:debug login flake in CI
 /dev:plan feature-name
 /dev:reviewed-html-plan feature-name
-/dev:pm-review thoughts/plans/my-plan.md
-/dev:pm-review thoughts/plans/my-plan.md implementation
+/dev:pm-review thoughts/plans/my-plan.html
+/dev:pm-review thoughts/plans/my-plan.html implementation
 /prd
 /prd:clarify-round thoughts/plans/prd-my-feature.md
-/review:plan thoughts/plans/my-plan.md
-/review:plan-adversarial thoughts/plans/my-plan.md
+/review:plan thoughts/plans/my-plan.html
+/review:plan-adversarial thoughts/plans/my-plan.html
 /review:prd thoughts/plans/prd-my-feature.md
-/review:change thoughts/plans/my-plan.md
-/review:change-kimi thoughts/plans/my-plan.md
-/review:change-opus thoughts/plans/my-plan.md
-/review:change-claude-code thoughts/plans/my-plan.md
-/skill:adn-dev-wf thoughts/plans/my-plan.md
+/review:change thoughts/plans/my-plan.html
+/review:change-kimi thoughts/plans/my-plan.html
+/review:change-opus thoughts/plans/my-plan.html
+/review:change-claude-code thoughts/plans/my-plan.html
+/skill:adn-dev-wf thoughts/plans/my-plan.html
 /dev:plan-from-prd thoughts/plans/prd-my-feature.md
 /cmd:send-plan-to-doct thoughts/plans/my-plan.md
 ```
 
 ## Reviewed-plan handoff
 
-Use `/skill:adn-dev-wf <plan>` after a reviewed plan is ready to continue.
+Use `/skill:adn-dev-wf <plan>` after a reviewed plan is ready to continue. For browser-reviewed plans, the active artifact is `thoughts/plans/<slug>.html`, and `skills/html-plan-reviewer/SKILL.md` is the sole source for concrete `plan-review` commands, readiness metadata, canonical URL rules, and comment monitor mechanics.
 
 Canonical reviewed-plan flow:
 

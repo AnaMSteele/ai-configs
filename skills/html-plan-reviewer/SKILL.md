@@ -75,17 +75,19 @@ Important reviewer-friendly structure:
 
 ## Publish/register a plan
 
-From the repo that owns the plan:
+From the repo that owns the plan, register with explicit execution-readiness metadata:
 
 ```bash
-plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto
+plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --execution-ready false
 ```
 
 For machine-readable output:
 
 ```bash
-plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --json
+plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --execution-ready false --json
 ```
+
+`--execution-ready` is required by the service. Use `false` for initial browser-review registration and any pre-AI-review plan. Use `true` only after the required agent plan-review gates agree by substance that the plan is execution-ready; then re-register with `--execution-ready true --json` so the service metadata is truthful.
 
 By default, registration live-links the local source file. The repo file is authoritative; service blobs are derived cache/history. After this succeeds, editing the HTML file should automatically sync the latest render into the already-open review page. Use `--snapshot` only when the user explicitly wants a detached historical review.
 
@@ -96,6 +98,9 @@ The command prints:
 - `Review URL`
 - `Source sync`
 - `Watch command`
+- `Agent Instructions`
+
+For JSON output, parse `planId`, `reviewUrl`, `indexUrl`, `sourceSync`, `publicationMetadata`, and `agentInstructions`. The service may return relative URLs such as `/p/<planId>`; convert them to the canonical full Tailscale URL before showing them to a user, opening a browser, or writing a handoff.
 
 Open the review URL for browser annotation, or open the index:
 
@@ -108,74 +113,81 @@ Registration normally upserts the same plan thread. Use `--new-thread` only when
 
 ## Monitor for comments
 
-For an active agent session, prefer `plan-review watch` so reviewer annotations arrive as near-real-time events.
+Registration JSON includes `agentInstructions`; treat those instructions as authoritative for the current service version. The correctness-critical listener is the queue-backed `plan-review agent next` flow, not `plan-review watch`.
 
-One-shot check:
+Always do this immediately after registering a browser-review plan unless the user explicitly says not to monitor comments:
 
-```bash
-plan-review watch <planId> --mode queue --once --timeout 30000 --json
-```
+1. Drain already-pending comments until the command returns `"status":"empty"`:
+   ```bash
+   plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --no-wait --json
+   ```
+2. Start one waiting listener before continuing other work:
+   ```bash
+   plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --wait --json
+   ```
+3. When that listener exits successfully with a claimed comment, process and ack that exact claim before starting another listener.
 
-Long-running monitor:
+`agent next --wait` atomically claims one pending `browser.comment.v1`, prints `commentId`, `claimId`, and ack guidance, then exits. Do not blindly loop successful claim commands or pre-claim multiple comments. Restart the listener only after the claimed comment has been processed and acknowledged.
 
-```bash
-plan-review watch <planId> --mode queue --format browser-comment --json
-```
+### Pi monitor pattern
 
-Browser-comment payloads only, suitable for appending into an agent conversation or NDJSON handoff:
-
-```bash
-plan-review watch <planId> --mode queue --format browser-comment --conversation-out /tmp/plan-review-comments.ndjson --json
-```
-
-### Codex watcher pattern
-
-Codex should not use `--once` when the user wants live monitoring. Start the long-running watch in a PTY session with the `exec_command` tool, using a command like:
+Use the Pi `process` tool for the waiting listener so the main conversation can continue:
 
 ```bash
-plan-review watch <planId> --mode queue --format browser-comment --json
+plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --wait --json
 ```
 
-Use `yield_time_ms: 1000` so the tool returns a `session_id` instead of waiting forever. Keep the Codex turn active while monitoring, and poll the session with `write_stdin` using empty input. When a browser-comment event arrives, claim/process/ack it, then continue polling the same session. Before sending a final answer, stop the watcher or move monitoring to a durable handoff; do not leave a needed `exec_command` session running after the turn ends.
+Set success alerts on the background process. A successful exit means a comment was claimed and must be processed/acked; after acking it, start a fresh listener. A failure before a claim can normally be restarted because queue state and claim leases remain authoritative.
 
-If monitoring needs to outlive the Codex turn, use a durable wrapper and a conversation file instead of an in-turn PTY:
+### Codex monitor pattern
+
+Codex should start `agent next --wait` in a PTY session, not `watch`, when the user wants live monitoring:
 
 ```bash
-mkdir -p ~/.plan-reviewer/watchers
-tmux new-session -d -s plan-review-<planId> \
-  'plan-review watch <planId> --mode queue --format browser-comment --conversation-out ~/.plan-reviewer/watchers/<planId>.ndjson --json'
+plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --wait --json
 ```
 
-Codex can then inspect `~/.plan-reviewer/watchers/<planId>.ndjson` or run `plan-review queue claim <planId> --one --json` when asked to resume.
+Use `yield_time_ms: 1000` so the tool returns a `session_id`. When the command exits with a claim payload, process/ack it, then start the next `agent next --wait` command. Before sending a final answer, stop the listener or move monitoring to a durable handoff.
 
-For Pi or another harness with a background-process tool, run long-running watches through that tool rather than blocking the main conversation. Watch commands reconnect using saved state by default, so restarting the monitor should continue after the last seen sequence.
+If monitoring needs to outlive the agent turn, use the durable command returned in `agentInstructions`, with the canonical service URL added when required by the payload.
+
+### Debug-only watch stream
+
+`plan-review watch` is useful for low-latency diagnostics, but it is not the correctness-critical delivery path. Use it only as an optional debug stream:
+
+```bash
+plan-review watch <planId> --url http://mbp.braid-python.ts.net:4317 --mode queue --format browser-comment --json
+```
 
 Fallback polling/queue snapshot:
 
 ```bash
-plan-review queue list --plan-id <planId> --json
+plan-review queue list --url http://mbp.braid-python.ts.net:4317 --plan-id <planId> --json
 ```
 
 ## Process comment queue
 
 Comments are at-least-once. The safe agent loop is claim -> inspect/apply -> ack -> optionally resolve.
 
-Claim one pending comment:
+Prefer the `commentId`, `claimId`, and ack guidance returned by `plan-review agent next`. Manual queue commands remain useful for recovery or inspection.
+
+Claim one pending comment manually:
 
 ```bash
-plan-review queue claim <planId> --one --json
+plan-review queue claim <planId> --url http://mbp.braid-python.ts.net:4317 --one --json
 ```
 
-Claim multiple comments:
+Claim multiple comments manually only when you are prepared to process each claim before its lease expires:
 
 ```bash
-plan-review queue claim <planId> --limit 5 --json
+plan-review queue claim <planId> --url http://mbp.braid-python.ts.net:4317 --limit 5 --json
 ```
 
 Acknowledge after incorporating or explicitly deciding on the comment:
 
 ```bash
 plan-review ack <commentId> \
+  --url http://mbp.braid-python.ts.net:4317 \
   --claim <claimId> \
   --note "Updated the plan" \
   --summary "Integrated reviewer feedback on phase boundaries" \
@@ -187,6 +199,7 @@ Resolve when the reviewer-visible issue is complete:
 
 ```bash
 plan-review resolve <commentId> \
+  --url http://mbp.braid-python.ts.net:4317 \
   --note "Done" \
   --summary "Plan now includes the missing verification gate" \
   --changed-files thoughts/plans/<plan>.html \
@@ -196,7 +209,7 @@ plan-review resolve <commentId> \
 If you cannot act on a claimed comment before the lease expires, release it:
 
 ```bash
-plan-review release <commentId> --json
+plan-review release <commentId> --url http://mbp.braid-python.ts.net:4317 --json
 ```
 
 Direct `ack` without a matching active claim can return `409 claim_required`; claim first unless you already have the claim ID from the event payload.
@@ -213,10 +226,10 @@ For each comment:
 6. Ack with a concise summary and changed files.
 7. Resolve only when the comment is fully addressed, not merely seen.
 
-If the plan was registered with `--snapshot`, or if source sync reports a failure, re-register manually after edits:
+If the plan was registered with `--snapshot`, or if source sync reports a failure, re-register manually after edits, preserving truthful execution-readiness metadata:
 
 ```bash
-plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --json
+plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --execution-ready false --json
 ```
 
 Keep append-only decision/deviation logs intact when regenerating a plan. Do not delete reviewer-relevant history unless the user explicitly asks.
@@ -227,17 +240,17 @@ Keep append-only decision/deviation logs intact when regenerating a plan. Do not
 # 1. Verify service
 curl -fsS http://127.0.0.1:4317/health
 
-# 2. Register plan
-plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --json
+# 2. Register plan with required readiness metadata
+plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --execution-ready false --json
 
-# 3. Share/open review UI
-open http://mbp.braid-python.ts.net:4317/
+# 3. Share/open the canonical review UI
+open http://mbp.braid-python.ts.net:4317/p/<planId>
 
-# 4. Monitor comments
-plan-review watch <planId> --mode queue --format browser-comment --json
+# 4. Drain pending comments, then start the primary listener
+plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --no-wait --json
+plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --wait --json
 
-# 5. Claim and process
-plan-review queue claim <planId> --one --json
-plan-review ack <commentId> --claim <claimId> --note "Handled" --changed-files thoughts/plans/<plan>.html --json
-plan-review resolve <commentId> --note "Resolved" --json
+# 5. Process the returned claim, then ack/resolve
+plan-review ack <commentId> --url http://mbp.braid-python.ts.net:4317 --claim <claimId> --note "Handled" --summary "Updated the plan" --changed-files thoughts/plans/<plan>.html --json
+plan-review resolve <commentId> --url http://mbp.braid-python.ts.net:4317 --note "Resolved" --summary "Reviewer feedback addressed" --changed-files thoughts/plans/<plan>.html --json
 ```

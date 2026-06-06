@@ -70,31 +70,30 @@ If a prior reviewed plan exists, preserve truthful completed progress, stable ID
 
 ### 3. Register the plan for browser review
 
-Use the `html-plan-reviewer` plan-review flow:
+Use `html-plan-reviewer` as the sole source for current `plan-review` commands and service behavior.
 
-1. Health-check the service privately with `curl -fsS http://127.0.0.1:4317/health`.
-2. Start or install the service only as documented by `html-plan-reviewer` if the health check fails.
-3. Register the plan:
-   ```bash
-   plan-review register thoughts/plans/<slug>.html --repo auto --branch auto --commit auto --json
-   ```
-4. Share the canonical full Tailscale MagicDNS review URL from the registration output. On this host user-facing links should use `http://mbp.braid-python.ts.net:4317/...`, not `localhost` or `127.0.0.1`.
+1. Health-check, start, or install the service only as documented by `html-plan-reviewer`.
+2. Register the plan with initial non-ready execution metadata through the `html-plan-reviewer` registration flow.
+3. Parse the registration JSON, especially `planId`, `reviewUrl`, `sourceSync`, `publicationMetadata`, and `agentInstructions`. Treat `agentInstructions` as authoritative for the current service version.
+4. Share the canonical full review URL after applying the URL rules from `html-plan-reviewer`; never show a loopback URL or relative path to the user.
+5. Immediately drain pending comments and start the queue-backed monitor from `agentInstructions` unless the user explicitly says not to monitor. In Pi, start the waiting listener with the `process` tool. A successful listener exit means a comment was claimed; process and ack it before starting a fresh listener. Treat low-level watch streams as debug-only unless the returned service instructions say otherwise.
 
-If browser feedback has not yet been provided, stop after sharing the review URL and tell the user to annotate the plan and then say feedback is ready. Do not proceed to Claude/Codex or PM gates until the user says feedback is ready, unless the user explicitly says to skip human browser feedback.
+If browser feedback has not yet been provided, stop after sharing the review URL with the comment monitor running and tell the user to annotate the plan and then say feedback is ready. Do not proceed to Claude/Codex or PM gates until the user says feedback is ready, unless the user explicitly says to skip human browser feedback.
 
 ### 4. Process browser feedback
 
 When feedback is ready, process reviewer comments through the plan-review queue.
 
-For each pending comment:
+For each pending or listener-delivered comment:
 
-1. Claim the comment.
+1. Use the `commentId`, `claimId`, and ack guidance returned by the `html-plan-reviewer` listener flow. If no listener claim is available, use that skill's current immediate-drain command until it reports no pending comments.
 2. Read the full plan before editing.
 3. Use the annotation context, heading path, quoted text, and reviewer note.
 4. Classify the comment as `READINESS_BLOCKER`, `PRODUCT_QUESTION`, `OPTIONAL_CLARITY`, `OUT_OF_SCOPE_FOLLOW_UP`, or `DISAGREE_REPO_EVIDENCE`.
 5. Edit the plan for readiness blockers and useful clarity that preserves scope.
 6. Ask the user for product questions that cannot be resolved from repo evidence.
 7. Ack and resolve only after the plan actually addresses the comment.
+8. Start a fresh waiting listener from `agentInstructions` after the ack/resolve step if more browser feedback is expected.
 
 Keep the browser-review file authoritative. If source sync is active, saving the HTML file should refresh the open review page; otherwise re-register the plan after edits.
 
@@ -162,7 +161,7 @@ Use these classifications:
 - `OUT_OF_SCOPE_FOLLOW_UP`: do not add to this plan; record as deferred only if useful.
 - `DISAGREE_REPO_EVIDENCE`: do not change the plan; record the evidence if the disagreement matters.
 
-After fixing readiness blockers, rerun both Claude Code and Codex plan reviews. Repeat until both agree by substance that the plan is execution-ready.
+After fixing readiness blockers, rerun both Claude Code and Codex plan reviews. Repeat until both agree by substance that the plan is execution-ready. When they do, re-register the same HTML plan with truthful ready metadata using the current `html-plan-reviewer` registration flow.
 
 Stop and report a convergence blocker if:
 
@@ -178,6 +177,7 @@ If AI reviews materially reshape product intent, run one final PM check before d
 Before final output, inspect the HTML plan for obvious handoff blockers:
 
 - unresolved browser-review comments remain in the queue,
+- the plan-review service metadata has not been re-registered with `--execution-ready true` after successful Claude Code and Codex plan reviews,
 - unresolved inline review markers or unresolved question sections remain,
 - status is not `execution-ready`,
 - `Progress` or resume instructions are missing,
@@ -211,7 +211,7 @@ Review URL: <canonical plan-review URL>
 <execution-ready / blocked>
 
 ### Execution handoff
-<Only when execution-ready: name the repo's preferred execution command for this explicit HTML plan path, such as `/skill:scoped-plan-run thoughts/plans/<slug>.html` when that runner is available.>
+<Only when execution-ready: name the repo's preferred execution command for this explicit HTML plan path from repo-local guidance.>
 ```
 
 If the plan is blocked, replace the execution handoff with the single blocking question or blocker summary needed to continue. Do not suggest a Markdown-only execution command unless the repo explicitly supports converting the reviewed HTML plan back to Markdown.

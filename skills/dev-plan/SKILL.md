@@ -90,10 +90,10 @@ Non-negotiable requirements:
 - `### Verify` steps are copy/paste ready and match actual repo reality
 - The plan is resumable by another agent without inventing missing semantics
 - If the plan is rendered or delivered as HTML, load `html-plan-reviewer` and use a dark-mode visual theme with an explicit dark background, light foreground text, readable muted text, accessible link/accent colors, and `color-scheme: dark`; do not let the agent choose light mode.
-- If the plan is rendered, served, registered, linked, or monitored as HTML, use the `plan-review` tooling from `html-plan-reviewer` for reviewer-facing artifacts: health check, `plan-review register thoughts/plans/<plan>.html --repo auto --branch auto --commit auto --json`, returned review/index URL, and `plan-review watch` / queue commands for comments.
-- Every user-facing HTML plan URL must use the full Tailscale MagicDNS name, not a shortname, `localhost`, or `127.0.0.1`. On the default host use `http://mbp.braid-python.ts.net:<port>/...`; `localhost` / `127.0.0.1` is allowed only for private health checks such as `curl -fsS http://127.0.0.1:4317/health`.
+- If the plan is rendered, served, registered, linked, or monitored as HTML, use `html-plan-reviewer` as the sole source for current `plan-review` commands: service health, registration, readiness metadata, returned `agentInstructions`, canonical URLs, comment monitoring, ack/resolve, and final readiness re-registration.
+- Every user-facing HTML plan URL must follow the canonical URL rules from `html-plan-reviewer`; private health checks may use loopback URLs only when that skill allows them.
 - For product-facing work, the plan explicitly documents the default workflow, inferred defaults, self-healing expectations, fail-closed boundaries, actionable agent-legible error guidance, and any repo-doc/test updates needed to stay aligned
-- When this repo uses the reviewed-plan flow, the plan assumes explicit handoff rather than hidden recovery paths. In this repo the canonical continuation is `/skill:adn-dev-wf <plan>`.
+- When a repo uses a reviewed-plan flow, the plan assumes explicit handoff to the canonical continuation named in repo-local guidance rather than hidden recovery paths.
 - If repo guidance requires a checked-in plan server, validate/serve/open the plan with that server, reuse an already-running instance for the target plan, and never substitute Vite, file URLs, Python/Node static servers, or a custom plan service.
 - The plan does not normalize routine "run this other command to inspect/fix it" operator loops unless the work is explicitly about a high-risk or ambiguous exception path
 
@@ -117,8 +117,4 @@ Before finishing:
 
 ## Suggested Next Steps
 
-After this skill completes, the user may:
-- Review the plan: `/review:plan <plan_path>`
-- Integrate review feedback: `/review:change-integrate <plan_path>`
-- Optionally run an adversarial second pass: `/review:plan-adversarial <plan_path>`
-- Continue the reviewed-plan workflow: `/skill:adn-dev-wf <plan_path>`
+After this skill completes, suggest only next steps supported by repo-local guidance. For reviewed-plan repos, name the canonical continuation from `AGENTS.md` or the repo's planning overrides; do not invent a fallback review or execution command.

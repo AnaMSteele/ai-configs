@@ -188,7 +188,7 @@ Pi now supports both:
 
 ```bash
 # Canonical reviewed-plan workflow
-/skill:adn-dev-wf <task | plan-slug | thoughts/plans/<plan>.md>
+/skill:adn-dev-wf <task | plan-slug | thoughts/plans/<plan>.html>
 
 # Browser-reviewed HTML plan gate
 /dev:reviewed-html-plan <task | plan-slug | thoughts/plans/<plan>.html>
@@ -196,7 +196,7 @@ Pi now supports both:
 
 # Planning-only / direct execution-only escape hatches
 /skill:dev-plan "feature-name"
-/dev:run thoughts/plans/<plan>.md
+/dev:run thoughts/plans/<plan>.html
 
 # Git & Linear
 /skill:cmd-start-linear-issue-branch <ISSUE_KEY>
@@ -219,11 +219,13 @@ Linear issue key and include the Linear issue title, for example
 unless it already satisfies that format.
 
 Expected Pi reviewed-plan flow in this repo:
-- `/skill:adn-dev-wf <task | plan>` is the canonical single-entry workflow
-- It internally owns plan refresh, blocker-only review, review integration, direct execution, and bounded implementation-stage PM follow-up
-- `/dev:reviewed-html-plan <task | plan>` / `/skill:reviewed-html-plan <task | plan>` is the browser-reviewed HTML pre-execution gate for plan-review feedback plus PM, Claude Code, and Codex plan review
-- `/skill:dev-plan <task>` remains available for planning-only work
-- `/dev:run <plan>` remains available when you already have an execution-ready reviewed plan and want execution only
+- Active browser-reviewed plans are semantic HTML files under `thoughts/plans/<slug>.html`; do not create Markdown companions for that flow.
+- `/skill:adn-dev-wf <task | plan>` is the canonical single-entry workflow.
+- It internally owns plan refresh, blocker-only review, review integration, direct execution, and bounded implementation-stage PM follow-up.
+- `/dev:reviewed-html-plan <task | plan>` / `/skill:reviewed-html-plan <task | plan>` is the browser-reviewed HTML pre-execution gate for plan-review feedback plus PM, Claude Code, and Codex plan review; it must register through `plan-review`, follow returned `agentInstructions`, and start the queue-backed comment monitor.
+- `skills/html-plan-reviewer/SKILL.md` is the sole source for concrete `plan-review` commands, readiness metadata, canonical URL rules, and comment monitor mechanics; other planning skills should reference it instead of duplicating command recipes.
+- `/skill:dev-plan <task>` remains available for planning-only work.
+- `/dev:run <plan>` remains available when you already have an execution-ready reviewed plan and want execution only.
 
 `/review:change-claude-code` remains an explicit opt-in review command, not a hidden fallback inside plan mode or execution.
 
