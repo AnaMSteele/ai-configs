@@ -57,6 +57,8 @@ Installed layout:
     │   └── index.ts
     ├── pi-prd-mode/
     │   └── index.ts
+    ├── aoe-status/
+    │   └── index.ts
     ├── questionnaire.ts
     ├── simple-multi-status.ts
     ├── percentage-compaction.ts
@@ -105,6 +107,13 @@ The `/plan` command is provided by the `pi-plan-mode` extension, and the `/prd` 
 ## Extensions
 
 Pi loads runtime extensions from `~/.pi/agent/extensions/`.
+
+This repo also ships `aoe-status`, a lightweight lifecycle reporter for Agent of Empires (AoE) that:
+
+- writes content-free Pi lifecycle metadata to `/tmp/aoe-pi-status/<uid>/<pid>.json`,
+- reports `idle` on load/session start, `running` on agent/turn start, `idle` on agent end, and `stopped` on shutdown,
+- refreshes the latest status every 30 seconds so AoE does not fall back to stale pane parsing after the registry TTL,
+- stores only status, pid, cwd, session file path, and timestamps, never prompts, messages, tool arguments, or model output.
 
 This repo now ships a maintained `pi-plan-mode` extension that:
 
