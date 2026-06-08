@@ -357,7 +357,13 @@ async function resolveExecutePlanRequest(
 	}
 
 	const planDispatchArgument = stripPathSigil(planArgument);
-	const planPath = /\.(html|md)$/i.test(planDispatchArgument)
+	const isExplicitPlanPath = /\.(html|md)$/i.test(planDispatchArgument);
+	if (!isExplicitPlanPath && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(planDispatchArgument)) {
+		return {
+			error: `Invalid plan slug "${planDispatchArgument}". Slugs may only contain letters, numbers, dots, underscores, and hyphens, and must start with a letter or number.`,
+		};
+	}
+	const planPath = isExplicitPlanPath
 		? resolveFromCwd(cwd, planDispatchArgument)
 		: resolve(cwd, PLAN_DIRECTORY, `${planDispatchArgument}.html`);
 
