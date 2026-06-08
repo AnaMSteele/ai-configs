@@ -44,6 +44,8 @@ Constraints:
 Plan:
 <paste the plan here>
 
+If the plan is HTML, treat the HTML file as the authoritative plan artifact. Do not require Markdown conversion.
+
 Review for:
 - missing steps
 - unsafe assumptions

@@ -43,7 +43,7 @@ This command is review-only.
 
 Preferred input:
 
-- A single plan file: `thoughts/plans/<slug>.md`
+- A single plan file in the repo's active plan format. In this repo's browser-reviewed flow, that is `thoughts/plans/<slug>.html`.
 
 Accept legacy inputs for migration only:
 
@@ -53,9 +53,9 @@ Accept legacy inputs for migration only:
 Resolution rules:
 
 - If `$ARGUMENTS` starts with `@`, strip the leading `@` and treat as workspace-relative.
-- If a single argument is an existing `.md` file, treat as `plan_path`.
-- If a single argument is a slug, resolve to `thoughts/plans/<slug>.md`.
-- If the plan file does not exist but a legacy bundle exists for the slug, migrate to `thoughts/plans/<slug>.md` (do not modify legacy files) and review the migrated plan.
+- If a single argument is an existing plan file, including `.html` or legacy `.md`, treat as `plan_path`.
+- If a single argument is a slug, resolve it using repo-local active plan guidance. In this repo's browser-reviewed flow, resolve to `thoughts/plans/<slug>.html`; do not infer a Markdown path.
+- If the plan file does not exist but a legacy bundle exists for the slug, migrate only when repo-local guidance explicitly allows migration to the active plan format (do not modify legacy files) and review the migrated plan.
 
 If multiple candidates match or a required file is missing, ask for an explicit plan file path.
 

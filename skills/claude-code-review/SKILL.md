@@ -49,6 +49,7 @@ window=claude-plan-review
 
 cat > "$prompt" <<'PROMPT'
 Review <plan_path> against AGENTS.md and thoughts/specs/product_intent.md.
+If <plan_path> is HTML, treat that HTML file as the authoritative plan artifact and do not require Markdown conversion.
 This is read-only. Do not edit files. Return a concise review with Verdict, Findings, Required Changes, Residual Risks.
 PROMPT
 
@@ -97,6 +98,7 @@ window=claude-plan-review
 
 cat > "$prompt" <<'PROMPT'
 Review <plan_path> against thoughts/plans/AGENTS.md and thoughts/specs/product_intent.md.
+If <plan_path> is HTML, treat that HTML file as the authoritative plan artifact and do not require Markdown conversion.
 This is a read-only plan review. Do not edit files.
 Return concise sections: Verdict, Strengths, Issues, Required Changes.
 PROMPT

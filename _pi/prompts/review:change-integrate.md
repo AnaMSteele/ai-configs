@@ -79,6 +79,7 @@ Use the available repo exploration tools in this session.
 
 - Classify each review comment as material or optional before editing the plan.
 - Apply edits directly to the plan with `edit` unless a deliberate full-file rewrite is required.
+- HTML plans are first-class inputs; preserve valid semantic HTML while integrating and removing review comments.
 - Remove each resolved inline review comment.
 - Integrate only material findings that affect readiness for the stated scope.
 - If feedback implies adding or changing requirements, do so only when the plan's stated goal, non-goals, acceptance criteria, or validated source scope require it. Then update:
