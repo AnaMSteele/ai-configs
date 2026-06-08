@@ -8,6 +8,8 @@ This command orchestrates a blocker-focused review-only plan review using two in
 
 Documents to review: $ARGUMENTS
 
+HTML plans are first-class inputs. If the argument is a slug, resolve it through repo-local active plan guidance; in this repo's browser-reviewed flow that means `thoughts/plans/<slug>.html`, not a Markdown fallback.
+
 ## Execution Mode
 
 - Use the actual Pi subagent tool surface: launch two background agents with `Agent`.
@@ -29,14 +31,14 @@ Launch both reviews before waiting for either of them to finish.
 - **Model:** `openai-codex/gpt-5.5`
 - **Reasoning:** High
 - **Task:** Perform blocker-only plan review per reviewer-plan-gpt5.5 instructions
-- **Output:** Plan file with `[REVIEW:GPT]` comments + summary
+- **Output:** Same plan file with `[REVIEW:GPT]` comments + summary. For HTML plans, insert comments into the semantic HTML in a visible, valid way without converting the plan to Markdown.
 
 ### Subagent 2: Kimi K2.5 Review
 - **Agent:** `reviewer-plan-kimi`
 - **Model:** `opencode/kimi-k2.5`
 - **Reasoning:** High
 - **Task:** Perform blocker-only plan review per reviewer-plan-kimi instructions
-- **Output:** Plan file with `[REVIEW:Kimi K2.5]` comments + summary
+- **Output:** Same plan file with `[REVIEW:Kimi K2.5]` comments + summary. For HTML plans, insert comments into the semantic HTML in a visible, valid way without converting the plan to Markdown.
 
 ### Parallel Execution
 
@@ -46,14 +48,14 @@ Launch two background `Agent` calls so Pi actually runs both reviewers concurren
 const gpt54 = Agent({
   subagent_type: "reviewer-plan-gpt5.5",
   description: "Review plan with GPT",
-  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.5 instructions exactly. Add [REVIEW:GPT] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-gpt5.5 instructions exactly. Treat HTML plan files as first-class plan inputs and do not convert them to Markdown. Add [REVIEW:GPT] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
   run_in_background: true,
 });
 
 const kimi = Agent({
   subagent_type: "reviewer-plan-kimi",
   description: "Review plan with Kimi K2.5",
-  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Add [REVIEW:Kimi K2.5] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
+  prompt: "Review the plan at $ARGUMENTS. Follow your reviewer-plan-kimi instructions exactly. Treat HTML plan files as first-class plan inputs and do not convert them to Markdown. Add [REVIEW:Kimi K2.5] comments only for blockers, materially risky gaps, or missing decisions required to execute the stated goal within the validated source scope, then provide a readiness summary.",
   run_in_background: true,
 });
 
@@ -65,7 +67,7 @@ Wait for both `get_subagent_result(..., wait: true)` calls to complete before pr
 
 ## Review Output
 
-The final plan file should be an annotated plan containing any `[REVIEW:...]` comments left by GPT and Kimi K2.5.
+The final plan file should be the same annotated plan file, in its original format, containing any `[REVIEW:...]` comments left by GPT and Kimi K2.5. For HTML plans, keep the document valid semantic HTML.
 
 ## Summary Format
 

@@ -161,7 +161,10 @@ Before finishing:
 
 ## Next Steps
 
-- If the written plan is `execution-ready`, suggest:
+- If the written plan is an HTML plan, suggest:
+  - `/dev:reviewed-html-plan <plan_path>` to register it, process browser comments, run PM plus Claude/Codex plan reviews, and iterate to execution-ready.
+  - `/cmd:execute-plan <plan_path>` only after browser-review metadata and readiness gates are complete.
+- If the written plan is a legacy Markdown plan and is `execution-ready`, suggest:
   - `/review:change <plan_path>`
   - `/cmd:execute-plan <plan_path>`
 - If the written plan is `research-ready`, suggest reviewing the plan and then doing the exact next research action recorded in it instead of executing.

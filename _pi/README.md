@@ -110,10 +110,13 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 
 - powers `/plan` mode for `thoughts/` planning workflows,
 - keeps planning-mode file writes scoped to `thoughts/`,
-- surfaces `/review:plan` after plan edits as a non-blocking next step,
-- automatically follows a standard review with `/review:change-integrate` before any execution handoff,
-- keeps `/review:plan-adversarial` available as an optional second-pass challenge review after integration,
-- leaves execution handoff manual via `/skill:adn-dev-wf <plan> --target ...` so Pi can launch from a fresh session without popping a menu,
+- defaults active browser-reviewed plans to `thoughts/plans/<slug>.html` while still accepting explicit legacy Markdown plan paths,
+- displays the current registered plan-review URL in the plan-mode widget when available,
+- allows the narrow `plan-review` registration/comment commands and the `process` tool needed for queue-backed browser comment iteration,
+- steers HTML plan edits toward `/dev:reviewed-html-plan` for registration, browser feedback, PM review, and Claude/Codex plan review,
+- keeps `/review:plan` and `/review:plan-adversarial` available as explicit inline review paths, with HTML plans accepted as first-class inputs,
+- leaves execution handoff manual via `/cmd:execute-plan <plan> --target ...` so Pi can launch from a fresh session without popping a menu,
+- reminds the operator to stop the active plan-review comment listener before execution,
 - keeps alternate review commands such as `/review:change-claude-code` as explicit opt-ins rather than hidden plan-mode fallbacks,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
@@ -274,11 +277,17 @@ Prompt templates:
 
 Use `/skill:adn-dev-wf <plan>` after a reviewed plan is ready to continue. For browser-reviewed plans, the active artifact is `thoughts/plans/<slug>.html`, and `skills/html-plan-reviewer/SKILL.md` is the sole source for concrete `plan-review` commands, readiness metadata, canonical URL rules, and comment monitor mechanics.
 
-Canonical reviewed-plan flow:
+Canonical browser-reviewed HTML plan flow:
 
 ```text
 /dev:plan <plan>
-/dev:pm-review <plan> plan        # optional corrective PM reshaping pass before execution
+/dev:reviewed-html-plan <plan>    # register, monitor browser comments, PM-review, and run Claude/Codex plan reviews
+/cmd:execute-plan <plan>
+```
+
+Explicit inline review flow remains available when needed:
+
+```text
 /review:plan <plan>
 /review:change-integrate <plan>
 /review:plan-adversarial <plan>   # optional

@@ -8,6 +8,7 @@ const PLAN_STATE_TYPE = "plan-mode-state";
 const PRD_STATE_TYPE = "prd-mode-state";
 const PLAN_ROOT = "thoughts";
 const PLAN_DIRECTORY = "thoughts/plans";
+const PLAN_REVIEW_SERVICE_URL = "http://mbp.braid-python.ts.net:4317";
 const PLAN_PROMPTS_DIRECTORIES = ["_pi/prompts", ".pi/prompts"] as const;
 const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
@@ -123,6 +124,7 @@ const DEFAULT_PLAN_TOOLS = [
 	"get_search_content",
 	"question",
 	"questionnaire",
+	"process",
 ] as const;
 
 const REVIEW_ORCHESTRATION_TOOLS = [
@@ -137,6 +139,9 @@ const REVIEW_ORCHESTRATION_TOOLS = [
 interface PlanModeState {
 	enabled: boolean;
 	currentPlanPath?: string;
+	currentPlanReviewUrl?: string;
+	currentPlanId?: string;
+	currentPlanListenerProcessId?: string;
 	savedActiveTools?: string[];
 	reviewCycles: number;
 	lastReviewCommand?: string;
@@ -171,7 +176,32 @@ function relativeToCwd(cwd: string, inputPath: string): string {
 	return relative(cwd, resolveFromCwd(cwd, inputPath));
 }
 
+function isAllowedPlanReviewCommand(command: string): boolean {
+	const normalized = command.trim();
+	if (/^plan-review\s+watch\b/i.test(normalized)) return false;
+	if (/[\r\n;&|`<>]/.test(normalized) || /\$\(/.test(normalized) || />>/.test(normalized)) return false;
+	return (
+		/^plan-review\s+register\b/i.test(normalized)
+		|| /^plan-review\s+index\b/i.test(normalized)
+		|| /^plan-review\s+agent\s+next\b/i.test(normalized)
+		|| /^plan-review\s+queue\s+(list|claim)\b/i.test(normalized)
+		|| /^plan-review\s+(ack|resolve|release)\b/i.test(normalized)
+		|| /^open\s+http:\/\/mbp\.braid-python\.ts\.net:4317(?:\/\S*)?\s*$/i.test(normalized)
+		|| /^brew\s+services\s+start\s+plan-reviewer\b/i.test(normalized)
+	);
+}
+
+function isPlanReviewListenerCommand(command: string): boolean {
+	const tokens = parseCommandArgs(command.trim());
+	return tokens[0] === "plan-review"
+		&& tokens[1] === "agent"
+		&& tokens[2] === "next"
+		&& tokens.includes("--wait")
+		&& !tokens.includes("--no-wait");
+}
+
 function isSafeCommand(command: string): boolean {
+	if (isAllowedPlanReviewCommand(command)) return true;
 	const destructive = DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(command));
 	const safe = SAFE_BASH_PATTERNS.some((pattern) => pattern.test(command));
 	return !destructive && safe;
@@ -287,7 +317,7 @@ function isStandardReviewCommand(command: string | undefined): command is typeof
 }
 
 function getExecutePlanUsage(): string {
-	return `Usage: /${EXECUTE_PLAN_COMMAND} <plan slug | thoughts/plans/<slug>.md | path/to/plan.md> [--target dev:run|skill:adn-dev-wf]`;
+	return `Usage: /${EXECUTE_PLAN_COMMAND} <plan slug | thoughts/plans/<slug>.html | path/to/plan.html | legacy path/to/plan.md> [--target dev:run|skill:adn-dev-wf]`;
 }
 
 async function resolveExecutePlanRequest(
@@ -327,9 +357,15 @@ async function resolveExecutePlanRequest(
 	}
 
 	const planDispatchArgument = stripPathSigil(planArgument);
-	const planPath = planDispatchArgument.endsWith(".md")
+	const isExplicitPlanPath = /\.(html|md)$/i.test(planDispatchArgument);
+	if (!isExplicitPlanPath && !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(planDispatchArgument)) {
+		return {
+			error: `Invalid plan slug "${planDispatchArgument}". Slugs may only contain letters, numbers, dots, underscores, and hyphens, and must start with a letter or number.`,
+		};
+	}
+	const planPath = isExplicitPlanPath
 		? resolveFromCwd(cwd, planDispatchArgument)
-		: resolve(cwd, PLAN_DIRECTORY, `${planDispatchArgument}.md`);
+		: resolve(cwd, PLAN_DIRECTORY, `${planDispatchArgument}.html`);
 
 	try {
 		await access(planPath);
@@ -356,7 +392,70 @@ function isThoughtsPath(cwd: string, inputPath: string): boolean {
 
 function isPlanFilePath(cwd: string, inputPath: string): boolean {
 	const resolved = resolveFromCwd(cwd, inputPath);
-	return isWithin(getPlansRoot(cwd), resolved) && resolved.endsWith(".md");
+	return isWithin(getPlansRoot(cwd), resolved) && /\.(html|md)$/i.test(resolved);
+}
+
+function toolResultToText(content: unknown): string {
+	if (typeof content === "string") return content;
+	if (Array.isArray(content)) {
+		return content.map((item) => {
+			if (typeof item === "string") return item;
+			if (item && typeof item === "object" && "text" in item) {
+				return String((item as { text?: unknown }).text ?? "");
+			}
+			return JSON.stringify(item);
+		}).join("\n");
+	}
+	return content === undefined ? "" : JSON.stringify(content);
+}
+
+function parseJsonObject(text: string): Record<string, unknown> | undefined {
+	try {
+		return JSON.parse(text) as Record<string, unknown>;
+	} catch {
+		const match = text.match(/\{[\s\S]*\}/);
+		if (!match) return undefined;
+		try {
+			return JSON.parse(match[0]) as Record<string, unknown>;
+		} catch {
+			return undefined;
+		}
+	}
+}
+
+function canonicalPlanReviewUrl(rawUrl: unknown): string | undefined {
+	if (typeof rawUrl !== "string" || rawUrl.length === 0) return undefined;
+	if (/^https?:\/\//i.test(rawUrl)) {
+		try {
+			const url = new URL(rawUrl);
+			if (["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname) && url.port === "4317") {
+				return `${PLAN_REVIEW_SERVICE_URL}${url.pathname}${url.search}${url.hash}`;
+			}
+		} catch {
+			return undefined;
+		}
+		return rawUrl;
+	}
+	return rawUrl.startsWith("/") ? `${PLAN_REVIEW_SERVICE_URL}${rawUrl}` : `${PLAN_REVIEW_SERVICE_URL}/${rawUrl}`;
+}
+
+function parsePlanReviewRegistrationOutput(text: string): { planId?: string; reviewUrl?: string; sourcePath?: string } {
+	const payload = parseJsonObject(text);
+	if (payload) {
+		const sourceSync = payload.sourceSync as { sourcePath?: unknown } | undefined;
+		return {
+			planId: typeof payload.planId === "string" ? payload.planId : undefined,
+			reviewUrl: canonicalPlanReviewUrl(payload.reviewUrl),
+			sourcePath: typeof sourceSync?.sourcePath === "string" ? sourceSync.sourcePath : undefined,
+		};
+	}
+
+	const reviewUrl = text.match(/^\s*Review URL\s*:?\s*(\S+)\s*$/im)?.[1];
+	const planId = text.match(/^\s*Plan ID\s*:?\s*(\S+)\s*$/im)?.[1];
+	return {
+		planId,
+		reviewUrl: canonicalPlanReviewUrl(reviewUrl),
+	};
 }
 
 function derivePlanTools(allTools: string[], normalTools: string[] | undefined, includeReviewTools: boolean): string[] {
@@ -382,6 +481,9 @@ function derivePlanTools(allTools: string[], normalTools: string[] | undefined, 
 export default function planModeExtension(pi: ExtensionAPI): void {
 	let planModeEnabled = false;
 	let currentPlanPath: string | undefined;
+	let currentPlanReviewUrl: string | undefined;
+	let currentPlanId: string | undefined;
+	let currentPlanListenerProcessId: string | undefined;
 	let savedActiveTools: string[] | undefined;
 	let reviewCycles = 0;
 	let reviewInFlight = false;
@@ -402,6 +504,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		pi.appendEntry(PLAN_STATE_TYPE, {
 			enabled: planModeEnabled,
 			currentPlanPath,
+			currentPlanReviewUrl,
+			currentPlanId,
+			currentPlanListenerProcessId,
 			savedActiveTools,
 			reviewCycles,
 			lastReviewCommand,
@@ -417,6 +522,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		const planLabel = currentPlanPath ?? "no plan file yet";
+		const urlLabel = currentPlanReviewUrl ?? "not registered yet";
+		const listenerLabel = currentPlanListenerProcessId ?? "not running/unknown";
 		const displayedCycles = Math.min(reviewCycles, MAX_REVIEW_CYCLES);
 		const cycleLabel = reviewCycles > 0 ? ` • review ${displayedCycles}/${MAX_REVIEW_CYCLES}` : "";
 		const status = reviewInFlight ? `🧪 plan review${cycleLabel}` : `📝 plan${cycleLabel}`;
@@ -424,6 +531,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		ctx.ui.setWidget("plan-mode", [
 			ctx.ui.theme.fg("accent", "Plan mode active"),
 			ctx.ui.theme.fg("muted", `Current plan: ${planLabel}`),
+			ctx.ui.theme.fg("muted", `Plan URL: ${urlLabel}`),
+			ctx.ui.theme.fg("muted", `Comment listener: ${listenerLabel}`),
 			ctx.ui.theme.fg("muted", `Writes allowed only under ${PLAN_ROOT}/`),
 		]);
 	}
@@ -455,6 +564,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		ctx.ui.notify(`Plan mode enabled.${planNote}`, "info");
 	}
 
+	function getListenerCleanupMessage(): string | undefined {
+		return currentPlanListenerProcessId
+			? `Stop the active plan-review comment listener before execution: process kill ${currentPlanListenerProcessId}.`
+			: undefined;
+	}
+
 	function disablePlanMode(ctx: ExtensionContext): void {
 		planModeEnabled = false;
 		reviewInFlight = false;
@@ -467,7 +582,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		updateUi(ctx);
 		persistState();
 		const planNote = currentPlanPath ? ` Current plan preserved: ${currentPlanPath}` : "";
-		ctx.ui.notify(`Plan mode disabled.${planNote}`, "info");
+		const listenerNote = getListenerCleanupMessage();
+		ctx.ui.notify(`Plan mode disabled.${planNote}${listenerNote ? ` ${listenerNote}` : ""}`, "info");
 	}
 
 	function togglePlanMode(ctx: ExtensionContext): void {
@@ -486,6 +602,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	}
 
 	async function handleExecutePlanCommand(args: string, ctx: ExtensionCommandContext): Promise<void> {
+		const listenerCleanupMessage = getListenerCleanupMessage();
+		if (listenerCleanupMessage) {
+			ctx.ui.notify(listenerCleanupMessage, "warning");
+			return;
+		}
+
 		const request = await resolveExecutePlanRequest(ctx.cwd, args);
 		if ("error" in request) {
 			ctx.ui.notify(request.error, "warning");
@@ -518,6 +640,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			return;
 		}
 
+		disablePlanMode(ctx);
 		await ctx.waitForIdle();
 		const result = await ctx.newSession({ parentSession: ctx.sessionManager.getSessionFile() });
 		if (result.cancelled) {
@@ -549,6 +672,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		reviewInFlight = false;
 		pendingAutoReviewCommand = false;
 		currentPlanPath = undefined;
+		currentPlanReviewUrl = undefined;
+		currentPlanId = undefined;
+		currentPlanListenerProcessId = undefined;
 		savedActiveTools = undefined;
 		reviewCycles = 0;
 		lastReviewCommand = undefined;
@@ -563,6 +689,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (stateEntry?.data) {
 			planModeEnabled = stateEntry.data.enabled;
 			currentPlanPath = stateEntry.data.currentPlanPath;
+			currentPlanReviewUrl = stateEntry.data.currentPlanReviewUrl;
+			currentPlanId = stateEntry.data.currentPlanId;
+			currentPlanListenerProcessId = stateEntry.data.currentPlanListenerProcessId;
 			savedActiveTools = stateEntry.data.savedActiveTools;
 			reviewCycles = stateEntry.data.reviewCycles ?? 0;
 			lastReviewCommand = stateEntry.data.lastReviewCommand;
@@ -580,6 +709,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				await access(resolve(ctx.cwd, currentPlanPath));
 			} catch {
 				currentPlanPath = undefined;
+				currentPlanReviewUrl = undefined;
+				currentPlanId = undefined;
+				currentPlanListenerProcessId = undefined;
 				reviewCycles = 0;
 				lastReviewCommand = undefined;
 				preferredStandardReviewCommand = undefined;
@@ -621,6 +753,14 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		}
 
 		const standardReviewCommand = getPreferredStandardReviewCommand();
+		if (/\.html$/i.test(currentPlanPath)) {
+			ctx.ui.notify(
+				`HTML plan updated (${reason}). Run /dev:reviewed-html-plan ${formatCommandArg(currentPlanPath)} to register/iterate browser feedback; /${standardReviewCommand} ${formatCommandArg(currentPlanPath)} remains available for explicit inline review.`,
+				"info",
+			);
+			return;
+		}
+
 		ctx.ui.notify(
 			`Plan updated (${reason}). Run /${standardReviewCommand} ${formatCommandArg(currentPlanPath)} when ready.`,
 			"info",
@@ -706,6 +846,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (!planModeEnabled) return { action: "continue" };
 
 		if (text.startsWith(`/${EXECUTE_PLAN_COMMAND}`) || text.startsWith("/dev:run") || text.startsWith("/skill:adn-dev-wf") || text.startsWith("/ralph:run")) {
+			const listenerCleanupMessage = getListenerCleanupMessage();
+			if (listenerCleanupMessage) {
+				ctx.ui.notify(listenerCleanupMessage, "warning");
+				return { action: "block" };
+			}
 			disablePlanMode(ctx);
 			return { action: "continue" };
 		}
@@ -757,8 +902,8 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (!planModeEnabled) return;
 
 		const currentPlanInstruction = currentPlanPath
-			? `Current plan file: ${currentPlanPath}. Continue evolving that file unless the user explicitly asks for a different one.`
-			: `If you create a new plan, write it to ${PLAN_DIRECTORY}/<slug>.md.`;
+			? `Current plan file: ${currentPlanPath}. Continue evolving that file unless the user explicitly asks for a different one. Current browser review URL: ${currentPlanReviewUrl ?? "not registered yet"}.`
+			: `If you create a new plan, write it to ${PLAN_DIRECTORY}/<slug>.html.`;
 
 		return {
 			message: {
@@ -772,13 +917,17 @@ Constraints:
 - Keep plan files in ${PLAN_DIRECTORY}/.
 - Do not make implementation changes outside ${PLAN_ROOT}/.
 - Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/.
+- Load and follow the planning skills needed for deterministic HTML planning: planning-workflow, html-plan-reviewer, reviewed-html-plan, product-principles for workflow-impacting plans, plus relevant domain skills.
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
-- After creating or materially updating a plan, /review:plan <path> is available when you want review.
-- After a standard review completes with inline comments, /review:change-integrate <path> runs automatically so review feedback is resolved back into the same plan file before any manual execution handoff.
-- After standard review integration, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
-- After an integrated review completes, you may manually run /cmd:execute-plan <path> --target dev:run or --target skill:adn-dev-wf to start a fresh execution session.
+- New active plans should be semantic HTML under ${PLAN_DIRECTORY}/<slug>.html unless the user explicitly supplies an existing legacy Markdown plan.
+- Register HTML plans with plan-review using truthful --execution-ready metadata; preserve and display the canonical browser review URL.
+- Use only the queue-backed plan-review agent next flow for browser comments: drain with --no-wait, listen with --wait via the process tool, process one claimed comment, ack/resolve it, then restart the listener. Do not use or recommend the watch subcommand in /plan mode.
+- After creating or materially updating an HTML plan, /dev:reviewed-html-plan <path> is the deterministic registration, browser-feedback, PM-review, and Claude/Codex plan-review path. /review:plan <path> remains available only as an explicit inline review.
+- After a standard inline review completes with comments, /review:change-integrate <path> runs automatically so review feedback is resolved back into the same plan file before any manual execution handoff.
+- After standard inline review integration, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
+- Before execution, stop any active plan-review comment listener, then run /cmd:execute-plan <path> --target dev:run or --target skill:adn-dev-wf to start a fresh execution session.
 - Review feedback should be integrated back into the same plan file.
-- Automatic review looping is capped at ${MAX_REVIEW_CYCLES} cycles before stopping.
+- Automatic inline review looping is capped at ${MAX_REVIEW_CYCLES} cycles before stopping.
 
 ${currentPlanInstruction}`,
 				display: false,
@@ -799,6 +948,22 @@ ${currentPlanInstruction}`,
 			}
 		}
 
+		if (event.toolName === "process") {
+			const action = String(event.input.action ?? "");
+			const command = String(event.input.command ?? "");
+			const id = typeof event.input.id === "string" ? event.input.id : undefined;
+			const readOnlyActions = new Set(["list", "output", "logs"]);
+			const allowedStart = action === "start" && /^\s*plan-review\s+agent\s+next\b/i.test(command) && isAllowedPlanReviewCommand(command);
+			const allowedKill = action === "kill" && id !== undefined && id === currentPlanListenerProcessId;
+
+			if (!readOnlyActions.has(action) && !allowedStart && !allowedKill) {
+				return {
+					block: true,
+					reason: "Plan mode only allows process list/output/logs, starting the plan-review agent next listener, or killing the tracked listener.",
+				};
+			}
+		}
+
 		if (event.toolName === "edit" || event.toolName === "write") {
 			const inputPath = typeof event.input.path === "string" ? event.input.path : "";
 			if (!inputPath || !isThoughtsPath(ctx.cwd, inputPath)) {
@@ -811,14 +976,59 @@ ${currentPlanInstruction}`,
 	});
 
 	pi.on("tool_result", async (event, ctx) => {
-		if (!planModeEnabled || event.isError) return;
+		if (!planModeEnabled) return;
+
+		if (event.toolName === "process") {
+			const action = String(event.input.action ?? "");
+			const command = String(event.input.command ?? "");
+			if (action === "kill" && event.input.id === currentPlanListenerProcessId) {
+				currentPlanListenerProcessId = undefined;
+				updateUi(ctx);
+				persistState();
+				return;
+			}
+			if (event.isError) return;
+			if (action === "start" && isPlanReviewListenerCommand(command)) {
+				const match = toolResultToText(event.content).match(/\b(proc_\w+)/);
+				currentPlanListenerProcessId = match?.[1] ?? currentPlanListenerProcessId;
+				updateUi(ctx);
+				persistState();
+			}
+			return;
+		}
+
+		if (event.isError) return;
+
+		if (event.toolName === "bash") {
+			const command = String(event.input.command ?? "");
+			if (/^\s*plan-review\s+register\b/i.test(command)) {
+				const registration = parsePlanReviewRegistrationOutput(toolResultToText(event.content));
+				if (registration.reviewUrl) {
+					currentPlanReviewUrl = registration.reviewUrl;
+					currentPlanId = registration.planId ?? currentPlanId;
+					if (registration.sourcePath) {
+						currentPlanPath = relativeToCwd(ctx.cwd, registration.sourcePath);
+					}
+					updateUi(ctx);
+					persistState();
+				}
+			}
+			return;
+		}
+
+
 		if (event.toolName !== "edit" && event.toolName !== "write") return;
 
 		const inputPath = typeof event.input.path === "string" ? event.input.path : undefined;
 		if (!inputPath || !isPlanFilePath(ctx.cwd, inputPath)) return;
 
 		turnTouchedPlan = true;
-		currentPlanPath = relativeToCwd(ctx.cwd, inputPath);
+		const nextPlanPath = relativeToCwd(ctx.cwd, inputPath);
+		if (nextPlanPath !== currentPlanPath) {
+			currentPlanReviewUrl = undefined;
+			currentPlanId = undefined;
+		}
+		currentPlanPath = nextPlanPath;
 		if (!reviewInFlight) {
 			reviewCycles = 0;
 			lastReviewCommand = undefined;
