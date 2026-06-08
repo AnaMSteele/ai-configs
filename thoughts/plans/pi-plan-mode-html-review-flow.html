@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pi Plan Mode HTML Review Flow</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08111f;
+      --panel: #101a2b;
+      --panel-2: #17243a;
+      --text: #e6edf7;
+      --muted: #aab7c8;
+      --accent: #7dd3fc;
+      --accent-2: #c4b5fd;
+      --good: #86efac;
+      --warn: #fbbf24;
+      --bad: #fca5a5;
+      --border: #2d3c55;
+      --code: #0b1220;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 15% 0%, rgba(125, 211, 252, 0.14), transparent 34rem), var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+    main { max-width: 1120px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1, h2, h3, h4 { line-height: 1.2; }
+    h1 { margin: 0 0 0.65rem; font-size: clamp(2rem, 5vw, 3.4rem); }
+    h2 { margin-top: 2.4rem; padding-top: 1.2rem; border-top: 1px solid var(--border); color: #f8fafc; }
+    h3 { margin-top: 1.6rem; color: var(--accent); }
+    h4 { margin-bottom: 0.3rem; color: var(--accent-2); }
+    a { color: var(--accent); }
+    code, pre { background: var(--code); color: #dbeafe; border-radius: 8px; }
+    code { padding: 0.12rem 0.32rem; }
+    pre { padding: 16px; overflow-x: auto; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+    th, td { border: 1px solid var(--border); padding: 10px 12px; vertical-align: top; }
+    th { background: var(--panel-2); color: #f8fafc; text-align: left; }
+    ul, ol { padding-left: 1.35rem; }
+    .badge { display: inline-block; padding: 0.22rem 0.65rem; border: 1px solid var(--border); border-radius: 999px; background: var(--panel-2); color: var(--accent); font-size: 0.86rem; }
+    .muted { color: var(--muted); }
+    .card { background: rgba(16, 26, 43, 0.9); border: 1px solid var(--border); border-radius: 16px; padding: 18px 20px; margin: 18px 0; box-shadow: 0 18px 60px rgba(0,0,0,0.24); }
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .grid > div { background: rgba(23, 36, 58, 0.72); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="badge" id="status">Status: execution-ready</p>
+  <h1 id="title">Pi Plan Mode HTML Review Flow</h1>
+  <p class="muted" id="summary">Shift Pi <code>/plan</code> mode from Markdown-review assumptions to the current HTML plan-review workflow: create semantic HTML plans, register them in <code>plan-review</code>, keep the queue-backed comment listener running during iteration, and stop the listener before handing the reviewed plan to execution.</p>
+
+  <section id="goal">
+    <h2>Goal</h2>
+    <p>Make <code>_pi/extensions/pi-plan-mode/index.ts</code> and the Pi planning prompt steer agents toward the deterministic reviewed HTML process documented in <code>skills/planning-workflow/SKILL.md</code>, <code>skills/html-plan-reviewer/SKILL.md</code>, and <code>skills/reviewed-html-plan/SKILL.md</code>.</p>
+  </section>
+
+  <section id="why-this-plan-exists">
+    <h2>Why this plan exists</h2>
+    <p>The repo already has a reviewed HTML workflow, but <code>/plan</code> mode still defaults new plans and slug execution to <code>.md</code>, only tracks plan edits for Markdown files, nudges users toward inline Markdown plan reviews, blocks the <code>plan-review</code> commands needed to register HTML plans, and does not explicitly coordinate the <code>plan-review agent next --wait</code> listener lifecycle. This creates dissonance between the current process and the mode that should make planning deterministic.</p>
+  </section>
+
+  <section id="authority-and-inputs">
+    <h2>Authority and inputs</h2>
+    <ul>
+      <li id="input-agents"><code>AGENTS.md</code>: active browser-reviewed plans are semantic HTML files under <code>thoughts/plans/&lt;slug&gt;.html</code>; <code>skills/html-plan-reviewer/SKILL.md</code> is the sole source for concrete <code>plan-review</code> commands.</li>
+      <li id="input-extension"><code>_pi/extensions/pi-plan-mode/index.ts</code>: current mode implementation, write guardrails, plan tracking, review prompts, and execution handoff.</li>
+      <li id="input-dev-plan"><code>_pi/prompts/dev:plan.md</code>: plan materialization prompt already supports repo-local HTML guidance but still suggests Markdown-era next steps.</li>
+      <li id="input-reviewed-html"><code>_pi/prompts/dev:reviewed-html-plan.md</code> and <code>skills/reviewed-html-plan/SKILL.md</code>: authoritative gate for registration, browser comments, PM review, and AI plan reviews.</li>
+      <li id="input-pi-docs">Pi extension docs: plan mode can inject context, constrain tools, track tool results, register commands, and restore tools on mode exit.</li>
+    </ul>
+  </section>
+
+  <section id="current-implementation-reality">
+    <h2>Current implementation reality</h2>
+    <table>
+      <thead><tr><th>Area</th><th>Observed reality</th><th>Required shift</th></tr></thead>
+      <tbody>
+        <tr id="reality-md-default"><td>Plan path default</td><td><code>resolveExecutePlanRequest</code> and plan-mode injected context resolve slugs/new plans to <code>thoughts/plans/&lt;slug&gt;.md</code>.</td><td>Default to <code>.html</code> while still accepting explicit existing paths.</td></tr>
+        <tr id="reality-md-tracking"><td>Plan tracking</td><td><code>isPlanFilePath</code> only recognizes <code>.md</code>, so HTML edits do not update current-plan state.</td><td>Track <code>thoughts/plans/*.html</code> as first-class plan files.</td></tr>
+        <tr id="reality-tools"><td>Tools</td><td><code>process</code> is only enabled during review orchestration, and <code>plan-review</code>/<code>open</code> commands are blocked by the safe-bash gate.</td><td>Allow the tools and narrow commands needed for HTML registration and the listener.</td></tr>
+        <tr id="reality-review-nudges"><td>Review nudges</td><td>After edits, the mode suggests <code>/review:plan</code> and Markdown inline integration flows.</td><td>Suggest <code>/dev:reviewed-html-plan</code> / <code>/skill:reviewed-html-plan</code> and browser-comment processing first for HTML plans.</td></tr>
+        <tr id="reality-review-command-html"><td>Review command compatibility</td><td>Several review prompts and plan-reviewer agents still describe <code>thoughts/plans/&lt;slug&gt;.md</code> as the single plan file shape.</td><td>Update <code>/review:plan</code>, Claude Code review, Codex review, and plan-reviewer agent prompts as needed so HTML plans are accepted first-class inputs.</td></tr>
+        <tr id="reality-listener"><td>Listener lifecycle</td><td>No state exists for a plan-review listener. Execution disables plan mode but does not tell the agent to stop any running listener.</td><td>Record listener context when available and make mode-exit/execution handoff explicitly terminate or prompt listener cleanup.</td></tr>
+        <tr id="reality-review-url"><td>Plan URL visibility</td><td>The plan-mode widget only shows the current plan path, so developers cannot always see the browser review URL while planning.</td><td>Persist and display the canonical review URL whenever the current HTML plan has been registered.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="progress">
+    <h2>Progress</h2>
+    <ul>
+      <li id="progress-p1"><label><input type="checkbox" checked /> P1 — HTML plan identity and tracking</label></li>
+      <li id="progress-p2"><label><input type="checkbox" checked /> P2 — Registration and listener tool support</label></li>
+      <li id="progress-p3"><label><input type="checkbox" checked /> P3 — Deterministic plan-mode instructions</label></li>
+      <li id="progress-p4"><label><input type="checkbox" checked /> P4 — Execution handoff and docs alignment</label></li>
+      <li id="progress-p5"><label><input type="checkbox" checked /> P5 — Verification and review</label></li>
+    </ul>
+  </section>
+
+  <section id="resume-instructions-agent">
+    <h2>Resume instructions (agent)</h2>
+    <ol>
+      <li id="resume-read">Read this HTML plan fully plus <code>_pi/extensions/pi-plan-mode/index.ts</code>, <code>_pi/prompts/dev:plan.md</code>, and <code>skills/html-plan-reviewer/SKILL.md</code>.</li>
+      <li id="resume-first-unchecked">Find the first unchecked item in <a href="#progress">Progress</a> and execute phases in order.</li>
+      <li id="resume-update-progress">Update only the matching progress checkbox when its phase is complete; preserve the append-only decisions/deviations log.</li>
+      <li id="resume-ask">Ask the user only if Pi extension APIs cannot support listener termination beyond prompting/tool instructions.</li>
+    </ol>
+  </section>
+
+  <section id="product-intent-alignment">
+    <h2>Product intent alignment</h2>
+    <div class="grid" id="product-grid">
+      <div id="product-golden-path"><strong>Golden path</strong><br />Typing <code>/plan</code> should make the next planning turn naturally produce/register an HTML plan and tell the user where to annotate it.</div>
+      <div id="product-safe-default"><strong>Safe default</strong><br />Slug inputs should resolve to HTML plans; explicit legacy Markdown paths remain accepted only when the user supplies them.</div>
+      <div id="product-recovery"><strong>Recovery</strong><br />If registration or listener setup is missing, plan-mode instructions should provide exact <code>plan-review</code> remediation steps instead of relying on tribal knowledge. The current plan's browser review URL should stay visible in plan mode so developers can return to the active review without searching logs.</div>
+    </div>
+  </section>
+
+  <section id="locked-decisions">
+    <h2>Locked decisions</h2>
+    <ul>
+      <li id="decision-html-default">New plan-mode plans and slug execution resolve to <code>thoughts/plans/&lt;slug&gt;.html</code>.</li>
+      <li id="decision-explicit-md">Explicit existing <code>.md</code> paths remain accepted for legacy compatibility, but no new Markdown companion is created.</li>
+      <li id="decision-reviewer-skill">Plan-review service command details stay delegated to <code>skills/html-plan-reviewer/SKILL.md</code>; prompts reference it instead of duplicating long recipes.</li>
+      <li id="decision-listener-process">The queue-backed <code>agent next --wait</code> listener is the only plan-mode listener. Do not surface <code>plan-review watch</code> from <code>/plan</code>; treat it as legacy/debug-only service tooling outside the deterministic planning path.</li>
+      <li id="decision-exit-cleanup">Leaving plan mode for execution must make listener cleanup explicit before execution begins.</li>
+      <li id="decision-url-visible">Plan mode must persist and display the canonical current plan URL after HTML registration.</li>
+    </ul>
+  </section>
+
+  <section id="acceptance-criteria">
+    <h2>Acceptance criteria</h2>
+    <ol>
+      <li id="ac-1">When <code>/plan</code> mode is active and no current plan exists, the injected context tells the agent to write <code>thoughts/plans/&lt;slug&gt;.html</code> and load <code>planning-workflow</code>, <code>html-plan-reviewer</code>, <code>reviewed-html-plan</code>, and relevant domain skills.</li>
+      <li id="ac-2">HTML plan writes under <code>thoughts/plans/</code> update <code>currentPlanPath</code> and trigger the post-edit planning nudge.</li>
+      <li id="ac-3">Slug-based <code>/cmd:execute-plan</code> resolves to <code>thoughts/plans/&lt;slug&gt;.html</code>; explicit existing <code>.html</code> and <code>.md</code> paths still validate.</li>
+      <li id="ac-4">Plan mode enables the <code>process</code> tool and permits narrow <code>plan-review</code> registration/comment commands needed by the HTML workflow.</li>
+      <li id="ac-5">Plan-mode instructions require registration with truthful <code>--execution-ready</code> metadata, queue-backed comment draining/listening, claim/ack/resolve processing, and listener restart after each processed claim.</li>
+      <li id="ac-6">Before execution handoff, plan mode disables planning restrictions and explicitly terminates or requires termination of the active plan-review comment listener.</li>
+      <li id="ac-7">README and prompt text no longer present Markdown review as the default plan-mode path.</li>
+      <li id="ac-8">After an HTML plan is registered, the plan-mode status/widget always shows the canonical current plan review URL until a different plan is selected or plan mode is disabled.</li>
+      <li id="ac-9"><code>/review:plan</code>, Claude Code review, Codex review, and plan-reviewer agent prompts accept reviewed HTML plan paths without assuming Markdown-only input.</li>
+    </ol>
+  </section>
+
+  <section id="bdd-scenarios">
+    <h2>BDD scenarios</h2>
+    <article id="bdd-new-plan-html">
+      <h3>New plan defaults to HTML</h3>
+      <p><strong>Given</strong> <code>/plan</code> mode is enabled with no current plan, <strong>when</strong> the next agent turn creates a plan, <strong>then</strong> the injected instruction says to write <code>thoughts/plans/&lt;slug&gt;.html</code> and follow the HTML reviewer workflow.</p>
+    </article>
+    <article id="bdd-track-html-edit">
+      <h3>HTML edit tracks current plan</h3>
+      <p><strong>Given</strong> plan mode is active, <strong>when</strong> the agent writes <code>thoughts/plans/foo.html</code>, <strong>then</strong> the mode records <code>foo.html</code> as the current plan and offers HTML-review next steps.</p>
+    </article>
+    <article id="bdd-execute-slug-html">
+      <h3>Execution slug resolves to reviewed HTML</h3>
+      <p><strong>Given</strong> <code>thoughts/plans/foo.html</code> exists, <strong>when</strong> the user runs <code>/cmd:execute-plan foo --target dev:run</code>, <strong>then</strong> validation uses the HTML file and dispatches the normalized slug to <code>/dev:run</code>.</p>
+    </article>
+    <article id="bdd-listener-cleanup">
+      <h3>Listener cleanup on exit</h3>
+      <p><strong>Given</strong> browser review monitoring is active, <strong>when</strong> the user exits plan mode or starts execution, <strong>then</strong> the mode surfaces cleanup for the active listener before implementation begins.</p>
+    </article>
+    <article id="bdd-legacy-explicit-md">
+      <h3>Explicit Markdown legacy path</h3>
+      <p><strong>Given</strong> a user passes <code>thoughts/plans/legacy.md</code>, <strong>when</strong> the file exists, <strong>then</strong> validation accepts the explicit path without creating or implying a same-slug HTML companion.</p>
+    </article>
+    <article id="bdd-plan-url-visible">
+      <h3>Current plan URL is visible</h3>
+      <p><strong>Given</strong> an HTML plan has been registered, <strong>when</strong> the developer is in <code>/plan</code> mode, <strong>then</strong> the plan-mode widget shows the canonical browser review URL for the current plan.</p>
+    </article>
+    <article id="bdd-review-commands-accept-html">
+      <h3>Review commands accept HTML plans</h3>
+      <p><strong>Given</strong> a reviewed HTML plan path, <strong>when</strong> a developer invokes <code>/review:plan</code>, Claude Code review, or Codex review, <strong>then</strong> the review flow treats the HTML file as the plan authority and does not require a Markdown conversion.</p>
+    </article>
+  </section>
+
+  <section id="phase-by-phase-execution-plan">
+    <h2>Phase-by-phase execution plan</h2>
+
+    <article class="card" id="phase-p1-html-plan-identity">
+      <h3>P1 — HTML plan identity and tracking</h3>
+      <h4>End State</h4>
+      <p>Plan mode treats <code>thoughts/plans/*.html</code> as the primary active plan format while preserving explicit existing paths.</p>
+      <h4>Tests first</h4>
+      <p>Add or perform targeted TypeScript/static checks for slug resolution and <code>isPlanFilePath</code> behavior if an extension test harness exists; otherwise use a syntax check plus grep-based assertions.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p1-work-default">Change plan usage/help text and slug resolution to default to <code>.html</code>.</li>
+        <li id="p1-work-explicit">Accept explicit existing <code>.html</code> and legacy <code>.md</code> file paths.</li>
+        <li id="p1-work-track">Update plan-file detection so HTML edits update <code>currentPlanPath</code>.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <p><code>_pi/extensions/pi-plan-mode/index.ts</code></p>
+      <h4>Verify</h4>
+      <pre><code>rg -n "&lt;slug&gt;\.html|endsWith\(\"\.html\"\)|cmd:execute-plan" _pi/extensions/pi-plan-mode/index.ts
+npx tsc --noEmit --allowJs false _pi/extensions/pi-plan-mode/index.ts</code></pre>
+    </article>
+
+    <article class="card" id="phase-p2-registration-listener-support">
+      <h3>P2 — Registration and listener tool support</h3>
+      <h4>End State</h4>
+      <p>An agent in plan mode can register the HTML plan, drain comments, and start the queue-backed listener without the mode blocking required tools.</p>
+      <h4>Tests first</h4>
+      <p>Define the allowed command set before editing: <code>plan-review register</code>, <code>plan-review agent next</code>, <code>plan-review queue</code>, <code>plan-review ack</code>, <code>plan-review resolve</code>, <code>plan-review release</code>, <code>plan-review index</code>, canonical <code>open</code>, and narrow <code>brew services start plan-reviewer</code>.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p2-work-process">Enable the <code>process</code> tool during normal plan mode because the listener is part of planning, not execution.</li>
+        <li id="p2-work-bash">Allow narrow <code>plan-review</code> and canonical URL <code>open</code> commands through the read-only bash gate.</li>
+        <li id="p2-work-state">Record plan-review listener/process identity when observable from process tool calls, or document the supported cleanup prompt when the extension cannot directly manage the process tool registry.</li>
+        <li id="p2-work-url">Capture the canonical review URL from registration output and show it in the plan-mode widget/status alongside the current plan path.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <p><code>_pi/extensions/pi-plan-mode/index.ts</code></p>
+      <h4>Verify</h4>
+      <pre><code>rg -n "plan-review|agent next|process|listener|brew services start plan-reviewer" _pi/extensions/pi-plan-mode/index.ts</code></pre>
+    </article>
+
+    <article class="card" id="phase-p3-deterministic-instructions">
+      <h3>P3 — Deterministic plan-mode instructions</h3>
+      <h4>End State</h4>
+      <p>Injected plan-mode context tells agents exactly which skills to load and which gates to run for HTML planning.</p>
+      <h4>Tests first</h4>
+      <p>Compare injected instructions against the required skills and HTML plan-review lifecycle before editing.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p3-work-skills">Name required skills: <code>planning-workflow</code>, <code>html-plan-reviewer</code>, <code>reviewed-html-plan</code>, <code>product-principles</code> for workflow changes, plus domain skills.</li>
+        <li id="p3-work-lifecycle">Encode create/register/share/drain/listen/process/ack/resolve/reregister-ready behavior using only <code>plan-review agent next</code>, not <code>plan-review watch</code>.</li>
+        <li id="p3-work-next-steps">Replace Markdown-review nudges with reviewed HTML plan next steps while keeping explicit review commands opt-in.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <p><code>_pi/extensions/pi-plan-mode/index.ts</code>, <code>_pi/prompts/dev:plan.md</code></p>
+      <h4>Verify</h4>
+      <pre><code>rg -n "html-plan-reviewer|reviewed-html-plan|execution-ready|plan-review agent next|/dev:reviewed-html-plan" _pi/extensions/pi-plan-mode/index.ts _pi/prompts/dev:plan.md</code></pre>
+    </article>
+
+    <article class="card" id="phase-p4-execution-handoff-docs">
+      <h3>P4 — Execution handoff and docs alignment</h3>
+      <h4>End State</h4>
+      <p>Exiting plan mode for execution restores normal tools, makes listener cleanup explicit, and docs describe HTML as the default active plan artifact.</p>
+      <h4>Tests first</h4>
+      <p>Inventory user-facing text that still says <code>.md</code> or Markdown review is default.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p4-work-disable">Update disable/execution notifications to mention listener cleanup when a reviewed HTML plan is current.</li>
+        <li id="p4-work-readme">Update <code>_pi/README.md</code> plan-mode bullets and examples.</li>
+        <li id="p4-work-execute-prompt">Keep <code>_pi/prompts/cmd:execute-plan.md</code> aligned with slug-to-HTML resolution.</li>
+        <li id="p4-work-review-html">Update <code>/review:plan</code>, Claude Code review, Codex review, and plan-reviewer agent prompts so HTML plans are valid first-class inputs where those surfaces are used in the planning process.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <p><code>_pi/extensions/pi-plan-mode/index.ts</code>, <code>_pi/README.md</code>, <code>_pi/prompts/cmd:execute-plan.md</code>, <code>_pi/prompts/review:plan*.md</code>, <code>_pi/prompts/review:change*.md</code>, <code>_pi/agents/reviewer-plan*.md</code>, and Codex/Claude review-partner skill prompt references as needed.</p>
+      <h4>Verify</h4>
+      <pre><code>rg -n "thoughts/plans/&lt;slug&gt;\.md|Markdown review|/review:plan after plan edits" _pi/README.md _pi/prompts _pi/extensions/pi-plan-mode/index.ts</code></pre>
+    </article>
+
+    <article class="card" id="phase-p5-verification-review">
+      <h3>P5 — Verification and review</h3>
+      <h4>End State</h4>
+      <p>The scoped changes are verified with syntax/static checks and a focused review against this plan.</p>
+      <h4>Tests first</h4>
+      <p>No product test harness is present for the extension; verification relies on TypeScript syntax/import checks and grep-backed contract checks.</p>
+      <h4>Work</h4>
+      <ul>
+        <li id="p5-work-syntax">Run the narrowest available TypeScript/syntax check for the extension.</li>
+        <li id="p5-work-contract">Run grep checks for default HTML paths, allowed plan-review commands, listener cleanup text, and prompt/docs alignment.</li>
+        <li id="p5-work-review">Perform a focused self-review or quality-reviewer pass for regressions in plan-mode safety boundaries.</li>
+      </ul>
+      <h4>Expected files</h4>
+      <p>No additional files beyond the touched extension, prompts/docs, and this plan.</p>
+      <h4>Verify</h4>
+      <pre><code>npx tsc --noEmit --allowJs false _pi/extensions/pi-plan-mode/index.ts
+rg -n "&lt;slug&gt;\.html|plan-review register|agent next --wait|listener" _pi/extensions/pi-plan-mode/index.ts _pi/prompts/dev:plan.md _pi/prompts/cmd:execute-plan.md _pi/README.md</code></pre>
+    </article>
+  </section>
+
+  <section id="verification-strategy">
+    <h2>Verification strategy</h2>
+    <table>
+      <thead><tr><th>Acceptance</th><th>Evidence</th><th>Command or check</th></tr></thead>
+      <tbody>
+        <tr id="verify-ac1"><td>AC1</td><td>Injected context mentions HTML default and skills.</td><td><code>rg -n "&lt;slug&gt;\.html|html-plan-reviewer|reviewed-html-plan" _pi/extensions/pi-plan-mode/index.ts</code></td></tr>
+        <tr id="verify-ac2"><td>AC2</td><td>Plan-file predicate accepts <code>.html</code>.</td><td><code>rg -n "endsWith\(\"\.html\"\)" _pi/extensions/pi-plan-mode/index.ts</code></td></tr>
+        <tr id="verify-ac3"><td>AC3</td><td>Execute usage and resolver default to HTML.</td><td><code>rg -n "cmd:execute-plan.*html|PLAN_DIRECTORY.*html" _pi/extensions/pi-plan-mode/index.ts _pi/prompts/cmd:execute-plan.md</code></td></tr>
+        <tr id="verify-ac4"><td>AC4</td><td><code>process</code> and narrow <code>plan-review</code> commands are available.</td><td><code>rg -n "process|plan-review" _pi/extensions/pi-plan-mode/index.ts</code></td></tr>
+        <tr id="verify-ac5"><td>AC5</td><td>Lifecycle instructions contain registration/listener/ack/resolve steps and do not recommend <code>watch</code>.</td><td><code>rg -n -- "--execution-ready|agent next|ack|resolve" _pi/extensions/pi-plan-mode/index.ts _pi/prompts/dev:plan.md &amp;&amp; ! rg -n "plan-review watch" _pi/extensions/pi-plan-mode/index.ts _pi/prompts/dev:plan.md</code></td></tr>
+        <tr id="verify-ac6"><td>AC6</td><td>Execution exit text mentions terminating listener.</td><td><code>rg -n "terminate.*listener|listener.*execution" _pi/extensions/pi-plan-mode/index.ts</code></td></tr>
+        <tr id="verify-ac7"><td>AC7</td><td>Docs/prompt no longer advertise Markdown review as default.</td><td><code>rg -n "Markdown review|/review:plan after plan edits|&lt;slug&gt;\.md" _pi/README.md _pi/prompts/dev:plan.md</code></td></tr>
+        <tr id="verify-ac8"><td>AC8</td><td>Plan-mode UI persists and displays the canonical review URL.</td><td><code>rg -n "reviewUrl|currentPlan.*URL|Plan URL" _pi/extensions/pi-plan-mode/index.ts</code></td></tr>
+        <tr id="verify-ac9"><td>AC9</td><td>Review prompts and agents accept HTML plan inputs.</td><td><code>rg -n "\.html|HTML plan|reviewed HTML" _pi/prompts/review:plan*.md _pi/prompts/review:change*.md _pi/agents/reviewer-plan*.md skills/codex-review-partner skills/claude-code-review</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="delivery-order">
+    <h2>Delivery order</h2>
+    <ol>
+      <li id="delivery-1">Patch the extension path and predicate logic first so HTML plan files are observable.</li>
+      <li id="delivery-2">Add narrow command/tool allowance for registration and listener setup.</li>
+      <li id="delivery-3">Update injected instructions, prompts, and docs so agents consistently choose reviewed HTML planning.</li>
+      <li id="delivery-4">Run syntax/static checks and a focused safety review.</li>
+    </ol>
+  </section>
+
+  <section id="non-goals">
+    <h2>Non-goals</h2>
+    <ul>
+      <li id="non-goal-service">Do not modify the standalone <code>plan-reviewer</code> service or CLI.</li>
+      <li id="non-goal-md-delete">Do not delete legacy Markdown plans or PRD-mode Markdown behavior.</li>
+      <li id="non-goal-review-rewrite">Do not redesign review semantics beyond the minimum needed for HTML-plan compatibility; do update <code>/review:plan</code>, Claude Code review, and Codex review surfaces when they would otherwise force Markdown-only planning.</li>
+      <li id="non-goal-auto-impl">Do not start implementing product-code plans automatically when browser feedback arrives.</li>
+    </ul>
+  </section>
+
+  <section id="decisions-deviations-log">
+    <h2>Decisions / Deviations log</h2>
+    <ul>
+      <li id="log-2026-06-08-initial">2026-06-08 — Initial plan created from user request to move Pi <code>/plan</code> mode from Markdown review toward HTML plan registration and full browser-comment iteration.</li>
+      <li id="log-2026-06-08-browser-comment-1">2026-06-08 — Browser comment noted that current plan mode also prevents agents from registering the plan; clarified this blocker in the plan rationale.</li>
+      <li id="log-2026-06-08-browser-comment-3">2026-06-08 — Browser comment challenged whether <code>plan-review watch</code> should remain in the plan-mode workflow; clarified that <code>/plan</code> should expose only the queue-backed <code>agent next</code> path and not recommend <code>watch</code>.</li>
+      <li id="log-2026-06-08-browser-comment-4">2026-06-08 — Browser comment added that developers should always see the current plan URL in plan mode; added URL persistence/display requirements, acceptance coverage, and a BDD scenario.</li>
+      <li id="log-2026-06-08-browser-comment-5">2026-06-08 — Browser comment clarified that review surfaces should be reworked as needed for HTML plans; moved <code>/review:plan</code>, Claude Code review, Codex review, and plan-reviewer agent prompt compatibility into scope.</li>
+      <li id="log-2026-06-08-p1-p4-complete">2026-06-08 — Implemented P1-P4: HTML plan tracking/defaults, plan-review command/tool support, deterministic plan-mode instructions, execution handoff cleanup guidance, URL visibility, and HTML compatibility for review prompts/agents.</li>
+      <li id="log-2026-06-08-p5-complete">2026-06-08 — Completed P5 verification: esbuild syntax check and <code>git diff --check</code> passed; scoped Codex review returned <code>VERDICT: PASS_SCOPED</code> after safety-boundary fixes.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

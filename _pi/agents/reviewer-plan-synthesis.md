@@ -36,13 +36,13 @@ This command is review-only.
 
 Preferred input:
 
-- A single plan file: `thoughts/plans/<slug>.md`
+- A single plan file in the repo's active plan format. In this repo's browser-reviewed flow, that is `thoughts/plans/<slug>.html`.
 
 Resolution rules:
 
 - If `$ARGUMENTS` starts with `@`, strip the leading `@` and treat as workspace-relative.
-- If a single argument is an existing `.md` file, treat as `plan_path`.
-- If a single argument is a slug, resolve to `thoughts/plans/<slug>.md`.
+- If a single argument is an existing plan file, including `.html` or legacy `.md`, treat as `plan_path`.
+- If a single argument is a slug, resolve it using repo-local active plan guidance. In this repo's browser-reviewed flow, resolve to `thoughts/plans/<slug>.html`; do not infer a Markdown path.
 - If the plan file is missing or ambiguous, ask for an explicit plan file path.
 
 ### 1) Read Existing Review Comments
