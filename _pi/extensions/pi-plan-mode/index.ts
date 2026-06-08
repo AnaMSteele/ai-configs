@@ -961,7 +961,28 @@ ${currentPlanInstruction}`,
 	});
 
 	pi.on("tool_result", async (event, ctx) => {
-		if (!planModeEnabled || event.isError) return;
+		if (!planModeEnabled) return;
+
+		if (event.toolName === "process") {
+			const action = String(event.input.action ?? "");
+			const command = String(event.input.command ?? "");
+			if (action === "kill" && event.input.id === currentPlanListenerProcessId) {
+				currentPlanListenerProcessId = undefined;
+				updateUi(ctx);
+				persistState();
+				return;
+			}
+			if (event.isError) return;
+			if (action === "start" && /^\s*plan-review\s+agent\s+next\b/i.test(command)) {
+				const match = toolResultToText(event.content).match(/\b(proc_\w+)/);
+				currentPlanListenerProcessId = match?.[1] ?? currentPlanListenerProcessId;
+				updateUi(ctx);
+				persistState();
+			}
+			return;
+		}
+
+		if (event.isError) return;
 
 		if (event.toolName === "bash") {
 			const command = String(event.input.command ?? "");
@@ -980,22 +1001,6 @@ ${currentPlanInstruction}`,
 			return;
 		}
 
-		if (event.toolName === "process") {
-			const action = String(event.input.action ?? "");
-			const command = String(event.input.command ?? "");
-			if (action === "start" && /^\s*plan-review\s+agent\s+next\b/i.test(command)) {
-				const match = toolResultToText(event.content).match(/\b(proc_\w+)/);
-				currentPlanListenerProcessId = match?.[1] ?? currentPlanListenerProcessId;
-				updateUi(ctx);
-				persistState();
-			}
-			if (action === "kill" && event.input.id === currentPlanListenerProcessId) {
-				currentPlanListenerProcessId = undefined;
-				updateUi(ctx);
-				persistState();
-			}
-			return;
-		}
 
 		if (event.toolName !== "edit" && event.toolName !== "write") return;
 
