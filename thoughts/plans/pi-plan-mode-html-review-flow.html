@@ -332,6 +332,7 @@ rg -n "&lt;slug&gt;\.html|plan-review register|agent next --wait|listener" _pi/e
       <li id="log-2026-06-08-p1-p4-complete">2026-06-08 — Implemented P1-P4: HTML plan tracking/defaults, plan-review command/tool support, deterministic plan-mode instructions, execution handoff cleanup guidance, URL visibility, and HTML compatibility for review prompts/agents.</li>
       <li id="log-2026-06-08-p5-complete">2026-06-08 — Completed P5 verification: esbuild syntax check and <code>git diff --check</code> passed; scoped Codex review returned <code>VERDICT: PASS_SCOPED</code> after safety-boundary fixes.</li>
       <li id="log-2026-06-08-pr-feedback-listener-clear">2026-06-08 — Addressed PR feedback: a tracked listener kill attempt now clears the listener id even when the process already exited and the kill result is an error, preventing stale listener state from blocking execution.</li>
+      <li id="log-2026-06-08-pr-feedback-wait-only">2026-06-08 — Addressed PR feedback: only <code>plan-review agent next</code> process starts that include <code>--wait</code> and omit <code>--no-wait</code> are tracked as active comment listeners.</li>
     </ul>
   </section>
 </main>

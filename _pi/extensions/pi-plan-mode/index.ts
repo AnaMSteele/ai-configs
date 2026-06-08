@@ -191,6 +191,15 @@ function isAllowedPlanReviewCommand(command: string): boolean {
 	);
 }
 
+function isPlanReviewListenerCommand(command: string): boolean {
+	const tokens = parseCommandArgs(command.trim());
+	return tokens[0] === "plan-review"
+		&& tokens[1] === "agent"
+		&& tokens[2] === "next"
+		&& tokens.includes("--wait")
+		&& !tokens.includes("--no-wait");
+}
+
 function isSafeCommand(command: string): boolean {
 	if (isAllowedPlanReviewCommand(command)) return true;
 	const destructive = DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(command));
@@ -973,7 +982,7 @@ ${currentPlanInstruction}`,
 				return;
 			}
 			if (event.isError) return;
-			if (action === "start" && /^\s*plan-review\s+agent\s+next\b/i.test(command)) {
+			if (action === "start" && isPlanReviewListenerCommand(command)) {
 				const match = toolResultToText(event.content).match(/\b(proc_\w+)/);
 				currentPlanListenerProcessId = match?.[1] ?? currentPlanListenerProcessId;
 				updateUi(ctx);
