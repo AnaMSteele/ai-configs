@@ -74,16 +74,11 @@ Review the provided plan as a cohesive unit. Decide whether it is ready to execu
 
 1. Resolve the plan path.
 2. Write the Claude review prompt to `/tmp/pi-claude-review-prompt.txt`.
-3. Run the shared launcher from the exact central path below.
+3. Run the shared launcher from the exact central path below as a single-line command, with no shell line continuations.
 4. Read `/tmp/pi-claude-review-output.md` after completion and validate whether Claude found blocker-level issues.
 
 ```bash
-python3 "$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py" \
-  --cwd "$PWD" \
-  --prompt-file /tmp/pi-claude-review-prompt.txt \
-  --output /tmp/pi-claude-review-output.md \
-  --review-name pi-review-change-claude \
-  --timeout-seconds 900
+python3 "$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py" --cwd "$PWD" --prompt-file /tmp/pi-claude-review-prompt.txt --output /tmp/pi-claude-review-output.md --review-name pi-review-change-claude --timeout-seconds 900
 ```
 
 The prompt written to `/tmp/pi-claude-review-prompt.txt` should instruct Claude Code to:
