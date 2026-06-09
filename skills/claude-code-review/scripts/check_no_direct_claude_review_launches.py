@@ -63,8 +63,6 @@ def is_launcher_path(path: Path) -> bool:
 
 def is_scan_path(path: Path) -> bool:
     rel = rel_suffix(path)
-    if "/thoughts/plans/" in f"/{rel}" or rel.startswith("thoughts/plans/"):
-        return False
     if path.suffix and path.suffix not in SCAN_EXTENSIONS:
         return False
     return REVIEW_HINT_RE.search(rel) is not None

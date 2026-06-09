@@ -34,50 +34,48 @@ def interactive() -> int:
         tty.setcbreak(sys.stdin.fileno())
     except Exception:
         old_tty = None
-    if os.environ.get("FAKE_CLAUDE_NO_READY") == "1":
-        print("Claude Code fake loading", flush=True)
-        time.sleep(300)
+    try:
+        if os.environ.get("FAKE_CLAUDE_NO_READY") == "1":
+            print("Claude Code fake loading", flush=True)
+            time.sleep(300)
+            return 0
+        if os.environ.get("FAKE_CLAUDE_NOT_LOGGED_IN") == "1":
+            print("Not logged in · Please run /login", flush=True)
+            time.sleep(300)
+            return 0
+        print("Claude Code fake\n❯ ", end="", flush=True)
+        buf = ""
+        echoed = os.environ.get("FAKE_CLAUDE_NO_ECHO") != "1"
+        answered = False
+        while True:
+            ready, _, _ = select.select([sys.stdin], [], [], 300)
+            if not ready:
+                return 0
+            ch = sys.stdin.read(1)
+            if ch == "":
+                return 0
+            buf += ch
+            if echoed:
+                print(ch, end="", flush=True)
+            if "/exit" in buf:
+                return 0
+            marker_match = re.search(r"CLAUDE_REVIEW_ANSWER_START_[0-9a-f]+", buf)
+            sentinel_match = re.search(r"CLAUDE_REVIEW_FINAL_SENTINEL:([^\n\r]+)", buf)
+            if marker_match and sentinel_match and ch in "\n\r" and not answered:
+                answered = True
+                marker = marker_match.group(0)
+                sentinel = sentinel_match.group(1).strip()
+                if os.environ.get("FAKE_CLAUDE_BOUNDARY_UNCERTAIN") == "1":
+                    print(f"\n{marker}\nVERDICT: PASS_SCOPED\nBoundary-bad fake review\n{sentinel}\n❯ ", flush=True)
+                    continue
+                if os.environ.get("FAKE_CLAUDE_SESSION_LIMIT") == "1":
+                    print("\n⎿  You've hit your session limit · resets 11:30am (America/Denver)\n❯ ", flush=True)
+                    continue
+                time.sleep(float(os.environ.get("FAKE_CLAUDE_ANSWER_DELAY", "1.5")))
+                print(f"\n✻ Cooked for 0s\n{marker}\nVERDICT: PASS_SCOPED\nFake Claude review body\n{sentinel}\n❯ ", flush=True)
+                buf = ""
+    finally:
         restore_tty(old_tty)
-        return 0
-    if os.environ.get("FAKE_CLAUDE_NOT_LOGGED_IN") == "1":
-        print("Not logged in · Please run /login", flush=True)
-        time.sleep(300)
-        restore_tty(old_tty)
-        return 0
-    print("Claude Code fake\n❯ ", end="", flush=True)
-    buf = ""
-    echoed = os.environ.get("FAKE_CLAUDE_NO_ECHO") != "1"
-    answered = False
-    while True:
-        ready, _, _ = select.select([sys.stdin], [], [], 300)
-        if not ready:
-            restore_tty(old_tty)
-            return 0
-        ch = sys.stdin.read(1)
-        if ch == "":
-            restore_tty(old_tty)
-            return 0
-        buf += ch
-        if echoed:
-            print(ch, end="", flush=True)
-        if "/exit" in buf:
-            restore_tty(old_tty)
-            return 0
-        marker_match = re.search(r"CLAUDE_REVIEW_ANSWER_START_[0-9a-f]+", buf)
-        sentinel_match = re.search(r"CLAUDE_REVIEW_FINAL_SENTINEL:([^\n\r]+)", buf)
-        if marker_match and sentinel_match and ch in "\n\r" and not answered:
-            answered = True
-            marker = marker_match.group(0)
-            sentinel = sentinel_match.group(1).strip()
-            if os.environ.get("FAKE_CLAUDE_BOUNDARY_UNCERTAIN") == "1":
-                print(f"\n{marker}\nVERDICT: PASS_SCOPED\nBoundary-bad fake review\n{sentinel}\n❯ ", flush=True)
-                continue
-            if os.environ.get("FAKE_CLAUDE_SESSION_LIMIT") == "1":
-                print("\n⎿  You've hit your session limit · resets 11:30am (America/Denver)\n❯ ", flush=True)
-                continue
-            time.sleep(float(os.environ.get("FAKE_CLAUDE_ANSWER_DELAY", "1.5")))
-            print(f"\n✻ Cooked for 0s\n{marker}\nVERDICT: PASS_SCOPED\nFake Claude review body\n{sentinel}\n❯ ", flush=True)
-            buf = ""
 
 
 def main() -> int:

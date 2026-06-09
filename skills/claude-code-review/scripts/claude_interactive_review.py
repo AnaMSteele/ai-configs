@@ -288,7 +288,17 @@ def run_review(args: argparse.Namespace) -> int:
         boundary_deadline = time.time() + BOUNDARY_TIMEOUT_SECONDS
         baseline = ""
         while time.time() < boundary_deadline:
-            candidate = normalize(capture(socket, session, window))
+            raw = capture(socket, session, window)
+            candidate = normalize(raw)
+            check_tui_unavailable(candidate, after_submit=True)
+            prompt_cleared_answer = extract_prompt_cleared_answer(candidate, marker, sentinel)
+            if prompt_cleared_answer:
+                transcript_path = output.with_suffix(output.suffix + ".transcript.txt")
+                transcript_path.write_text(raw, encoding="utf-8")
+                metadata = f"\n\n---\nCLAUDE_REVIEW_LAUNCHER_METADATA\nsocket={socket}\nsession={session}\nwindow={window}\ntranscript={transcript_path}\nreadiness_regex={READY_RE.pattern}\nclear_boundary=prompt-cleared marker/sentinel extraction before baseline\nhistory_limit={TMUX_HISTORY_LIMIT}\ncapture_depth={CAPTURE_DEPTH}\n"
+                output.write_text(prompt_cleared_answer.strip() + metadata, encoding="utf-8")
+                teardown_success(socket, session, window)
+                return 0
             marker_count = count_token(candidate, marker)
             sentinel_count = count_token(candidate, sentinel)
             if marker_count == prompt_marker_count and sentinel_count == prompt_sentinel_count:

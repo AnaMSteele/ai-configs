@@ -111,6 +111,16 @@ class LauncherTestCase(unittest.TestCase):
             self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
             self.assertIn("Fake Claude review body", output.read_text(encoding="utf-8"))
 
+    def test_prompt_cleared_tui_output_succeeds_before_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            tmp = Path(td)
+            args, output = self.launcher_args(tmp)
+            proc = run_cmd(args, env=self.make_fake_env(tmp, {"FAKE_CLAUDE_NO_ECHO": "1"}), timeout=30)
+            self.assertEqual(proc.returncode, 0, proc.stderr + proc.stdout)
+            text = output.read_text(encoding="utf-8")
+            self.assertIn("Fake Claude review body", text)
+            self.assertIn("clear_boundary=prompt-cleared marker/sentinel extraction before baseline", text)
+
     def test_auth_preflight_false_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as td:
             tmp = Path(td)
@@ -282,6 +292,16 @@ class GuardrailTestCase(unittest.TestCase):
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn(str(non_exempt), proc.stdout)
             self.assertNotIn(str(exempt), proc.stdout)
+
+    def test_guardrail_scans_plan_artifacts_when_explicitly_rooted(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            plan = root / "thoughts/plans/review-plan.html"
+            plan.parent.mkdir(parents=True)
+            plan.write_text("claude -p prompt\n", encoding="utf-8")
+            proc = self.run_guardrail(root)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertIn(str(plan), proc.stdout)
 
 
 class OpenCodeResolverTestCase(unittest.TestCase):
