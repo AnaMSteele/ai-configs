@@ -31,7 +31,7 @@ Smoke failure is a prerequisite/auth/readiness blocker from the real Pi caller c
 
 ## Review mode
 
-This command is review-only and should behave like `/review:change-opus`, except the Claude leg is required to use the canonical Claude Code launcher.
+This command is review-only and must use the canonical Claude Code launcher, which pins required Claude Code reviews to Sonnet 4.6.
 
 Your reviewer name is `CLAUDE`.
 

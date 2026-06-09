@@ -17,6 +17,7 @@ from pathlib import Path
 
 READY_RE = re.compile(r"❯")
 ANSWER_MARKER_PREFIX = "CLAUDE_REVIEW_ANSWER_START_"
+CLAUDE_REVIEW_MODEL = "claude-sonnet-4-6"
 DEFAULT_TIMEOUT_SECONDS = 900
 READY_TIMEOUT_SECONDS = 120
 BOUNDARY_TIMEOUT_SECONDS = 45
@@ -161,7 +162,7 @@ def sh_quote(value: str) -> str:
 
 
 def launch_tui(socket: str, session: str, window: str, cwd: Path) -> None:
-    command = f"cd {sh_quote(str(cwd))} && zsh -ilc 'claude'"
+    command = f"cd {sh_quote(str(cwd))} && zsh -ilc 'claude --model {CLAUDE_REVIEW_MODEL}'"
     tmux(socket, ["new-window", "-t", session, "-n", window, command])
     tmux(socket, ["resize-window", "-t", f"{session}:{window}", "-x", "220", "-y", "60"], check=False)
 

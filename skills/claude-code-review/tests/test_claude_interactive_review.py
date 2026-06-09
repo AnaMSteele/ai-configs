@@ -174,6 +174,14 @@ class LauncherTestCase(unittest.TestCase):
         sentinel = "CLAUDE_REVIEW_DONE_TEST_SENTINEL_12345"
         self.assertIsNone(module.suffix_after_baseline("old prompt", "unrelated later text", marker, sentinel))
 
+    def test_launcher_pins_claude_code_to_sonnet_4_6(self) -> None:
+        spec = importlib.util.spec_from_file_location("launcher_under_test", LAUNCHER)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        self.assertEqual(module.CLAUDE_REVIEW_MODEL, "claude-sonnet-4-6")
+
     def test_prompt_cleared_answer_extraction_rejects_visible_prompt(self) -> None:
         spec = importlib.util.spec_from_file_location("launcher_under_test", LAUNCHER)
         self.assertIsNotNone(spec)

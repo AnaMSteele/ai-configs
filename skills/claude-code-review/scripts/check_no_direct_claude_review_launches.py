@@ -19,7 +19,8 @@ TEST_SUFFIX_FRAGMENT = "claude-code-review/tests/"
 ALLOWED_LAUNCHER_FORMS = (
     "zsh -ilc 'command -v claude'",
     "claude auth status",
-    "zsh -ilc 'claude'",
+    "zsh -ilc 'claude --model claude-sonnet-4-6'",
+    "zsh -ilc 'claude --model {CLAUDE_REVIEW_MODEL}'",
 )
 IGNORED_DIRS = {".git", "node_modules", "__pycache__", ".venv", "dist", "build"}
 SCAN_EXTENSIONS = {".md", ".py", ".sh", ".js", ".ts", ".json", ".yaml", ".yml", ".txt", ".html"}
