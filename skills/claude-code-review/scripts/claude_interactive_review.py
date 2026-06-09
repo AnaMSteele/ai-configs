@@ -143,6 +143,20 @@ def start_private_tmux(socket: str, session: str) -> None:
     tmux(socket, ["set-option", "-g", "history-limit", str(TMUX_HISTORY_LIMIT)], check=False)
 
 
+def auth_status_logged_in(text: str) -> bool:
+    decoder = json.JSONDecoder()
+    for index, char in enumerate(text):
+        if char != "{":
+            continue
+        try:
+            payload, _ = decoder.raw_decode(text[index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("loggedIn") is True:
+            return True
+    return False
+
+
 def auth_preflight(socket: str, session: str, cwd: Path, output: Path) -> None:
     auth_path = output.with_suffix(output.suffix + ".auth.json")
     command = f"cd {sh_quote(str(cwd))} && zsh -ilc 'claude auth status; printf EXIT=%s\\n $?' > {sh_quote(str(auth_path))} 2>&1"
@@ -153,7 +167,7 @@ def auth_preflight(socket: str, session: str, cwd: Path, output: Path) -> None:
             break
         time.sleep(0.5)
     text = auth_path.read_text(errors="replace") if auth_path.exists() else ""
-    if '"loggedIn": true' not in text:
+    if not auth_status_logged_in(text):
         raise LauncherError("CLAUDE_AUTH_UNAVAILABLE_IN_TMUX_PREFLIGHT", "claude auth status inside private tmux did not report loggedIn true; run /login or unlock the keychain", 20)
 
 

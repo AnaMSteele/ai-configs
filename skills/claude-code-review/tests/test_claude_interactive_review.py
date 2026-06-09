@@ -182,6 +182,16 @@ class LauncherTestCase(unittest.TestCase):
         spec.loader.exec_module(module)
         self.assertEqual(module.CLAUDE_REVIEW_MODEL, "claude-sonnet-4-6")
 
+    def test_auth_status_accepts_compact_json(self) -> None:
+        spec = importlib.util.spec_from_file_location("launcher_under_test", LAUNCHER)
+        self.assertIsNotNone(spec)
+        module = importlib.util.module_from_spec(spec)
+        assert spec and spec.loader
+        spec.loader.exec_module(module)
+        self.assertTrue(module.auth_status_logged_in('{"loggedIn":true,"authMethod":"fake"}\nEXIT=0\n'))
+        self.assertTrue(module.auth_status_logged_in('noise\n{"authMethod":"fake","loggedIn": true}\nEXIT=0\n'))
+        self.assertFalse(module.auth_status_logged_in('{"loggedIn":false,"authMethod":"none"}\nEXIT=1\n'))
+
     def test_prompt_cleared_answer_extraction_rejects_visible_prompt(self) -> None:
         spec = importlib.util.spec_from_file_location("launcher_under_test", LAUNCHER)
         self.assertIsNotNone(spec)
