@@ -133,7 +133,7 @@ Use `codex-review-partner` in `plan-review` mode. The review input should includ
 
 #### Claude Code
 
-Use `claude-code-review` through the documented tmux/login-shell path. Prompt Claude Code to review the plan read-only and return structured output on stdout. Do not ask Claude to edit files.
+Use `claude-code-review` through its canonical private-tmux interactive launcher. Prompt Claude Code to review the plan read-only and return structured output. Do not ask Claude to edit files, and do not use alternate Claude transports.
 
 Ask both reviewers for one of these verdicts:
 

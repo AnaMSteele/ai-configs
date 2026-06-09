@@ -94,10 +94,11 @@
     "claude-code-review": {
       "class": "consumer-specific-installable",
       "allowedConsumers": [
-        "pi"
+        "pi",
+        "opencode"
       ],
       "canonicalSource": "skills/claude-code-review",
-      "notes": "Pi-only: launches Claude Code through the user-owned codex tmux session for background plan/code reviews.",
+      "notes": "Pi and OpenCode: required Claude Code reviews use the canonical private-tmux interactive launcher; no codex tmux reuse or direct Claude transport.",
       "sourceType": "repo"
     },
     "claude-review-partner": {

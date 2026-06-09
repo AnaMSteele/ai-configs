@@ -256,7 +256,7 @@ Example installed agents:
 - `review-change-integrate`
 - `review-change-kimi`
 - `review-change-opus`
-- `review-change-claude-code` — direct Claude Code review-only pass via pi-interactive-shell hands-free launch, then backgrounded
+- `review-change-claude-code` — Claude Code review-only pass through the shared private-tmux interactive launcher
 
 ## Usage
 

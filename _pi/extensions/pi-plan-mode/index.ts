@@ -1,6 +1,7 @@
+import { existsSync, readFileSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { isAbsolute, relative, resolve } from "node:path";
+import { basename, isAbsolute, relative, resolve } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Key } from "@mariozechner/pi-tui";
 
@@ -14,6 +15,7 @@ const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
 const STANDARD_PLAN_REVIEW_COMMAND = "review:plan";
 const CHANGE_REVIEW_COMMAND = "review:change";
+const CLAUDE_CHANGE_REVIEW_COMMAND = "review:change-claude-code";
 const ADVERSARIAL_PLAN_REVIEW_COMMAND = "review:plan-adversarial";
 const CHANGE_REVIEW_INTEGRATE_COMMAND = "review:change-integrate";
 const MAX_REVIEW_CYCLES = 3;
@@ -142,6 +144,9 @@ interface PlanModeState {
 	currentPlanReviewUrl?: string;
 	currentPlanId?: string;
 	currentPlanListenerProcessId?: string;
+	activeCommentId?: string;
+	activeClaimId?: string;
+	acknowledgedCommentId?: string;
 	savedActiveTools?: string[];
 	reviewCycles: number;
 	lastReviewCommand?: string;
@@ -174,37 +179,6 @@ function isWithin(parent: string, child: string): boolean {
 
 function relativeToCwd(cwd: string, inputPath: string): string {
 	return relative(cwd, resolveFromCwd(cwd, inputPath));
-}
-
-function isAllowedPlanReviewCommand(command: string): boolean {
-	const normalized = command.trim();
-	if (/^plan-review\s+watch\b/i.test(normalized)) return false;
-	if (/[\r\n;&|`<>]/.test(normalized) || /\$\(/.test(normalized) || />>/.test(normalized)) return false;
-	return (
-		/^plan-review\s+register\b/i.test(normalized)
-		|| /^plan-review\s+index\b/i.test(normalized)
-		|| /^plan-review\s+agent\s+next\b/i.test(normalized)
-		|| /^plan-review\s+queue\s+(list|claim)\b/i.test(normalized)
-		|| /^plan-review\s+(ack|resolve|release)\b/i.test(normalized)
-		|| /^open\s+http:\/\/mbp\.braid-python\.ts\.net:4317(?:\/\S*)?\s*$/i.test(normalized)
-		|| /^brew\s+services\s+start\s+plan-reviewer\b/i.test(normalized)
-	);
-}
-
-function isPlanReviewListenerCommand(command: string): boolean {
-	const tokens = parseCommandArgs(command.trim());
-	return tokens[0] === "plan-review"
-		&& tokens[1] === "agent"
-		&& tokens[2] === "next"
-		&& tokens.includes("--wait")
-		&& !tokens.includes("--no-wait");
-}
-
-function isSafeCommand(command: string): boolean {
-	if (isAllowedPlanReviewCommand(command)) return true;
-	const destructive = DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(command));
-	const safe = SAFE_BASH_PATTERNS.some((pattern) => pattern.test(command));
-	return !destructive && safe;
 }
 
 function stripFrontmatter(content: string): string {
@@ -395,6 +369,318 @@ function isPlanFilePath(cwd: string, inputPath: string): boolean {
 	return isWithin(getPlansRoot(cwd), resolved) && /\.(html|md)$/i.test(resolved);
 }
 
+function isHtmlPlanFilePath(cwd: string, inputPath: string): boolean {
+	const resolved = resolveFromCwd(cwd, inputPath);
+	return isWithin(getPlansRoot(cwd), resolved) && /\.html$/i.test(resolved);
+}
+
+function isClaudeReviewTempPath(inputPath: string, extension: ".txt" | ".md"): boolean {
+	const resolved = resolve(inputPath);
+	const name = basename(resolved);
+	return resolved === `/tmp/${name}` && new RegExp(`^pi-claude-review-[A-Za-z0-9._-]+\\${extension}$`).test(name);
+}
+
+function hasShellHazards(command: string): boolean {
+	return /[\r\n;&|`<>]/.test(command) || /\$\(/.test(command) || />>/.test(command);
+}
+
+function getOptionValues(tokens: string[], option: string): string[] {
+	const values: string[] = [];
+	const equalsPrefix = `${option}=`;
+	for (let i = 0; i < tokens.length; i += 1) {
+		if (tokens[i] === option && i < tokens.length - 1) values.push(tokens[i + 1]);
+		else if (tokens[i].startsWith(equalsPrefix)) values.push(tokens[i].slice(equalsPrefix.length));
+	}
+	return values;
+}
+
+function getOptionValue(tokens: string[], option: string): string | undefined {
+	return getOptionValues(tokens, option)[0];
+}
+
+function hasFlag(tokens: string[], flag: string): boolean {
+	return tokens.includes(flag);
+}
+
+function validateRemainingTokens(tokens: string[], startIndex: number, options: { valueFlags?: Set<string>; booleanFlags?: Set<string>; positional?: (token: string) => boolean } = {}): boolean {
+	const valueFlags = options.valueFlags ?? new Set<string>();
+	const booleanFlags = options.booleanFlags ?? new Set<string>();
+	const positional = options.positional ?? (() => false);
+	for (let i = startIndex; i < tokens.length; i += 1) {
+		const token = tokens[i];
+		const equalsIndex = token.indexOf("=");
+		if (equalsIndex > 0) {
+			const flag = token.slice(0, equalsIndex);
+			if (!valueFlags.has(flag)) return false;
+			if (token.slice(equalsIndex + 1).length === 0) return false;
+			continue;
+		}
+		if (valueFlags.has(token)) {
+			if (i === tokens.length - 1 || tokens[i + 1].startsWith("-")) return false;
+			i += 1;
+			continue;
+		}
+		if (booleanFlags.has(token)) continue;
+		if (token.startsWith("-")) return false;
+		if (!positional(token)) return false;
+	}
+	return true;
+}
+
+function serviceUrlAllowed(rawUrl: string | undefined, path?: string): boolean {
+	if (typeof rawUrl !== "string") return false;
+	try {
+		const url = new URL(rawUrl);
+		const hostOk = (url.hostname === "mbp.braid-python.ts.net" || url.hostname === "127.0.0.1" || url.hostname === "localhost") && url.port === "4317";
+		return hostOk && (path === undefined || url.pathname === path);
+	} catch {
+		return false;
+	}
+}
+
+function allPlanReviewUrlsAllowed(tokens: string[]): boolean {
+	return getOptionValues(tokens, "--url").every((url) => serviceUrlAllowed(url));
+}
+
+function changedFilesAreThoughts(cwd: string, tokens: string[]): boolean {
+	return getOptionValues(tokens, "--changed-files")
+		.flatMap((value) => value.split(",").map((file) => file.trim()).filter(Boolean))
+		.every((file) => isThoughtsPath(cwd, file));
+}
+
+function commandPlanId(tokens: string[]): string | undefined {
+	if (tokens[0] === "plan-review" && tokens[1] === "agent" && tokens[2] === "next" && tokens[3] && !tokens[3].startsWith("-")) return tokens[3];
+	if (tokens[0] === "plan-review" && tokens[1] === "queue" && tokens[2] === "list") return getOptionValue(tokens, "--plan-id");
+	if (tokens[0] === "plan-review" && tokens[1] === "queue" && tokens[2] === "claim") return tokens[3] && !tokens[3].startsWith("-") ? tokens[3] : undefined;
+	return undefined;
+}
+
+function planIdMatches(tokens: string[], state: Partial<PlanModeState> = {}): boolean {
+	if (!state.currentPlanId) return Boolean(commandPlanId(tokens));
+	return commandPlanId(tokens) === state.currentPlanId;
+}
+
+function isAllowedHealthCommand(tokens: string[]): boolean {
+	if (tokens[0] !== "curl") return false;
+	const urls = tokens.filter((token) => /^https?:\/\//i.test(token));
+	if (urls.length !== 1 || !serviceUrlAllowed(urls[0], "/health")) return false;
+	const harmlessFlags = new Set(["-f", "-s", "-S", "-L", "-i", "--fail", "--silent", "--show-error", "--location", "--include"]);
+	return tokens.every((token) => token === "curl" || token === urls[0] || /^-[fsSLi]+$/.test(token) || harmlessFlags.has(token));
+}
+
+function hasPackageScript(cwd: string, scriptName: string): boolean {
+	try {
+		const packageJson = JSON.parse(readFileSync(resolve(cwd, "package.json"), "utf8")) as { scripts?: Record<string, unknown> };
+		return typeof packageJson.scripts?.[scriptName] === "string";
+	} catch {
+		return false;
+	}
+}
+
+function isAllowedPlanNodeCommand(cwd: string, tokens: string[]): boolean {
+	if (tokens[0] !== "node" || tokens.length < 3) return false;
+	const resolvedScript = resolveFromCwd(cwd, tokens[1]);
+	if (!existsSync(resolvedScript)) return false;
+	if (!isWithin(resolve(cwd, "scripts/plans"), resolvedScript)) return false;
+	const scriptName = basename(resolvedScript);
+	if (scriptName !== "validate-html-plan.mjs" && scriptName !== "check-plan-authority.mjs" && !/^(validate|check)-[A-Za-z0-9._-]+\.mjs$/.test(scriptName)) return false;
+	let sawPlan = false;
+	for (const token of tokens.slice(2)) {
+		if (token.startsWith("-")) return false;
+		sawPlan = true;
+		if (!isHtmlPlanFilePath(cwd, token)) return false;
+	}
+	return sawPlan;
+}
+
+function isAllowedPlanServerCommand(cwd: string, tokens: string[]): boolean {
+	if (tokens[0] !== "npm" || tokens[1] !== "run" || tokens[2] !== "plans:serve") return false;
+	if (!hasPackageScript(cwd, "plans:serve")) return false;
+	if (!hasFlag(tokens, "--check")) return false;
+	const planValues = getOptionValues(tokens, "--plan");
+	return planValues.length > 0
+		&& planValues.every((planPath) => isHtmlPlanFilePath(cwd, planPath))
+		&& validateRemainingTokens(tokens, 3, { valueFlags: new Set(["--plan"]), booleanFlags: new Set(["--", "--check"]) });
+}
+
+function isAllowedServiceStartupOrOpen(tokens: string[]): boolean {
+	if (tokens[0] === "brew") return tokens[1] === "services" && tokens[2] === "start" && tokens[3] === "plan-reviewer" && tokens.length === 4;
+	if (tokens[0] === "open") return tokens.length === 2 && /^http:\/\/mbp\.braid-python\.ts\.net:4317(?:\/\S*)?$/i.test(tokens[1]);
+	return false;
+}
+
+function isAllowedRegister(cwd: string, tokens: string[]): boolean {
+	if (tokens[1] !== "register") return false;
+	const executionReadyValues = getOptionValues(tokens, "--execution-ready");
+	if (executionReadyValues.length !== 1 || !["true", "false"].includes(executionReadyValues[0])) return false;
+	const flagsWithValues = new Set(["--repo", "--branch", "--commit", "--execution-ready", "--url"]);
+	const booleanFlags = new Set(["--json", "--snapshot", "--new-thread"]);
+	const planFiles: string[] = [];
+	for (let i = 2; i < tokens.length; i += 1) {
+		const token = tokens[i];
+		if (token.includes("=")) {
+			const flag = token.slice(0, token.indexOf("="));
+			if (flagsWithValues.has(flag)) continue;
+		}
+		if (flagsWithValues.has(token)) {
+			i += 1;
+			continue;
+		}
+		if (booleanFlags.has(token)) continue;
+		if (token.startsWith("-")) return false;
+		planFiles.push(token);
+	}
+	return planFiles.length === 1 && isHtmlPlanFilePath(cwd, planFiles[0]) && allPlanReviewUrlsAllowed(tokens);
+}
+
+function isAgentNextDrain(tokens: string[], state: Partial<PlanModeState> = {}): boolean {
+	return tokens[1] === "agent"
+		&& tokens[2] === "next"
+		&& Boolean(commandPlanId(tokens))
+		&& planIdMatches(tokens, state)
+		&& hasFlag(tokens, "--no-wait")
+		&& hasFlag(tokens, "--json")
+		&& !hasFlag(tokens, "--wait")
+		&& allPlanReviewUrlsAllowed(tokens)
+		&& validateRemainingTokens(tokens, 4, { valueFlags: new Set(["--url", "--timeout", "--lease-seconds"]), booleanFlags: new Set(["--no-wait", "--json"]) });
+}
+
+function isAllowedPlanReviewListenerCommand(command: string, state: Partial<PlanModeState> = {}): boolean {
+	const tokens = parseCommandArgs(command.trim());
+	return tokens[0] === "plan-review"
+		&& tokens[1] === "agent"
+		&& tokens[2] === "next"
+		&& Boolean(commandPlanId(tokens))
+		&& planIdMatches(tokens, state)
+		&& hasFlag(tokens, "--wait")
+		&& hasFlag(tokens, "--json")
+		&& !hasFlag(tokens, "--no-wait")
+		&& allPlanReviewUrlsAllowed(tokens)
+		&& validateRemainingTokens(tokens, 4, { valueFlags: new Set(["--url", "--timeout", "--lease-seconds"]), booleanFlags: new Set(["--wait", "--json"]) });
+}
+
+function isAllowedQueueLifecycle(cwd: string, tokens: string[], state: Partial<PlanModeState> = {}): boolean {
+	const subcommand = tokens[1];
+	if (subcommand === "queue") {
+		if (tokens[2] !== "list" && tokens[2] !== "claim") return false;
+		if (!commandPlanId(tokens)) return false;
+		const startIndex = tokens[2] === "claim" ? 4 : 3;
+		return planIdMatches(tokens, state)
+			&& changedFilesAreThoughts(cwd, tokens)
+			&& allPlanReviewUrlsAllowed(tokens)
+			&& validateRemainingTokens(tokens, startIndex, { valueFlags: new Set(["--url", "--plan-id", "--ids", "--limit", "--lease-seconds", "--changed-files"]), booleanFlags: new Set(["--json", "--all", "--one"]) });
+	}
+	const commentId = tokens[2];
+	if (!commentId || !changedFilesAreThoughts(cwd, tokens) || !allPlanReviewUrlsAllowed(tokens)) return false;
+	if (!validateRemainingTokens(tokens, 3, { valueFlags: new Set(["--url", "--claim", "--note", "--summary", "--changed-files", "--reason"]), booleanFlags: new Set(["--json"]) })) return false;
+	if (subcommand === "ack") return commentId === state.activeCommentId && getOptionValue(tokens, "--claim") === state.activeClaimId;
+	if (subcommand === "release") {
+		const claim = getOptionValue(tokens, "--claim");
+		return commentId === state.activeCommentId && (claim === undefined || claim === state.activeClaimId);
+	}
+	if (subcommand === "resolve") return commentId === state.acknowledgedCommentId;
+	return false;
+}
+
+function isAllowedPlanReviewCommand(cwd: string, tokens: string[], state: Partial<PlanModeState> = {}): boolean {
+	if (tokens[0] !== "plan-review") return false;
+	if (tokens[1] === "watch") return false;
+	if (tokens[1] === "index") return tokens.length === 2;
+	if (tokens[1] === "register") return isAllowedRegister(cwd, tokens);
+	if (tokens[1] === "agent" && tokens[2] === "next") return isAgentNextDrain(tokens, state);
+	if (tokens[1] === "queue" || tokens[1] === "ack" || tokens[1] === "resolve" || tokens[1] === "release") return isAllowedQueueLifecycle(cwd, tokens, state);
+	return false;
+}
+
+function isAllowedClaudeReviewLauncherCommand(cwd: string, tokens: string[]): boolean {
+	if (tokens[0] !== "python3") return false;
+	const launcherPaths = new Set([
+		"$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py",
+		resolve(homedir(), ".agents/skills/claude-code-review/scripts/claude_interactive_review.py"),
+	]);
+	if (!launcherPaths.has(tokens[1])) return false;
+	if (tokens[2] === "--smoke") {
+		if (tokens.length !== 9) return false;
+		if (tokens[3] !== "--cwd" || (tokens[4] !== "$PWD" && tokens[4] !== cwd)) return false;
+		if (tokens[5] !== "--review-name" || !/^[A-Za-z0-9._-]+$/.test(tokens[6])) return false;
+		return tokens[7] === "--output" && isClaudeReviewTempPath(tokens[8], ".txt");
+	}
+	if (tokens.length !== 12) return false;
+	const expectedFlags = ["--cwd", "--prompt-file", "--output", "--review-name", "--timeout-seconds"];
+	for (let index = 2; index < tokens.length; index += 2) {
+		if (tokens[index] !== expectedFlags[(index - 2) / 2]) return false;
+	}
+	if (tokens[3] !== "$PWD" && tokens[3] !== cwd) return false;
+	if (!isClaudeReviewTempPath(tokens[5], ".txt")) return false;
+	if (!isClaudeReviewTempPath(tokens[7], ".md")) return false;
+	if (!/^[A-Za-z0-9._-]+$/.test(tokens[9])) return false;
+	return /^\d+$/.test(tokens[11]);
+}
+
+function isSafeCommand(cwd: string, command: string, state: Partial<PlanModeState> = {}): boolean {
+	const normalized = command.trim();
+	if (hasShellHazards(normalized)) return false;
+	const tokens = parseCommandArgs(normalized);
+	if (tokens.length === 0) return false;
+	if (isAllowedPlanReviewCommand(cwd, tokens, state)) return true;
+	if (isAllowedClaudeReviewLauncherCommand(cwd, tokens)) return true;
+	if (isAllowedHealthCommand(tokens)) return true;
+	if (tokens[0] === "curl") return false;
+	if (isAllowedPlanNodeCommand(cwd, tokens)) return true;
+	if (isAllowedPlanServerCommand(cwd, tokens)) return true;
+	if (isAllowedServiceStartupOrOpen(tokens)) return true;
+	const destructive = DESTRUCTIVE_PATTERNS.some((pattern) => pattern.test(normalized));
+	const safe = SAFE_BASH_PATTERNS.some((pattern) => pattern.test(normalized));
+	return !destructive && safe;
+}
+
+function noteClaimFromText(previousState: Partial<PlanModeState>, text: string): Partial<PlanModeState> {
+	let payload: Record<string, unknown> | undefined;
+	try {
+		payload = JSON.parse(text) as Record<string, unknown>;
+	} catch {
+		const match = text.match(/\{[\s\S]*\}/);
+		if (!match) return {};
+		try {
+			payload = JSON.parse(match[0]) as Record<string, unknown>;
+		} catch {
+			return {};
+		}
+	}
+	const directClaim = payload?.status === "claimed" ? payload : undefined;
+	const listedClaim = Array.isArray(payload?.claimed) ? payload.claimed[0] as Record<string, unknown> | undefined : undefined;
+	const listedNestedClaim = listedClaim?.claim as Record<string, unknown> | undefined;
+	const directNestedClaim = directClaim?.claim as Record<string, unknown> | undefined;
+	const commentId = directClaim?.commentId ?? directClaim?.id ?? listedClaim?.commentId ?? listedClaim?.id;
+	const claimId = directClaim?.claimId ?? directNestedClaim?.id ?? listedClaim?.claimId ?? listedNestedClaim?.id;
+	if (typeof commentId !== "string" || typeof claimId !== "string") return {};
+	return { ...previousState, activeCommentId: commentId, activeClaimId: claimId, acknowledgedCommentId: undefined };
+}
+
+function transitionClaimLifecycle(state: Partial<PlanModeState>, command: string): Partial<PlanModeState> {
+	const tokens = parseCommandArgs(command.trim());
+	if (tokens[0] !== "plan-review") return state;
+	const subcommand = tokens[1];
+	const commentId = tokens[2];
+	if (subcommand === "ack" && commentId === state.activeCommentId && getOptionValue(tokens, "--claim") === state.activeClaimId) {
+		return { ...state, acknowledgedCommentId: commentId };
+	}
+	if (subcommand === "resolve" && commentId === state.acknowledgedCommentId) {
+		return { ...state, activeCommentId: undefined, activeClaimId: undefined, acknowledgedCommentId: undefined };
+	}
+	if (subcommand === "release" && commentId === state.activeCommentId) {
+		const claim = getOptionValue(tokens, "--claim");
+		if (claim === undefined || claim === state.activeClaimId) {
+			return { ...state, activeCommentId: undefined, activeClaimId: undefined, acknowledgedCommentId: undefined };
+		}
+	}
+	return state;
+}
+
+function isFinishedProcessOutput(text: string): boolean {
+	return /\[(?:exit\(\d+\)|killed|failed|crashed)\]/i.test(text) || /\b(exit|completed|terminated)\b/i.test(text);
+}
+
 function toolResultToText(content: unknown): string {
 	if (typeof content === "string") return content;
 	if (Array.isArray(content)) {
@@ -484,6 +770,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	let currentPlanReviewUrl: string | undefined;
 	let currentPlanId: string | undefined;
 	let currentPlanListenerProcessId: string | undefined;
+	let activeCommentId: string | undefined;
+	let activeClaimId: string | undefined;
+	let acknowledgedCommentId: string | undefined;
 	let savedActiveTools: string[] | undefined;
 	let reviewCycles = 0;
 	let reviewInFlight = false;
@@ -500,6 +789,23 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		return pi.getAllTools().map((tool) => tool.name);
 	}
 
+	function getCommandState(): PlanModeState {
+		return {
+			enabled: planModeEnabled,
+			currentPlanPath,
+			currentPlanReviewUrl,
+			currentPlanId,
+			currentPlanListenerProcessId,
+			activeCommentId,
+			activeClaimId,
+			acknowledgedCommentId,
+			savedActiveTools,
+			reviewCycles,
+			lastReviewCommand,
+			preferredStandardReviewCommand,
+		};
+	}
+
 	function persistState(): void {
 		pi.appendEntry(PLAN_STATE_TYPE, {
 			enabled: planModeEnabled,
@@ -507,6 +813,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			currentPlanReviewUrl,
 			currentPlanId,
 			currentPlanListenerProcessId,
+			activeCommentId,
+			activeClaimId,
+			acknowledgedCommentId,
 			savedActiveTools,
 			reviewCycles,
 			lastReviewCommand,
@@ -524,6 +833,11 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		const planLabel = currentPlanPath ?? "no plan file yet";
 		const urlLabel = currentPlanReviewUrl ?? "not registered yet";
 		const listenerLabel = currentPlanListenerProcessId ?? "not running/unknown";
+		const claimLabel = activeCommentId && activeClaimId
+			? acknowledgedCommentId === activeCommentId
+				? `acknowledged ${activeCommentId} (${activeClaimId})`
+				: `active ${activeCommentId} (${activeClaimId})`
+			: "none";
 		const displayedCycles = Math.min(reviewCycles, MAX_REVIEW_CYCLES);
 		const cycleLabel = reviewCycles > 0 ? ` • review ${displayedCycles}/${MAX_REVIEW_CYCLES}` : "";
 		const status = reviewInFlight ? `🧪 plan review${cycleLabel}` : `📝 plan${cycleLabel}`;
@@ -533,6 +847,7 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			ctx.ui.theme.fg("muted", `Current plan: ${planLabel}`),
 			ctx.ui.theme.fg("muted", `Plan URL: ${urlLabel}`),
 			ctx.ui.theme.fg("muted", `Comment listener: ${listenerLabel}`),
+			ctx.ui.theme.fg("muted", `Active claim: ${claimLabel}`),
 			ctx.ui.theme.fg("muted", `Writes allowed only under ${PLAN_ROOT}/`),
 		]);
 	}
@@ -564,10 +879,20 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		ctx.ui.notify(`Plan mode enabled.${planNote}`, "info");
 	}
 
+	function getExecutionBlockReason(): string | undefined {
+		const blockers: string[] = [];
+		if (currentPlanListenerProcessId) {
+			blockers.push(`Stop the active plan-review comment listener before execution: process kill ${currentPlanListenerProcessId}.`);
+		}
+		if (activeCommentId && activeClaimId) {
+			const claimState = acknowledgedCommentId === activeCommentId ? "acknowledged" : "active";
+			blockers.push(`Resolve or release the ${claimState} browser comment claim before execution: ${activeCommentId} (${activeClaimId}).`);
+		}
+		return blockers.length > 0 ? blockers.join(" ") : undefined;
+	}
+
 	function getListenerCleanupMessage(): string | undefined {
-		return currentPlanListenerProcessId
-			? `Stop the active plan-review comment listener before execution: process kill ${currentPlanListenerProcessId}.`
-			: undefined;
+		return getExecutionBlockReason();
 	}
 
 	function disablePlanMode(ctx: ExtensionContext): void {
@@ -675,6 +1000,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		currentPlanReviewUrl = undefined;
 		currentPlanId = undefined;
 		currentPlanListenerProcessId = undefined;
+		activeCommentId = undefined;
+		activeClaimId = undefined;
+		acknowledgedCommentId = undefined;
 		savedActiveTools = undefined;
 		reviewCycles = 0;
 		lastReviewCommand = undefined;
@@ -692,6 +1020,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			currentPlanReviewUrl = stateEntry.data.currentPlanReviewUrl;
 			currentPlanId = stateEntry.data.currentPlanId;
 			currentPlanListenerProcessId = stateEntry.data.currentPlanListenerProcessId;
+			activeCommentId = stateEntry.data.activeCommentId;
+			activeClaimId = stateEntry.data.activeClaimId;
+			acknowledgedCommentId = stateEntry.data.acknowledgedCommentId;
 			savedActiveTools = stateEntry.data.savedActiveTools;
 			reviewCycles = stateEntry.data.reviewCycles ?? 0;
 			lastReviewCommand = stateEntry.data.lastReviewCommand;
@@ -712,6 +1043,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 				currentPlanReviewUrl = undefined;
 				currentPlanId = undefined;
 				currentPlanListenerProcessId = undefined;
+				activeCommentId = undefined;
+				activeClaimId = undefined;
+				acknowledgedCommentId = undefined;
 				reviewCycles = 0;
 				lastReviewCommand = undefined;
 				preferredStandardReviewCommand = undefined;
@@ -846,9 +1180,9 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 		if (!planModeEnabled) return { action: "continue" };
 
 		if (text.startsWith(`/${EXECUTE_PLAN_COMMAND}`) || text.startsWith("/dev:run") || text.startsWith("/skill:adn-dev-wf") || text.startsWith("/ralph:run")) {
-			const listenerCleanupMessage = getListenerCleanupMessage();
-			if (listenerCleanupMessage) {
-				ctx.ui.notify(listenerCleanupMessage, "warning");
+			const executionBlockReason = getExecutionBlockReason();
+			if (executionBlockReason) {
+				ctx.ui.notify(executionBlockReason, "warning");
 				return { action: "block" };
 			}
 			disablePlanMode(ctx);
@@ -871,10 +1205,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
 			|| text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)
 			|| text.startsWith(`/${CHANGE_REVIEW_COMMAND}`)
+			|| text.startsWith(`/${CLAUDE_CHANGE_REVIEW_COMMAND}`)
 		) {
 			reviewInFlight = true;
 			if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)) {
 				lastReviewCommand = ADVERSARIAL_PLAN_REVIEW_COMMAND;
+			} else if (text.startsWith(`/${CLAUDE_CHANGE_REVIEW_COMMAND}`)) {
+				lastReviewCommand = CLAUDE_CHANGE_REVIEW_COMMAND;
 			} else {
 				const standardReviewCommand = text.startsWith(`/${CHANGE_REVIEW_COMMAND}`)
 					? CHANGE_REVIEW_COMMAND
@@ -901,9 +1238,12 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 	pi.on("before_agent_start", async (_event) => {
 		if (!planModeEnabled) return;
 
+		const activeClaimInstruction = activeCommentId && activeClaimId
+			? ` Active browser comment claim: ${activeCommentId} (${activeClaimId})${acknowledgedCommentId === activeCommentId ? " is acknowledged; resolve it before restarting the listener." : " is unacknowledged; ack, release, or resolve it before execution."}`
+			: " No active browser comment claim.";
 		const currentPlanInstruction = currentPlanPath
-			? `Current plan file: ${currentPlanPath}. Continue evolving that file unless the user explicitly asks for a different one. Current browser review URL: ${currentPlanReviewUrl ?? "not registered yet"}.`
-			: `If you create a new plan, write it to ${PLAN_DIRECTORY}/<slug>.html.`;
+			? `Current plan file: ${currentPlanPath}. Continue evolving that file unless the user explicitly asks for a different one. Current browser review URL: ${currentPlanReviewUrl ?? "not registered yet"}.${activeClaimInstruction}`
+			: `If you create a new plan, write it to ${PLAN_DIRECTORY}/<slug>.html.${activeClaimInstruction}`;
 
 		return {
 			message: {
@@ -913,10 +1253,10 @@ You are in planning mode for this repository.
 
 Constraints:
 - Read the codebase freely.
-- You may write only under ${PLAN_ROOT}/ using edit/write tools.
+- You may write only under ${PLAN_ROOT}/ using edit/write tools, except transient Claude review prompt files matching /tmp/pi-claude-review-*.txt during review commands.
 - Keep plan files in ${PLAN_DIRECTORY}/.
 - Do not make implementation changes outside ${PLAN_ROOT}/.
-- Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/.
+- Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/, except the transient Claude review prompt file exception above.
 - Load and follow the planning skills needed for deterministic HTML planning: planning-workflow, html-plan-reviewer, reviewed-html-plan, product-principles for workflow-impacting plans, plus relevant domain skills.
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
 - New active plans should be semantic HTML under ${PLAN_DIRECTORY}/<slug>.html unless the user explicitly supplies an existing legacy Markdown plan.
@@ -940,7 +1280,7 @@ ${currentPlanInstruction}`,
 
 		if (event.toolName === "bash") {
 			const command = String(event.input.command ?? "");
-			if (!isSafeCommand(command)) {
+			if (!isSafeCommand(ctx.cwd, command, getCommandState())) {
 				return {
 					block: true,
 					reason: `Plan mode only allows read-only bash commands. Use edit/write within ${PLAN_ROOT}/ for plan files.`,
@@ -953,7 +1293,7 @@ ${currentPlanInstruction}`,
 			const command = String(event.input.command ?? "");
 			const id = typeof event.input.id === "string" ? event.input.id : undefined;
 			const readOnlyActions = new Set(["list", "output", "logs"]);
-			const allowedStart = action === "start" && /^\s*plan-review\s+agent\s+next\b/i.test(command) && isAllowedPlanReviewCommand(command);
+			const allowedStart = action === "start" && isAllowedPlanReviewListenerCommand(command, getCommandState());
 			const allowedKill = action === "kill" && id !== undefined && id === currentPlanListenerProcessId;
 
 			if (!readOnlyActions.has(action) && !allowedStart && !allowedKill) {
@@ -966,10 +1306,11 @@ ${currentPlanInstruction}`,
 
 		if (event.toolName === "edit" || event.toolName === "write") {
 			const inputPath = typeof event.input.path === "string" ? event.input.path : "";
-			if (!inputPath || !isThoughtsPath(ctx.cwd, inputPath)) {
+			const allowedClaudeReviewPrompt = reviewInFlight && isClaudeReviewTempPath(inputPath, ".txt");
+			if (!inputPath || (!isThoughtsPath(ctx.cwd, inputPath) && !allowedClaudeReviewPrompt)) {
 				return {
 					block: true,
-					reason: `Plan mode only allows edit/write under ${PLAN_ROOT}/.`,
+					reason: `Plan mode only allows edit/write under ${PLAN_ROOT}/, except transient Claude review prompt files under /tmp.`,
 				};
 			}
 		}
@@ -988,9 +1329,32 @@ ${currentPlanInstruction}`,
 				return;
 			}
 			if (event.isError) return;
-			if (action === "start" && isPlanReviewListenerCommand(command)) {
-				const match = toolResultToText(event.content).match(/\b(proc_\w+)/);
-				currentPlanListenerProcessId = match?.[1] ?? currentPlanListenerProcessId;
+			const text = toolResultToText(event.content);
+			if (action === "start" && isAllowedPlanReviewListenerCommand(command, getCommandState())) {
+				const details = (event as unknown as { details?: { id?: string; processId?: string } }).details;
+				const match = text.match(/\b(proc_\w+)/);
+				currentPlanListenerProcessId = details?.id ?? details?.processId ?? match?.[1] ?? currentPlanListenerProcessId;
+				const claimState = noteClaimFromText(getCommandState(), text);
+				const capturedClaim = Boolean(claimState.activeCommentId && claimState.activeClaimId);
+				activeCommentId = claimState.activeCommentId ?? activeCommentId;
+				activeClaimId = claimState.activeClaimId ?? activeClaimId;
+				acknowledgedCommentId = claimState.acknowledgedCommentId;
+				if (capturedClaim || isFinishedProcessOutput(text)) {
+					currentPlanListenerProcessId = undefined;
+				}
+				updateUi(ctx);
+				persistState();
+				return;
+			}
+			if ((action === "output" || action === "logs") && event.input.id === currentPlanListenerProcessId) {
+				const claimState = noteClaimFromText(getCommandState(), text);
+				const capturedClaim = Boolean(claimState.activeCommentId && claimState.activeClaimId);
+				activeCommentId = claimState.activeCommentId ?? activeCommentId;
+				activeClaimId = claimState.activeClaimId ?? activeClaimId;
+				acknowledgedCommentId = claimState.acknowledgedCommentId ?? acknowledgedCommentId;
+				if (capturedClaim || isFinishedProcessOutput(text)) {
+					currentPlanListenerProcessId = undefined;
+				}
 				updateUi(ctx);
 				persistState();
 			}
@@ -1001,8 +1365,9 @@ ${currentPlanInstruction}`,
 
 		if (event.toolName === "bash") {
 			const command = String(event.input.command ?? "");
+			const text = toolResultToText(event.content);
 			if (/^\s*plan-review\s+register\b/i.test(command)) {
-				const registration = parsePlanReviewRegistrationOutput(toolResultToText(event.content));
+				const registration = parsePlanReviewRegistrationOutput(text);
 				if (registration.reviewUrl) {
 					currentPlanReviewUrl = registration.reviewUrl;
 					currentPlanId = registration.planId ?? currentPlanId;
@@ -1012,6 +1377,20 @@ ${currentPlanInstruction}`,
 					updateUi(ctx);
 					persistState();
 				}
+			} else if (/^\s*plan-review\s+agent\s+next\b/i.test(command)) {
+				const claimState = noteClaimFromText(getCommandState(), text);
+				activeCommentId = claimState.activeCommentId ?? activeCommentId;
+				activeClaimId = claimState.activeClaimId ?? activeClaimId;
+				acknowledgedCommentId = claimState.acknowledgedCommentId;
+				updateUi(ctx);
+				persistState();
+			} else if (/^\s*plan-review\s+(ack|resolve|release)\b/i.test(command)) {
+				const nextState = transitionClaimLifecycle(getCommandState(), command);
+				activeCommentId = nextState.activeCommentId;
+				activeClaimId = nextState.activeClaimId;
+				acknowledgedCommentId = nextState.acknowledgedCommentId;
+				updateUi(ctx);
+				persistState();
 			}
 			return;
 		}
@@ -1027,6 +1406,10 @@ ${currentPlanInstruction}`,
 		if (nextPlanPath !== currentPlanPath) {
 			currentPlanReviewUrl = undefined;
 			currentPlanId = undefined;
+			currentPlanListenerProcessId = undefined;
+			activeCommentId = undefined;
+			activeClaimId = undefined;
+			acknowledgedCommentId = undefined;
 		}
 		currentPlanPath = nextPlanPath;
 		if (!reviewInFlight) {

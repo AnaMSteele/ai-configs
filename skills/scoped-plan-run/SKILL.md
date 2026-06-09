@@ -158,9 +158,9 @@ Reject malformed reviews and rerun once with a tighter prompt.
 
 ### 6. Claude Review
 
-Use the `claude-code-review` skill for a read-only Claude review.
+Use the `claude-code-review` skill for a read-only Claude review through its canonical private-tmux interactive launcher.
 
-Claude must receive the same bounded prompt as Codex. It must not edit files. It must return findings in chat, classified with the same scope categories.
+Claude must receive the same bounded prompt as Codex. It must not edit files. It must return findings in chat, classified with the same scope categories. Do not use alternate Claude transports for this required gate.
 
 If Claude reports broad adjacent risks, keep them as deferred follow-ups unless they pass the scope classification test.
 

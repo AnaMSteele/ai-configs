@@ -1,0 +1,1542 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Claude Review Reliability Plan</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <style>
+:root { color-scheme: dark; --bg:#0b1020; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#7dd3fc; --border:#334155; --code:#020617; }
+html { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.55; }
+body { max-width: 1120px; margin: 0 auto; padding: 40px 28px 80px; background: var(--bg); color: var(--text); }
+a { color: var(--accent); }
+h1, h2, h3 { color: #f8fafc; line-height: 1.2; }
+h1 { border-bottom: 1px solid var(--border); padding-bottom: 0.45em; }
+h2 { margin-top: 2.2em; border-bottom: 1px solid rgba(148,163,184,.35); padding-bottom: .25em; }
+h3 { margin-top: 1.5em; }
+p, li { color: var(--text); }
+blockquote, .muted { color: var(--muted); }
+code { background: var(--code); color: #dbeafe; padding: .1em .28em; border-radius: 4px; }
+pre { background: var(--code); color: #dbeafe; border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow-x: auto; }
+pre code { background: transparent; color: #dbeafe; padding: 0; }
+pre code span, code.sourceCode span, div.sourceCode, code.sourceCode { color: inherit !important; background: transparent !important; }
+pre code span.kw, pre code span.fu, pre code span.va, pre code span.dt, pre code span.cn, pre code span.st, pre code span.co { color: #dbeafe !important; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+th, td { border: 1px solid var(--border); padding: 8px 10px; vertical-align: top; }
+th { background: var(--panel); }
+nav#TOC { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin: 20px 0 32px; }
+section { scroll-margin-top: 20px; }
+
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Claude Review Reliability Plan</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#claude-review-reliability-plan"
+id="toc-claude-review-reliability-plan">Claude Review Reliability
+Plan</a>
+<ul>
+<li><a href="#status" id="toc-status">Status</a></li>
+<li><a href="#goal" id="toc-goal">Goal</a></li>
+<li><a href="#why-this-plan-exists" id="toc-why-this-plan-exists">Why
+this plan exists</a></li>
+<li><a href="#authority-and-inputs"
+id="toc-authority-and-inputs">Authority and inputs</a></li>
+<li><a href="#current-implementation-reality"
+id="toc-current-implementation-reality">Current implementation
+reality</a></li>
+<li><a href="#progress" id="toc-progress">Progress</a></li>
+<li><a href="#resume-instructions-agent"
+id="toc-resume-instructions-agent">Resume instructions (agent)</a></li>
+<li><a href="#product-intent-alignment"
+id="toc-product-intent-alignment">Product intent alignment</a></li>
+<li><a href="#locked-decisions" id="toc-locked-decisions">Locked
+decisions</a></li>
+<li><a href="#acceptance-criteria"
+id="toc-acceptance-criteria">Acceptance criteria</a></li>
+<li><a href="#bdd-scenarios" id="toc-bdd-scenarios">BDD
+scenarios</a></li>
+<li><a href="#phase-by-phase-execution-plan"
+id="toc-phase-by-phase-execution-plan">Phase-by-phase execution
+plan</a></li>
+<li><a href="#p0--inventory-every-claude-review-surface"
+id="toc-p0--inventory-every-claude-review-surface">P0 — Inventory every
+Claude review surface</a>
+<ul>
+<li><a href="#end-state" id="toc-end-state">End State</a></li>
+<li><a href="#tests-first" id="toc-tests-first">Tests first</a></li>
+<li><a href="#work" id="toc-work">Work</a></li>
+<li><a href="#expected-files" id="toc-expected-files">Expected
+files</a></li>
+<li><a href="#verify" id="toc-verify">Verify</a></li>
+</ul></li>
+<li><a href="#p1--add-tests-first-for-launcher-and-guardrail-contracts"
+id="toc-p1--add-tests-first-for-launcher-and-guardrail-contracts">P1 —
+Add tests first for launcher and guardrail contracts</a>
+<ul>
+<li><a href="#end-state-1" id="toc-end-state-1">End State</a></li>
+<li><a href="#tests-first-1" id="toc-tests-first-1">Tests first</a></li>
+<li><a href="#work-1" id="toc-work-1">Work</a></li>
+<li><a href="#expected-files-1" id="toc-expected-files-1">Expected
+files</a></li>
+<li><a href="#verify-1" id="toc-verify-1">Verify</a></li>
+</ul></li>
+<li><a href="#p2--implement-the-canonical-interactive-tmux-launcher"
+id="toc-p2--implement-the-canonical-interactive-tmux-launcher">P2 —
+Implement the canonical interactive tmux launcher</a>
+<ul>
+<li><a href="#end-state-2" id="toc-end-state-2">End State</a></li>
+<li><a href="#tests-first-2" id="toc-tests-first-2">Tests first</a></li>
+<li><a href="#work-2" id="toc-work-2">Work</a></li>
+<li><a href="#expected-files-2" id="toc-expected-files-2">Expected
+files</a></li>
+<li><a href="#verify-2" id="toc-verify-2">Verify</a></li>
+</ul></li>
+<li><a
+href="#p3--route-pi-opencode-and-shared-review-docs-to-the-launcher"
+id="toc-p3--route-pi-opencode-and-shared-review-docs-to-the-launcher">P3
+— Route Pi, OpenCode, and shared review docs to the launcher</a>
+<ul>
+<li><a href="#end-state-3" id="toc-end-state-3">End State</a></li>
+<li><a href="#tests-first-3" id="toc-tests-first-3">Tests first</a></li>
+<li><a href="#work-3" id="toc-work-3">Work</a></li>
+<li><a href="#expected-files-3" id="toc-expected-files-3">Expected
+files</a></li>
+<li><a href="#verify-3" id="toc-verify-3">Verify</a></li>
+</ul></li>
+<li><a
+href="#p4--validate-installed-fan-out-smoke-paths-and-final-guardrails"
+id="toc-p4--validate-installed-fan-out-smoke-paths-and-final-guardrails">P4
+— Validate installed fan-out, smoke paths, and final guardrails</a>
+<ul>
+<li><a href="#end-state-4" id="toc-end-state-4">End State</a></li>
+<li><a href="#tests-first-4" id="toc-tests-first-4">Tests first</a></li>
+<li><a href="#work-4" id="toc-work-4">Work</a></li>
+<li><a href="#expected-files-4" id="toc-expected-files-4">Expected
+files</a></li>
+<li><a href="#verify-4" id="toc-verify-4">Verify</a></li>
+</ul></li>
+<li><a href="#verification-strategy"
+id="toc-verification-strategy">Verification strategy</a></li>
+<li><a href="#delivery-order" id="toc-delivery-order">Delivery
+order</a></li>
+<li><a href="#non-goals" id="toc-non-goals">Non-goals</a></li>
+<li><a href="#decisions--deviations-log"
+id="toc-decisions--deviations-log">Decisions / Deviations log</a></li>
+</ul></li>
+</ul>
+</nav>
+<section id="claude-review-reliability-plan" class="level1">
+<h1>Claude Review Reliability Plan</h1>
+<section id="status" class="level2">
+<h2>Status</h2>
+<p>Implementation complete on branch <code>claude-review-reliability</code>.
+All P0-P4 checkboxes are complete, source and installed guardrails/smokes
+pass, and Codex implementation review v5 returned
+<code>VERDICT: PASS_SCOPED</code>. The required Claude implementation review
+was attempted through the canonical launcher and failed closed with
+<code>CLAUDE_SESSION_LIMIT_IN_TUI</code> because the real Claude account
+session/rate limit is currently active; no alternate Claude transport was
+used.</p>
+</section>
+<section id="goal" class="level2">
+<h2>Goal</h2>
+<p>Make every required Claude Code review in this repository use one
+canonical interactive Claude launcher: a real <code>claude</code> TUI
+created inside a launcher-owned private tmux server and driven by
+paste/send/capture. No required review path may use
+<code>claude -p</code>, prompt piping, direct <code>claude</code> shell
+snippets, direct <code>interactive_shell</code>/<code>process</code>
+launches, or model-provider substitutes.</p>
+</section>
+<section id="why-this-plan-exists" class="level2">
+<h2>Why this plan exists</h2>
+<p>The last week of Pi sessions showed Claude review reliability
+failures and repeated rework when agents mixed direct
+<code>claude -p</code>, tmux-wrapped <code>claude -p</code>, and direct
+interactive launches. The user specifically asked for a reviewed plan
+before repo changes because <code>claude -p</code> uses a different
+token/session path than interactive Claude and has produced misleading
+login/time-out failures.</p>
+</section>
+<section id="authority-and-inputs" class="level2">
+<h2>Authority and inputs</h2>
+<p>Sources of truth:</p>
+<ul>
+<li>User instruction in this session: always use interactive Claude
+sessions through tmux for Claude reviews, review recent Pi sessions,
+test suggestions in mock scenarios, and do not modify the repo until
+plan approval.</li>
+<li>Repo guidance in
+<code>/Users/anichols/code/ai-configs/AGENTS.md</code>: operate directly
+on <code>main</code>, use the plan-review service for reviewed HTML
+plans, and keep plan/task artifacts resumable.</li>
+<li>Planning doctrine from <code>planning-workflow</code>:
+execution-ready plans need status, progress, resume instructions, BDD
+scenarios, phase subheads, concrete verification, and no unresolved
+foundational decisions.</li>
+<li>Product doctrine from <code>product-principles</code>: make the
+correct path the easiest path, fail closed on identity/auth uncertainty,
+and return agent-legible recovery guidance.</li>
+<li>Session evidence from <code>~/.pi/agent/sessions</code> covering
+2026-05-30 through 2026-06-06.</li>
+<li>Repo inspection of <code>_pi</code>, <code>skills</code>,
+<code>_opencode</code>, <code>_claude</code>, <code>_omp</code>,
+<code>_codex</code>, <code>scripts</code>, <code>install.sh</code>, and
+<code>skills/install-matrix.json</code>.</li>
+<li>Mock tmux/Claude drivers built under <code>/tmp</code>, plus live
+auth smoke checks from the current Pi process and from an existing
+<code>codex</code> tmux session.</li>
+</ul>
+</section>
+<section id="current-implementation-reality" class="level2">
+<h2>Current implementation reality</h2>
+<p>Claude review workflows currently mix three launch styles:</p>
+<ol type="1">
+<li>direct <code>claude -p</code> from <code>process</code> or
+shell,</li>
+<li><code>claude -p</code> inside tmux,</li>
+<li>real interactive Claude sessions.</li>
+</ol>
+<p>The first two do not satisfy the requirement. Existing evidence:</p>
+<ul>
+<li><code>2026-06-06 ... heddle-bunyip</code>: PR186 review attempted
+one tmux <code>claude -p</code> run, then at least eight direct
+<code>claude -p</code> retries. The tmux auth probe returned
+<code>loggedIn: false</code>, <code>authMethod: none</code>, and
+<code>EXIT=1</code>. Direct <code>claude -p</code> attempts were killed
+or exited without useful output; one artifact only contained
+<code>Warning: no stdin data received in 3s...</code>.</li>
+<li><code>2026-06-01 ... heddle-dev-worktrees-auto-update</code>: tmux
+plus <code>claude -p</code> worked in 2-3 minutes, showing the old path
+can work but still uses the wrong non-interactive token path.</li>
+<li><code>2026-06-05 ... plan-reviewer</code>: tmux plus
+<code>claude -p</code> plan and rereview succeeded, proving reliability
+varies by session state.</li>
+<li><code>2026-06-05/06 ... NOD-906</code>: four tmux plus
+<code>claude -p</code> plan review passes succeeded, but required
+multiple reruns for plan convergence.</li>
+</ul>
+<p>Local auth checks during planning showed:</p>
+<ul>
+<li>direct current shell: <code>claude auth status</code> returns
+<code>loggedIn: true</code>,</li>
+<li>existing <code>codex</code> tmux session:
+<code>claude auth status</code> returns
+<code>loggedIn: false</code>,</li>
+<li>private tmux socket created from the current shell:
+<code>claude auth status</code> returns
+<code>loggedIn: true</code>.</li>
+</ul>
+<p>Implication: tmux has no independent auth state. Claude credential
+availability depends on the parent process/environment that creates the
+tmux server and runs the CLI.</p>
+<p>Mock and smoke validation already performed without modifying repo
+files:</p>
+<ul>
+<li>Direct <code>claude -p</code> path rejected by mock.</li>
+<li>Interactive tmux prompt paste plus sentinel capture succeeded in
+mock.</li>
+<li>Auth failure path returned an explicit preflight failure.</li>
+<li>Hung review path timed out and preserved transcript output.</li>
+<li>Real private-tmux smoke from this Pi process reached
+<code>loggedIn: true</code>, while existing <code>codex</code> tmux
+returned <code>loggedIn: false</code>.</li>
+<li>An early interactive Claude review driver had a false-positive
+sentinel bug because it matched prompt echo; this plan now requires
+post-submit/post-clear boundary tests.</li>
+</ul>
+<p>Known implementation targets from draft inventory:</p>
+<ul>
+<li><code>skills/claude-code-review/SKILL.md</code></li>
+<li><code>skills/claude-code-review/scripts/claude_interactive_review.py</code></li>
+<li><code>skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py</code></li>
+<li><code>skills/claude-code-review/tests/test_claude_interactive_review.py</code></li>
+<li><code>skills/claude-code-review/tests/fixtures/fake_claude.py</code></li>
+<li><code>skills/claude-code-review/tests/fixtures/tui_transcripts/ansi_spinner_prompt_echo.txt</code></li>
+<li><code>_pi/prompts/review:change-claude-code.md</code></li>
+<li><code>_pi/prompts/dev:reviewed-html-plan.md</code></li>
+<li><code>_pi/prompts/review:plan-adversarial.md</code></li>
+<li><code>_pi/README.md</code></li>
+<li><code>skills/reviewed-html-plan/SKILL.md</code></li>
+<li><code>skills/codex-full-build/SKILL.md</code></li>
+<li><code>skills/scoped-plan-run/SKILL.md</code></li>
+<li><code>skills/install-matrix.json</code></li>
+<li><code>_opencode/scripts/linear_build_review.py</code></li>
+<li><code>_opencode/commands/cmd:linear-build-workspace.md</code></li>
+<li><code>_omp/commands/review:plan-adversarial.md</code> and similar
+model-provider review docs if inventory confirms relevant
+references.</li>
+</ul>
+</section>
+<section id="progress" class="level2">
+<h2>Progress</h2>
+<ul class="task-list">
+<li><label><input type="checkbox" checked="" />P0 — Inventory every Claude review
+surface.</label></li>
+<li><label><input type="checkbox" checked="" />P1 — Add tests first for launcher
+and guardrail contracts.</label></li>
+<li><label><input type="checkbox" checked="" />P2 — Implement the canonical
+interactive tmux launcher.</label></li>
+<li><label><input type="checkbox" checked="" />P3 — Route Pi, OpenCode, and shared
+review docs to the launcher.</label></li>
+<li><label><input type="checkbox" checked="" />P4 — Validate installed fan-out,
+same-process smoke paths, and guardrails.</label></li>
+</ul>
+</section>
+<section id="resume-instructions-agent" class="level2">
+<h2>Resume instructions (agent)</h2>
+<p>Read this whole plan first. Identify the first unchecked item in
+<code>Progress</code>, execute only that phase, update its checkbox
+immediately after successful verification, then continue phase-by-phase.
+Do not modify repo files before this plan is approved. During execution,
+do not create alternate Claude launch transports, do not use
+<code>claude -p</code> for required reviews, and do not mark the work
+done until the final source and installed guardrail scans plus
+Pi/OpenCode same-process smokes pass. If a Claude auth or TUI readiness
+check fails, preserve the transcript and inspect command, stop with the
+classified error, and ask for the exact user action named by the
+failure; never retry by changing transport.</p>
+</section>
+<section id="product-intent-alignment" class="level2">
+<h2>Product intent alignment</h2>
+<ul>
+<li>Golden path: agents call one canonical launcher; the launcher owns
+tmux, readiness, prompt delivery, answer extraction, failure
+classification, and transcript preservation.</li>
+<li>Safe default: create a fresh private tmux server from the real
+review-launching process. Do not reuse the existing <code>codex</code>
+tmux session, because it currently reports
+<code>loggedIn: false</code>.</li>
+<li>Self-healing boundary: the launcher can verify prerequisites,
+classify failures, preserve inspectable tmux state, and point to exact
+smoke commands. It must not silently switch to <code>claude -p</code>,
+<code>--file</code>, prompt piping, direct
+<code>interactive_shell</code>, or model-provider substitutes.</li>
+<li>Fail-closed boundary: identity/auth, TUI readiness, and prompt-echo
+boundary uncertainty must stop execution. A false successful review is
+worse than a blocked review.</li>
+<li>Agent-legible errors: missing <code>tmux</code>/<code>claude</code>,
+<code>claude auth status</code> false, TUI not logged in, TUI readiness
+timeout, prompt-boundary uncertainty, and review timeout all include
+what was tried, where the raw transcript is, how to inspect tmux, and
+the next safe action.</li>
+</ul>
+</section>
+<section id="locked-decisions" class="level2">
+<h2>Locked decisions</h2>
+<ul>
+<li>Required Claude Code reviews use only
+<code>skills/claude-code-review/scripts/claude_interactive_review.py</code>
+or its installed copies.</li>
+<li>The launcher starts exactly one real interactive <code>claude</code>
+TUI inside a private tmux server and drives it through tmux
+paste/send/capture.</li>
+<li>Required reviews must never use <code>claude -p</code>,
+<code>claude --print</code>, direct prompt args, input redirection into
+<code>claude</code>, stdin/prompt piping into <code>claude</code>,
+<code>--file</code>, future unknown non-interactive Claude flags, direct
+<code>interactive_shell</code>/<code>process</code>/<code>bash</code>
+Claude snippets, raw <code>tmux new-window ... claude</code> outside the
+launcher, or model-provider substitutes.</li>
+<li>Guardrail enforcement is allowlist-based for executable Claude Code
+CLI invocation candidates in review surfaces. Candidate invocations are
+defined by the guardrail detection grammar below; prose mentions,
+headings, directory/path names such as <code>claude-code-review</code>,
+filenames such as <code>claude_interactive_review.py</code>, slugs like
+<code>claude-plan-*</code>, environment/marker names such as
+<code>CLAUDE_REVIEW_*</code>, JSON metadata, and non-command explanatory
+text are not invocation candidates. Any candidate invocation outside the
+canonical launcher/test exemptions and outside the exact
+launcher-internal forms allowed only in canonical launcher copies fails,
+even if it does not match a known denylist pattern.</li>
+<li>Anthropic/Claude model-provider reviews that are not Claude Code CLI
+launches, such as OpenCode Zen <code>claude-opus-*</code>, are optional
+non-gating reviewers only.</li>
+<li><code>claude auth status</code> in the launcher-created tmux server
+is an early signal only. Final readiness also requires live TUI prompt
+detection and post-submit answer-boundary extraction.</li>
+<li>The existing <code>codex</code> tmux session is not the default
+review host.</li>
+<li>The launcher validates transport completion only. Domain verdict
+parsing remains owned by callers such as
+<code>_opencode/scripts/linear_build_review.py</code>.</li>
+<li><code>skills/install-matrix.json</code> keeps
+<code>class: "consumer-specific-installable"</code> and sets
+<code>claude-code-review.allowedConsumers</code> to
+<code>['pi', 'opencode']</code>.</li>
+<li>OpenCode invokes the launcher via <code>sys.executable</code>, not
+by requiring executable bits.</li>
+<li>Tests may fake Claude only by controlling temporary
+<code>HOME</code>/<code>ZDOTDIR</code>/<code>PATH</code>; production
+code has no fake-Claude or binary override flag except the explicit
+OpenCode resolver env <code>CLAUDE_REVIEW_LAUNCHER</code> for source
+validation.</li>
+</ul>
+</section>
+<section id="acceptance-criteria" class="level2">
+<h2>Acceptance criteria</h2>
+<p>AC1. No Claude review skill, prompt, script, command, or documented
+required review process recommends or executes <code>claude -p</code> or
+another direct Claude transport.</p>
+<p>AC2. All required Claude review paths call one deterministic launcher
+entrypoint; agents cannot choose alternate shell snippets, fallback
+transports, flags, or retry strategies.</p>
+<p>AC3. The launcher creates a private tmux server from the real caller
+process, starts interactive <code>claude</code>, drives it through
+paste/send/capture, tears down successful review and smoke tmux servers,
+and preserves transcript/inspect metadata on failure.</p>
+<p>AC4. Prompt-echo cannot satisfy completion. Success requires an
+answer-start marker and sentinel after a post-submit/post-clear boundary
+in Claude's answer region.</p>
+<p>AC5. Mock tests pass without real Claude, including auth failures,
+timeout, prompt echo, ANSI/chrome, wrapping, and parseable output
+cases.</p>
+<p>AC6. Same-process real smoke tests pass for every consumer that
+invokes the launcher: Pi prompt path and OpenCode
+<code>linear_build_review.py</code> source and installed paths.</p>
+<p>AC7. Auth failure, missing prerequisites, TUI not ready,
+prompt-boundary uncertainty, and timeout produce classified,
+agent-legible failures with preserved transcript and inspect
+command.</p>
+<p>AC8. Existing workflows still support plan review, implementation
+review, rereview, verdict extraction, and parent-agent artifact
+saving.</p>
+<p>AC9. OpenCode <code>linear_build_review.py</code> continues to own
+verdict parsing while delegating only Claude transport to the
+launcher.</p>
+<p>AC10. Source and installed guardrail scans pass across repo,
+<code>~/.agents/skills</code>, <code>~/.config/opencode/skills</code>,
+<code>~/.config/opencode/scripts</code>,
+<code>~/.config/opencode/commands</code>,
+<code>~/.config/opencode/agents</code>,
+<code>~/.config/opencode/prompts</code>,
+<code>~/.pi/agent/prompts</code>, and <code>~/.pi/agent/agents</code>;
+scans fail by default for any non-exempt executable Claude Code CLI
+invocation candidate in review surfaces that is not inside a canonical
+launcher copy or approved test fixture/marked forbidden example.</p>
+<p>AC11. A real-Claude prompt-submitting end-to-end validation passes
+before completion: it submits a tiny live review prompt through the
+launcher, observes the real TUI readiness and post-submit/post-clear
+boundary, extracts only the answer-region marker/sentinel pair, and
+records the confirmed readiness regex plus clear-boundary observable
+used by production code.</p>
+</section>
+<section id="bdd-scenarios" class="level2">
+<h2>BDD scenarios</h2>
+<p>Scenario S1 — Required review uses canonical interactive tmux
+launcher</p>
+<ul>
+<li>Given an agent needs a required Claude Code review,</li>
+<li>When it invokes the review workflow from Pi or OpenCode,</li>
+<li>Then the workflow calls the canonical launcher,</li>
+<li>And only the launcher starts
+<code>cd &lt;repo&gt; &amp;&amp; zsh -ilc 'claude'</code> inside a
+launcher-created private tmux server,</li>
+<li>And no <code>claude -p</code> or alternate direct transport is
+used.</li>
+</ul>
+<p>Scenario S2 — Direct or fallback Claude transports are rejected</p>
+<ul>
+<li>Given a skill, prompt, or script contains a runnable
+<code>claude -p</code>, <code>claude --print</code>, direct
+<code>claude --permission-mode</code>, direct prompt args, stdin piping
+into <code>claude</code>, input redirection such as
+<code>claude &lt; prompt.txt</code>, unknown future forms such as
+<code>claude --future-noninteractive x</code>, prompt piping, raw
+<code>interactive_shell(...claude...)</code>,
+<code>process(...claude...)</code>, or
+<code>os.execvp(...claude...)</code> review path,</li>
+<li>When the guardrail scans source or installed roots,</li>
+<li>Then it fails unless the reference is a marked forbidden example or
+approved test fixture,</li>
+<li>And it reports the offending path and line.</li>
+</ul>
+<p>Scenario S3 — Auth works only in the real caller context</p>
+<ul>
+<li>Given the current shell can authenticate Claude but an existing
+unrelated tmux session cannot,</li>
+<li>When the launcher is run from the Pi prompt context or OpenCode
+subprocess context,</li>
+<li>Then it creates its own private tmux server from that caller
+process,</li>
+<li>And <code>claude auth status</code> is checked there as an early
+signal,</li>
+<li>And the same-process smoke proves the real caller context is usable
+before relying on the launcher.</li>
+</ul>
+<p>Scenario S4 — Auth failure fails closed with actionable evidence</p>
+<ul>
+<li>Given <code>claude auth status</code> is false/nonzero or the TUI
+reports <code>Not logged in</code>,</li>
+<li>When a smoke or review run starts,</li>
+<li>Then the launcher exits nonzero with a classified auth failure,</li>
+<li>And the output names what was tried, transcript path, tmux inspect
+command, and next user action,</li>
+<li>And no alternate transport retry is attempted.</li>
+</ul>
+<p>Scenario S5 — TUI readiness failure does not paste a prompt</p>
+<ul>
+<li>Given interactive Claude starts but never reaches a usable input
+prompt,</li>
+<li>When the readiness timeout expires,</li>
+<li>Then the launcher fails as <code>CLAUDE_TUI_NOT_READY</code>,</li>
+<li>And it preserves transcript and inspect command,</li>
+<li>And it does not paste or submit the review prompt.</li>
+</ul>
+<p>Scenario S6 — Prompt echo cannot produce false success</p>
+<ul>
+<li>Given the pasted prompt wrapper contains both
+<code>CLAUDE_REVIEW_ANSWER_START_&lt;nonce&gt;</code> and the sentinel
+instructions,</li>
+<li>When tmux captures prompt echo after Enter,</li>
+<li>Then the launcher treats the pre-submit capture as diagnostics
+only,</li>
+<li>And records a post-submit/post-clear boundary after the input box
+clears,</li>
+<li>And ignores marker/sentinel text at or before that boundary,</li>
+<li>And succeeds only on a marker/sentinel pair in Claude's answer
+region.</li>
+</ul>
+<p>Scenario S7 — Boundary uncertainty fails closed</p>
+<ul>
+<li>Given the launcher cannot prove the prompt echo has cleared before
+answer text appears,</li>
+<li>When extracting the review output,</li>
+<li>Then it fails as <code>CLAUDE_TUI_BOUNDARY_UNCERTAIN</code>,</li>
+<li>And it preserves raw transcript and inspect metadata,</li>
+<li>And it does not write a parseable success artifact.</li>
+</ul>
+<p>Scenario S8 — OpenCode verdict parsing remains deterministic</p>
+<ul>
+<li>Given OpenCode calls the launcher for a plan or implementation
+review,</li>
+<li>When the launcher succeeds,</li>
+<li>Then <code>--output</code> begins with ANSI-stripped, de-wrapped
+answer text strictly between the post-boundary answer-start marker and
+sentinel,</li>
+<li>And <code>linear_build_review.py</code> parses verdicts only from
+that normalized answer region,</li>
+<li>And raw pane transcript/TUI chrome cannot affect verdict
+parsing.</li>
+</ul>
+<p>Scenario S9 — Installed fan-out matches source behavior</p>
+<ul>
+<li>Given <code>./install.sh --pi</code> and
+<code>./install.sh --opencode</code> have run,</li>
+<li>When installed prompts, commands, scripts, and skills are inspected
+and smoke-tested,</li>
+<li>Then installed Pi and OpenCode paths resolve the same canonical
+launcher,</li>
+<li>And installed roots contain no stale direct Claude transports.</li>
+</ul>
+<p>Scenario S10 — Optional model-provider reviews cannot satisfy the
+required gate</p>
+<ul>
+<li>Given a workflow mentions <code>opencode-zen/claude-*</code> or
+<code>claude-opus-*</code>,</li>
+<li>When that workflow needs a required Claude Code review gate,</li>
+<li>Then the model-provider review is classified as
+optional/non-gating,</li>
+<li>And the required gate remains unsatisfied until the canonical Claude
+Code launcher succeeds.</li>
+</ul>
+</section>
+<section id="phase-by-phase-execution-plan" class="level2">
+<h2>Phase-by-phase execution plan</h2>
+</section>
+<section id="p0--inventory-every-claude-review-surface" class="level2">
+<h2>P0 — Inventory every Claude review surface</h2>
+<section id="end-state" class="level3">
+<h3>End State</h3>
+<p>Every Claude-related review reference is classified before edits:
+update target, non-review mention, forbidden example, guardrail-covered
+launcher internals, optional non-gating model-provider review, or test
+fixture.</p>
+</section>
+<section id="tests-first" class="level3">
+<h3>Tests first</h3>
+<p>Strict TDD is not applicable because this phase produces the evidence
+list that drives later tests. The compensating verification is the exact
+inventory command plus a manual classification record in the PR
+description or committed checklist only if requested by a reviewer.</p>
+</section>
+<section id="work" class="level3">
+<h3>Work</h3>
+<p>Run this exact inventory command and classify every hit:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">rg</span> <span class="at">-n</span> <span class="st">&quot;claude -p|claude --print|\|[[:space:]]*claude\b|Claude Code|claude-code-review|claude.*review|review.*claude|run_claude|interactive Claude|tmux.*claude|os\.execvp\(.*claude|interactive_shell.*claude|claude --permission-mode|subprocess.*claude|exec.*claude|bash.*claude|process.*claude|claude-opus|opencode-zen/claude|\[[^]]*claude[^]]*\]&quot;</span> <span class="dt">\</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  _pi skills _opencode _claude _omp _codex scripts <span class="dv">2</span><span class="op">&gt;</span>/dev/null</span></code></pre></div>
+<p>Specific classifications required:</p>
+<ul>
+<li><code>skills/claude-review-partner/**</code> is a Codex wrapper
+despite the name unless inventory proves otherwise.</li>
+<li><code>claude-opus</code> / <code>opencode-zen/claude-*</code> hits,
+including <code>_omp/commands/review:plan-adversarial.md</code>, are
+optional non-gating model-provider reviews unless they invoke the Claude
+Code CLI.</li>
+<li>Known update targets listed in
+<code>Current implementation reality</code> must be checked even if the
+inventory pattern misses them.</li>
+</ul>
+</section>
+<section id="expected-files" class="level3">
+<h3>Expected files</h3>
+<p>No required repo file changes in this phase. Optional PR evidence can
+reference the command output and classification summary.</p>
+</section>
+<section id="verify" class="level3">
+<h3>Verify</h3>
+<p>Rerun the inventory after later phases and confirm every remaining
+Claude launch reference is canonical launcher use, a non-review mention,
+an optional non-gating model-provider review, an approved launcher
+internal form, a fixture, or a marked forbidden example.</p>
+</section>
+</section>
+<section id="p1--add-tests-first-for-launcher-and-guardrail-contracts"
+class="level2">
+<h2>P1 — Add tests first for launcher and guardrail contracts</h2>
+<section id="end-state-1" class="level3">
+<h3>End State</h3>
+<p>Tests and fixtures exist before implementation and fail for the
+current direct/fallback Claude transports. They lock transport, auth,
+readiness, prompt-boundary, extraction, guardrail, and installed-root
+expectations.</p>
+</section>
+<section id="tests-first-1" class="level3">
+<h3>Tests first</h3>
+<p>Create or update:</p>
+<ul>
+<li><code>skills/claude-code-review/tests/test_claude_interactive_review.py</code></li>
+<li><code>skills/claude-code-review/tests/fixtures/fake_claude.py</code></li>
+<li><code>skills/claude-code-review/tests/fixtures/tui_transcripts/ansi_spinner_prompt_echo.txt</code></li>
+<li><code>skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py</code></li>
+<li>optional minimal
+<code>skills/claude-code-review/scripts/claude_interactive_review.py</code>
+stub only as needed to make RED failures explicit.</li>
+</ul>
+<p>Launcher tests must cover:</p>
+<ul>
+<li>fake-Claude seam using temporary <code>HOME</code>,
+<code>ZDOTDIR</code>, and shell startup files that prepend fixture
+directory to <code>PATH</code>, so fixed <code>zsh -ilc 'claude'</code>
+resolves a test shim without production override flags,</li>
+<li>accidental <code>-p</code>, <code>--permission-mode</code>,
+<code>--file</code>, direct prompt args, or alternate Claude subprocess
+forms rejected,</li>
+<li>successful interactive prompt paste and sentinel capture,</li>
+<li>auth preflight false failure,</li>
+<li>TUI <code>Not logged in</code> failure,</li>
+<li>pre-paste prompt never ready failure as
+<code>CLAUDE_TUI_NOT_READY</code>,</li>
+<li>timeout preserving transcript and inspect command,</li>
+<li>successful fake review tears down the review-created tmux
+session/server after exit <code>0</code>,</li>
+<li>omitted <code>--sentinel</code> generates a nonce-derived unique
+sentinel and uses it in the wrapper/extraction path,</li>
+<li>invalid sentinels such as empty strings, newline/control-character
+values, and common tokens are rejected before tmux launch,</li>
+<li>multiline prompt paste preservation,</li>
+<li>deterministic collision-safe private tmux socket/session naming from
+review slug plus pid/nonce,</li>
+<li>echoed final prompt wrapper containing both
+<code>CLAUDE_REVIEW_ANSWER_START_&lt;nonce&gt;</code> and sentinel does
+not satisfy success,</li>
+<li>only a post-submit/post-clear answer-region marker/sentinel pair
+satisfies success,</li>
+<li>failure as <code>CLAUDE_TUI_BOUNDARY_UNCERTAIN</code> when the
+post-submit/post-clear boundary cannot be established,</li>
+<li>ANSI escape sequences, redraw/spinner text, Claude prompt chrome,
+and pane-width wrapping are handled,</li>
+<li>launcher output remains parseable when Claude exits or when the tmux
+pane stays live in failure/timeout paths before cleanup; successful
+review completion must still tear down its private tmux server.</li>
+</ul>
+<p>Guardrail detection grammar:</p>
+<ul>
+<li>Invocation candidates are <code>claude</code> tokens that appear in
+executable command-bearing contexts: shell fenced code blocks, inline
+code spans that contain runnable shell snippets, <code>.sh</code>
+command lines, Python/JavaScript/Ruby/etc. string literals passed to
+subprocess/process/exec/interpreter-launch APIs, tmux command strings,
+prompt-template command recipes, and command-like lines in lists or
+paragraphs that begin with a shell prompt, command verb, assignment plus
+command, redirection, or pipe.</li>
+<li>Non-candidates are prose mentions, headings, JSON keys/metadata that
+are not executed, directory/path references such as
+<code>skills/claude-code-review</code>, filenames such as
+<code>claude_interactive_review.py</code>, slugs/review names such as
+<code>claude-plan-nod636</code>, environment variables and constants
+such as <code>CLAUDE_REVIEW_*</code> /
+<code>CLAUDE_REVIEW_LAUNCHER</code>, model/provider names that do not
+launch the Claude Code CLI, and marked forbidden examples.</li>
+<li>Allowed-token exemptions are path/context based, not global string
+allowances: canonical launcher source copies by relative suffix
+<code>claude-code-review/scripts/claude_interactive_review.py</code>,
+tests/fixtures by relative suffix
+<code>claude-code-review/tests/**</code>, the guardrail implementation
+itself by relative suffix
+<code>claude-code-review/scripts/check_no_direct_claude_review_launches.py</code>,
+and marked forbidden/example documentation.
+Prose/path/slug/<code>CLAUDE_*</code> non-candidates need no exemption
+because they are outside the detection surface.</li>
+<li>The three launcher-internal command forms are allowed only in
+canonical launcher copies identified by suffix
+<code>claude-code-review/scripts/claude_interactive_review.py</code> and
+in marked forbidden/example documentation; the same strings in any other
+non-exempt review surface are violations.</li>
+<li>Tests must lock this grammar so broad source scans do not flag
+ordinary prose/path/slug/constant mentions, but do flag runnable or
+command-like Claude invocations.</li>
+</ul>
+<p>Guardrail tests must cover:</p>
+<ul>
+<li>guardrail behavior is allowlist-based for executable Claude
+invocation candidates in review surfaces: any candidate outside exempt
+files and outside canonical launcher copies fails, even if no enumerated
+denylist regex recognizes it,</li>
+<li>runnable <code>claude -p</code>, <code>claude --print</code>,
+<code>claude --permission-mode</code>, stdin-pipe forms such as
+<code>cat prompt | claude</code>, input-redirection forms such as
+<code>claude &lt; prompt.txt</code>, unknown future forms such as
+<code>claude --future-noninteractive x</code>, raw <code>claude</code>
+command strings, <code>interactive_shell(...claude...)</code>,
+<code>process(...claude...)</code>, and
+<code>os.execvp(...claude...)</code> in review docs/scripts are rejected
+outside the canonical launcher and fixtures,</li>
+<li>only explicitly marked forbidden examples are allowed,</li>
+<li>no-argument guardrail runs scan the same source roots as Phase 0
+inventory by default: <code>_pi</code>, <code>skills</code>,
+<code>_opencode</code>, <code>_claude</code>, <code>_omp</code>,
+<code>_codex</code>, and <code>scripts</code>,</li>
+<li>explicit <code>--root</code> arguments override the default root set
+and are used in P4 for installed-root scans,</li>
+<li>the guardrail script self-excludes its own path by relative suffix
+<code>claude-code-review/scripts/check_no_direct_claude_review_launches.py</code>
+in source and installed roots, because its detection-pattern literals
+must include forbidden strings,</li>
+<li>the guardrail exempts <code>claude-code-review/tests/**</code> in
+source and installed roots, because test modules and fixtures
+intentionally contain forbidden strings as inputs,</li>
+<li>tests assert the guardrail does not flag its own source path or
+source/installed <code>claude-code-review/tests/**</code> trees while
+still rejecting equivalent forbidden strings elsewhere,</li>
+<li>tests assert benign files containing only
+<code>skills/claude-code-review</code>,
+<code>claude_interactive_review.py</code>,
+<code>claude-plan-nod636</code>, <code>CLAUDE_REVIEW_*</code>, and prose
+such as “interactive Claude review” pass, while equivalent runnable
+invocations elsewhere fail,</li>
+<li>tests assert novel direct transports such as
+<code>claude &lt; prompt.txt</code> and
+<code>claude --future-noninteractive x</code> fail under the
+candidate-invocation allowlist rule even when they do not match a named
+denylist pattern,</li>
+<li>tests assert
+<code>cd &lt;repo&gt; &amp;&amp; zsh -ilc 'claude'</code> and raw
+<code>zsh -ilc 'claude'</code> in any non-exempt prompt/script are
+violations even though those strings are valid inside the launcher,</li>
+<li>canonical launcher copies are identified by relative path suffix
+<code>claude-code-review/scripts/claude_interactive_review.py</code>
+across repo, <code>~/.agents/skills</code>, and
+<code>~/.config/opencode/skills</code>,</li>
+<li>launcher-internal allowed forms inside canonical launcher copies are
+exactly <code>zsh -ilc 'command -v claude'</code>, private-tmux
+<code>claude auth status</code>, and
+<code>cd &lt;repo&gt; &amp;&amp; zsh -ilc 'claude'</code>.</li>
+</ul>
+<p>Forbidden-example convention:</p>
+<ul>
+<li>Any allowed documentation mention of a forbidden launch must be on a
+line containing <code>[FORBIDDEN-EXAMPLE]</code> or inside a fenced
+block whose info string is <code>forbidden-claude-launch</code>.</li>
+</ul>
+</section>
+<section id="work-1" class="level3">
+<h3>Work</h3>
+<p>Write the tests and guardrail script. Keep the production launcher as
+a stub if needed for RED. Define <code>fake_claude.py</code> as an
+interactive fake TUI, not just a command-output fixture: it must render
+readiness chrome compatible with the launcher's prompt detection, accept
+a multiline pasted prompt, echo the final prompt wrapper so the echo
+contains both <code>CLAUDE_REVIEW_ANSWER_START_&lt;nonce&gt;</code> and
+the sentinel, persist that submitted prompt in scrollback above the
+answer region, transition the input area to a cleared/non-editing state
+on Enter, and only then emit marker, answer text, and sentinel in the
+answer region. The prompt-echo and
+<code>CLAUDE_TUI_BOUNDARY_UNCERTAIN</code> cases must run end-to-end
+through launcher plus tmux against this fake TUI so one post-clear
+capture contains duplicate marker/sentinel pairs: the persisted prompt
+echo and the real answer pair. Reserve
+<code>ansi_spinner_prompt_echo.txt</code> for unit coverage of ANSI
+stripping, wrapping, redraw/spinner text, and normalization. Add
+guardrail self-scan tests proving the script exempts only
+<code>check_no_direct_claude_review_launches.py</code> and
+<code>claude-code-review/tests/**</code> in source/installed paths, not
+arbitrary files containing the same forbidden literals. Do not implement
+the full launcher until P2.</p>
+</section>
+<section id="expected-files-1" class="level3">
+<h3>Expected files</h3>
+<ul>
+<li><code>skills/claude-code-review/tests/test_claude_interactive_review.py</code></li>
+<li><code>skills/claude-code-review/tests/fixtures/fake_claude.py</code></li>
+<li><code>skills/claude-code-review/tests/fixtures/tui_transcripts/ansi_spinner_prompt_echo.txt</code></li>
+<li><code>skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py</code></li>
+<li><code>skills/claude-code-review/scripts/claude_interactive_review.py</code>
+if a stub is needed.</li>
+</ul>
+</section>
+<section id="verify-1" class="level3">
+<h3>Verify</h3>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py</span></code></pre></div>
+<p>Expected RED behavior before P2/P3: launcher behavior tests fail
+against the stub or current transports; guardrail fails while stale
+direct Claude review transports still exist.</p>
+</section>
+</section>
+<section id="p2--implement-the-canonical-interactive-tmux-launcher"
+class="level2">
+<h2>P2 — Implement the canonical interactive tmux launcher</h2>
+<section id="end-state-2" class="level3">
+<h3>End State</h3>
+<p><code>skills/claude-code-review/scripts/claude_interactive_review.py</code>
+satisfies P1 launcher tests and provides a single deterministic
+entrypoint for smoke and review modes.</p>
+</section>
+<section id="tests-first-2" class="level3">
+<h3>Tests first</h3>
+<p>Run the P1 launcher test suite before implementation and confirm the
+relevant tests fail for the current stub/current behavior. During
+implementation, make the tests pass without weakening prompt-boundary,
+auth, readiness, or guardrail assertions.</p>
+</section>
+<section id="work-2" class="level3">
+<h3>Work</h3>
+<p>Implement locked CLI contract:</p>
+<ul>
+<li>Normal review mode required inputs: <code>--cwd &lt;repo&gt;</code>,
+<code>--prompt-file &lt;path&gt;</code>,
+<code>--output &lt;path&gt;</code>,
+<code>--review-name &lt;slug&gt;</code>.</li>
+<li>Normal review mode optional inputs:
+<code>--timeout-seconds &lt;n&gt;</code>,
+<code>--sentinel &lt;string&gt;</code>.</li>
+<li>If <code>--sentinel</code> is omitted, the launcher generates a
+nonce-derived sentinel such as
+<code>CLAUDE_REVIEW_DONE_&lt;review-slug&gt;_&lt;pid&gt;_&lt;nonce&gt;</code>
+using the same collision-safe nonce source as the tmux socket.</li>
+<li>Sentinel validation rejects empty strings, newline/control
+characters, strings shorter than a documented minimum length, strings
+containing shell metacharacter ambiguity that would affect prompt
+wrapper readability, and common/generic tokens such as
+<code>DONE</code>, <code>END</code>, or <code>SUCCESS</code>; invalid
+sentinels fail before tmux launch with a classified input-validation
+error.</li>
+<li>Smoke mode required inputs: <code>--smoke</code>,
+<code>--output &lt;path&gt;</code>,
+<code>--review-name &lt;slug&gt;</code>.</li>
+<li>Smoke mode optional inputs: <code>--cwd &lt;repo&gt;</code>
+defaulting to <code>os.getcwd()</code>,
+<code>--timeout-seconds &lt;n&gt;</code>.</li>
+<li>Smoke mode has no <code>--prompt-file</code>; it runs same-process
+private-tmux auth and interactive TUI readiness only, without submitting
+a review prompt.</li>
+<li>Smoke success exits <code>0</code> and writes/prints
+<code>CLAUDE_REVIEW_SMOKE_READY</code> plus private tmux socket/session
+metadata.</li>
+<li>Smoke failure exits nonzero with the same classified
+missing-prerequisite/auth/TUI-readiness failure used by review
+mode.</li>
+<li>There is deliberately no <code>--verdict-regex</code>; callers
+validate domain verdicts from output.</li>
+</ul>
+<p>Implement tmux and Claude behavior:</p>
+<ul>
+<li>Verify <code>tmux</code> exists.</li>
+<li>Verify <code>claude</code> exists through
+<code>zsh -ilc 'command -v claude'</code>.</li>
+<li>Create a private tmux server/socket named by a documented function
+of review slug plus pid/nonce.</li>
+<li>Run <code>claude auth status</code> inside the private tmux server
+as an early signal; fail explicitly if <code>loggedIn</code> is
+false/nonzero.</li>
+<li>Launch only fixed command
+<code>cd &lt;repo&gt; &amp;&amp; zsh -ilc 'claude'</code> in the review
+pane.</li>
+<li>Never reuse the stale <code>codex</code> tmux session as
+default.</li>
+<li>Poll <code>tmux capture-pane -p -J</code> for a usable prompt
+signal, initially <code>❯</code>; confirm or adjust this regex against
+live Claude TUI during real smoke before finalizing, then commit the
+confirmed readiness regex or documented replacement as constants in
+<code>claude_interactive_review.py</code> so later runs do not re-guess
+it.</li>
+<li>Use a readiness timeout distinct from full review timeout.</li>
+<li>On pre-paste readiness timeout, fail as
+<code>CLAUDE_TUI_NOT_READY</code>, preserve transcript and inspect
+command, and do not paste the prompt.</li>
+<li>For the post-submit/post-clear baseline, detect the observable
+transition from editing to answer mode by checking that the echoed
+prompt/wrapper text is no longer present in the current input region and
+that Claude has returned to non-editing answer output chrome, initially
+modeled as disappearance of the bottom input-box content plus absence of
+the cursor/input line that contained the pasted wrapper. This observable
+cannot be validated by prompt-less smoke mode; confirm or adjust it
+during the required live prompt-submitting end-to-end validation below,
+then commit the confirmed observable or documented replacement as
+constants in <code>claude_interactive_review.py</code>.</li>
+</ul>
+<p>Implement capture and extraction:</p>
+<ul>
+<li>The launcher composes the final pasted prompt by appending a fixed
+emission-protocol wrapper to caller <code>--prompt-file</code>
+content.</li>
+<li>The wrapper instructs Claude to emit
+<code>CLAUDE_REVIEW_ANSWER_START_&lt;nonce&gt;</code> on its own line,
+then the answer, then the <code>--sentinel</code> value on its own final
+line.</li>
+<li>Callers must not embed answer-start marker or sentinel instructions
+themselves.</li>
+<li>Create or resize the review window to a fixed wide geometry,
+initially 220 columns; account for tmux versions where
+<code>new-window -x/-y</code> is unsupported by using a compatible
+resize step.</li>
+<li>Capture with
+<code>tmux capture-pane -p -J -S -&lt;history-limit&gt;</code>.</li>
+<li>Record a pre-submit capture for diagnostics only;
+pre-submit/pre-Enter capture is never parseable evidence.</li>
+<li>After sending Enter, wait until the concrete
+input-cleared/non-editing observable is seen, then record and store a
+normalized post-submit/post-clear baseline snapshot.</li>
+<li>If the post-submit/post-clear baseline observable cannot be
+established before answer text appears, fail closed as
+<code>CLAUDE_TUI_BOUNDARY_UNCERTAIN</code>.</li>
+<li>Strip ANSI/control sequences before matching.</li>
+<li>Use baseline-relative extraction rather than presence matching:
+normalize later captures the same way, compute the suffix/new text
+relative to the stored baseline by exact prefix match or
+occurrence-index diff, and only scan marker/sentinel occurrences newly
+appearing after that baseline.</li>
+<li>If the stored baseline is not a prefix of the later normalized
+capture and occurrence-index diff cannot prove which marker/sentinel
+pairs are new, fail closed as
+<code>CLAUDE_TUI_BOUNDARY_UNCERTAIN</code>.</li>
+<li>Ignore all marker/sentinel occurrences already present in the
+baseline, including persisted prompt-echo copies in scrollback.</li>
+<li>Require answer-start marker plus sentinel in the baseline-relative
+new text before returning success.</li>
+<li>Extract the deterministic answer region strictly between the first
+new answer-start marker and following new sentinel.</li>
+<li>Write <code>--output</code> with the normalized, ANSI-stripped,
+de-wrapped answer region first. Preserve raw transcript and inspect
+metadata after a delimiter or in a sibling transcript file.</li>
+</ul>
+<p>Implement failure and teardown:</p>
+<ul>
+<li>Missing <code>tmux</code>/<code>claude</code> fails as missing
+prerequisite.</li>
+<li><code>claude auth status</code> false/nonzero or TUI
+<code>Not logged in</code> fails as user-action-required auth
+error.</li>
+<li>Timeout preserves transcript and inspect command.</li>
+<li>Never retry with another transport or <code>claude -p</code>.</li>
+<li>After review sentinel success and answer extraction, send
+<code>/exit</code>, wait a bounded teardown timeout for the private tmux
+session/server to disappear, and kill the private tmux server if
+graceful exit does not complete; successful review completion must not
+leak a live Claude process.</li>
+<li>On smoke success, after writing/printing
+<code>CLAUDE_REVIEW_SMOKE_READY</code> and socket/session metadata, tear
+down the smoke-created interactive TUI by sending <code>/exit</code> and
+killing the private tmux server, or by directly killing the private tmux
+server if graceful exit is not available; smoke success must not leak a
+live Claude process.</li>
+<li>Leave failed/time-out tmux servers available unless explicit cleanup
+flag is used.</li>
+<li>Provide an optional documented cleanup/reap command for accumulated
+failed-run private tmux servers without making it part of normal success
+teardown.</li>
+</ul>
+</section>
+<section id="expected-files-2" class="level3">
+<h3>Expected files</h3>
+<ul>
+<li><code>skills/claude-code-review/scripts/claude_interactive_review.py</code></li>
+<li><code>skills/claude-code-review/tests/test_claude_interactive_review.py</code>
+only if tests need non-weakened updates from implementation discoveries,
+including smoke-success and review-success teardown assertions that the
+created tmux server is gone after exit <code>0</code>.</li>
+</ul>
+</section>
+<section id="verify-2" class="level3">
+<h3>Verify</h3>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py <span class="dt">\</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> skills/claude-code-review/scripts <span class="dt">\</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> skills/claude-code-review/tests</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="va">RUN_REAL_CLAUDE_SMOKE</span><span class="op">=</span>1 <span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py <span class="at">--real-smoke</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="va">RUN_REAL_CLAUDE_E2E</span><span class="op">=</span>1 <span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py <span class="at">--real-e2e-review</span></span></code></pre></div>
+<p>Pass condition: mock tests pass, the targeted guardrail check passes
+for implemented launcher internals plus guardrail/test exemptions,
+prompt-less real smoke from a manually invoked repo context reaches
+<code>CLAUDE_REVIEW_SMOKE_READY</code>, and the real prompt-submitting
+E2E review validates marker/sentinel extraction strictly after the
+post-submit/post-clear boundary. The E2E run must submit a tiny live
+prompt through the launcher, require the answer-start marker and
+sentinel in the answer region, fail on prompt echo, and produce or
+update the committed readiness regex plus post-submit clear-boundary
+observable. The full no-argument source-root guardrail is expected to
+keep failing until P3 removes stale consumer routes; carry those
+findings into P3 rather than treating them as a P2 failure. Manual real
+smoke/E2E is necessary but not sufficient; P4 validates actual
+Pi/OpenCode caller contexts.</p>
+</section>
+</section>
+<section
+id="p3--route-pi-opencode-and-shared-review-docs-to-the-launcher"
+class="level2">
+<h2>P3 — Route Pi, OpenCode, and shared review docs to the launcher</h2>
+<section id="end-state-3" class="level3">
+<h3>End State</h3>
+<p>Every real Claude Code review consumer calls the canonical launcher.
+Stale docs and command prompts no longer describe direct
+<code>claude -p</code>, direct interactive shell, old <code>codex</code>
+tmux defaults, or model-provider substitutes as required review
+paths.</p>
+</section>
+<section id="tests-first-3" class="level3">
+<h3>Tests first</h3>
+<p>Before edits, run the guardrail and inventory commands and confirm
+they fail or report stale routes. Add/update tests for OpenCode resolver
+and <code>--claude-smoke</code> before replacing
+<code>run_claude()</code> behavior.</p>
+</section>
+<section id="work-3" class="level3">
+<h3>Work</h3>
+<p>Update <code>skills/claude-code-review/SKILL.md</code>:</p>
+<ul>
+<li>frontmatter no longer says it launches through user-owned
+<code>codex</code> tmux,</li>
+<li>remove runnable <code>claude -p</code> examples and “prefer claude
+-p” language,</li>
+<li>remove old <code>codex</code> tmux default claim,</li>
+<li>document canonical launcher command, credential inheritance,
+same-process smoke testing, and fixed auth/timeout behavior.</li>
+</ul>
+<p>Update <code>_pi/prompts/review:change-claude-code.md</code>:</p>
+<ul>
+<li>frontmatter no longer says
+<code>interactive-shell hands-free, backgrounded</code>,</li>
+<li>replace direct <code>interactive_shell</code> plus Python wrapper
+plus <code>os.execvp(... claude ...)</code> transport with canonical
+launcher,</li>
+<li>the Pi prompt must invoke the central shared launcher at exact path
+<code>$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py</code>
+via <code>python3</code>; Pi must not guess alternate launcher locations
+or construct shell snippets,</li>
+<li>add exact smoke path:
+<code>/review:change-claude-code --claude-smoke</code> runs
+<code>$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py</code>
+with
+<code>--smoke --cwd &lt;current repo&gt; --review-name pi-review-change-smoke --output /tmp/pi-claude-review-smoke.txt</code>
+from Pi prompt context,</li>
+<li>keep review-only behavior and inline <code>[REVIEW:CLAUDE]</code>
+comment requirements,</li>
+<li>forbid fallback to direct Claude transport.</li>
+</ul>
+<p>Update shared workflow docs:</p>
+<ul>
+<li><code>skills/reviewed-html-plan/SKILL.md</code>,
+<code>skills/codex-full-build/SKILL.md</code>, and
+<code>skills/scoped-plan-run/SKILL.md</code> point to
+<code>claude-code-review</code> canonical launcher and explicitly say
+private-tmux interactive launcher only.</li>
+<li><code>_pi/prompts/dev:reviewed-html-plan.md</code> is a no-op unless
+P0 finds concrete launch mechanics; if edited, it delegates Claude
+review instead of launching Claude.</li>
+<li><code>_pi/prompts/review:plan-adversarial.md</code> replaces launch
+ambiguity with canonical launcher reference and deletes stale
+wrapper/backgrounding lifecycle language.</li>
+<li><code>_pi/README.md</code> updates
+<code>review-change-claude-code</code> description so it no longer says
+direct pi-interactive-shell hands-free launch/backgrounding.</li>
+<li><code>_omp/commands/review:plan-adversarial.md</code> and similar
+model-provider docs classify <code>opencode-zen/claude-*</code> as
+optional/non-gating if retained.</li>
+</ul>
+<p>Update <code>skills/install-matrix.json</code>:</p>
+<ul>
+<li>set <code>claude-code-review.allowedConsumers</code> unconditionally
+to <code>['pi', 'opencode']</code>,</li>
+<li>leave <code>class: 'consumer-specific-installable'</code>
+unchanged,</li>
+<li>update notes so they no longer describe old <code>codex</code>
+tmux-session behavior,</li>
+<li>verify <code>install.sh</code> fan-out copies <code>scripts/</code>
+and <code>tests/</code> subdirectories via existing
+<code>cp -a "$source_path/."</code> behavior,</li>
+<li>verify Pi discovers this consumer-specific shared skill from the
+central shared root
+<code>$HOME/.agents/skills/claude-code-review</code>; Pi does not need
+or use a mirror under <code>$HOME/.pi/agent/skills</code>.</li>
+</ul>
+<p>Update <code>_opencode/scripts/linear_build_review.py</code>:</p>
+<ul>
+<li>replace <code>run_claude()</code> using <code>claude -p</code> with
+a subprocess call to the canonical launcher,</li>
+<li>remove <code>ensure_codex_tmux()</code> from Claude review path and
+delete helper if dead,</li>
+<li>add <code>--claude-smoke</code> branch in <code>main()</code> before
+prompt build, verdict extraction, and artifact writing,</li>
+<li>smoke examples satisfy argparse's existing required inputs with
+<code>--reviewer</code>, <code>--kind</code>, <code>--issue-key</code>,
+<code>--plan</code>, <code>--output</code>, and
+<code>--claude-smoke</code>; after parsing, the smoke branch runs before
+prompt build, verdict extraction, and artifact writing, and ignores
+prompt/verdict inputs,</li>
+<li>smoke resolves the launcher, invokes
+<code>--smoke --cwd &lt;repo&gt; --review-name opencode-linear-build-smoke --output &lt;output&gt;</code>,
+exits <code>0</code> on <code>CLAUDE_REVIEW_SMOKE_READY</code>, exits
+nonzero with launcher classified error, and writes no review
+artifact.</li>
+</ul>
+<p>Use this resolver contract:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> resolve_claude_review_launcher() <span class="op">-&gt;</span> Path:</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>    candidates <span class="op">=</span> []</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> os.environ.get(<span class="st">&quot;CLAUDE_REVIEW_LAUNCHER&quot;</span>):</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>        candidates.append(Path(os.environ[<span class="st">&quot;CLAUDE_REVIEW_LAUNCHER&quot;</span>]).expanduser())</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    candidates.append(Path.home() <span class="op">/</span> <span class="st">&quot;.agents/skills/claude-code-review/scripts/claude_interactive_review.py&quot;</span>)</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Repo checkout path for development before install; only meaningful when this script is in the repo checkout.</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    repo_candidate <span class="op">=</span> Path(<span class="va">__file__</span>).resolve().parents[<span class="dv">2</span>] <span class="op">/</span> <span class="st">&quot;skills/claude-code-review/scripts/claude_interactive_review.py&quot;</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> repo_candidate.is_file():</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>        candidates.append(repo_candidate)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    candidates.append(Path.home() <span class="op">/</span> <span class="st">&quot;.config/opencode/skills/claude-code-review/scripts/claude_interactive_review.py&quot;</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> candidate <span class="kw">in</span> candidates:</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> candidate.is_file():</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>            <span class="cf">return</span> candidate</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    <span class="cf">raise</span> <span class="pp">FileNotFoundError</span>(</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;Claude review launcher not found. Run ./install.sh --opencode, or set &quot;</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;CLAUDE_REVIEW_LAUNCHER to the repo or installed claude_interactive_review.py path. &quot;</span></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;Checked: &quot;</span> <span class="op">+</span> <span class="st">&quot;, &quot;</span>.join(<span class="bu">str</span>(path) <span class="cf">for</span> path <span class="kw">in</span> candidates)</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    )</span></code></pre></div>
+<p>Add resolver tests for env override, installed
+<code>~/.agents</code>, repo checkout, OpenCode compatibility-link, and
+failure message.</p>
+<p>Use this invocation shape:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>prompt_path <span class="op">=</span> output_path.with_suffix(<span class="st">&quot;.prompt.md&quot;</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>prompt_path.write_text(build_claude_review_prompt(...), encoding<span class="op">=</span><span class="st">&quot;utf-8&quot;</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>raw_path <span class="op">=</span> output_path.with_suffix(<span class="st">&quot;.raw.md&quot;</span>)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>sentinel <span class="op">=</span> <span class="ss">f&quot;CLAUDE_REVIEW_DONE_</span><span class="sc">{</span>issue_key<span class="sc">}</span><span class="ss">_</span><span class="sc">{</span>kind<span class="sc">}</span><span class="ss">_</span><span class="sc">{</span><span class="bu">int</span>(time.time())<span class="sc">}</span><span class="ss">&quot;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>review_name <span class="op">=</span> <span class="ss">f&quot;claude-</span><span class="sc">{</span>kind<span class="sc">.</span>lower()<span class="sc">}</span><span class="ss">-</span><span class="sc">{</span>issue_key<span class="sc">.</span>lower()<span class="sc">}</span><span class="ss">&quot;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>launcher <span class="op">=</span> resolve_claude_review_launcher()</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>subprocess.run([</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    sys.executable,</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="bu">str</span>(launcher),</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;--cwd&quot;</span>, cwd,</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;--prompt-file&quot;</span>, <span class="bu">str</span>(prompt_path),</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;--output&quot;</span>, <span class="bu">str</span>(raw_path),</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;--review-name&quot;</span>, review_name,</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;--timeout-seconds&quot;</span>, <span class="st">&quot;900&quot;</span>,</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;--sentinel&quot;</span>, sentinel,</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>], check<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>raw_output <span class="op">=</span> raw_path.read_text(errors<span class="op">=</span><span class="st">&quot;replace&quot;</span>)</span></code></pre></div>
+<p>OpenCode output contract:</p>
+<ul>
+<li>Launcher <code>--output</code> begins with deterministic normalized
+answer text strictly between the first baseline-relative new
+<code>CLAUDE_REVIEW_ANSWER_START_&lt;nonce&gt;</code> and following new
+sentinel after the stored post-submit/post-clear baseline.</li>
+<li>Pre-submit/pre-Enter capture is diagnostics only and is never
+parseable evidence; prompt-echo marker/sentinel occurrences already
+present in the stored baseline are never parseable evidence.</li>
+<li>Verdict line and sentinel protocol are on dedicated lines; with
+220-column tmux pane and <code>capture-pane -J</code>,
+<code>extract_verdict()</code> can parse <code>VERDICT:</code> /
+<code>Verdict:</code> without pane-width wrapping or TUI chrome.</li>
+<li>Raw transcript and inspect metadata are preserved after a delimiter
+or in a sibling transcript file.</li>
+<li><code>linear_build_review.py</code> parses only the normalized
+answer region.</li>
+<li>Launcher output does not append <code>EXIT=&lt;n&gt;</code> as the
+old <code>claude -p</code> wrapper did.</li>
+<li><code>linear_build_review.py</code> remains responsible for
+<code>extract_verdict()</code> and expected verdict handling.</li>
+<li>On launcher failure, <code>run_claude()</code> raises with launcher
+error and points to preserved raw transcript/inspect command.</li>
+</ul>
+</section>
+<section id="expected-files-3" class="level3">
+<h3>Expected files</h3>
+<ul>
+<li><code>skills/claude-code-review/SKILL.md</code></li>
+<li><code>_pi/prompts/review:change-claude-code.md</code></li>
+<li><code>_pi/prompts/dev:reviewed-html-plan.md</code> if inventory
+confirms relevant wording</li>
+<li><code>_pi/prompts/review:plan-adversarial.md</code></li>
+<li><code>_pi/README.md</code></li>
+<li><code>skills/reviewed-html-plan/SKILL.md</code></li>
+<li><code>skills/codex-full-build/SKILL.md</code></li>
+<li><code>skills/scoped-plan-run/SKILL.md</code></li>
+<li><code>skills/install-matrix.json</code></li>
+<li><code>_opencode/scripts/linear_build_review.py</code></li>
+<li><code>_opencode/commands/cmd:linear-build-workspace.md</code></li>
+<li><code>_omp/commands/review:plan-adversarial.md</code> and similar
+model-provider docs if inventory confirms required updates</li>
+<li>tests near OpenCode launcher resolution if existing test structure
+supports them.</li>
+</ul>
+</section>
+<section id="verify-3" class="level3">
+<h3>Verify</h3>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="ex">rg</span> <span class="at">-n</span> <span class="st">&quot;ensure_codex_tmux|codex-tmux-bootstrap|tmux .*codex.*claude|tmux .*claude.*codex&quot;</span> _opencode skills _pi <span class="dv">2</span><span class="op">&gt;</span>/dev/null</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> _opencode/scripts/linear_build_review.py <span class="at">--help</span></span></code></pre></div>
+<p>Pass condition: tests pass, guardrail passes for source, help still
+works, codex-tmux search has no live Claude review path, and remaining
+hits are marked forbidden examples or non-gating/non-review
+references.</p>
+</section>
+</section>
+<section
+id="p4--validate-installed-fan-out-smoke-paths-and-final-guardrails"
+class="level2">
+<h2>P4 — Validate installed fan-out, smoke paths, and final
+guardrails</h2>
+<section id="end-state-4" class="level3">
+<h3>End State</h3>
+<p>Source and installed consumers all use the same launcher behavior. Pi
+and OpenCode same-process smokes pass. Source and installed guardrails
+pass. Final inventory has no unaccepted live direct Claude review
+transport.</p>
+</section>
+<section id="tests-first-4" class="level3">
+<h3>Tests first</h3>
+<p>Run source tests and guardrail before install. Any failure must be
+fixed in source before installed-path validation, not patched only in
+installed files.</p>
+</section>
+<section id="work-4" class="level3">
+<h3>Work</h3>
+<p>Run source verification, install Pi and OpenCode consumers
+sequentially, verify installed path existence, run source and installed
+OpenCode smoke paths, run Pi smoke through the Pi prompt path, and scan
+all source/installed roots.</p>
+<p>Install and installed-path existence checks:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">./install.sh</span> <span class="at">--pi</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">./install.sh</span> <span class="at">--opencode</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="at">-</span> <span class="op">&lt;&lt;&#39;PY&#39;</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="st">from pathlib import Path</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="st">paths = [</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a><span class="st">    # Pi prompt path and central shared launcher path are intentionally the same.</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.agents/skills/claude-code-review/scripts/claude_interactive_review.py&#39;,</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.config/opencode/skills/claude-code-review/scripts/claude_interactive_review.py&#39;,</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.config/opencode/scripts/linear_build_review.py&#39;,</span></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.config/opencode/commands/cmd:linear-build-workspace.md&#39;,</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.config/opencode/agents&#39;,</span></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.config/opencode/prompts&#39;,</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.pi/agent/prompts/review:change-claude-code.md&#39;,</span></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a><span class="st">    Path.home()/&#39;.pi/agent/agents&#39;,</span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a><span class="st">]</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a><span class="st">missing = [str(path) for path in paths if not path.exists()]</span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a><span class="st">print(&#39;\n&#39;.join(str(path) for path in paths))</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a><span class="st">if missing:</span></span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a><span class="st">    raise SystemExit(&#39;missing installed path: &#39; + &#39;, &#39;.join(missing))</span></span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a><span class="st">import json</span></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a><span class="st">matrix = json.loads(Path(&#39;skills/install-matrix.json&#39;).read_text())</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a><span class="st">consumers = matrix[&#39;installableSkills&#39;][&#39;claude-code-review&#39;][&#39;allowedConsumers&#39;]</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a><span class="st">if &#39;pi&#39; not in consumers or &#39;opencode&#39; not in consumers:</span></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a><span class="st">    raise SystemExit(f&#39;claude-code-review not installed for pi+opencode: {consumers}&#39;)</span></span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a><span class="op">PY</span></span></code></pre></div>
+<p>Use <code>./install.sh --opencode</code> or
+<code>./install.sh --all</code> for OpenCode verification on clean
+machines. <code>./install.sh --skills</code> is insufficient unless
+<code>~/.config/opencode/skills</code>,
+<code>~/.config/opencode/scripts</code>, and
+<code>~/.config/opencode/commands</code> already exist.</p>
+<p>Pi smoke:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># In Pi, invoke exactly:</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">/review:change-claude-code</span> <span class="at">--claude-smoke</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Pass condition:</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="bu">test</span> <span class="at">-f</span> /tmp/pi-claude-review-smoke.txt <span class="kw">&amp;&amp;</span> <span class="ex">rg</span> <span class="at">-n</span> <span class="st">&quot;CLAUDE_REVIEW_SMOKE_READY|socket|session&quot;</span> /tmp/pi-claude-review-smoke.txt</span></code></pre></div>
+<p>OpenCode source and installed smoke:</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="va">CLAUDE_REVIEW_LAUNCHER</span><span class="op">=</span>/Users/anichols/code/ai-configs/skills/claude-code-review/scripts/claude_interactive_review.py <span class="dt">\</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="va">RUN_REAL_CLAUDE_SMOKE</span><span class="op">=</span>1 <span class="ex">python3</span> _opencode/scripts/linear_build_review.py <span class="dt">\</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--reviewer</span> claude <span class="at">--kind</span> plan <span class="at">--issue-key</span> SMOKE <span class="at">--plan</span> /tmp/claude-review-reliability-plan.md <span class="dt">\</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--output</span> /tmp/opencode-claude-review-smoke-source.md <span class="at">--claude-smoke</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> _opencode/scripts/linear_build_review.py <span class="at">--help</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> <span class="st">&quot;</span><span class="va">$HOME</span><span class="st">/.config/opencode/scripts/linear_build_review.py&quot;</span> <span class="at">--help</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="va">RUN_REAL_CLAUDE_SMOKE</span><span class="op">=</span>1 <span class="ex">python3</span> <span class="st">&quot;</span><span class="va">$HOME</span><span class="st">/.config/opencode/scripts/linear_build_review.py&quot;</span> <span class="dt">\</span></span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--reviewer</span> claude <span class="at">--kind</span> plan <span class="at">--issue-key</span> SMOKE <span class="at">--plan</span> /tmp/claude-review-reliability-plan.md <span class="dt">\</span></span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--output</span> /tmp/opencode-claude-review-smoke-installed.md <span class="at">--claude-smoke</span></span></code></pre></div>
+<p>Final guardrail and inventory. The guardrail is the authoritative
+deterministic pass/fail check; the broad <code>rg</code> inventory is
+advisory/manual classification evidence only and must not override a
+passing guardrail without a concrete live transport finding.</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py <span class="dt">\</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> /Users/anichols/code/ai-configs <span class="dt">\</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.agents/skills <span class="dt">\</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.config/opencode/skills <span class="dt">\</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.config/opencode/scripts <span class="dt">\</span></span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.config/opencode/commands <span class="dt">\</span></span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.config/opencode/agents <span class="dt">\</span></span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.config/opencode/prompts <span class="dt">\</span></span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.pi/agent/prompts <span class="dt">\</span></span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">--root</span> ~/.pi/agent/agents</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a><span class="ex">rg</span> <span class="at">-n</span> <span class="st">&quot;claude -p|claude --print|\|[[:space:]]*claude\b|claude --permission-mode|interactive_shell.*claude|os\.execvp\(.*claude|process.*claude|subprocess.*claude|exec.*claude|bash.*claude|tmux.*claude|claude-opus|opencode-zen/claude|\[[^]]*claude[^]]*\]|ensure_codex_tmux|codex-tmux-bootstrap&quot;</span> <span class="dt">\</span></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a>  _pi skills _opencode _claude _omp _codex scripts <span class="dv">2</span><span class="op">&gt;</span>/dev/null</span></code></pre></div>
+</section>
+<section id="expected-files-4" class="level3">
+<h3>Expected files</h3>
+<p>No additional source files beyond P1-P3 unless final verification
+exposes missed source/installed fan-out. Installed files under
+<code>~/.agents</code>, <code>~/.config/opencode</code>, and
+<code>~/.pi</code> are expected side effects of
+<code>install.sh</code>.</p>
+</section>
+<section id="verify-4" class="level3">
+<h3>Verify</h3>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="ex">python3</span> skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="va">RUN_REAL_CLAUDE_SMOKE</span><span class="op">=</span>1 <span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py <span class="at">--real-smoke</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a><span class="va">RUN_REAL_CLAUDE_E2E</span><span class="op">=</span>1 <span class="ex">python3</span> skills/claude-code-review/tests/test_claude_interactive_review.py <span class="at">--real-e2e-review</span></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a><span class="co"># plus all Pi/OpenCode installed smoke and final guardrail commands listed in Work.</span></span></code></pre></div>
+<p>Final pass condition: tests pass, same-process smoke passes for real
+consumers, install paths resolve, help commands still work, source and
+installed guardrails pass, and final <code>rg</code> is manually
+classified with no unaccepted live direct Claude review transport.</p>
+</section>
+</section>
+<section id="verification-strategy" class="level2">
+<h2>Verification strategy</h2>
+<p>Test coverage matrix:</p>
+<table>
+<thead>
+<tr>
+<th>Acceptance</th>
+<th>Scenarios</th>
+<th>Test or verification layer</th>
+<th>Commands</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AC1, AC2</td>
+<td>S1, S2, S10</td>
+<td>Guardrail tests and final source/installed scans</td>
+<td><code>python3 skills/claude-code-review/scripts/check_no_direct_claude_review_launches.py ...</code>;
+final <code>rg</code> inventory</td>
+</tr>
+<tr>
+<td>AC3, AC6</td>
+<td>S1, S3, S9</td>
+<td>Launcher mock tests plus real source/Pi/OpenCode smokes, including
+smoke-success and review-success teardown assertions</td>
+<td><code>python3 ...test_claude_interactive_review.py</code>;
+<code>/review:change-claude-code --claude-smoke</code>; OpenCode
+<code>--claude-smoke</code></td>
+</tr>
+<tr>
+<td>AC4, AC5</td>
+<td>S6, S7, S8</td>
+<td>Fake Claude transcript tests for prompt echo, boundary, ANSI/chrome,
+wrapping, output parsing</td>
+<td><code>python3 skills/claude-code-review/tests/test_claude_interactive_review.py</code></td>
+</tr>
+<tr>
+<td>AC7</td>
+<td>S4, S5, S7</td>
+<td>Mock failure tests and real smoke failure transcript inspection if
+applicable</td>
+<td>launcher tests; preserved transcript assertions</td>
+</tr>
+<tr>
+<td>AC8, AC9</td>
+<td>S8, S9</td>
+<td>OpenCode resolver/invocation tests and help/smoke commands</td>
+<td><code>python3 _opencode/scripts/linear_build_review.py --help</code>;
+source/installed <code>--claude-smoke</code></td>
+</tr>
+<tr>
+<td>AC10</td>
+<td>S2, S9</td>
+<td>Installed-root guardrail scans</td>
+<td>guardrail with <code>--root ~/.agents/skills</code>,
+<code>~/.config/opencode/skills</code>,
+<code>~/.config/opencode/scripts</code>,
+<code>~/.config/opencode/commands</code>,
+<code>~/.config/opencode/agents</code>,
+<code>~/.config/opencode/prompts</code>,
+<code>~/.pi/agent/prompts</code>, <code>~/.pi/agent/agents</code></td>
+</tr>
+<tr>
+<td>AC11</td>
+<td>S6, S7, S8</td>
+<td>Live prompt-submitting launcher validation against real Claude
+TUI</td>
+<td><code>RUN_REAL_CLAUDE_E2E=1 python3 skills/claude-code-review/tests/test_claude_interactive_review.py --real-e2e-review</code></td>
+</tr>
+</tbody>
+</table>
+<p>Review gate after implementation: run one bounded
+implementation-stage review loop against the diff using the newly
+canonical Claude review path and Codex review path. The loop must not
+use old <code>claude -p</code>; if the new path fails smoke, stop with
+auth/prerequisite guidance instead of using a fallback.</p>
+</section>
+<section id="delivery-order" class="level2">
+<h2>Delivery order</h2>
+<ol type="1">
+<li>P0 inventory and classification.</li>
+<li>P1 RED tests and guardrail.</li>
+<li>P2 launcher implementation until mock tests pass.</li>
+<li>P3 consumer routing and documentation updates until source
+guardrails pass.</li>
+<li>P4 install, same-process smoke, installed guardrails, and final
+review.</li>
+</ol>
+</section>
+<section id="non-goals" class="level2">
+<h2>Non-goals</h2>
+<ul>
+<li>Do not change Claude authentication storage, account configuration,
+subscription, model selection, or token policy.</li>
+<li>Do not make non-Claude model-provider reviews count as required
+Claude Code review gates.</li>
+<li>Do not build a general-purpose tmux orchestration framework.</li>
+<li>Do not migrate unrelated Claude mentions that are not review
+execution paths except to mark or classify them for guardrail
+clarity.</li>
+<li>Do not preserve backward compatibility for <code>claude -p</code>
+review paths; removing them is the point of the change.</li>
+<li>Do not modify repo files until this plan is approved.</li>
+</ul>
+</section>
+<section id="decisions--deviations-log" class="level2">
+<h2>Decisions / Deviations log</h2>
+<ul>
+<li>Decided not to reuse existing <code>codex</code> tmux because live
+auth evidence showed <code>loggedIn: false</code> there while a private
+tmux server from the current process was authenticated.</li>
+<li>Decided to keep OpenCode verdict parsing in
+<code>_opencode/scripts/linear_build_review.py</code> and delegate only
+Claude transport to the launcher.</li>
+<li>Decided <code>skills/install-matrix.json</code> keeps
+<code>class: 'consumer-specific-installable'</code>; consumer fan-out is
+controlled by <code>allowedConsumers</code>.</li>
+<li>Decided prompt-echo uncertainty is fail-closed as
+<code>CLAUDE_TUI_BOUNDARY_UNCERTAIN</code> after Codex review identified
+pre-Enter baseline ambiguity.</li>
+<li>Decided Claude TUI session/rate-limit messages are fail-closed as
+<code>CLAUDE_SESSION_LIMIT_IN_TUI</code> instead of waiting for the generic
+review timeout.</li>
+<li>Decided the HTML artifact must be a faithful full-plan rendering,
+not a reduced summary, and should use explicit dark styling for
+reviewed-plan readability, including dark-legible syntax-highlight
+overrides or inherited light code colors for every Pandoc
+<code>code span.*</code> token.</li>
+</ul>
+</section>
+</section>
+</body>
+</html>
