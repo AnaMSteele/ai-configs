@@ -574,7 +574,10 @@ function isAllowedQueueLifecycle(cwd: string, tokens: string[], state: Partial<P
 	if (!commentId || !changedFilesAreThoughts(cwd, tokens) || !allPlanReviewUrlsAllowed(tokens)) return false;
 	if (!validateRemainingTokens(tokens, 3, { valueFlags: new Set(["--url", "--claim", "--note", "--summary", "--changed-files", "--reason"]), booleanFlags: new Set(["--json"]) })) return false;
 	if (subcommand === "ack") return commentId === state.activeCommentId && getOptionValue(tokens, "--claim") === state.activeClaimId;
-	if (subcommand === "release") return commentId === state.activeCommentId && getOptionValue(tokens, "--claim") === state.activeClaimId;
+	if (subcommand === "release") {
+		const claim = getOptionValue(tokens, "--claim");
+		return commentId === state.activeCommentId && (claim === undefined || claim === state.activeClaimId);
+	}
 	if (subcommand === "resolve") return commentId === state.acknowledgedCommentId;
 	return false;
 }
@@ -658,8 +661,11 @@ function transitionClaimLifecycle(state: Partial<PlanModeState>, command: string
 	if (subcommand === "resolve" && commentId === state.acknowledgedCommentId) {
 		return { ...state, activeCommentId: undefined, activeClaimId: undefined, acknowledgedCommentId: undefined };
 	}
-	if (subcommand === "release" && commentId === state.activeCommentId && getOptionValue(tokens, "--claim") === state.activeClaimId) {
-		return { ...state, activeCommentId: undefined, activeClaimId: undefined, acknowledgedCommentId: undefined };
+	if (subcommand === "release" && commentId === state.activeCommentId) {
+		const claim = getOptionValue(tokens, "--claim");
+		if (claim === undefined || claim === state.activeClaimId) {
+			return { ...state, activeCommentId: undefined, activeClaimId: undefined, acknowledgedCommentId: undefined };
+		}
 	}
 	return state;
 }
