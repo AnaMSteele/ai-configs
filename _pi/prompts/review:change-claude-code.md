@@ -14,17 +14,13 @@ Documents to review: $ARGUMENTS
 If `$ARGUMENTS` is exactly `--claude-smoke`, run this from the current Pi prompt context and stop after reporting the result:
 
 ```bash
-python3 "$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py" \
-  --smoke \
-  --cwd "$PWD" \
-  --review-name pi-review-change-smoke \
-  --output /tmp/pi-claude-review-smoke.txt
+python3 "$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py" --smoke --cwd "$PWD" --review-name pi-review-change-smoke --output /tmp/pi-claude-review-smoke.txt
 ```
 
 Pass condition:
 
 ```bash
-test -f /tmp/pi-claude-review-smoke.txt && rg -n "CLAUDE_REVIEW_SMOKE_READY|socket|session" /tmp/pi-claude-review-smoke.txt
+rg -n -e CLAUDE_REVIEW_SMOKE_READY -e socket -e session /tmp/pi-claude-review-smoke.txt
 ```
 
 Smoke failure is a prerequisite/auth/readiness blocker from the real Pi caller context. Preserve the output and inspect command. Do not retry with a different Claude transport.

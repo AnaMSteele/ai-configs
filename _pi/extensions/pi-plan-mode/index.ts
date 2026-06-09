@@ -593,12 +593,19 @@ function isAllowedPlanReviewCommand(cwd: string, tokens: string[], state: Partia
 }
 
 function isAllowedClaudeReviewLauncherCommand(cwd: string, tokens: string[]): boolean {
-	if (tokens[0] !== "python3" || tokens.length !== 12) return false;
+	if (tokens[0] !== "python3") return false;
 	const launcherPaths = new Set([
 		"$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py",
 		resolve(homedir(), ".agents/skills/claude-code-review/scripts/claude_interactive_review.py"),
 	]);
 	if (!launcherPaths.has(tokens[1])) return false;
+	if (tokens[2] === "--smoke") {
+		if (tokens.length !== 9) return false;
+		if (tokens[3] !== "--cwd" || (tokens[4] !== "$PWD" && tokens[4] !== cwd)) return false;
+		if (tokens[5] !== "--review-name" || !/^[A-Za-z0-9._-]+$/.test(tokens[6])) return false;
+		return tokens[7] === "--output" && isClaudeReviewTempPath(tokens[8], ".txt");
+	}
+	if (tokens.length !== 12) return false;
 	const expectedFlags = ["--cwd", "--prompt-file", "--output", "--review-name", "--timeout-seconds"];
 	for (let index = 2; index < tokens.length; index += 2) {
 		if (tokens[index] !== expectedFlags[(index - 2) / 2]) return false;
