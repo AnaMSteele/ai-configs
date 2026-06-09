@@ -226,7 +226,7 @@ python3 "$HOME/.config/opencode/scripts/linear_build_orchestrator.py" block \
 
 ## Stage 4: Plan Gates
 
-Run bounded Codex and Claude Code review gates through the required review runner. Do not substitute OpenCode `research`, `quality-reviewer`, `reviewer-*`, or generic subagents for these two required reviews.
+Run bounded Codex and Claude Code review gates through the required review runner. Do not substitute OpenCode `research`, `quality-reviewer`, `reviewer-*`, or generic subagents for these two required reviews. The Claude reviewer path delegates transport to the canonical private-tmux interactive launcher; do not invoke Claude Code directly from this command.
 
 ```bash
 REVIEW_RUN_ID="${ISSUE_KEY}-$(date -u +%Y%m%dT%H%M%SZ)"

@@ -1,180 +1,120 @@
 ---
-description: Run a review-only change review using Claude Code via interactive-shell hands-free, backgrounded
-argument-hint: '<existing-plan-path | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
+description: Run a review-only change review using Claude Code through the canonical private-tmux interactive launcher
+argument-hint: '[--claude-smoke] <existing-plan-path | plan slug | legacy: <spec> <tasks> | legacy: <directory containing spec.md and tasks.md>'
 ---
 
 # Change Review via Claude Code
 
-Review the provided plan by launching real interactive Claude Code through `interactive_shell`.
-
-This command is review-only and should behave like `/review:change-opus`, except the review runs inside Claude Code via `interactive_shell`.
+Run a read-only Claude Code review through the shared canonical launcher. Do not launch Claude Code directly from this prompt. Do not use `interactive_shell` for Claude, direct `process`/`bash` snippets, `claude -p` [FORBIDDEN-EXAMPLE], `claude --print` [FORBIDDEN-EXAMPLE], prompt piping, or any fallback transport.
 
 Documents to review: $ARGUMENTS
 
-## Execution Mode
+## Smoke mode
 
-- Use `interactive_shell`, not `process`, to launch Claude Code.
-- Start exactly one real interactive Claude Code session and run a Claude Code review prompt against the target plan file.
-- Launch Claude Code through a login shell so PATH entries supplied by shell startup files are available (for example `zsh -lic` on macOS where `claude` may live in `~/.local/bin`).
-- If needed, prepend `export PATH="$HOME/.local/bin:$PATH"` before invoking `claude`.
-- Use `mode: "hands-free"`, not `dispatch`, so the launch creates a real Claude Code TUI session that can then be backgrounded.
-- Set `handsFree.autoExitOnQuiet: false` because interactive Claude does not exit on its own after answering.
-- Do not launch retry sessions just because stdout/stderr stays empty.
-- Do not inline the full Claude review prompt directly inside shell quotes. Instead, write the prompt body to `/tmp/pi-claude-review-prompt.txt`, write the exact Python wrapper below to `/tmp/pi-claude-review-wrapper.py`, and launch that wrapper through `interactive_shell`.
-- Immediately move the launched Claude session to the background.
-- Run a single Claude Code session that:
-  1. resolves the target plan file,
-  2. reviews the plan as a cohesive unit,
-  3. adds inline review comments using the `[REVIEW:CLAUDE] ... [/REVIEW]` format only for blockers, material risks, or missing decisions it finds,
-  4. does not rewrite or integrate the plan, and
-  5. stops after the review summary.
-- Do not delegate the review to a `reviewer-*` subagent.
-- Wait for the Claude Code interactive session to finish, then verify the resulting plan file in this session.
+If `$ARGUMENTS` is exactly `--claude-smoke`, run this from the current Pi prompt context and stop after reporting the result:
 
-Your reviewer name is CLAUDE
-
-Use this comment format:
+```bash
+python3 "$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py" \
+  --smoke \
+  --cwd "$PWD" \
+  --review-name pi-review-change-smoke \
+  --output /tmp/pi-claude-review-smoke.txt
 ```
+
+Pass condition:
+
+```bash
+test -f /tmp/pi-claude-review-smoke.txt && rg -n "CLAUDE_REVIEW_SMOKE_READY|socket|session" /tmp/pi-claude-review-smoke.txt
+```
+
+Smoke failure is a prerequisite/auth/readiness blocker from the real Pi caller context. Preserve the output and inspect command. Do not retry with a different Claude transport.
+
+## Review mode
+
+This command is review-only and should behave like `/review:change-opus`, except the Claude leg is required to use the canonical Claude Code launcher.
+
+Your reviewer name is `CLAUDE`.
+
+Use this inline-comment-compatible format for material plan findings in Claude's returned review text:
+
+```text
 [REVIEW:CLAUDE] Your critical feedback here [/REVIEW]
 ```
 
-To respond to other reviewers:
-```
+To respond to other reviewers in returned review text:
+
+```text
 [REVIEW:CLAUDE] RE: [OtherReviewer] - Your response [/REVIEW]
 ```
 
-# Change Review (Single Plan File)
+The launcher is review-output-only. Claude must not edit the plan file directly; if inline plan comments are needed, report copyable `[REVIEW:CLAUDE] ... [/REVIEW]` comments in `/tmp/pi-claude-review-output.md`.
 
-Review the provided plan as a cohesive unit. Your goal is to decide whether it is ready to execute within its stated goal and non-goals, flagging only blockers, material risks, or missing decisions that would change that readiness.
+## Scope
 
-Documents to review: $ARGUMENTS
+Review the provided plan as a cohesive unit. Decide whether it is ready to execute within its stated goal and non-goals. Flag only blockers, material risks, or missing decisions that would change execution readiness.
 
-## Scope (Review-Only; Do Not Integrate)
-
-This command is review-only.
-
-- Only modify the plan by inserting inline `[REVIEW:...] ... [/REVIEW]` comments.
-- HTML plans are first-class inputs; keep them as valid semantic HTML and insert review comments visibly without converting the plan to Markdown.
-- Do not change any other plan content (do not fix, rewrite, or reorganize anything).
+- This command is review-only.
+- Do not integrate or rewrite the plan.
+- For HTML plans, keep the HTML artifact authoritative and do not convert it to Markdown.
+- Only return copyable inline `[REVIEW:CLAUDE] ... [/REVIEW]` comments when blocker-level feedback is needed.
 - Do not remove or resolve review comments.
-- Do not run follow-up commands (including `/review:change-integrate`).
-- Only add a comment for blockers, material risks, or missing decisions required to execute the plan's stated goal while honoring its non-goals.
-- Do not comment on nice-to-haves, opportunistic cleanup, adjacent surfaces not required by the requested scope, or extra detail that would not change execution readiness.
-- After adding comments and providing the summary, stop.
+- Do not run follow-up integration commands.
+- Do not comment on nice-to-haves, opportunistic cleanup, adjacent surfaces, or extra detail that would not change execution readiness.
+- Do not delegate the Claude review to a subagent.
 
-## Process
+## Resolve inputs
 
-### 0) Resolve Inputs (Plan File, Slug, or Legacy Bundle)
-
-Preferred input:
-
-- A single plan file in the repo's active plan format
-
-Accept legacy inputs for migration only:
-
-- `<spec_path> <tasks_path>`
-- A directory containing `spec.md` and `tasks.md`
-
-Resolution rules:
-
-- If `$ARGUMENTS` starts with `@`, strip the leading `@` and treat as workspace-relative.
+- If `$ARGUMENTS` starts with `@`, strip the leading `@` and treat the rest as workspace-relative.
 - If a single argument is an existing plan file, treat it as `plan_path`.
-- If a single argument is a slug, resolve it using repo-local active plan guidance. Do not infer a markdown path; if guidance does not define slug resolution, ask for an explicit plan path.
-- Only migrate a legacy bundle when repo-local guidance explicitly allows migration to the repo's active plan format; otherwise ask for an explicit existing plan path.
+- If a single argument is a slug, resolve it using repo-local active plan guidance. Do not infer a Markdown path.
+- Accept legacy `<spec_path> <tasks_path>` or a directory containing `spec.md` and `tasks.md` only when repo-local guidance explicitly allows migration.
+- If multiple candidates match or a required file is missing, ask for an explicit plan file path.
 
-If multiple candidates match or a required file is missing, ask for an explicit plan file path.
+## Launch
 
-### 1) Launch Claude Code Directly
+1. Resolve the plan path.
+2. Write the Claude review prompt to `/tmp/pi-claude-review-prompt.txt`.
+3. Run the shared launcher from the exact central path below.
+4. Read `/tmp/pi-claude-review-output.md` after completion and validate whether Claude found blocker-level issues.
 
-Use `interactive_shell` to start one Claude Code session that performs the review.
-
-Prefer a login-shell launch shape such as:
-
-```javascript
-exec_command({
-  cmd: `cat > /tmp/pi-claude-review-prompt.txt <<'EOF'
-<prompt>
-EOF
-cat > /tmp/pi-claude-review-wrapper.py <<'PY'
-import os
-import subprocess
-import sys
-
-repo = sys.argv[1]
-prompt_path = sys.argv[2]
-with open(prompt_path, 'r', encoding='utf-8') as fh:
-    prompt = fh.read()
-
-cmd = [
-    'claude',
-    '--permission-mode', 'bypassPermissions',
-    '--effort', 'high',
-    prompt,
-]
-
-os.chdir(repo)
-os.execvp(cmd[0], cmd)
-PY`,
-})
-
-const claudeSession = interactive_shell({
-  command: `zsh -lic 'export PATH="$HOME/.local/bin:$PATH"; cd "$PWD" || exit 1; command -v claude >/dev/null 2>&1 || { echo "claude_not_found" >&2; exit 127; }; exec python3 /tmp/pi-claude-review-wrapper.py "$PWD" /tmp/pi-claude-review-prompt.txt'`,
-  mode: "hands-free",
-  handsFree: { autoExitOnQuiet: false, quietThreshold: 8000, updateInterval: 60000 },
-  reason: "Claude Code review",
-})
-
-interactive_shell({ sessionId: claudeSession.sessionId, background: true })
+```bash
+python3 "$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py" \
+  --cwd "$PWD" \
+  --prompt-file /tmp/pi-claude-review-prompt.txt \
+  --output /tmp/pi-claude-review-output.md \
+  --review-name pi-review-change-claude \
+  --timeout-seconds 900
 ```
 
-Lifecycle rules:
-
-- Launch one session only.
-- Do not start another Claude Code session while the first is still active.
-- Immediately move the launched session to the background with `interactive_shell({ sessionId: claudeSession.sessionId, background: true })` so the review keeps running without holding the foreground overlay.
-- Wait about 60 seconds before the first status query unless the user interrupts sooner.
-- Query the session with `interactive_shell({ sessionId, outputLines: 80, outputMaxChars: 12000 })`.
-- When the output shows Claude has returned to its `❯` prompt after finishing the review, send `/exit` with `interactive_shell({ sessionId, input: "/exit" })`, then press Enter with `interactive_shell({ sessionId, inputKeys: ["enter"] })`.
-- After sending `/exit` and Enter, wait briefly and query once more to confirm the session exited.
-- If the user wants to inspect the live TUI again, reattach with `interactive_shell({ attach: sessionId, mode: "dispatch" })` or equivalent before continuing.
-- Only if the session exits non-zero may you inspect the failure and decide whether a single explicit retry is warranted.
-- Do not invent alternate quoting strategies or new launcher shapes mid-run. The prompt-file + Python-wrapper transport above is the required transport.
-
-The launched Claude Code prompt should:
+The prompt written to `/tmp/pi-claude-review-prompt.txt` should instruct Claude Code to:
 
 - inspect the target plan,
-- look only for blockers, material risks, missing decisions, incorrect references, scope drift, or execution-readiness defects that would change readiness for the stated goal and non-goals,
-- explicitly check that each unchecked phase is a bounded execution slice with `### Tests first`, `### End State`, `### Work`, and `### Verify`,
-- flag unresolved `Open Questions` / `Decision Points` in any execution-ready plan,
-- flag phases that are too large and would likely require same-scope subdivision during execution,
-- write inline review comments only where they materially change whether the plan is ready as scoped,
-- skip nice-to-haves, opportunistic cleanup, adjacent surfaces not required by the source scope, and extra detail that would not change readiness,
-- preserve the plan structure and progress state,
-- not rewrite or resolve existing review comments,
-- and stop after the review summary.
+- look only for blockers, material risks, missing decisions, incorrect references, scope drift, or execution-readiness defects,
+- check that unchecked phases are bounded execution slices with `End State`, `Tests first`, `Work`, `Expected files`, and `Verify`,
+- flag unresolved `Open Questions` / `Decision Points` in execution-ready plans,
+- flag phases that are too large for same-scope execution,
+- return copyable inline review comments only where readiness changes materially,
+- preserve plan structure and progress state by not editing files,
+- not rewrite, integrate, or resolve comments,
+- stop after the review summary.
 
-Do not route the work through a review subagent. The whole point of this command is to use Claude Code itself as a review-only pass.
+## Validate result
 
-### 2) Validate the Result
+After the launcher exits:
 
-After the Claude Code session completes:
+- read `/tmp/pi-claude-review-output.md`,
+- if it begins with a classified launcher failure, report that blocker and the inspect/transcript path,
+- otherwise inspect the plan and confirm structure remains intact,
+- confirm any returned Claude comment suggestions use `[REVIEW:CLAUDE]`,
+- report only material findings.
 
-- read the resulting plan file,
-- confirm the plan structure is still intact,
-- confirm any Claude-written comments use the `[REVIEW:CLAUDE]` form,
-- and report whether Claude found issues or returned a clean review.
+## Summary format
 
-### 3) Summary
-
-After verification, provide a concise review summary focused on blockers and readiness.
-
-## Summary Format
-
-```
+```text
 ## Review Complete
 
 ### Claude Material Findings:
-- [List only the blocker-level or readiness-changing Claude review findings, or say none]
+- [List blocker-level or readiness-changing Claude findings, or say none]
 
 ### Plan Status:
 [Ready as scoped / Needs rework]

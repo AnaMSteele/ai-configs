@@ -4,7 +4,9 @@
 The linear build workflow requires two implementation reviewers: Codex and
 Claude Code. This helper makes that requirement mechanical by invoking the
 approved review paths and writing artifacts whose first line is the exact
-ledger verdict.
+ledger verdict. Claude Code transport is delegated to the canonical interactive
+private-tmux launcher; this script only owns prompt construction and verdict
+parsing.
 """
 
 from __future__ import annotations
@@ -13,10 +15,8 @@ import argparse
 import hashlib
 import os
 import re
-import shlex
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 
@@ -167,40 +167,77 @@ def run_codex(prompt: str, cwd: str, output_path: Path, kind: str) -> str:
     return raw_path.read_text(errors="replace")
 
 
-def ensure_codex_tmux() -> None:
-    if subprocess.run(["tmux", "has-session", "-t", "codex"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
-        return
-    subprocess.run(
-        ["zellij", "--session", "main", "run", "--name", "codex-tmux-bootstrap", "--close-on-exit", "--", "/bin/zsh", "-ilc", "tmux new-session -d -s codex"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        check=True,
+def resolve_claude_review_launcher() -> Path:
+    candidates: list[Path] = []
+    if os.environ.get("CLAUDE_REVIEW_LAUNCHER"):
+        candidates.append(Path(os.environ["CLAUDE_REVIEW_LAUNCHER"]).expanduser())
+    candidates.append(Path.home() / ".agents/skills/claude-code-review/scripts/claude_interactive_review.py")
+    try:
+        repo_candidate = Path(__file__).resolve().parents[2] / "skills/claude-code-review/scripts/claude_interactive_review.py"
+        if repo_candidate.is_file():
+            candidates.append(repo_candidate)
+    except IndexError:
+        pass
+    candidates.append(Path.home() / ".config/opencode/skills/claude-code-review/scripts/claude_interactive_review.py")
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise FileNotFoundError(
+        "Claude review launcher not found. Run ./install.sh --opencode, or set "
+        "CLAUDE_REVIEW_LAUNCHER to the repo or installed claude_interactive_review.py path. "
+        "Checked: " + ", ".join(str(path) for path in candidates)
     )
 
 
 def run_claude(prompt: str, cwd: str, output_path: Path, issue_key: str, kind: str) -> str:
-    ensure_codex_tmux()
     prompt_path = output_path.with_suffix(".prompt.md")
     raw_path = output_path.with_suffix(".raw.md")
-    prompt_path.write_text(prompt)
+    prompt_path.write_text(prompt, encoding="utf-8")
     raw_path.unlink(missing_ok=True)
-    window = f"claude-{kind.lower()}-{issue_key.lower()}"[:32]
-    inner = f"claude -p \"$(< {shlex.quote(str(prompt_path))})\" > {shlex.quote(str(raw_path))} 2>&1; echo EXIT=$? >> {shlex.quote(str(raw_path))}"
-    command = (
-        f"cd {shlex.quote(cwd)} && "
-        f"zsh -ilc {shlex.quote(inner)}"
-    )
-    run(["tmux", "new-window", "-t", "codex", "-n", window, command])
-    for _ in range(900):
-        if raw_path.exists() and raw_path.read_text(errors="replace").splitlines()[-1:].count("EXIT=0"):
-            break
-        if raw_path.exists() and raw_path.read_text(errors="replace").splitlines()[-1:] and raw_path.read_text(errors="replace").splitlines()[-1].startswith("EXIT="):
-            break
-        time.sleep(1)
-    else:
-        raise SystemExit(f"Claude review timed out; inspect tmux window codex:{window}")
-    output = raw_path.read_text(errors="replace")
-    return re.sub(r"\nEXIT=\d+\s*$", "", output).strip()
+    safe_issue = re.sub(r"[^A-Za-z0-9_-]+", "-", issue_key.upper()).strip("-") or "ISSUE"
+    sentinel = f"CLAUDE_REVIEW_DONE_{safe_issue}_{kind.upper()}_{int(time.time())}"
+    review_name = f"claude-{kind.lower()}-{issue_key.lower()}"
+    launcher = resolve_claude_review_launcher()
+    proc = subprocess.run([
+        sys.executable,
+        str(launcher),
+        "--cwd",
+        cwd,
+        "--prompt-file",
+        str(prompt_path),
+        "--output",
+        str(raw_path),
+        "--review-name",
+        review_name,
+        "--timeout-seconds",
+        "900",
+        "--sentinel",
+        sentinel,
+    ], text=True, capture_output=True)
+    if proc.returncode != 0:
+        details = raw_path.read_text(errors="replace") if raw_path.exists() else (proc.stderr or proc.stdout)
+        raise SystemExit(f"Claude review launcher failed with exit {proc.returncode}\n{details}")
+    return raw_path.read_text(errors="replace")
+
+
+def run_claude_smoke(cwd: str, output_path: Path) -> str:
+    launcher = resolve_claude_review_launcher()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.run([
+        sys.executable,
+        str(launcher),
+        "--smoke",
+        "--cwd",
+        cwd,
+        "--review-name",
+        "opencode-linear-build-smoke",
+        "--output",
+        str(output_path),
+    ], text=True, capture_output=True)
+    text = output_path.read_text(errors="replace") if output_path.exists() else (proc.stderr or proc.stdout)
+    if proc.returncode != 0 or "CLAUDE_REVIEW_SMOKE_READY" not in text:
+        raise SystemExit(f"Claude review smoke failed with exit {proc.returncode}\n{text}")
+    return text
 
 
 def main() -> int:
@@ -211,13 +248,22 @@ def main() -> int:
     parser.add_argument("--plan", required=True)
     parser.add_argument("--base-ref", default="origin/develop")
     parser.add_argument("--output", required=True)
+    parser.add_argument("--claude-smoke", action="store_true")
     args = parser.parse_args()
 
     cwd = os.getcwd()
-    allowed = PLAN_ALLOWED if args.kind == "plan" else CODE_ALLOWED if args.kind == "code" else PM_ALLOWED
-    prompt = build_prompt(args.kind, args.plan, args.issue_key.upper(), args.base_ref)
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    if args.claude_smoke:
+        if args.reviewer != "claude":
+            raise SystemExit("--claude-smoke requires --reviewer claude")
+        text = run_claude_smoke(cwd, output_path)
+        print(f"claude:smoke:CLAUDE_REVIEW_SMOKE_READY:{output_path}")
+        print(text.strip())
+        return 0
+
+    allowed = PLAN_ALLOWED if args.kind == "plan" else CODE_ALLOWED if args.kind == "code" else PM_ALLOWED
+    prompt = build_prompt(args.kind, args.plan, args.issue_key.upper(), args.base_ref)
     raw_output = run_codex(prompt, cwd, output_path, args.kind) if args.reviewer == "codex" else run_claude(prompt, cwd, output_path, args.issue_key, args.kind)
     verdict = extract_verdict(raw_output, allowed)
     write_artifact(output_path, verdict, raw_output, args.reviewer)

@@ -39,6 +39,7 @@ Use this after the standard multi-model review when you want an explicit challen
 - **Model:** `opencode-zen/claude-opus-4-6`
 - **Reasoning:** High
 - **Output:** Plan file with `[REVIEW:Adversarial Opus 4.6]` comments + summary
+- **Gate classification:** optional model-provider review, not a required Claude Code CLI review gate.
 
 ### Parallel Execution
 

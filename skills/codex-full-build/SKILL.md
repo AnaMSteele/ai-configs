@@ -140,7 +140,7 @@ Use `codex-review-partner` in `plan-review` mode. Provide a bounded prompt with:
 
 #### Claude Code Plan Review
 
-Use `claude-code-review` through the user-owned `codex` tmux session. Prompt Claude Code to review the plan read-only and return output on stdout. Do not ask Claude to edit files.
+Use `claude-code-review` through its canonical private-tmux interactive launcher. Prompt Claude Code to review the plan read-only and return structured output. Do not ask Claude to edit files, and do not use alternate Claude transports.
 
 #### Plan Review Verdicts
 
