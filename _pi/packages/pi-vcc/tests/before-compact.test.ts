@@ -140,7 +140,8 @@ describe("active compaction continuation", () => {
     await delay();
 
     expect(sentUserMessages).toHaveLength(1);
-    expect(sentUserMessages[0].content).toContain("Continue from where you left off.");
+    expect(sentUserMessages[0].content).toContain("Pi-vcc compacted the active in-flight conversation.");
+    expect(sentUserMessages[0].content).toContain("vcc_recall");
     expect(sentUserMessages[0].options).toEqual({ deliverAs: "followUp" });
   });
 

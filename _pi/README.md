@@ -152,7 +152,7 @@ This repo also ships `percentage-compaction.ts`, which gives you percentage-base
 
 - set a custom threshold (default 60%) for when compaction should trigger,
 - proactively auto-compacts with **pi-vcc** once usage crosses the threshold,
-- waits for the current assistant turn to finish before compacting so tool-driven execution is not interrupted,
+- interrupts long tool-driven agent runs at the next turn boundary, then lets pi-vcc resume the agent after compaction,
 - `/compact-status` to check current context usage,
 - `/compact-now [instructions]` to trigger compaction manually,
 - gates pi's built-in auto-compaction so it cannot fire below the configured threshold

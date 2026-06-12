@@ -10,7 +10,7 @@ const CONFIG_PATH = join(homedir(), ".pi", "agent", "pi-vcc-config.json");
 const MIN_MESSAGES_TO_COMPACT = 3;
 const AGENT_ONLY_FALLBACK_TAIL_MESSAGES = 4;
 const CONTINUE_AFTER_COMPACTION_PROMPT =
-  "Continue from where you left off. Pi-vcc compacted the active in-flight conversation; resume the next concrete step without summarizing the compaction.";
+  "Pi-vcc compacted the active in-flight conversation. Continue from where you left off; use vcc_recall if you need details from before compaction, and resume the next concrete step without summarizing the compaction.";
 const CONTINUE_AFTER_COMPACTION_DELAY_MS = 50;
 const CONTINUE_AFTER_COMPACTION_RETRY_MS = 100;
 const CONTINUE_AFTER_COMPACTION_MAX_WAIT_MS = 5000;

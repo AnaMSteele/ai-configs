@@ -1,15 +1,15 @@
 import type {
   ExtensionAPI,
   ExtensionContext,
-  MessageEndEvent,
   SessionBeforeCompactEvent,
+  TurnEndEvent,
 } from "@mariozechner/pi-coding-agent";
 
 // Configure your threshold here (0-100)
 export const COMPACTION_THRESHOLD_PERCENT = 60;
 export const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
 
-const isSafeAutoCompactionBoundary = (message: MessageEndEvent["message"]) => {
+const isCompletedAssistantResponse = (message: TurnEndEvent["message"]) => {
   if (message.role !== "assistant") return false;
   return !("stopReason" in message && message.stopReason === "toolUse");
 };
@@ -89,8 +89,11 @@ export default function (pi: ExtensionAPI) {
     },
   });
 
-  // Monitor context usage and proactively compact at a safe assistant boundary.
-  pi.on("message_end", async (event: MessageEndEvent, ctx: ExtensionContext) => {
+  // Monitor context usage at every LLM/tool turn boundary. If the threshold is
+  // crossed during a tool-driven agent run, compact immediately after the current
+  // tool turn instead of waiting for the whole user prompt to finish; pi-vcc will
+  // resume the agent after the in-flight compaction completes.
+  pi.on("turn_end", async (event: TurnEndEvent, ctx: ExtensionContext) => {
     const usage = ctx.getContextUsage();
     if (!usage || usage.percent === null) return;
 
@@ -104,23 +107,14 @@ export default function (pi: ExtensionAPI) {
 
     if (compactionInFlight) return;
 
-    if (!isSafeAutoCompactionBoundary(event.message)) {
-      if (!warnedAtThreshold) {
-        warnedAtThreshold = true;
-        ctx.ui.notify(
-          `⚠️ Context at ${currentPercent}% (threshold: ${threshold}%). ` +
-            `Waiting for the current assistant response to finish before compacting.`,
-          "warning",
-        );
-      }
-      return;
-    }
-
     warnedAtThreshold = true;
+    const completedResponse = isCompletedAssistantResponse(event.message);
     triggerCompaction(ctx, {
       customInstructions: PI_VCC_MANUAL_BYPASS_MARKER,
       bypassThreshold: true,
-      startMessage: `✓ Auto-compacting at ${currentPercent}% (threshold: ${threshold}%)`,
+      startMessage: completedResponse
+        ? `✓ Auto-compacting at ${currentPercent}% (threshold: ${threshold}%)`
+        : `↻ Context at ${currentPercent}% (threshold: ${threshold}%). Interrupting agent for pi-vcc compaction...`,
       completionMessage: "Compacted with pi-vcc",
     });
   });

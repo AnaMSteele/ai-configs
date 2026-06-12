@@ -10,7 +10,7 @@ Vendored into `ai-configs` from `sting8k/pi-vcc` so this repo can ship a pinned 
 - Local changes and selective uptake:
   - `/pi-vcc` carries the `__PI_VCC_MANUAL_BYPASS__` marker directly in-source so repo-managed auto-compaction and manual compaction both use pi-vcc without global patching
   - the compaction hook keeps the repo-local agent-only fallback tail and shifts the cut backward so a live `toolResult` never outlives its matching assistant tool call
-  - when pi-vcc compacts before the assistant has finished its response, it sends a follow-up continue prompt after compaction so the agent resumes instead of stalling; compactions at the completed-response boundary stay silent
+  - when pi-vcc compacts before the assistant has finished its response, it sends a follow-up continue prompt after compaction so the agent resumes instead of stalling, with a reminder to use `vcc_recall` for pre-compaction details; compactions at the completed-response boundary stay silent
   - high-value upstream `0.3.15` uptake is intentionally narrow: TUI-safe wrapping for final compiled summaries plus `bashExecution` normalization/search/report correctness fixes
   - this vendored copy preserves redaction, including compressed bash command redaction, even though upstream removed `src/core/redact.ts`
   - this vendored copy intentionally does **not** append the upstream `vcc_recall` reminder note to every summary; this repo keeps the pre-existing summary output contract while still stripping older injected note lines during merge
