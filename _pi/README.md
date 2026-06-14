@@ -17,6 +17,8 @@ These resources are installed by `install.sh` to Pi's global agent directory. Th
 - repo-managed extensions: copied from this repo into `~/.pi/agent/extensions/`
 - package-managed Pi installs: registered via `pi install` / `pi update` and visible in `pi list`
 
+Shared browser automation skills like `brave-cdp` and `chrome-cdp` are not Pi packages; they install through the shared `~/.agents/skills` surface from `skills/install-matrix.json`.
+
 `pi list` only shows the package-managed set; it does not list repo-managed files like `todo.ts`, `simple-multi-status.ts`, `pi-plan-mode`, or `pi-prd-mode`. See [Package-managed Pi extensions](#package-managed-pi-extensions) below for the exact git and npm package set.
 
 ```bash
@@ -185,7 +187,6 @@ Pi subagents load agent definitions from `~/.pi/agent/agents/`.
 In addition to the repo-managed files under `~/.pi/agent/extensions/`, `install.sh --pi` also registers Pi packages via `pi install` / `pi update`. These are the entries that appear in `pi list`.
 
 Git-managed packages:
-- `chrome-cdp-skill`
 - `pi-gpt-config`
 - `pi-multi-pass`
 

@@ -26,7 +26,8 @@ AI_CONFIGS_MANAGED_MARKER='.ai-configs-managed.json'
 AI_CONFIGS_BACKUP_RUN_ID="$(date +"%Y%m%d-%H%M%S")"
 AI_CONFIGS_REPO_NAME='ai-configs'
 AI_CONFIGS_REPO_COMMIT="$(git -C "$REPO_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
-CENTRAL_ONLY_PROJECT_SKILLS=(ccore todoist-cli)
+CENTRAL_ONLY_PROJECT_SKILLS=(ccore todoist-cli brave-cdp chrome-cdp)
+DEPRECATED_SHARED_SKILLS=(agent-browser)
 
 # Colors for output
 RED='\033[0;31m'
@@ -67,7 +68,7 @@ print_usage() {
     echo "  - When using --opencode or --all, commands, prompts, and agents are installed to ~/.config/opencode"
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
-    echo "  - When using --pi or --all, also installs pi extensions via git: chrome-cdp-skill, pi-gpt-config, pi-multi-pass"
+    echo "  - When using --pi or --all, shared browser CDP skills install into ~/.agents/skills, while Pi packages still include pi-gpt-config and pi-multi-pass"
     echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from _pi/packages/pi-vcc, pi-multi-pass via git:github.com/adnichols/pi-multi-pass, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise git:github.com/adnichols/pi-interactive-shell)"
     echo "  - Use --update to run 'npx skills update -g -y' for skills installed through skills.sh before the normal sync"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
@@ -1047,6 +1048,76 @@ install_external_skill_package() {
     rm -rf "$temp_home"
 }
 
+remove_skill_lock_entries() {
+    local lock_path="$HOME/.agents/.skill-lock.json"
+
+    if [ ! -f "$lock_path" ]; then
+        return 0
+    fi
+
+    python3 - "$lock_path" "$@" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+lock_path = Path(sys.argv[1])
+skill_names = sys.argv[2:]
+
+data = json.loads(lock_path.read_text())
+skills = data.get("skills")
+if not isinstance(skills, dict):
+    raise SystemExit(0)
+
+changed = False
+for name in skill_names:
+    if name in skills:
+        del skills[name]
+        changed = True
+
+if changed:
+    lock_path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+}
+
+cleanup_deprecated_shared_skills() {
+    local shared_skills_dir="$HOME/.agents/skills"
+    local skill_name
+    local path
+    local backup_path
+
+    for skill_name in "${DEPRECATED_SHARED_SKILLS[@]}"; do
+        path="$shared_skills_dir/$skill_name"
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            backup_path="$(backup_existing_path "$path" "deprecated/shared/$skill_name")"
+            rm -rf "$path"
+            echo "    - Removed deprecated shared skill: $skill_name (backup: $backup_path)"
+        fi
+
+        path="$HOME/.claude/skills/$skill_name"
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            backup_path="$(backup_existing_path "$path" "deprecated/claude/$skill_name")"
+            rm -rf "$path"
+            echo "    - Removed deprecated Claude skill link: $skill_name (backup: $backup_path)"
+        fi
+
+        path="$HOME/.config/opencode/skills/$skill_name"
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            backup_path="$(backup_existing_path "$path" "deprecated/opencode/$skill_name")"
+            rm -rf "$path"
+            echo "    - Removed deprecated OpenCode skill link: $skill_name (backup: $backup_path)"
+        fi
+
+        path="$HOME/.pi/agent/skills/$skill_name"
+        if [ -e "$path" ] || [ -L "$path" ]; then
+            backup_path="$(backup_existing_path "$path" "deprecated/pi/$skill_name")"
+            rm -rf "$path"
+            echo "    - Removed deprecated Pi-local skill: $skill_name (backup: $backup_path)"
+        fi
+    done
+
+    remove_skill_lock_entries "${DEPRECATED_SHARED_SKILLS[@]}"
+}
+
 consumer_entry_is_repo_managed() {
     local entry_path="$1"
     local shared_target="$2"
@@ -1212,6 +1283,8 @@ sync_shared_skills() {
     while IFS=$'\t' read -r package_source csv_skill_names; do
         install_external_skill_package "$package_source" "$csv_skill_names" "$shared_skills_dir"
     done < <(iterate_external_skill_packages)
+
+    cleanup_deprecated_shared_skills
 
     sync_consumer_skill_links "claude" "$HOME/.claude/skills" "$@"
     sync_consumer_skill_links "opencode" "$HOME/.config/opencode/skills" "$@"
@@ -1722,9 +1795,6 @@ install_pi() {
     # Remove deprecated Pi git packages before installing supported ones
     remove_deprecated_pi_git_packages
 
-    # Install chrome-cdp-skill extension via pi package manager
-    install_chrome_cdp_skill
-
     # Install pi-gpt-config extension via pi package manager
     install_pi_gpt_config_package
 
@@ -1751,6 +1821,7 @@ remove_deprecated_pi_git_packages() {
     local deprecated_git_packages=(
         "git:github.com/adnichols/pi-dcp"
         "git:github.com/adnichols/pi-rlm"
+        "git:github.com/pasky/chrome-cdp-skill"
     )
 
     for source in "${deprecated_git_packages[@]}"; do
@@ -1765,28 +1836,6 @@ remove_deprecated_pi_git_packages() {
             fi
         fi
     done
-}
-
-# Install chrome-cdp-skill extension via pi package manager
-install_chrome_cdp_skill() {
-    echo ""
-    echo -e "${GREEN}  Installing chrome-cdp-skill extension via pi package manager...${NC}"
-
-    # Check if chrome-cdp-skill is already installed
-    if pi list 2>/dev/null | grep -q "chrome-cdp-skill"; then
-        echo "  - chrome-cdp-skill already installed, updating..."
-        pi update chrome-cdp-skill 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
-    else
-        echo "  - Installing chrome-cdp-skill from git repository..."
-        if pi install git:github.com/pasky/chrome-cdp-skill 2>/dev/null; then
-            echo -e "    ${GREEN}✓ chrome-cdp-skill installed${NC}"
-        else
-            echo -e "    ${YELLOW}⚠ pi install command not available or failed${NC}"
-            echo "      To install manually, run:"
-            echo "        pi install git:github.com/pasky/chrome-cdp-skill"
-            return 1
-        fi
-    fi
 }
 
 # Install pi-gpt-config extension via pi package manager

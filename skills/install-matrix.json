@@ -63,6 +63,18 @@
       "notes": "Vendored from `openai/plugins` `plugins/build-macos-apps`, with Pi-safe wording for optional Codex integration.",
       "sourceType": "repo"
     },
+    "brave-cdp": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "codex",
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/brave-cdp",
+      "notes": "Brave-first shared CDP skill for attaching to Aaron's existing browser session, with Chromium-family fallback support and a dedicated automation-profile launcher script.",
+      "sourceType": "repo"
+    },
     "canvas-design": {
       "class": "universal-installable",
       "allowedConsumers": [
@@ -89,6 +101,18 @@
         "_opencode/skills/ccore"
       ],
       "notes": "Repo-owned local skill retained in ai-configs.",
+      "sourceType": "repo"
+    },
+    "chrome-cdp": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "codex",
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/chrome-cdp",
+      "notes": "Shared CDP skill for attaching to an existing Chrome session over the DevTools Protocol without launching a separate browser instance.",
       "sourceType": "repo"
     },
     "claude-code-review": {

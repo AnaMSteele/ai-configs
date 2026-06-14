@@ -8,7 +8,6 @@ PI_AGENT_DIR="${PI_AGENT_DIR:-${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}}"
 PI_EXT_DIR="$PI_AGENT_DIR/extensions"
 
 EXPECTED_GIT_PACKAGES=(
-  "git:github.com/pasky/chrome-cdp-skill"
   "git:github.com/edxeth/pi-gpt-config"
   "git:github.com/adnichols/pi-multi-pass"
 )
