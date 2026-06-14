@@ -132,6 +132,10 @@ export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
     activeAgentFinishedResponse = false;
   });
 
+  pi.on("turn_start", () => {
+    if (agentTurnActive) activeAgentFinishedResponse = false;
+  });
+
   pi.on("message_end", (event) => {
     const message = event.message as { role?: string; stopReason?: string };
     if (message.role === "assistant" && message.stopReason !== "toolUse") {

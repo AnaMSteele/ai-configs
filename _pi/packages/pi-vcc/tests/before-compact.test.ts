@@ -168,6 +168,35 @@ describe("active compaction continuation", () => {
     expect(sentUserMessages).toHaveLength(0);
   });
 
+  it("prompts when a later tool-use turn follows an earlier completed response", async () => {
+    const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
+
+    handlers.agent_start[0]({ type: "agent_start" });
+    handlers.message_end[0]({ type: "message_end", message: assistantText("First response complete.") });
+    handlers.turn_start[0]({ type: "turn_start" });
+    handlers.message_end[0]({
+      type: "message_end",
+      message: assistantWithToolCall("Read", { path: "followup.ts" }, "tc_followup"),
+    });
+
+    const result = handlers.session_before_compact[0]({
+      preparation: basePreparation,
+      branchEntries: compactableEntries(),
+    });
+
+    expect(result.compaction.details.interruptedInFlightTurn).toBe(true);
+
+    handlers.session_compact[0]({
+      type: "session_compact",
+      compactionEntry: { details: result.compaction.details },
+      fromExtension: true,
+    }, ctx);
+    await delay();
+
+    expect(sentUserMessages).toHaveLength(1);
+    expect(sentUserMessages[0].content).toContain("Pi-vcc compacted the active in-flight conversation.");
+  });
+
   it("does not prompt after ordinary idle compaction", async () => {
     const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
 
