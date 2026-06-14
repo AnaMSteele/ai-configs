@@ -127,7 +127,7 @@ Always do this immediately after registering a browser-review plan unless the us
    ```
 3. When that listener exits successfully with a claimed comment, process and ack that exact claim before starting another listener.
 
-`agent next --wait` atomically claims one pending `browser.comment.v1`, prints `commentId`, `claimId`, and ack guidance, then exits. Do not blindly loop successful claim commands or pre-claim multiple comments. Restart the listener only after the claimed comment has been processed and acknowledged.
+`agent next --wait` atomically claims one pending `browser.comment.v1`, prints `commentId`, `claimId`, thread/conversation context, and ack/resolve guidance, then exits. Do not blindly loop successful claim commands or pre-claim multiple comments. Restart the listener only after the claimed comment has been processed and acknowledged.
 
 ### Pi monitor pattern
 
@@ -165,9 +165,15 @@ Fallback polling/queue snapshot:
 plan-review queue list --url http://mbp.braid-python.ts.net:4317 --plan-id <planId> --json
 ```
 
+For adapter workers that intentionally claim across active documents, use the service-supported all-plan form instead of pre-enumerating plans:
+
+```bash
+plan-review agent next --all --adapter <adapter> --url http://mbp.braid-python.ts.net:4317 --wait --json
+```
+
 ## Process comment queue
 
-Comments are at-least-once. The safe agent loop is claim -> inspect/apply -> ack -> optionally resolve.
+Comments are at-least-once. The safe agent loop is claim -> inspect/apply -> optionally append a visible reply -> ack -> optionally resolve. `ack` and `resolve` are lifecycle metadata; use `reply` when the reviewer should see an agent response in the thread.
 
 Prefer the `commentId`, `claimId`, and ack guidance returned by `plan-review agent next`. Manual queue commands remain useful for recovery or inspection.
 
@@ -195,6 +201,16 @@ plan-review ack <commentId> \
   --json
 ```
 
+Append a visible agent reply when useful for reviewer-facing conversation history:
+
+```bash
+plan-review reply <commentId> \
+  --url http://mbp.braid-python.ts.net:4317 \
+  --claim <claimId> \
+  --body "Updated the document." \
+  --json
+```
+
 Resolve when the reviewer-visible issue is complete:
 
 ```bash
@@ -206,10 +222,10 @@ plan-review resolve <commentId> \
   --json
 ```
 
-If you cannot act on a claimed comment before the lease expires, release it:
+If you cannot act on a claimed comment before the lease expires, release it with the active claim ID:
 
 ```bash
-plan-review release <commentId> --url http://mbp.braid-python.ts.net:4317 --json
+plan-review release <commentId> --url http://mbp.braid-python.ts.net:4317 --claim <claimId> --reason "Cannot complete before lease expiry" --json
 ```
 
 Direct `ack` without a matching active claim can return `409 claim_required`; claim first unless you already have the claim ID from the event payload.
@@ -223,8 +239,9 @@ For each comment:
 3. Decide whether the comment is a blocker, clarification, or optional suggestion.
 4. Make the smallest plan change that addresses the comment without widening scope.
 5. If `Source sync: active` was reported, save the file and let the service sync/reload the browser view; otherwise re-register manually.
-6. Ack with a concise summary and changed files.
-7. Resolve only when the comment is fully addressed, not merely seen.
+6. Append a visible `plan-review reply` when the reviewer needs to see the response in the browser thread.
+7. Ack with a concise summary and changed files.
+8. Resolve only when the comment is fully addressed, not merely seen.
 
 If the plan was registered with `--snapshot`, or if source sync reports a failure, re-register manually after edits, preserving truthful execution-readiness metadata:
 
@@ -250,7 +267,8 @@ open http://mbp.braid-python.ts.net:4317/p/<planId>
 plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --no-wait --json
 plan-review agent next <planId> --url http://mbp.braid-python.ts.net:4317 --wait --json
 
-# 5. Process the returned claim, then ack/resolve
+# 5. Process the returned claim, optionally reply visibly, then ack/resolve
+plan-review reply <commentId> --url http://mbp.braid-python.ts.net:4317 --claim <claimId> --body "Updated the document." --json
 plan-review ack <commentId> --url http://mbp.braid-python.ts.net:4317 --claim <claimId> --note "Handled" --summary "Updated the plan" --changed-files thoughts/plans/<plan>.html --json
 plan-review resolve <commentId> --url http://mbp.braid-python.ts.net:4317 --note "Resolved" --summary "Reviewer feedback addressed" --changed-files thoughts/plans/<plan>.html --json
 ```
