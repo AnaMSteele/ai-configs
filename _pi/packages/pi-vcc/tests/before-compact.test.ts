@@ -170,6 +170,34 @@ describe("active compaction continuation", () => {
     expect(sentUserMessages[0].options).toEqual({ deliverAs: "followUp" });
   });
 
+  it("infers an in-flight turn when compaction follows a tool result", async () => {
+    const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
+
+    const result = handlers.session_before_compact[0]({
+      preparation: basePreparation,
+      branchEntries: [
+        messageEntry("1", userMsg("Initial work")),
+        messageEntry("2", assistantText("Finished that step.")),
+        messageEntry("3", assistantWithToolCall("Read", { path: "a.ts" }, "tc_a")),
+        messageEntry("4", toolResult("Read", "a source", false, "tc_a")),
+        messageEntry("5", assistantWithToolCall("Bash", { command: "npm test" }, "tc_b")),
+        messageEntry("6", toolResult("Bash", "tests passed", false, "tc_b")),
+      ],
+    });
+
+    expect(result.compaction.details.interruptedInFlightTurn).toBe(true);
+
+    handlers.session_compact[0]({
+      type: "session_compact",
+      compactionEntry: { details: result.compaction.details },
+      fromExtension: true,
+    }, ctx);
+    await delay();
+
+    expect(sentUserMessages).toHaveLength(1);
+    expect(sentUserMessages[0].content).toContain("Pi-vcc compacted the active in-flight conversation.");
+  });
+
   it("does not prompt after the assistant has finished the turn", async () => {
     const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers();
 

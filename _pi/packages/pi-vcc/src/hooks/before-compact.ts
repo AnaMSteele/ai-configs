@@ -78,7 +78,7 @@ const adjustCutIdxForToolResult = (liveMessages: EntryWithMessage[], cutIdx: num
   return cutIdx;
 };
 
-function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId: string } | null {
+const liveMessagesSinceLastCompaction = (branchEntries: any[]): EntryWithMessage[] => {
   let lastKeptId: string | undefined;
   for (let i = branchEntries.length - 1; i >= 0; i--) {
     if (branchEntries[i].type === "compaction") {
@@ -97,6 +97,28 @@ function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId:
       liveMessages.push({ entry: e, message: e.message });
     }
   }
+  return liveMessages;
+};
+
+const inferActiveTurnFromBranchEntries = (branchEntries: any[]): boolean => {
+  const liveMessages = liveMessagesSinceLastCompaction(branchEntries);
+  const latest = liveMessages[liveMessages.length - 1]?.message as any;
+  if (!latest) return false;
+
+  if (latest.role === "assistant") return latest.stopReason === "toolUse";
+  if (latest.role !== "toolResult" || !latest.toolCallId) return false;
+
+  for (let i = liveMessages.length - 2; i >= 0; i--) {
+    const message = liveMessages[i]?.message as any;
+    if (hasMatchingToolCall(message, latest.toolCallId)) return true;
+    if (message?.role === "user") return false;
+  }
+
+  return false;
+};
+
+function buildOwnCut(branchEntries: any[]): { messages: any[]; firstKeptEntryId: string } | null {
+  const liveMessages = liveMessagesSinceLastCompaction(branchEntries);
 
   if (liveMessages.length < MIN_MESSAGES_TO_COMPACT) return null;
 
@@ -166,7 +188,8 @@ export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
 
   pi.on("session_before_compact", (event) => {
     const { preparation, branchEntries } = event;
-    const compactingActiveTurn = agentTurnActive && !activeAgentFinishedResponse;
+    const compactingActiveTurn =
+      (agentTurnActive && !activeAgentFinishedResponse) || inferActiveTurnFromBranchEntries(branchEntries as any[]);
     if (compactingActiveTurn) agentTurnActive = false;
 
     const ownCut = buildOwnCut(branchEntries as any[]);
