@@ -157,10 +157,11 @@ This repo also ships `percentage-compaction.ts`, which gives you percentage-base
 - interrupts long tool-driven agent runs at the next turn boundary, then lets pi-vcc resume the agent after compaction,
 - `/compact-status` to check current context usage,
 - `/compact-now [instructions]` to trigger compaction manually,
-- gates pi's built-in auto-compaction so it cannot fire below the configured threshold
+- gates pi's built-in auto-compaction so it cannot fire below the configured threshold,
+- cancels compaction instead of falling back to Pi's default compactor when pi-vcc is not loaded.
 
 To adjust the threshold, edit `COMPACTION_THRESHOLD_PERCENT` in the extension file (default is 60).
-To use with pi-vcc, ensure the vendored local package is installed (`pi list` should show the local `_pi/packages/pi-vcc` package path).
+To use with pi-vcc, run `./install.sh --pi`; `pi list` should show the stable mirror under `~/.pi/agent/local-packages/ai-configs/pi-vcc`.
 
 **Note:** With the vendored pi-vcc installed, no additional compaction configuration is needed. The extension now proactively starts a pi-vcc compaction at the configured percentage threshold, and pi-vcc handles the actual algorithmic compaction when triggered. This repo now ships the `/pi-vcc` manual-bypass marker and the agent-only-tail fallback directly in the vendored package, so rerunning `./install.sh --pi` refreshes both behaviors without patching global npm files.
 
@@ -203,7 +204,7 @@ npm-managed packages:
 - `@tmustier/pi-raw-paste`
 
 local path packages:
-- `./_pi/packages/pi-vcc`
+- `~/.pi/agent/local-packages/ai-configs/pi-vcc` (a stable mirror synced from `./_pi/packages/pi-vcc`; install tests and worktrees must not register their transient checkout path)
 - `../3p/pi-interactive-shell` (preferred when present; otherwise `git:github.com/adnichols/pi-interactive-shell`)
 
 Use `pi list` on a host to verify what is currently registered. To verify both surfaces together, run `scripts/verify-pi-install.sh` from this repo.

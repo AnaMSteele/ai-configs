@@ -10,6 +10,16 @@ mock.module("@earendil-works/pi-coding-agent", () => ({
   convertToLlm: (messages: any[]) => messages,
 }));
 
+mock.module("typebox", () => ({
+  Type: {
+    Object: () => ({}),
+    Optional: (schema: unknown) => schema,
+    String: () => ({}),
+    Array: () => ({}),
+    Number: () => ({}),
+  },
+}));
+
 const getRegisteredHandlers = async () => {
   const { registerBeforeCompactHook } = await import("../src/hooks/before-compact");
   const handlers: Record<string, Array<(event: any, ctx?: any) => any>> = {};
@@ -117,6 +127,21 @@ describe("before-compact cut policy", () => {
     expect(result.compaction.firstKeptEntryId).toBe("3");
     expect(result.compaction.summary).toContain("First request");
     expect(result.compaction.summary).not.toContain("Follow-up request");
+  });
+});
+
+describe("package load marker", () => {
+  it("marks pi-vcc as loaded for repo-managed compaction guards", async () => {
+    const { default: registerPiVcc, PI_VCC_LOAD_MARKER } = await import("../index");
+    delete (globalThis as any)[PI_VCC_LOAD_MARKER];
+
+    registerPiVcc({
+      on: () => {},
+      registerCommand: () => {},
+      registerTool: () => {},
+    } as any);
+
+    expect((globalThis as any)[PI_VCC_LOAD_MARKER]).toBe(true);
   });
 });
 

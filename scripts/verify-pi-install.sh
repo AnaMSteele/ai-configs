@@ -6,6 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PI_AGENT_DIR="${PI_AGENT_DIR:-${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}}"
 PI_EXT_DIR="$PI_AGENT_DIR/extensions"
+PI_VCC_STABLE_PACKAGE="$PI_AGENT_DIR/local-packages/ai-configs/pi-vcc"
 
 EXPECTED_GIT_PACKAGES=(
   "git:github.com/edxeth/pi-gpt-config"
@@ -111,7 +112,7 @@ EOF
 }
 
 EXPECTED_REPO_EXTENSIONS="$(cd "$REPO_ROOT" && list_find_entries "_pi/extensions")"
-EXPECTED_LOCAL_PACKAGES="$(cd "$REPO_ROOT" && pwd)/_pi/packages/pi-vcc"
+EXPECTED_LOCAL_PACKAGES="$PI_VCC_STABLE_PACKAGE"
 LOCAL_PI_INTERACTIVE_SHELL="$(cd "$REPO_ROOT/../3p/pi-interactive-shell" 2>/dev/null && pwd || true)"
 if [ -n "$LOCAL_PI_INTERACTIVE_SHELL" ]; then
   EXPECTED_LOCAL_PACKAGES="$EXPECTED_LOCAL_PACKAGES
@@ -162,6 +163,40 @@ report_expected_vs_actual "  Comparison:" "$ALL_EXPECTED_PACKAGES" "$INSTALLED_P
 print_section "3) Quick checks"
 echo "  Repo-managed extensions: find ~/.pi/agent/extensions -mindepth 1 -maxdepth 1 -exec basename {} \\; | sort"
 echo "  Package-managed installs: pi list"
+
+PI_VCC_REGISTERED="$(printf '%s\n' "$INSTALLED_PI_PACKAGES" | grep 'pi-vcc' || true)"
+PI_VCC_COUNT="$(printf '%s\n' "$PI_VCC_REGISTERED" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
+if [ "$PI_VCC_COUNT" != "1" ]; then
+  note_failure "expected exactly one registered pi-vcc package, found $PI_VCC_COUNT"
+elif [ "$PI_VCC_REGISTERED" != "$PI_VCC_STABLE_PACKAGE" ]; then
+  note_failure "registered pi-vcc path is not the stable mirror: $PI_VCC_REGISTERED"
+fi
+
+if [ -d "$PI_VCC_STABLE_PACKAGE" ]; then
+  echo "  stable pi-vcc mirror: present"
+else
+  note_failure "stable pi-vcc mirror is missing: $PI_VCC_STABLE_PACKAGE"
+fi
+
+if [ -f "$PI_VCC_STABLE_PACKAGE/package.json" ]; then
+  PI_VCC_PACKAGE_NAME="$(python3 - "$PI_VCC_STABLE_PACKAGE/package.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+try:
+    print(json.loads(Path(sys.argv[1]).read_text()).get("name", ""))
+except Exception:
+    print("")
+PY
+)"
+  if [ "$PI_VCC_PACKAGE_NAME" = "@adnichols/pi-vcc" ]; then
+    echo "  stable pi-vcc package name: @adnichols/pi-vcc"
+  else
+    note_failure "stable pi-vcc package.json has unexpected name: ${PI_VCC_PACKAGE_NAME:-missing}"
+  fi
+else
+  note_failure "stable pi-vcc package.json is missing"
+fi
 
 if [ -f "$REPO_ROOT/_pi/packages/pi-vcc/src/commands/pi-vcc.ts" ]; then
   echo "  vendored pi-vcc command source: present"

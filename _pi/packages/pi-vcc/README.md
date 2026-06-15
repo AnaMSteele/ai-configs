@@ -65,11 +65,13 @@ Measured on real session JSONLs under `~/.pi/agent/sessions` (chars = rendered m
 
 ## Install
 
-From this repo:
+From this repo, use the top-level installer rather than registering this worktree path directly:
 
 ```bash
-pi install ./_pi/packages/pi-vcc
+./install.sh --pi
 ```
+
+The installer syncs this package into the durable mirror `~/.pi/agent/local-packages/ai-configs/pi-vcc` and registers that path with Pi. This avoids leaving global Pi pointed at deleted e2e/worktree checkouts.
 
 Upstream alternatives:
 

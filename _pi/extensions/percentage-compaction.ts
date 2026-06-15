@@ -8,6 +8,16 @@ import type {
 // Configure your threshold here (0-100)
 export const COMPACTION_THRESHOLD_PERCENT = 60;
 export const PI_VCC_MANUAL_BYPASS_MARKER = "__PI_VCC_MANUAL_BYPASS__";
+export const PI_VCC_LOAD_MARKER = "__ADN_PI_VCC_LOADED__";
+
+const isPiVccLoaded = () => Boolean((globalThis as any)[PI_VCC_LOAD_MARKER]);
+
+const notifyMissingPiVcc = (ctx: ExtensionContext) => {
+  ctx.ui.notify(
+    "Pi-vcc is not loaded; canceling compaction to avoid unsafe default compaction. Run ./install.sh --pi and restart Pi.",
+    "error",
+  );
+};
 
 const isCompletedAssistantResponse = (message: TurnEndEvent["message"]) => {
   if (message.role !== "assistant") return false;
@@ -35,6 +45,10 @@ export default function (pi: ExtensionAPI) {
     },
   ) => {
     if (compactionInFlight) return;
+    if (!isPiVccLoaded()) {
+      notifyMissingPiVcc(ctx);
+      return;
+    }
 
     if (options.bypassThreshold) {
       allowNextManualCompaction = true;
@@ -131,6 +145,10 @@ export default function (pi: ExtensionAPI) {
     const manualPiVccBypass = event.customInstructions?.startsWith(PI_VCC_MANUAL_BYPASS_MARKER) ?? false;
     if (allowNextManualCompaction || manualPiVccBypass) {
       allowNextManualCompaction = false;
+      if (!isPiVccLoaded()) {
+        notifyMissingPiVcc(ctx);
+        return { cancel: true };
+      }
       ctx.ui.notify(
         `✓ Compaction bypassed ${COMPACTION_THRESHOLD_PERCENT}% threshold at ${Math.floor(usage.percent)}%`,
         "info",
@@ -143,6 +161,11 @@ export default function (pi: ExtensionAPI) {
         `⏸️ Delayed auto-compaction: ${Math.floor(usage.percent)}% < ${COMPACTION_THRESHOLD_PERCENT}% threshold`,
         "info",
       );
+      return { cancel: true };
+    }
+
+    if (!isPiVccLoaded()) {
+      notifyMissingPiVcc(ctx);
       return { cancel: true };
     }
 

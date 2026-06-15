@@ -69,7 +69,7 @@ print_usage() {
     echo "  - When using --pi or --all, Pi prompt templates, subagents, and repo-managed extensions are copied to ~/.pi/agent"
     echo "  - Repo-managed Pi extensions live under ~/.pi/agent/extensions and do NOT appear in 'pi list'"
     echo "  - When using --pi or --all, shared browser CDP skills install into ~/.agents/skills, while Pi packages still include pi-gpt-config and pi-multi-pass"
-    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from _pi/packages/pi-vcc, pi-multi-pass via git:github.com/adnichols/pi-multi-pass, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise git:github.com/adnichols/pi-interactive-shell)"
+    echo "  - Package-managed Pi installs DO appear in 'pi list': @tintinweb/pi-subagents, @aliou/pi-processes, pi-web-access, @fnnm/pi-ast-grep, pi-updater, pi-powerline-footer, pi-side-agents, pi-no-soft-cursor, @tmustier/pi-files-widget, @tmustier/pi-raw-paste, vendored pi-vcc from the stable ~/.pi/agent/local-packages/ai-configs/pi-vcc mirror, pi-multi-pass via git:github.com/adnichols/pi-multi-pass, and pi-interactive-shell from ../3p/pi-interactive-shell when that fork exists (otherwise git:github.com/adnichols/pi-interactive-shell)"
     echo "  - Use --update to run 'npx skills update -g -y' for skills installed through skills.sh before the normal sync"
     echo "  - In non-interactive mode, existing configs are preserved automatically"
     echo ""
@@ -1979,6 +1979,10 @@ install_pi_interactive_shell_package() {
 install_vendored_pi_vcc_package() {
     local source_rel="./_pi/packages/pi-vcc"
     local source_abs="$REPO_ROOT/_pi/packages/pi-vcc"
+    local pi_agent_dir="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}"
+    local settings_path="$pi_agent_dir/settings.json"
+    local stable_parent="$pi_agent_dir/local-packages/ai-configs"
+    local stable_source="$stable_parent/pi-vcc"
     local normalized_source
 
     echo ""
@@ -1989,7 +1993,11 @@ install_vendored_pi_vcc_package() {
         return 1
     fi
 
-    normalized_source="$(cd "$source_abs" && pwd)"
+    mkdir -p "$stable_parent" "$(dirname "$settings_path")"
+    rm -rf "$stable_source"
+    cp -R "$source_abs" "$stable_source"
+    normalized_source="$(cd "$stable_source" && pwd)"
+    echo "  - Synced vendored pi-vcc to stable package mirror ($normalized_source)"
 
     local existing_source
     while IFS= read -r existing_source; do
@@ -2002,29 +2010,63 @@ install_vendored_pi_vcc_package() {
         if pi remove "$existing_source" 2>/dev/null; then
             echo -e "    ${GREEN}✓ removed $existing_source${NC}"
         else
-            echo -e "    ${YELLOW}⚠ Failed to remove legacy pi-vcc package $existing_source${NC}"
-            echo "      To remove manually, run:"
-            echo "        pi remove $existing_source"
+            echo -e "    ${YELLOW}⚠ pi remove could not remove $existing_source; settings cleanup will purge it${NC}"
         fi
-    done < <(pi list 2>/dev/null | awk '/^  [^ ]/ && /pi-vcc/ { sub(/^  /, ""); print }')
+    done < <(
+        {
+            pi list 2>/dev/null | awk '/^  [^ ]/ && /pi-vcc/ { sub(/^  /, ""); print }'
+            python3 - "$settings_path" <<'PY'
+import json
+import sys
+from pathlib import Path
 
-    if pi list 2>/dev/null | grep -Fq "$normalized_source"; then
-        echo "  - Vendored pi-vcc already registered with Pi, updating..."
-        pi update "$normalized_source" 2>/dev/null || echo -e "    ${YELLOW}⚠ Update check skipped (pi update may require manual run)${NC}"
+settings_path = Path(sys.argv[1])
+try:
+    data = json.loads(settings_path.read_text()) if settings_path.exists() else {}
+except json.JSONDecodeError:
+    data = {}
+for item in data.get("packages", []) if isinstance(data.get("packages"), list) else []:
+    source = item.get("source") if isinstance(item, dict) else item if isinstance(item, str) else None
+    if isinstance(source, str) and "pi-vcc" in source:
+        print(source)
+PY
+        } | sort -u
+    )
+
+    python3 - "$settings_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+settings_path = Path(sys.argv[1])
+try:
+    data = json.loads(settings_path.read_text()) if settings_path.exists() else {}
+except json.JSONDecodeError:
+    data = {}
+packages = data.get("packages")
+if not isinstance(packages, list):
+    packages = []
+data["packages"] = [
+    item for item in packages
+    if not (
+        isinstance(item, str) and "pi-vcc" in item
+        or isinstance(item, dict) and isinstance(item.get("source"), str) and "pi-vcc" in item["source"]
+    )
+]
+settings_path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+    echo "  - Purged stale pi-vcc package registrations from $settings_path"
+
+    echo "  - Installing vendored pi-vcc from stable mirror ($normalized_source)..."
+    if pi install "$normalized_source" 2>/dev/null; then
+        echo -e "    ${GREEN}✓ vendored pi-vcc installed${NC}"
     else
-        echo "  - Installing vendored pi-vcc from absolute local path ($normalized_source)..."
-        if pi install "$normalized_source" 2>/dev/null; then
-            echo -e "    ${GREEN}✓ vendored pi-vcc installed${NC}"
-        else
-            echo -e "    ${YELLOW}⚠ Failed to install vendored pi-vcc via pi package manager${NC}"
-            echo "      To install manually, run:"
-            echo "        pi install $normalized_source"
-            return 1
-        fi
+        echo -e "    ${YELLOW}⚠ Failed to install vendored pi-vcc via pi package manager${NC}"
+        echo "      To install manually, run:"
+        echo "        pi install $normalized_source"
+        return 1
     fi
 
-    local settings_path="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/settings.json"
-    mkdir -p "$(dirname "$settings_path")"
     python3 - "$settings_path" "$normalized_source" <<'PY'
 import json
 import sys
@@ -2036,29 +2078,16 @@ try:
     data = json.loads(settings_path.read_text()) if settings_path.exists() else {}
 except json.JSONDecodeError:
     data = {}
-
 packages = data.get("packages")
 if not isinstance(packages, list):
     packages = []
-
 next_packages = []
-found = False
 for item in packages:
     item_source = item.get("source") if isinstance(item, dict) else item if isinstance(item, str) else None
     if isinstance(item_source, str) and "pi-vcc" in item_source:
-        if isinstance(item, dict):
-            replacement = dict(item)
-            replacement["source"] = source
-            next_packages.append(replacement)
-        else:
-            next_packages.append(source)
-        found = True
-    else:
-        next_packages.append(item)
-
-if not found:
-    next_packages.append(source)
-
+        continue
+    next_packages.append(item)
+next_packages.append(source)
 seen = set()
 deduped = []
 for item in next_packages:
@@ -2067,11 +2096,10 @@ for item in next_packages:
         continue
     seen.add(key)
     deduped.append(item)
-
 data["packages"] = deduped
 settings_path.write_text(json.dumps(data, indent=2) + "\n")
 PY
-    echo "  - Pinned vendored pi-vcc to absolute path in $settings_path"
+    echo "  - Pinned vendored pi-vcc to stable mirror in $settings_path"
 
     report_pi_vcc_upstream_status
 }
