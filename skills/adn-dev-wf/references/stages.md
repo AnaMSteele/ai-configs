@@ -46,7 +46,7 @@ Do not integrate, rewrite, or clean the plan in this stage.
 
 Classify each review comment as material or optional.
 Integrate only material comments into the plan.
-Optional comments may be dropped or recorded as explicit non-goals or deferred context.
+Optional comments may be dropped or recorded as explicit non-goals or documented out-of-scope context. Do not classify plan-required work, BDD gaps, verification gaps, or acceptance-criteria gaps as optional/deferred.
 
 Before leaving this stage:
 - all inline `[REVIEW:...]` comments are removed
@@ -74,7 +74,7 @@ For each phase:
 3. delegate exactly one `quality-reviewer` pass
 4. rerun impacted verification
 5. mark the phase complete only if verification passed and the reviewer cleared it
-6. append decisions or low-risk deferrals to `## Decisions / Deviations Log`
+6. append decisions and only true out-of-scope low-risk follow-ups to `## Decisions / Deviations Log`, with evidence and a tracking destination
 
 If the phase is too large for one safe pass, same-scope re-chunk it in the plan and continue.
 Do not widen scope during re-chunking.

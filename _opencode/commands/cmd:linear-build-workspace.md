@@ -384,7 +384,7 @@ Run scoped implementation review against the plan. Findings must be classified a
 - `OUT_OF_SCOPE_FOLLOW_UP`
 - `QUESTION`
 
-Fix only in-plan, prerequisite, or regression findings.
+Fix in-plan, prerequisite, regression, BDD-gap, verification-gap, implicit-only-coverage, and misleading-evidence findings before advancing. Use `OUT_OF_SCOPE_FOLLOW_UP` only for real issues that are outside the plan, not required for truthful verification, and not introduced by this workspace; record each with evidence and a tracking destination.
 
 Required code review invocations:
 
@@ -433,7 +433,7 @@ python3 "$HOME/.config/opencode/scripts/linear_build_orchestrator.py" artifact-v
 
 Blocked review verdicts are intentionally included in `--expect` so they are persisted in the ledger before the helper exits non-zero.
 
-Do not manually mark `CODE_REVIEW` or `PM_REVIEW` with `stage` unless the corresponding review artifacts above already exist and pass `artifact-verdict`. `PASS_WITH_CAVEAT` is not an acceptable review-gate verdict; caveats must be either fixed, logged as out-of-scope follow-ups under an accepted verdict, or recorded as a blocker.
+Do not manually mark `CODE_REVIEW` or `PM_REVIEW` with `stage` unless the corresponding review artifacts above already exist and pass `artifact-verdict`. `PASS_WITH_CAVEAT` is not an acceptable review-gate verdict; caveats must be fixed when they are in scope, required for verification, or introduced by this diff. Only true out-of-scope caveats may be logged under an accepted verdict, and they must include evidence plus a tracking destination.
 
 ## Stage 9: Commit, Push, PR
 
@@ -472,7 +472,7 @@ The PR body must include:
 - code review verdict
 - PM review verdict
 - manual evidence status
-- deferred follow-ups
+- documented out-of-scope follow-ups with evidence and tracking destination
 - residual risks
 
 ## Stage 10: PR Feedback Monitor Loop

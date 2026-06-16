@@ -131,7 +131,8 @@ Plans and specifications should describe behavioral tests in plain terms around 
 - If research is still the next handoff, `/dev:plan` writes one non-ready `research-ready` artifact instead of pretending execution can safely start.
 - `/dev:pm-review <plan> plan` is the optional corrective PM pass before execution; `/dev:pm-review <plan> implementation` is the corrective PM pass after implementation.
 - `/review:plan` is the standard plan review pass, and `/review:change-integrate` should clean those inline comments before `/cmd:execute-plan`.
-- `/dev:run` applies one `quality-reviewer` pass after each phase. The canonical workflow skill `/skill:adn-dev-wf` can resume from a reviewed plan, rerun PM follow-up loops when needed, and keep the plan truthfully aligned with execution.
+- `/dev:run` applies one `quality-reviewer` pass after each phase. A phase only advances after `ralph:run` receives `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` with each remaining item proven out-of-scope, low-risk, not required for truthful verification, and logged in `thoughts/discoveries/<plan-or-feature>.md` (or the repo's documented equivalent) plus the plan's `## Decisions / Deviations Log`.
+- The canonical workflow skill `/skill:adn-dev-wf` can resume from a reviewed plan, rerun PM follow-up loops when needed, and keep the plan truthfully aligned with execution.
 
 ### Standardized Format
 All commands use consistent:

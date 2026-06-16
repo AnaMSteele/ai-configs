@@ -55,7 +55,7 @@ Define the smallest shippable increment.
 Shipping now (1-2 sentences):
 <text>
 
-Non-goals / deferred for later (3 bullets):
+Non-goals / documented out-of-scope follow-ups (3 bullets):
 - <text>
 - <text>
 - <text>

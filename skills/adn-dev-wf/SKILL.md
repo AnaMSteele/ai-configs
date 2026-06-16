@@ -82,7 +82,7 @@ After each phase:
 - delegate exactly one `quality-reviewer` pass
 - rerun any impacted verification
 - update the phase checkbox immediately if the phase cleared
-- log any low-risk deferrals or decisions in `## Decisions / Deviations Log`
+- log decisions and only true out-of-scope low-risk follow-ups in `## Decisions / Deviations Log`, with evidence and a tracking destination; fix plan-required work immediately
 
 Continue until all plan progress items are complete or a real blocking decision requires the user.
 

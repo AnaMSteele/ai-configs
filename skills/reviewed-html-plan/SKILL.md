@@ -158,7 +158,7 @@ Use these classifications:
 - `READINESS_BLOCKER`: fix before execution.
 - `PRODUCT_QUESTION`: ask the user before execution.
 - `OPTIONAL_CLARITY`: integrate only when it improves execution confidence without widening scope.
-- `OUT_OF_SCOPE_FOLLOW_UP`: do not add to this plan; record as deferred only if useful.
+- `OUT_OF_SCOPE_FOLLOW_UP`: do not add to this plan only when it is outside the plan, not required for truthful verification, and not an acceptance-criteria/BDD gap; record it with evidence and a tracking destination if useful.
 - `DISAGREE_REPO_EVIDENCE`: do not change the plan; record the evidence if the disagreement matters.
 
 After fixing readiness blockers, rerun both Claude Code and Codex plan reviews. Repeat until both agree by substance that the plan is execution-ready. When they do, re-register the same HTML plan with truthful ready metadata using the current `html-plan-reviewer` registration flow.

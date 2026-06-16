@@ -172,10 +172,10 @@ Use these classifications:
 - `READINESS_BLOCKER`: must be fixed before execution.
 - `PRODUCT_QUESTION`: must be answered by the user before execution.
 - `OPTIONAL_CLARITY`: helpful but not required for execution readiness.
-- `OUT_OF_SCOPE_FOLLOW_UP`: real but outside this plan.
+- `OUT_OF_SCOPE_FOLLOW_UP`: real but outside this plan, not required for truthful verification, and not introduced by this work.
 - `DISAGREE_REPO_EVIDENCE`: reviewer claim contradicted by repo/source evidence.
 
-Fix `READINESS_BLOCKER` findings in the plan. Ask the user for `PRODUCT_QUESTION`. Log or ignore `OUT_OF_SCOPE_FOLLOW_UP` without expanding scope.
+Fix `READINESS_BLOCKER` findings in the plan. Ask the user for `PRODUCT_QUESTION`. Record `OUT_OF_SCOPE_FOLLOW_UP` only with evidence and a tracking destination; do not use it for plan-required work, BDD gaps, verification gaps, or acceptance-criteria gaps.
 
 Repeat Codex and Claude plan review until both agree by substance that the plan is execution-ready.
 
@@ -196,7 +196,7 @@ The handoff must state:
 - source input or Linear issue,
 - Codex plan review verdict,
 - Claude plan review verdict,
-- any deferred out-of-scope plan review notes,
+- any documented out-of-scope plan review notes with evidence and tracking destination,
 - instruction to proceed through scoped implementation, bounded Codex and Claude implementation reviews, verification, commit, push, and ready-for-review PR.
 
 Do not reimplement the scoped runner's workflow here. `$scoped-plan-run` owns:
@@ -228,7 +228,7 @@ Return a concise handoff with:
 - Codex and Claude implementation review verdicts from `$scoped-plan-run`.
 - Verification commands and results.
 - Changed files at a high level.
-- Deferred out-of-scope follow-ups.
+- Documented out-of-scope follow-ups with evidence and tracking destination.
 - Residual risk.
 
 If no PR was created, say exactly which gate stopped the lifecycle and what is needed next.

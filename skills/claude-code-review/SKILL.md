@@ -14,10 +14,11 @@ python3 "$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_revi
   --cwd /path/to/repo \
   --prompt-file /tmp/claude-review-prompt.md \
   --output /tmp/claude-review-output.md \
-  --review-name claude-review
+  --review-name claude-review \
+  --timeout-seconds 3600
 ```
 
-The launcher owns all Claude Code process mechanics:
+The launcher owns all Claude Code process mechanics. For required reviews, pass `--timeout-seconds 3600` unless the user explicitly asks for a longer limit; do not rely on implicit defaults or short outer tool timeouts.
 
 - creates a fresh private tmux server from the real caller process,
 - checks `claude auth status` inside that private tmux server as an early signal,
@@ -64,6 +65,8 @@ Launcher failures are classified and agent-legible:
 - TUI readiness timeout,
 - prompt-boundary uncertainty,
 - review timeout.
+
+A review timeout is not a valid review verdict. If a required review times out before a verdict, rerun it with at least `--timeout-seconds 3600` and an outer process/tool timeout long enough to exceed that limit; do not report it as clean or failed without Claude's actual review output.
 
 On failure, read the output file and sibling transcript. If an inspect command is present, use it to inspect the preserved private tmux server. Ask for the exact user action named by the failure, such as `/login` or unlocking the keychain. Never switch to a direct Claude transport as a fallback.
 

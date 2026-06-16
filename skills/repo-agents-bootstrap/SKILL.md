@@ -35,7 +35,7 @@ Capture these behaviors as defaults:
 - Root `AGENTS.md` tells agents to use the shared planning skill and names any repo-specific planning inputs or overrides.
 - Plan-first execution with phase checkpoints under the repo's canonical execution workflow.
 - In Pi-style reviewed-plan repos, the handoff stays explicit: `/review:plan` -> `/review:change-integrate` -> optional `/review:plan-adversarial` -> `/cmd:execute-plan` -> execution. Alternate reviewers such as `/review:change-claude-code` remain explicit opt-ins, not hidden fallbacks.
-- Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each deferred low-risk item is logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`.
+- Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each remaining item is proven out-of-scope, low-risk, not required for truthful verification, and logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) plus the plan's `## Decisions / Deviations Log`.
 - Resumability: `Progress` with stable IDs, explicit `Resume Instructions`, and append-only decision/deviation logs.
 - Evidence-first validation: lint, unit, build, e2e (and contract tests if applicable) before claiming done.
 - Review loops are hard gates: reviewer narrative alone never clears a phase; only the verdict-based phase-advance rule above can do that.
@@ -162,7 +162,7 @@ Required outcomes:
 - The shared fail-closed ready bar: only `execution-ready` plans hand off to implementation, while unresolved `low-confidence` decisions stay in discovery or move into a single `research-ready` artifact.
 - The shared expectation that non-trivial ready plans include a `test coverage matrix`.
 - The shared execution feedback loop: substantive review misses reassess the `original test scope` and original plan, and repeated or cross-surface misses widen coverage before phase advance.
-- The repo's discovery-ledger destination for deferred low-risk items (for example `thoughts/discoveries/<plan-or-feature>.md`).
+- The repo's discovery-ledger destination for documented out-of-scope low-risk items (for example `thoughts/discoveries/<plan-or-feature>.md`).
 - Repo-specific skill-routing hints for likely work surfaces.
 - Any repo-specific rules that override stale rule files.
 
@@ -189,7 +189,7 @@ Before finalizing, verify:
 
 - Root `AGENTS.md` commands are real and current.
 - Root `AGENTS.md` tells agents to use the shared planning skill and names local planning inputs.
-- Root `AGENTS.md` names the discovery-ledger destination used for deferred low-risk findings.
+- Root `AGENTS.md` names the discovery-ledger destination used for documented out-of-scope low-risk findings.
 - Any repo-local planning overrides reference real quality gates from root `AGENTS.md`.
 - TDD + BDD requirements are explicit and testable.
 - No contradictory guidance between root `AGENTS.md`, optional planning overrides, and the shared planning workflow.

@@ -73,7 +73,7 @@ def main() -> None:
             ],
         )
         forbid_phrases(
-            f"{path} implement loop stale deferred logging",
+            f"{path} implement loop stale late logging",
             implement,
             [
                 "If you widen tests or phase work because implementation evidence shows the original test scope or original plan was too narrow, treat that as a reassessment and ensure it is recorded in `## Decisions / Deviations Log` before the phase advances.",

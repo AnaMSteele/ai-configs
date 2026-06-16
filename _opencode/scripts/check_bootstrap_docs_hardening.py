@@ -69,7 +69,7 @@ def main() -> None:
         operating_model,
         [
             "- `dev:plan` must fail closed on `low-confidence` foundational decisions: it only hands off an `execution-ready` plan when those decisions are resolved, and otherwise asks the user or writes exactly one non-ready `research-ready` plan artifact with the exact next research action.",
-            "- Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each deferred low-risk item is logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`.",
+            "- Phase advancement only when the latest review returns `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` after each remaining item is proven out-of-scope, low-risk, not required for truthful verification, and logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) plus the plan's `## Decisions / Deviations Log`.",
             "- Review loops are hard gates: reviewer narrative alone never clears a phase; only the verdict-based phase-advance rule above can do that.",
             "- Keep planning depth `complexity-aware`: simple tasks stay lightweight, while non-trivial ready plans need complete contracts plus a `test coverage matrix` strong enough to catch partial implementations.",
             "- `ralph:run` review loops must reassess the `original test scope` and original plan when substantive misses appear; repeated or cross-surface misses widen coverage or plan scope instead of staying local.",
@@ -94,7 +94,7 @@ def main() -> None:
             "- The shared fail-closed ready bar: only `execution-ready` plans hand off to implementation, while unresolved `low-confidence` decisions stay in discovery or move into a single `research-ready` artifact.",
             "- The shared expectation that non-trivial ready plans include a `test coverage matrix`.",
             "- The shared `ralph:run` feedback loop: substantive review misses reassess the `original test scope` and original plan, and repeated or cross-surface misses widen coverage before phase advance.",
-            "- The repo's discovery-ledger destination for deferred low-risk items (for example `thoughts/discoveries/<plan-or-feature>.md`).",
+            "- The repo's discovery-ledger destination for documented out-of-scope low-risk items (for example `thoughts/discoveries/<plan-or-feature>.md`).",
         ],
     )
 
@@ -146,8 +146,8 @@ def main() -> None:
             "- only `execution-ready` plans should continue into review/execution commands; `research-ready` artifacts should send the agent to the recorded next research action and then back through `dev:plan`",
             "Require non-trivial ready plans to include a `test coverage matrix` that maps acceptance criteria and scenarios to intended tests and verify commands.",
             "Codify the `ralph:run` feedback loop: substantive review misses must reassess the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage or plan scope before the phase can advance.",
-            "- re-review until the latest verdict is `VERDICT: PASS_NO_ISSUES` or `VERDICT: PASS_LOW_RISK_ONLY` with every deferred low-risk item logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`",
-            "Require the repo guidance to name the canonical discovery-ledger destination explicitly so deferred low-risk findings always have a durable home.",
+            "- re-review until the latest verdict is `VERDICT: PASS_NO_ISSUES` or `VERDICT: PASS_LOW_RISK_ONLY` with every remaining item proven out-of-scope, low-risk, not required for truthful verification, and logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) plus the plan's `## Decisions / Deviations Log`",
+            "Require the repo guidance to name the canonical discovery-ledger destination explicitly so documented out-of-scope low-risk findings always have a durable home.",
         ],
     )
 
@@ -208,7 +208,7 @@ def main() -> None:
             "- Only `execution-ready` plans should proceed into `/review:change` and `/ralph:run`; `research-ready` artifacts should send the agent through the recorded next research action and then back to `/dev:plan`.",
             "- Non-trivial ready plans should include a `test coverage matrix` that maps acceptance criteria and BDD scenarios to suites/files and `### Verify` commands.",
             "- `ralph:run` treats substantive review misses as evidence about the `original test scope` and original plan, and repeated or cross-surface misses must widen coverage before phase advance.",
-            "- A phase only advances after `ralph:run` receives `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` with each deferred low-risk item logged in `thoughts/discoveries/<plan-or-feature>.md` (or the repo's documented equivalent) and the plan's `## Decisions / Deviations Log`.",
+            "- A phase only advances after `ralph:run` receives `VERDICT: PASS_NO_ISSUES`, or `VERDICT: PASS_LOW_RISK_ONLY` with each remaining item proven out-of-scope, low-risk, not required for truthful verification, and logged in `thoughts/discoveries/<plan-or-feature>.md` (or the repo's documented equivalent) plus the plan's `## Decisions / Deviations Log`.",
         ],
     )
 

@@ -58,10 +58,10 @@ Codify the quality-gated loop:
 
 - implement one phase
 - review
-- re-review until the latest verdict is `VERDICT: PASS_NO_ISSUES` or `VERDICT: PASS_LOW_RISK_ONLY` with every deferred low-risk item logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) and the plan's `## Decisions / Deviations Log`
+- re-review until the latest verdict is `VERDICT: PASS_NO_ISSUES` or `VERDICT: PASS_LOW_RISK_ONLY` with every remaining item proven out-of-scope, low-risk, not required for truthful verification, and logged in the repo's discovery ledger (for example `thoughts/discoveries/<plan-or-feature>.md`) plus the plan's `## Decisions / Deviations Log`
 - only then move to the next phase
 
-Require the repo guidance to name the canonical discovery-ledger destination explicitly so deferred low-risk findings always have a durable home.
+Require the repo guidance to name the canonical discovery-ledger destination explicitly so documented out-of-scope low-risk findings always have a durable home.
 
 Require non-trivial ready plans to include a `test coverage matrix` that maps acceptance criteria and scenarios to intended tests and verify commands.
 

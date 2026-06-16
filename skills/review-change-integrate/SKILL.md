@@ -92,7 +92,7 @@ status: [resolved|partially-resolved]
 
 ### Important Issues
 - [x] [Issue 3] - Fixed in commit [sha]
-- [ ] [Issue 4] - Deferred: [reason]
+- [ ] [Issue 4] - Documented out of scope: [reason and tracking destination]
 
 ## Summary
 [What was fixed, what remains, any trade-offs made]
@@ -100,7 +100,7 @@ status: [resolved|partially-resolved]
 
 ### 6. Report Results
 
-- Issues fixed vs deferred
+- Issues fixed vs documented out-of-scope follow-ups
 - Commits created
 - Recommendation for next review
 

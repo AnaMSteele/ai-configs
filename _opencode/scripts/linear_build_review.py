@@ -81,6 +81,8 @@ Changed files:
 
 Review only whether this diff correctly implements the plan. Classify every finding as exactly one of IN_PLAN, PLAN_PREREQUISITE, REGRESSION_FROM_THIS_DIFF, OUT_OF_SCOPE_FOLLOW_UP, or QUESTION.
 
+Do not defer in-scope work. Treat plan-required work, BDD gaps, verification gaps, implicit-only coverage, misleading evidence, and regressions from this diff as blocking in-scope findings. Use OUT_OF_SCOPE_FOLLOW_UP only for real issues that are outside this plan, not required for truthful verification, and not introduced by this diff; include why and where they should be tracked.
+
 First line must be exactly one of:
 CODE_REVIEW_ACCEPTABLE
 PASS_SCOPED
@@ -89,7 +91,7 @@ CODE_REVIEW_BLOCKED
 FIX_IN_SCOPE_FINDINGS
 BLOCKED_BY_SCOPE_QUESTION
 
-If the verdict is non-passing, include a literal `Evidence:` section. Do not recommend unrelated cleanup, broad audits, or scope expansion. Technical uncertainty must be resolved from the repo, tests, docs, specs, or focused research before using QUESTION.
+If the verdict is non-passing, include a literal `Evidence:` section. Do not recommend unrelated cleanup, broad audits, or scope expansion. Technical uncertainty must be resolved from the repo, tests, docs, specs, or focused research before using QUESTION. Do not put IN_PLAN, PLAN_PREREQUISITE, REGRESSION_FROM_THIS_DIFF, QUESTION, BDD gaps, or verification gaps in an out-of-scope/deferred section.
 """
     return f"""Read-only PM/product implementation review. Do not edit files.
 

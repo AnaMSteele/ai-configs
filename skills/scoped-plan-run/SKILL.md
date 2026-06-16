@@ -27,6 +27,7 @@ Accept either a plan path or a slug. For a slug, resolve using repo-local active
 - Do not let Claude or Codex edit files during review. Reviews are read-only.
 - Do not ask reviewers to review the whole product for open-ended problems.
 - Do not proceed past a blocked plan decision by silently choosing a larger scope.
+- Do not silently defer work that is required by the plan, required for verification, or introduced by this branch; fix it before merge or stop with a blocker.
 - Do not create a PR until verification appropriate to the touched surfaces has run or a blocker is clearly reported.
 - Do not mark the active run state complete just because the implementation PR exists.
 - Do not mark the active run state complete until PR feedback has been monitored and addressed, the PR is mergeable with the destination branch, and Codex has provided a `:thumbsup:` on the original PR description.
@@ -60,10 +61,10 @@ Every requested change and every reviewer finding must be classified before impl
 - `IN_PLAN`: directly required by the plan's acceptance criteria, phase work, or verification.
 - `PLAN_PREREQUISITE`: not named in the plan, but the plan cannot work or verify without it.
 - `REGRESSION_FROM_THIS_DIFF`: caused by the current implementation and must be fixed before PR.
-- `OUT_OF_SCOPE_FOLLOW_UP`: real issue, but not required for this plan.
+- `OUT_OF_SCOPE_FOLLOW_UP`: real issue, but not required for this plan, not required to make verification truthful, and not introduced by this branch.
 - `QUESTION`: requires user/product decision before implementation.
 
-Only implement `IN_PLAN`, `PLAN_PREREQUISITE`, and `REGRESSION_FROM_THIS_DIFF`.
+Only implement `IN_PLAN`, `PLAN_PREREQUISITE`, and `REGRESSION_FROM_THIS_DIFF`. Treat BDD gaps, verification gaps, implicit-only coverage, misleading evidence, or any finding tied to a plan acceptance criterion as in-scope until proven otherwise.
 
 Use this acceptance test for any non-obvious finding:
 
@@ -71,7 +72,7 @@ Use this acceptance test for any non-obvious finding:
 2. Would the planned feature be incorrect or unverifiable if this remained unchanged?
 3. Was the issue introduced by this branch?
 
-If the answer to all three is no, defer it.
+If the answer to all three is no, it may be left out of this PR only after it is documented as an `OUT_OF_SCOPE_FOLLOW_UP` with evidence, owner/destination, and a durable record in the PR body plus the plan deviation log or repo discovery ledger. If any answer is yes, fix it now; do not label it deferred.
 
 ## Workflow
 
@@ -115,7 +116,7 @@ For each unfinished phase:
 2. Implement the smallest product change that satisfies the phase.
 3. Run the phase's targeted verification.
 4. Update the plan progress only when that phase is actually complete.
-5. Record any deferred discoveries in the plan's deviation log or the repo's discovery ledger.
+5. Record only documented out-of-scope discoveries in the plan's deviation log or the repo's discovery ledger. In-scope findings are not discoveries to defer; fix them before advancing.
 
 If a phase exposes a broader product problem, classify it. Fix it only if it is a plan prerequisite or a regression from this diff.
 
@@ -149,12 +150,12 @@ Required verdict format:
 
 ```text
 VERDICT: PASS_SCOPED
-VERDICT: PASS_WITH_DEFERRED_FOLLOW_UPS
+VERDICT: PASS_WITH_DOCUMENTED_OUT_OF_SCOPE_FOLLOW_UPS
 VERDICT: FIX_IN_SCOPE_FINDINGS
 VERDICT: BLOCKED_BY_SCOPE_QUESTION
 ```
 
-Reject malformed reviews and rerun once with a tighter prompt.
+Reject malformed reviews and rerun once with a tighter prompt. `PASS_WITH_DOCUMENTED_OUT_OF_SCOPE_FOLLOW_UPS` is valid only when every remaining finding is classified `OUT_OF_SCOPE_FOLLOW_UP` and includes evidence plus a tracking destination; otherwise treat the review as `FIX_IN_SCOPE_FINDINGS` or `BLOCKED_BY_SCOPE_QUESTION` by substance.
 
 ### 6. Claude Review
 
@@ -162,7 +163,7 @@ Use the `claude-code-review` skill for a read-only Claude review through its can
 
 Claude must receive the same bounded prompt as Codex. It must not edit files. It must return findings in chat, classified with the same scope categories. Do not use alternate Claude transports for this required gate.
 
-If Claude reports broad adjacent risks, keep them as deferred follow-ups unless they pass the scope classification test.
+If Claude reports broad adjacent risks, keep them out of the PR only when they satisfy the `OUT_OF_SCOPE_FOLLOW_UP` definition and are documented. If the risk maps to the plan, verification, or this diff, treat it as in-scope and fix it.
 
 ### 7. Triage Reviews Before Fixing
 
@@ -175,7 +176,7 @@ Finding | Source | Classification | Decision | Evidence
 For each Claude and Codex finding:
 
 - Fix `IN_PLAN`, `PLAN_PREREQUISITE`, and `REGRESSION_FROM_THIS_DIFF`.
-- Record `OUT_OF_SCOPE_FOLLOW_UP` without fixing it.
+- Record `OUT_OF_SCOPE_FOLLOW_UP` without fixing it only after documenting why it is outside this plan and where it will be tracked.
 - Stop and ask the user for `QUESTION`.
 
 Do not implement fixes directly from reviewer prose. Convert them through this triage step first.
@@ -187,7 +188,7 @@ After fixing in-scope findings:
 1. Rerun targeted tests for touched code.
 2. Rerun Codex review with the previous findings and current diff.
 3. Rerun Claude review with the same bounded scope.
-4. Repeat until both reviewers return `PASS_SCOPED` or `PASS_WITH_DEFERRED_FOLLOW_UPS`.
+4. Repeat until both reviewers return `PASS_SCOPED` or `PASS_WITH_DOCUMENTED_OUT_OF_SCOPE_FOLLOW_UPS`.
 
 Stop and report a convergence blocker if:
 
@@ -200,7 +201,7 @@ Stop and report a convergence blocker if:
 
 Run the plan's final verification commands. If the plan does not specify enough verification, run the smallest repo-appropriate gate for the changed surfaces and report the gap as a plan defect.
 
-Do not hide failures. Fix failures only when they are in scope or caused by this branch. Otherwise, report them as pre-existing or deferred with evidence.
+Do not hide failures. Fix failures when they are in scope, required for truthful verification, or caused by this branch. Otherwise, report them as pre-existing or documented out-of-scope follow-ups with evidence and tracking destination.
 
 ## Commit, Push, and PR
 
@@ -218,7 +219,7 @@ The PR body must include:
 - verification commands and results,
 - Claude review verdict,
 - Codex review verdict,
-- deferred out-of-scope follow-ups,
+- documented out-of-scope follow-ups with evidence and tracking destination,
 - known residual risks.
 
 Do not include memory citations in PR messages.
@@ -246,7 +247,7 @@ Repeat this loop until the completion criteria are met or a true blocker is reac
 1. Inspect PR reviews, review threads, comments, status checks, and mergeability.
 2. Classify every new feedback item using the same scope categories.
 3. Fix `IN_PLAN`, `PLAN_PREREQUISITE`, and `REGRESSION_FROM_THIS_DIFF` feedback.
-4. Record or report `OUT_OF_SCOPE_FOLLOW_UP` feedback without expanding the PR.
+4. Record or report `OUT_OF_SCOPE_FOLLOW_UP` feedback with evidence and tracking destination without expanding the PR.
 5. Stop for user input on `QUESTION` feedback.
 6. Rerun the smallest meaningful verification for any changes.
 7. Commit and push fixes to the PR branch.
@@ -401,15 +402,16 @@ Classify every finding as exactly one of:
 - QUESTION
 
 Do not recommend unrelated cleanup, hardening, new features, or broad product audits.
-If you notice adjacent problems, list them only as OUT_OF_SCOPE_FOLLOW_UP.
+If you notice adjacent problems, list them only as OUT_OF_SCOPE_FOLLOW_UP and explain why they are outside this plan.
+Do not put IN_PLAN, PLAN_PREREQUISITE, REGRESSION_FROM_THIS_DIFF, QUESTION, BDD gaps, verification gaps, implicit-only coverage, or plan-required work in a deferred/out-of-scope section.
 
 Return one verdict:
 - VERDICT: PASS_SCOPED
-- VERDICT: PASS_WITH_DEFERRED_FOLLOW_UPS
+- VERDICT: PASS_WITH_DOCUMENTED_OUT_OF_SCOPE_FOLLOW_UPS
 - VERDICT: FIX_IN_SCOPE_FINDINGS
 - VERDICT: BLOCKED_BY_SCOPE_QUESTION
 
-For each finding include: file/line, classification, evidence, and why it is or is not required by the plan.
+For each finding include: file/line, classification, evidence, and why it is or is not required by the plan. For each OUT_OF_SCOPE_FOLLOW_UP, include the durable tracking destination that should receive it.
 ```
 
 ## Final Response
@@ -424,7 +426,7 @@ Report:
 - PR feedback monitoring result,
 - PR mergeability result,
 - Codex `:thumbsup:` result,
-- deferred out-of-scope follow-ups,
+- documented out-of-scope follow-ups with evidence and tracking destination,
 - any residual risk.
 
 Keep the closeout concise and evidence-based.
