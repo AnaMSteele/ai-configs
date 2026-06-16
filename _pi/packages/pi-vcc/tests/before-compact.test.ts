@@ -20,11 +20,11 @@ mock.module("typebox", () => ({
   },
 }));
 
-const getRegisteredHandlers = async () => {
+const getRegisteredHandlers = async (isIdle = true) => {
   const { registerBeforeCompactHook } = await import("../src/hooks/before-compact");
   const handlers: Record<string, Array<(event: any, ctx?: any) => any>> = {};
   const sentUserMessages: Array<{ content: string; options: any }> = [];
-  const ctx = { isIdle: () => true };
+  const ctx = { isIdle: () => isIdle };
 
   registerBeforeCompactHook({
     on: (eventName: string, callback: (event: any, ctx?: any) => any) => {
@@ -167,7 +167,7 @@ describe("active compaction continuation", () => {
     expect(sentUserMessages).toHaveLength(1);
     expect(sentUserMessages[0].content).toContain("Pi-vcc compacted the active in-flight conversation.");
     expect(sentUserMessages[0].content).toContain("vcc_recall");
-    expect(sentUserMessages[0].options).toEqual({ deliverAs: "followUp" });
+    expect(sentUserMessages[0].options).toEqual({ deliverAs: "steer" });
   });
 
   it("infers an in-flight turn when compaction follows a tool result", async () => {
@@ -196,6 +196,28 @@ describe("active compaction continuation", () => {
 
     expect(sentUserMessages).toHaveLength(1);
     expect(sentUserMessages[0].content).toContain("Pi-vcc compacted the active in-flight conversation.");
+    expect(sentUserMessages[0].options).toEqual({ deliverAs: "steer" });
+  });
+
+  it("does not queue stale continuation prompts while the agent is already running", async () => {
+    const { handlers, sentUserMessages, ctx } = await getRegisteredHandlers(false);
+
+    handlers.agent_start[0]({ type: "agent_start" });
+    const result = handlers.session_before_compact[0]({
+      preparation: basePreparation,
+      branchEntries: compactableEntries(),
+    });
+
+    expect(result.compaction.details.interruptedInFlightTurn).toBe(true);
+
+    handlers.session_compact[0]({
+      type: "session_compact",
+      compactionEntry: { details: result.compaction.details },
+      fromExtension: true,
+    }, ctx);
+    await delay();
+
+    expect(sentUserMessages).toHaveLength(0);
   });
 
   it("does not prompt after the assistant has finished the turn", async () => {

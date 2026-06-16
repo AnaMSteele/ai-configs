@@ -12,8 +12,6 @@ const AGENT_ONLY_FALLBACK_TAIL_MESSAGES = 4;
 const CONTINUE_AFTER_COMPACTION_PROMPT =
   "Pi-vcc compacted the active in-flight conversation. Continue from where you left off; use vcc_recall if you need details from before compaction, and resume the next concrete step without summarizing the compaction.";
 const CONTINUE_AFTER_COMPACTION_DELAY_MS = 50;
-const CONTINUE_AFTER_COMPACTION_RETRY_MS = 100;
-const CONTINUE_AFTER_COMPACTION_MAX_WAIT_MS = 5000;
 
 export interface CompactionStats {
   summarized: number;
@@ -172,18 +170,15 @@ export const registerBeforeCompactHook = (pi: ExtensionAPI) => {
     if (!details.interruptedInFlightTurn) return;
     if (continueTimer) return;
 
-    const startedAt = Date.now();
-    const deliverContinue = () => {
-      if (!ctx.isIdle() && Date.now() - startedAt < CONTINUE_AFTER_COMPACTION_MAX_WAIT_MS) {
-        continueTimer = setTimeout(deliverContinue, CONTINUE_AFTER_COMPACTION_RETRY_MS);
+    continueTimer = setTimeout(() => {
+      continueTimer = undefined;
+
+      if (!ctx.isIdle()) {
         return;
       }
 
-      continueTimer = undefined;
-      pi.sendUserMessage(CONTINUE_AFTER_COMPACTION_PROMPT, { deliverAs: "followUp" });
-    };
-
-    continueTimer = setTimeout(deliverContinue, CONTINUE_AFTER_COMPACTION_DELAY_MS);
+      pi.sendUserMessage(CONTINUE_AFTER_COMPACTION_PROMPT, { deliverAs: "steer" });
+    }, CONTINUE_AFTER_COMPACTION_DELAY_MS);
   });
 
   pi.on("session_before_compact", (event) => {
