@@ -73,6 +73,7 @@ Only proceed when the plan is execution-ready:
 - `Resume Instructions (Agent)` exists
 - active phases include `### Tests first`, `### End State`, `### Work`, and `### Verify`
 - no unresolved open questions that materially change behavior
+- for HTML plans: the closing `PASS_NO_ISSUES` comes from an **independent reviewer**, not the plan author/self. Integrating review findings does not self-certify readiness; an independent `BLOCKED`/findings requires a fresh independent review after integration. See `reviewed-html-plan` (Independent sign-off gate); enforced by `scripts/plans/validate-html-plan.mjs`.
 
 ### 6. Execute directly
 

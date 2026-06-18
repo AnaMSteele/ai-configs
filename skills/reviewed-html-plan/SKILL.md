@@ -163,6 +163,17 @@ Use these classifications:
 
 After fixing readiness blockers, rerun both Claude Code and Codex plan reviews. Repeat until both agree by substance that the plan is execution-ready. When they do, re-register the same HTML plan with truthful ready metadata using the current `html-plan-reviewer` registration flow.
 
+#### Independent sign-off gate (do not self-certify)
+
+The closing `PASS_NO_ISSUES` that marks a plan `execution-ready` must come from an **independent reviewer** — any reviewer other than the plan author/self. The plan author may *integrate* review findings but may **never self-certify** execution readiness:
+
+- A `plan-author` / `plan-owner` / `pi` / `self` review verdict does not clear the gate, even if it is the latest review.
+- If any independent review returns `BLOCKED` or raises in-scope findings, run a **fresh independent review after integrating** the fixes. The integration edit itself does not clear the gate; only a new independent `PASS_NO_ISSUES` does.
+- The independent `PASS_NO_ISSUES` must not be followed by any later non-pass review, and should post-date the last material plan edit. If you edit the plan after the independent pass, re-review.
+- Record reviews truthfully in the `review-record` section with the real reviewer identity. Do not relabel a self-review as `codex`/`claude-code` to satisfy the gate — actually run the independent tool.
+
+This is enforced mechanically by `scripts/plans/validate-html-plan.mjs`: an `execution-ready` plan fails validation unless its `review-record` contains an independent (non-author/self) `PASS_NO_ISSUES` that is not regressed by a later non-pass review. The validator checks the artifact shape; this doctrine is what makes the independent re-review actually happen.
+
 Stop and report a convergence blocker if:
 
 - the same readiness finding recurs after two revision attempts,
