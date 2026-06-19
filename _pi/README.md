@@ -5,6 +5,7 @@ This directory contains Pi-specific resources:
 - `prompts/` — prompt templates exposed as slash commands
 - `agents/` — @tintinweb/pi-subagents-compatible agent definitions
 - `extensions/` — Pi runtime extensions, including the maintained `/plan` and `/prd` mode workflows
+- `models.json` — managed custom model entries merged into Pi's global `models.json`
 
 Repo-owned shared installable Pi skills live in the repo-level `skills/` tree, and `skills/install-matrix.json` also inventories package-backed shared skills fetched via `npx skills`. The installed shared runtime location remains `~/.agents/skills`.
 
@@ -12,9 +13,10 @@ The prompt templates are copied from `_omp/commands`, and the agent definitions 
 
 ## Installation
 
-These resources are installed by `install.sh` to Pi's global agent directory. There are two distinct Pi installation surfaces:
+These resources are installed by `install.sh` to Pi's global agent directory. There are three distinct Pi installation surfaces:
 
 - repo-managed extensions: copied from this repo into `~/.pi/agent/extensions/`
+- repo-managed model entries: merged from `_pi/models.json` into `~/.pi/agent/models.json` without replacing local API keys
 - package-managed Pi installs: registered via `pi install` / `pi update` and visible in `pi list`
 
 Shared browser automation skills like `brave-cdp` and `chrome-cdp` are not Pi packages; they install through the shared `~/.agents/skills` surface from `skills/install-matrix.json`.
@@ -45,6 +47,7 @@ Installed layout:
 ~/.pi/agent/
 ├── APPEND_SYSTEM.md
 ├── README.md
+├── models.json
 ├── prompts/
 │   ├── cmd:debug.md
 │   ├── dev:plan.md
@@ -69,11 +72,14 @@ Installed layout:
 
 The installer copies the repo-root `APPEND_SYSTEM.md` into `~/.pi/agent/APPEND_SYSTEM.md`. For OMP, that same shared source file is installed as `~/.omp/agent/SYSTEM.md`, matching OMP's `SYSTEM.md` additive-system semantics.
 
+The installer also merges `_pi/models.json` into `~/.pi/agent/models.json`, upserting managed model IDs while preserving local provider fields such as API keys. The managed Ollama Cloud entry currently adds `glm-5.2:cloud`; fresh installs can provide the key through `OLLAMA_API_KEY` or replace the placeholder locally.
+
 ## Structure
 
 ```text
 _pi/
 ├── README.md
+├── models.json         # Managed custom model entries merged into ~/.pi/agent/models.json
 ├── prompts/            # Pi prompt templates / slash commands
 │   └── *.md
 ├── agents/             # Pi subagent definitions for @tintinweb/pi-subagents

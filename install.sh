@@ -1719,6 +1719,109 @@ install_pi_agents_from_repo() {
     fi
 }
 
+install_pi_models_from_repo() {
+    local pi_source_dir="$1"
+    local pi_agent_dir="$2"
+    local source_path="$pi_source_dir/models.json"
+    local target_path="$pi_agent_dir/models.json"
+
+    if [ ! -f "$source_path" ]; then
+        return
+    fi
+
+    echo "  - Merging Pi model configuration..."
+
+    local status
+    status=$(PI_MODELS_SOURCE="$source_path" PI_MODELS_TARGET="$target_path" python3 <<'PY'
+import copy
+import json
+import os
+from pathlib import Path
+
+source_path = Path(os.environ["PI_MODELS_SOURCE"])
+target_path = Path(os.environ["PI_MODELS_TARGET"])
+source_data = json.loads(source_path.read_text())
+target_exists = target_path.exists()
+target_data = json.loads(target_path.read_text()) if target_exists else {}
+
+if not isinstance(source_data, dict):
+    raise SystemExit("source models.json must be a JSON object")
+if not isinstance(target_data, dict):
+    raise SystemExit("target models.json must be a JSON object")
+
+source_providers = source_data.get("providers")
+if not isinstance(source_providers, dict):
+    raise SystemExit("source models.json must contain a providers object")
+
+if "providers" in target_data and not isinstance(target_data["providers"], dict):
+    raise SystemExit("target models.json providers field is not an object")
+
+updated_data = copy.deepcopy(target_data)
+target_providers = updated_data.setdefault("providers", {})
+
+for provider_id, source_provider in source_providers.items():
+    if not isinstance(source_provider, dict):
+        raise SystemExit(f"provider {provider_id!r} is not an object")
+
+    target_provider = target_providers.get(provider_id)
+    if not isinstance(target_provider, dict):
+        target_providers[provider_id] = copy.deepcopy(source_provider)
+        continue
+
+    for key, source_value in source_provider.items():
+        if key == "models":
+            if not isinstance(source_value, list):
+                raise SystemExit(f"provider {provider_id!r} models field is not a list")
+            target_models = target_provider.get("models")
+            if not isinstance(target_models, list):
+                target_models = []
+                target_provider["models"] = target_models
+
+            models_by_id = {
+                model.get("id"): model
+                for model in target_models
+                if isinstance(model, dict) and isinstance(model.get("id"), str)
+            }
+            for source_model in source_value:
+                if not isinstance(source_model, dict) or not isinstance(source_model.get("id"), str):
+                    raise SystemExit(f"provider {provider_id!r} contains a model without an id")
+                existing_model = models_by_id.get(source_model["id"])
+                if existing_model is None:
+                    copied_model = copy.deepcopy(source_model)
+                    target_models.append(copied_model)
+                    models_by_id[copied_model["id"]] = copied_model
+                else:
+                    for model_key, model_value in source_model.items():
+                        if model_key not in existing_model:
+                            existing_model[model_key] = copy.deepcopy(model_value)
+        elif key == "compat" and isinstance(source_value, dict) and isinstance(target_provider.get("compat"), dict):
+            merged_compat = copy.deepcopy(source_value)
+            merged_compat.update(target_provider["compat"])
+            target_provider["compat"] = merged_compat
+        elif key not in target_provider:
+            target_provider[key] = copy.deepcopy(source_value)
+
+if updated_data != target_data:
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(json.dumps(updated_data, indent=2) + "\n")
+    print("created" if not target_exists else "updated")
+else:
+    print("unchanged")
+PY
+)
+    local merge_status=$?
+
+    if [ $merge_status -ne 0 ]; then
+        echo "  - Unable to merge Pi model configuration (check $target_path manually)"
+        return
+    fi
+
+    case "$status" in
+        created) echo "  - Created Pi model configuration" ;;
+        updated) echo "  - Updated Pi model configuration" ;;
+    esac
+}
+
 install_pi() {
     local is_update=false
     local pi_root_dir="$HOME/.pi"
@@ -1775,6 +1878,8 @@ install_pi() {
         cp -r "$pi_source_dir/extensions/." "$pi_extensions_dir/"
     fi
 
+    install_pi_models_from_repo "$pi_source_dir" "$pi_agent_dir"
+
     # Install documentation.
     if [ -f "$pi_source_dir/README.md" ]; then
         echo "  - Installing Pi documentation..."
@@ -1789,8 +1894,8 @@ install_pi() {
         echo -e "${GREEN}✓ Pi installation complete${NC}"
     fi
     echo ""
-    echo "Note: Pi prompt templates, subagents, and extensions are installed to $HOME/.pi/agent"
-    echo "      Prompt templates load from ~/.pi/agent/prompts, shared installable skills load from ~/.agents/skills, subagents load from ~/.pi/agent/agents, and extensions load from ~/.pi/agent/extensions"
+    echo "Note: Pi prompt templates, subagents, extensions, and managed model entries are installed to $HOME/.pi/agent"
+    echo "      Prompt templates load from ~/.pi/agent/prompts, shared installable skills load from ~/.agents/skills, subagents load from ~/.pi/agent/agents, extensions load from ~/.pi/agent/extensions, and custom models load from ~/.pi/agent/models.json"
 
     # Remove deprecated Pi git packages before installing supported ones
     remove_deprecated_pi_git_packages
