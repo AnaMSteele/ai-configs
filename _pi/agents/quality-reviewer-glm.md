@@ -3,6 +3,7 @@ name: quality-reviewer-glm
 description: Reviews code for real issues using Ollama GLM-5.2 Cloud
 mode: subagent
 model: ollama/glm-5.2:cloud
+thinking: xhigh
 color: '#e74c3c'
 tools: read, grep, find, ls, bash
 ---
