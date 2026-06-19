@@ -30,6 +30,43 @@ Review for:
 If you find issues, rank them by severity and cite files/lines when possible.
 ```
 
+## adversarial-implementation-review
+
+Use this after actionable PR feedback proves a prior local review missed issues.
+
+```md
+Adversarially review this implementation after a review escape.
+
+Repo: /absolute/path/to/repo
+Goal: <what the change is supposed to accomplish>
+Scope contract:
+- <plan acceptance criteria, in-scope surfaces, and non-goals>
+
+Current PR diff:
+- Base/range: <base...HEAD>
+- Files:
+  - path/to/file1
+  - path/to/file2
+
+Escaped PR feedback:
+- Reviewer/comment URL: <url>
+- Direct issue: <summary>
+- Direct fix: <summary or commit>
+- Suspected failure family: <edge case / contract / callsite / validation / state / security / data-loss / test-gap pattern>
+
+Checks already run:
+- <command/result>
+
+Review adversarially for:
+- sibling callsites or analogous code paths with the same problem
+- repeated assumptions or partial fixes
+- missing tests that allowed the escaped issue through
+- boundary, lifecycle, concurrency, auth, migration, or data-loss variants relevant to this plan
+- evidence that the fix addresses the root cause rather than one symptom
+
+Stay read-only and scope-bound. Do not propose unrelated cleanup or product expansion. Rank findings by severity and cite files/lines when possible.
+```
+
 ## plan-review
 
 ```md

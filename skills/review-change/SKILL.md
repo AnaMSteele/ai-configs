@@ -1,6 +1,6 @@
 ---
 name: review-change
-description: Review code changes with quality-reviewer agents. Checks for issues, security, data loss, and performance with measurable impact focus.
+description: Review code changes with quality-reviewer agents. Checks for issues, security, data loss, and performance with measurable impact focus; escalates to adversarial review when PR feedback shows earlier reviews missed issues.
 ---
 
 # Review Change
@@ -25,7 +25,17 @@ git diff --name-only origin/main...HEAD
 # Or use origin/develop if that's the base
 ```
 
-### 2. Spawn Quality Reviewers
+### 2. Choose Review Posture
+
+Default to normal quality review. Switch to adversarial review when PR feedback, especially Codex PR feedback, found actionable issues after a previous local review had already passed. That feedback is a signal the prior review was not thorough enough.
+
+In adversarial posture:
+- review the full current PR diff, not just the commented file
+- start from the escaped feedback and search for sibling failures, repeated assumptions, partial fixes, missing tests, and analogous callsites
+- keep the search scope-bound to the current change and its acceptance criteria
+- do not turn the pass into unrelated whole-product cleanup
+
+### 3. Spawn Quality Reviewers
 
 Use `subagent` with `quality-reviewer` agent:
 
@@ -56,14 +66,20 @@ Review changed files for:
 Return: Specific issues with file:line references
 ```
 
-### 3. Synthesize Results
+When running adversarial posture, include this extra instruction in each reviewer prompt:
+
+```text
+This is an adversarial follow-up because PR feedback found issues after earlier review passed. Do not merely validate the direct fix. Look for additional missed issues in the same failure family across the current diff and plan-bound surfaces.
+```
+
+### 4. Synthesize Results
 
 Compile findings into categories:
 - **Critical**: Must fix (security, data loss, crashes)
 - **Important**: Should fix (performance, correctness)
 - **Minor**: Nice to have (style, minor optimizations)
 
-### 4. Generate Review Report
+### 5. Generate Review Report
 
 Create `thoughts/validation/YYYY-MM-DD-review-[branch].md`:
 
@@ -106,7 +122,9 @@ status: complete
 - [ ] Consider important issues
 ```
 
-### 5. Present to User
+Include whether the review used normal or adversarial posture, and if adversarial, the escaped feedback that triggered it.
+
+### 6. Present to User
 
 Summarize findings:
 - Number of issues by severity

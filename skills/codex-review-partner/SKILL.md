@@ -1,7 +1,7 @@
 ---
 name: codex-review-partner
-description: Use Codex as a second-pass reviewer, plan reviewer, or pairing partner during technical work. Trigger when implementing, refactoring, debugging, writing tests, reviewing a plan/spec, or when you want an independent Codex CLI pass before finalizing technical work.
-argument-hint: "[implementation-review|plan-review|pair] <input-file> [repo-path]"
+description: Use Codex as a second-pass reviewer, adversarial PR-feedback follow-up reviewer, plan reviewer, or pairing partner during technical work. Trigger when implementing, refactoring, debugging, writing tests, reviewing a plan/spec, when PR feedback shows prior review missed issues, or when you want an independent Codex CLI pass before finalizing technical work.
+argument-hint: "[implementation-review|adversarial-implementation-review|plan-review|pair] <input-file> [repo-path]"
 ---
 
 # Codex Review Partner
@@ -12,8 +12,9 @@ Use Codex as an explicit second pass before you finalize technical work.
 
 For coding work, plan work, refactors, debugging, and test changes, run a Codex review pass before your final answer.
 
-Use one of three modes:
+Use one of four modes:
 - `implementation-review` for code changes, bug fixes, refactors, and tests
+- `adversarial-implementation-review` when PR feedback proves a prior review missed issues and the next pass must search harder for related failures
 - `plan-review` for plans, specs, and implementation approaches
 - `pair` for open-ended debugging, exploration, and design discussion
 
@@ -73,6 +74,8 @@ Keep the input file concrete and bounded:
 - which files or diffs matter
 - what kind of review you want
 - any repo-specific constraints or acceptance criteria
+
+For `adversarial-implementation-review`, include the PR feedback that escaped earlier review, the direct fix, and your hypothesis about the failure family. Ask Codex to search the full current PR diff for sibling issues, partial fixes, missing tests, and nearby plan-bound failures. This is not a license for broad unrelated audits; it is a more skeptical pass over the PR's assumptions after a missed defect signal.
 
 For templates, see `references/prompt-templates.md`.
 

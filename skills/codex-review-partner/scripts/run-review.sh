@@ -4,10 +4,11 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  run-review.sh --mode <implementation-review|plan-review|pair> --input <file> [--cwd <dir>] [--output <file>]
+  run-review.sh --mode <implementation-review|adversarial-implementation-review|plan-review|pair> --input <file> [--cwd <dir>] [--output <file>]
 
 Examples:
   run-review.sh --mode implementation-review --input /tmp/review.md --cwd /path/to/repo
+  run-review.sh --mode adversarial-implementation-review --input /tmp/review-escape.md --cwd /path/to/repo --output /tmp/adversarial-review.md
   run-review.sh --mode plan-review --input /tmp/plan.md --cwd /path/to/repo --output /tmp/review-output.md
 
 Notes:
@@ -71,6 +72,9 @@ case "$MODE" in
   implementation-review)
     REVIEW_CONTRACT=$'You are performing an implementation review. Review-partner invocation is already active. Do not spawn nested Codex review sessions. Stay read-only. Focus on correctness, edge cases, missed callsites, test gaps, and maintainability. Return concise structured findings with severity labels.'
     ;;
+  adversarial-implementation-review)
+    REVIEW_CONTRACT=$'You are performing an adversarial implementation review because PR feedback found actionable issues after earlier local review passed. Review-partner invocation is already active. Do not spawn nested Codex review sessions. Stay read-only. Do not merely verify the direct fix: inspect the full current PR diff for sibling failures, partial fixes, repeated assumptions, missed callsites, missing tests, and nearby plan-bound edge cases in the same failure family. Stay within the supplied scope contract and return concise structured findings with severity labels.'
+    ;;
   plan-review)
     REVIEW_CONTRACT=$'You are performing a plan review. Review-partner invocation is already active. Do not spawn nested Codex review sessions. Stay read-only. Focus on missing steps, unsafe assumptions, sequencing risks, verification gaps, migration hazards, and rollback concerns. Return concise structured findings with severity labels.'
     ;;
@@ -105,7 +109,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-printf '%s' "$PROMPT_CONTENT" |
+printf '%s\n\n%s' "$REVIEW_CONTRACT" "$PROMPT_CONTENT" |
   env CODEX_REVIEW_PARTNER_ACTIVE=1 codex exec \
     -m gpt-5.5 \
     -c 'model_reasoning_effort="high"' \

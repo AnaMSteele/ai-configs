@@ -31,6 +31,7 @@ Accept either a plan path or a slug. For a slug, resolve using repo-local active
 - Do not create a PR until verification appropriate to the touched surfaces has run or a blocker is clearly reported.
 - Do not mark the active run state complete just because the implementation PR exists.
 - Do not mark the active run state complete until PR feedback has been monitored and addressed, the PR is mergeable with the destination branch, and Codex has provided a `:thumbsup:` on the original PR description.
+- Treat actionable Codex PR feedback after local reviews as a review escape: the earlier review cycle missed something, so the next local review cycle must become scope-bound adversarial review instead of only patching the commented issue.
 - Do not mark the active run state blocked or stop monitoring merely because PR feedback or the qualifying Codex `:thumbsup:` is slow to arrive. Treat slow review response as a wait state that requires continued polling, not as a blocker.
 - Do not create, add, request, simulate, or otherwise manufacture the required Codex `:thumbsup:` from inside this skill, this workflow, this execution, or any account controlled by the executing agent. That approval signal exists only to prove an external PR reviewer accepted the current PR state.
 - Do not treat a self-authored reaction, local review verdict, chat transcript, manual note, or workflow-generated approval substitute as satisfying the Codex `:thumbsup:` criterion. If the executing agent accidentally or incorrectly adds such a reaction, remove it immediately, disclose the incident, and continue monitoring as incomplete.
@@ -246,15 +247,30 @@ Repeat this loop until the completion criteria are met or a true blocker is reac
 
 1. Inspect PR reviews, review threads, comments, status checks, and mergeability.
 2. Classify every new feedback item using the same scope categories.
-3. Fix `IN_PLAN`, `PLAN_PREREQUISITE`, and `REGRESSION_FROM_THIS_DIFF` feedback.
-4. Record or report `OUT_OF_SCOPE_FOLLOW_UP` feedback with evidence and tracking destination without expanding the PR.
-5. Stop for user input on `QUESTION` feedback.
-6. Rerun the smallest meaningful verification for any changes.
-7. Commit and push fixes to the PR branch.
-8. Rebase onto the destination branch when GitHub reports the branch out of date, conflicted, or not mergeable.
-9. Recheck until GitHub shows the PR as mergeable and the external-reviewer Codex `:thumbsup:` is present on the original PR description for the current PR state.
-10. If feedback is addressed but the external reviewer has not added the qualifying `:thumbsup:`, keep the run state active and continue monitoring. Do not add the reaction yourself, ask this workflow to add it, or mark the run state complete.
-11. If a poll finds no new feedback and no qualifying `:thumbsup:`, report the latest PR state briefly, keep the run state active, wait, and poll again. Do not end the scoped-plan run or mark the run state blocked for review latency alone.
+3. If any actionable feedback comes from Codex after the local Codex/Claude review gates already passed, mark the cycle as a `REVIEW_ESCAPE` in working notes. Fixing only the mentioned line is insufficient.
+4. Fix `IN_PLAN`, `PLAN_PREREQUISITE`, and `REGRESSION_FROM_THIS_DIFF` feedback.
+5. Record or report `OUT_OF_SCOPE_FOLLOW_UP` feedback with evidence and tracking destination without expanding the PR.
+6. Stop for user input on `QUESTION` feedback.
+7. For each `REVIEW_ESCAPE`, run the adversarial escalation loop below before considering the feedback addressed.
+8. Rerun the smallest meaningful verification for any changes.
+9. Commit and push fixes to the PR branch.
+10. Rebase onto the destination branch when GitHub reports the branch out of date, conflicted, or not mergeable.
+11. Recheck until GitHub shows the PR as mergeable and the external-reviewer Codex `:thumbsup:` is present on the original PR description for the current PR state.
+12. If feedback is addressed but the external reviewer has not added the qualifying `:thumbsup:`, keep the run state active and continue monitoring. Do not add the reaction yourself, ask this workflow to add it, or mark the run state complete.
+13. If a poll finds no new feedback and no qualifying `:thumbsup:`, report the latest PR state briefly, keep the run state active, wait, and poll again. Do not end the scoped-plan run or mark the run state blocked for review latency alone.
+
+### Adversarial Escalation Loop
+
+A `REVIEW_ESCAPE` means the previous review prompt was not thorough enough for this PR state. After applying the direct fix, broaden the next local review cycle within the plan's scope:
+
+1. Write down the missed-defect pattern: reviewer, feedback URL, affected file/line, why earlier review missed it, and the failure family it represents.
+2. Audit the PR diff for sibling instances: same assumption, same edge case, same API contract, same missing validation, same lifecycle/state transition, analogous callsites, and tests that should have failed but did not.
+3. Run a read-only Codex `adversarial-implementation-review` against the full current PR diff, the plan scope contract, the direct PR feedback, and the sibling-audit notes. Ask Codex to actively look for additional missed issues in the same failure family and nearby plan-bound surfaces, not to re-approve the one fix.
+4. If the escaped issue involves user-visible behavior, data loss, auth/security, migrations, concurrency, or broad callsite risk, also rerun Claude with the same adversarial prompt.
+5. Triage new adversarial findings using the normal scope classifications. Fix in-scope findings, document true out-of-scope follow-ups, and stop for questions.
+6. Repeat the adversarial review once after fixes if it finds any in-scope issue. Return to the normal monitoring loop only after the adversarial pass reports no additional in-scope findings or only documented out-of-scope follow-ups.
+
+Keep this escalation scope-bound: it should search harder around the PR's implementation, assumptions, and failure modes, not turn into an unrelated whole-product audit.
 
 ### Polling Persistence
 
@@ -412,6 +428,30 @@ Return one verdict:
 - VERDICT: BLOCKED_BY_SCOPE_QUESTION
 
 For each finding include: file/line, classification, evidence, and why it is or is not required by the plan. For each OUT_OF_SCOPE_FOLLOW_UP, include the durable tracking destination that should receive it.
+```
+
+## Adversarial Reviewer Prompt Add-on
+
+Append this when a `REVIEW_ESCAPE` occurred:
+
+```text
+Adversarial escalation context:
+Codex found actionable PR feedback after our local review gates had passed. Treat that as evidence the prior review was not thorough enough.
+
+Escaped feedback:
+- Reviewer/comment URL: <url>
+- Direct issue: <summary>
+- Direct fix: <summary or commit>
+- Suspected failure family: <edge case / contract / callsite / validation / state / security / data-loss / test-gap pattern>
+
+Do not merely verify the direct fix. Search the current PR diff for additional missed issues in the same failure family and nearby plan-bound surfaces:
+- sibling callsites or analogous code paths
+- repeated assumptions or partial fixes
+- tests that should have caught the escaped issue but still would not
+- boundary, lifecycle, concurrency, auth, migration, or data-loss variants relevant to this plan
+- evidence that the fix closes the root cause rather than one symptom
+
+Stay within the scope contract. Classify every finding with the normal scope labels and return the same verdict format.
 ```
 
 ## Final Response
