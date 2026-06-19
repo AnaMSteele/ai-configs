@@ -226,6 +226,7 @@ Example installed agents:
 - `developer-mid`
 - `developer-mm`
 - `quality-reviewer`
+- `quality-reviewer-glm`
 - `research`
 - `plan-gpt5.5`
 - `reviewer-plan-adversarial-gpt5.5`

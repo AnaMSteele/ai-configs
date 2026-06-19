@@ -1732,6 +1732,7 @@ install_pi_models_from_repo() {
     echo "  - Merging Pi model configuration..."
 
     local status
+    set +e
     status=$(PI_MODELS_SOURCE="$source_path" PI_MODELS_TARGET="$target_path" python3 <<'PY'
 import copy
 import json
@@ -1810,6 +1811,7 @@ else:
 PY
 )
     local merge_status=$?
+    set -e
 
     if [ $merge_status -ne 0 ]; then
         echo "  - Unable to merge Pi model configuration (check $target_path manually)"

@@ -8,6 +8,7 @@ Located under `_pi/agents/` and invoked via Pi subagent system:
 - `developer-mid` (gpt-5.5-mini; `_pi/agents/developer-mid.md`) — Default implementation agent for standard complexity work. Cost-effective for most tasks.
 - `developer-high` (gpt-5.5; `_pi/agents/developer-high.md`) — High-capability implementation agent for complex scenarios (multi-file refactoring, algorithmic challenges, concurrent systems, complex domain logic).
 - `developer-mm` (MiniMax; `_pi/agents/developer-mm.md`) — Alternative implementation agent using MiniMax model.
+- `quality-reviewer-glm` (Ollama GLM-5.2 Cloud; `_pi/agents/quality-reviewer-glm.md`) — Reviews code for real issues using `ollama/glm-5.2:cloud`.
 
 ## Implementation & Architecture (Claude/Codex)
 - `developer` (sonnet; `_claude/agents/developer.md`) — Implements specs with tests and enforces zero linting violations.

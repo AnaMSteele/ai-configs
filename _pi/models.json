@@ -5,7 +5,8 @@
       "api": "openai-completions",
       "apiKey": "$OLLAMA_API_KEY",
       "compat": {
-        "supportsDeveloperRole": false
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
       },
       "models": [
         {

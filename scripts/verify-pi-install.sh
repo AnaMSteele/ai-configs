@@ -111,6 +111,38 @@ EOF
   rm -f "$expected_file" "$actual_file"
 }
 
+list_pi_model_entries() {
+  local models_path="$1"
+  if [ ! -f "$models_path" ]; then
+    return
+  fi
+
+  python3 - "$models_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    data = json.loads(Path(sys.argv[1]).read_text())
+except Exception:
+    raise SystemExit(0)
+
+providers = data.get("providers")
+if not isinstance(providers, dict):
+    raise SystemExit(0)
+
+for provider_id, provider in providers.items():
+    if not isinstance(provider, dict):
+        continue
+    models = provider.get("models")
+    if not isinstance(models, list):
+        continue
+    for model in models:
+        if isinstance(model, dict) and isinstance(model.get("id"), str):
+            print(f"{provider_id}/{model['id']}")
+PY
+}
+
 EXPECTED_REPO_EXTENSIONS="$(cd "$REPO_ROOT" && list_find_entries "_pi/extensions")"
 EXPECTED_LOCAL_PACKAGES="$PI_VCC_STABLE_PACKAGE"
 LOCAL_PI_INTERACTIVE_SHELL="$(cd "$REPO_ROOT/../3p/pi-interactive-shell" 2>/dev/null && pwd || true)"
@@ -121,6 +153,8 @@ else
   EXPECTED_NPM_PACKAGES+=("git:github.com/adnichols/pi-interactive-shell")
 fi
 INSTALLED_REPO_EXTENSIONS="$(list_find_entries "$PI_EXT_DIR")"
+EXPECTED_PI_MODELS="$(list_pi_model_entries "$REPO_ROOT/_pi/models.json")"
+INSTALLED_PI_MODELS="$(list_pi_model_entries "$PI_AGENT_DIR/models.json")"
 INSTALLED_PI_PACKAGES=""
 
 if command -v pi >/dev/null 2>&1; then
@@ -160,9 +194,15 @@ ALL_EXPECTED_PACKAGES="$(printf '%s\n' "${EXPECTED_GIT_PACKAGES[@]}" "${EXPECTED
 ALL_EXPECTED_PACKAGES="$(printf '%s\n%s\n' "$ALL_EXPECTED_PACKAGES" "$EXPECTED_LOCAL_PACKAGES")"
 report_expected_vs_actual "  Comparison:" "$ALL_EXPECTED_PACKAGES" "$INSTALLED_PI_PACKAGES" true
 
-print_section "3) Quick checks"
+print_section "3) Repo-managed Pi model entries (merged into ~/.pi/agent/models.json; these do NOT appear in 'pi list')"
+print_list "expected: " "$EXPECTED_PI_MODELS"
+print_list "installed: " "$INSTALLED_PI_MODELS"
+report_expected_vs_actual "  Comparison:" "$EXPECTED_PI_MODELS" "$INSTALLED_PI_MODELS" true
+
+print_section "4) Quick checks"
 echo "  Repo-managed extensions: find ~/.pi/agent/extensions -mindepth 1 -maxdepth 1 -exec basename {} \\; | sort"
 echo "  Package-managed installs: pi list"
+echo "  Repo-managed model entries: python3 -m json.tool ~/.pi/agent/models.json"
 
 PI_VCC_REGISTERED="$(printf '%s\n' "$INSTALLED_PI_PACKAGES" | grep 'pi-vcc' || true)"
 PI_VCC_COUNT="$(printf '%s\n' "$PI_VCC_REGISTERED" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
