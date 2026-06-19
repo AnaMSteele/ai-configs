@@ -8,7 +8,8 @@ Located under `_pi/agents/` and invoked via Pi subagent system:
 - `developer-mid` (gpt-5.5-mini; `_pi/agents/developer-mid.md`) — Default implementation agent for standard complexity work. Cost-effective for most tasks.
 - `developer-high` (gpt-5.5; `_pi/agents/developer-high.md`) — High-capability implementation agent for complex scenarios (multi-file refactoring, algorithmic challenges, concurrent systems, complex domain logic).
 - `developer-mm` (MiniMax; `_pi/agents/developer-mm.md`) — Alternative implementation agent using MiniMax model.
-- `quality-reviewer-glm` (Ollama GLM-5.2 Cloud; `_pi/agents/quality-reviewer-glm.md`) — Reviews code for real issues using `ollama/glm-5.2:cloud`.
+- `quality-reviewer` (GPT-5.5; `_pi/agents/quality-reviewer.md`) — Default Pi quality reviewer and GPT-5.5 review leg for plan, implementation, and PR review gates.
+- `quality-reviewer-glm` (Ollama GLM-5.2 Cloud; `_pi/agents/quality-reviewer-glm.md`) — GLM-5.2 quality reviewer and replacement for the former Claude review leg, using `ollama/glm-5.2:cloud` with `thinking: xhigh`.
 
 ## Implementation & Architecture (Claude/Codex)
 - `developer` (sonnet; `_claude/agents/developer.md`) — Implements specs with tests and enforces zero linting violations.
@@ -223,12 +224,12 @@ Expected Pi reviewed-plan flow in this repo:
 - Active browser-reviewed plans are semantic HTML files under `thoughts/plans/<slug>.html`; do not create Markdown companions for that flow.
 - `/skill:adn-dev-wf <task | plan>` is the canonical single-entry workflow.
 - It internally owns plan refresh, blocker-only review, review integration, direct execution, and bounded implementation-stage PM follow-up.
-- `/dev:reviewed-html-plan <task | plan>` / `/skill:reviewed-html-plan <task | plan>` is the browser-reviewed HTML pre-execution gate for plan-review feedback plus PM, Claude Code, and Codex plan review; it must register through `plan-review`, follow returned `agentInstructions`, and start the queue-backed comment monitor.
+- `/dev:reviewed-html-plan <task | plan>` / `/skill:reviewed-html-plan <task | plan>` is the browser-reviewed HTML pre-execution gate for plan-review feedback plus PM and Pi subagent plan review: GPT-5.5 via `quality-reviewer` and GLM-5.2 xhigh via `quality-reviewer-glm`; it must register through `plan-review`, follow returned `agentInstructions`, and start the queue-backed comment monitor.
 - `skills/html-plan-reviewer/SKILL.md` is the sole source for concrete `plan-review` commands, readiness metadata, canonical URL rules, and comment monitor mechanics; other planning skills should reference it instead of duplicating command recipes.
 - `/skill:dev-plan <task>` remains available for planning-only work.
 - `/dev:run <plan>` remains available when you already have an execution-ready reviewed plan and want execution only.
 
-`/review:change-claude-code` remains an explicit opt-in review command, not a hidden fallback inside plan mode or execution.
+Standard plan, implementation, and PR review gates must use Pi subagents (`quality-reviewer` and, when a second independent leg is required, `quality-reviewer-glm` with `thinking: xhigh`) rather than external Claude Code, Codex CLI, OMP, or wrapper-based reviewer transports. Legacy external reviewer commands may remain available only for explicit manual experiments, not automatic workflow gates.
 
 ## Linear Integration (ltui)
 
@@ -292,7 +293,7 @@ This repository includes Pi-specific prompt templates under `_pi/prompts/`, pi-s
 
 **Reviews:**
 - `/skill:adn-dev-wf` — Canonical reviewed-plan development workflow
-- `/skill:reviewed-html-plan` — Create/register browser-reviewed HTML plans, process plan-review feedback, run PM plus Claude Code and Codex plan reviews, and stop at execution-ready handoff
+- `/skill:reviewed-html-plan` — Create/register browser-reviewed HTML plans, process plan-review feedback, run PM plus GPT-5.5 and GLM-5.2 Pi quality-reviewer subagent reviews, and stop at execution-ready handoff
 - `/skill:omp-review-partner` — Use OMP with OpenCode Zen Kimi models for read-only plan and implementation reviews
 - `/skill:review-change` — Review code changes against plan
 - `/skill:review-change-integrate` — Integrate code-review feedback

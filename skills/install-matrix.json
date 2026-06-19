@@ -122,7 +122,7 @@
         "opencode"
       ],
       "canonicalSource": "skills/claude-code-review",
-      "notes": "Pi and OpenCode: required Claude Code reviews use the canonical private-tmux interactive launcher; no codex tmux reuse or direct Claude transport.",
+      "notes": "Legacy/manual only for Pi review workflows; standard Pi plan, implementation, and PR review gates use quality-reviewer/quality-reviewer-glm subagents instead of Claude Code.",
       "sourceType": "repo"
     },
     "claude-review-partner": {
@@ -131,7 +131,7 @@
         "claude"
       ],
       "canonicalSource": "skills/claude-review-partner",
-      "notes": "Claude-specific: uses Codex as an independent review partner through the Codex CLI wrapper.",
+      "notes": "Claude-specific legacy helper: uses Codex as an independent review partner through the Codex CLI wrapper; not a standard Pi review gate.",
       "sourceType": "repo"
     },
     "cmd-create-handoff": {
@@ -253,7 +253,7 @@
       "legacySources": [
         "opencode/skills/claude-review-partner"
       ],
-      "notes": "Promoted from an older repo-local review-partner skill and normalized to launch the real `codex` CLI in exec mode.",
+      "notes": "Legacy/manual helper that launches the real `codex` CLI in exec mode; not a standard Pi review gate.",
       "sourceType": "repo"
     },
     "omp-review-partner": {
@@ -270,10 +270,10 @@
     "codex-full-build": {
       "class": "consumer-specific-installable",
       "allowedConsumers": [
-        "codex"
+        "pi"
       ],
       "canonicalSource": "skills/codex-full-build",
-      "notes": "Codex-only: orchestrates the full lifecycle from issue or plan intake through reviewed planning, scoped execution, verification, push, and ready-for-review PR creation.",
+      "notes": "Pi lifecycle skill using quality-reviewer/quality-reviewer-glm subagent gates instead of external Codex or Claude reviews.",
       "sourceType": "repo"
     },
     "dependency-selection": {
@@ -569,7 +569,7 @@
         "pi"
       ],
       "canonicalSource": "skills/reviewed-html-plan",
-      "notes": "Pi-only: creates and gates HTML plans through plan-review browser feedback, PM product-intent review, and read-only Claude Code plus Codex plan reviews before execution.",
+      "notes": "Pi-only: creates and gates HTML plans through plan-review browser feedback, PM product-intent review, and read-only GPT-5.5 plus GLM-5.2 Pi quality-reviewer subagent reviews before execution.",
       "sourceType": "repo"
     },
     "review-change-integrate": {
@@ -619,7 +619,7 @@
         "pi"
       ],
       "canonicalSource": "skills/scoped-plan-run",
-      "notes": "Codex/Pi: executes existing plans through bounded implementation, scoped Claude/Codex reviews, fixes, verification, push, PR creation, and post-PR monitoring without reviewer-driven scope expansion.",
+      "notes": "Pi: executes existing plans through bounded implementation, scoped GPT-5.5/GLM-5.2 Pi quality-reviewer reviews, fixes, verification, push, PR creation, and post-PR monitoring without reviewer-driven scope expansion.",
       "sourceType": "repo"
     },
     "signing-entitlements": {

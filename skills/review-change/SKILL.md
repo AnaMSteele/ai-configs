@@ -27,7 +27,7 @@ git diff --name-only origin/main...HEAD
 
 ### 2. Choose Review Posture
 
-Default to normal quality review. Switch to adversarial review when PR feedback, especially Codex PR feedback, found actionable issues after a previous local review had already passed. That feedback is a signal the prior review was not thorough enough.
+Default to normal quality review. Switch to adversarial review when PR feedback found actionable issues after a previous local review had already passed. That feedback is a signal the prior review was not thorough enough.
 
 In adversarial posture:
 - review the full current PR diff, not just the commented file
@@ -37,34 +37,20 @@ In adversarial posture:
 
 ### 3. Spawn Quality Reviewers
 
-Use `subagent` with `quality-reviewer` agent:
+Run review-only Pi subagents. Do not use external Codex, Claude Code, OMP, or CLI-based review transports for this workflow.
 
-**Reviewer 1: Security & Data Loss**
-```
-Review changed files for:
+**Reviewer 1: GPT-5.5 quality-reviewer**
+Use Pi subagent `quality-reviewer` to review changed files for:
 - Security vulnerabilities (injection, exposure, auth gaps)
 - Data loss risks (deletions without backup, migration issues)
-- Input validation gaps
-Return: Specific issues with file:line references and severity
-```
-
-**Reviewer 2: Performance & Correctness**
-```
-Review changed files for:
 - Performance issues (N+1 queries, unnecessary loops)
 - Logic errors or edge cases
 - Error handling gaps
-Return: Specific issues with file:line references and severity
-```
-
-**Reviewer 3: Architecture & Maintainability**
-```
-Review changed files for:
-- Code duplication
-- SOLID principle violations
 - API contract consistency
-Return: Specific issues with file:line references
-```
+Return: Specific issues with file:line references and severity.
+
+**Reviewer 2: GLM-5.2 quality-reviewer-glm**
+Use Pi subagent `quality-reviewer-glm` with `thinking: "xhigh"` and the same scope. This is the GLM replacement for the former Claude reviewer. Return: Specific issues with file:line references and severity.
 
 When running adversarial posture, include this extra instruction in each reviewer prompt:
 

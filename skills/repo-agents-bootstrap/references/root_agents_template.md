@@ -42,7 +42,7 @@ Codify the planning and execution boundaries:
 - `dev:plan` is the plan-materialization step and may write the plan artifact only.
 - The repo's canonical execution workflow executes the plan with the repo's real quality gates.
 - If the repo uses Pi-style reviewed-plan handoff, codify it explicitly and name the canonical continuation. In this repo that is `/skill:adn-dev-wf <plan>` after review integration, with `/dev:run <plan>` reserved for direct execution-only handoff.
-- Keep alternate reviewers such as Claude Code explicit and manual; do not describe them as hidden fallbacks inside plan mode or execution.
+- Keep review gates Pi-subagent based (`quality-reviewer` and, when a second independent leg is required, `quality-reviewer-glm`); do not describe external reviewers as hidden fallbacks inside plan mode or execution.
 
 Add the shared fail-closed ready bar:
 

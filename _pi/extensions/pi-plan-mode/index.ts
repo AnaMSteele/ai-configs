@@ -15,7 +15,7 @@ const GLOBAL_PROMPTS_DIRECTORY = resolve(homedir(), ".pi/agent/prompts");
 const EXECUTE_PLAN_COMMAND = "cmd:execute-plan";
 const STANDARD_PLAN_REVIEW_COMMAND = "review:plan";
 const CHANGE_REVIEW_COMMAND = "review:change";
-const CLAUDE_CHANGE_REVIEW_COMMAND = "review:change-claude-code";
+const LEGACY_GLM_REVIEW_COMMAND = "review:change-claude-code";
 const ADVERSARIAL_PLAN_REVIEW_COMMAND = "review:plan-adversarial";
 const CHANGE_REVIEW_INTEGRATE_COMMAND = "review:change-integrate";
 const MAX_REVIEW_CYCLES = 3;
@@ -374,12 +374,6 @@ function isHtmlPlanFilePath(cwd: string, inputPath: string): boolean {
 	return isWithin(getPlansRoot(cwd), resolved) && /\.html$/i.test(resolved);
 }
 
-function isClaudeReviewTempPath(inputPath: string, extension: ".txt" | ".md"): boolean {
-	const resolved = resolve(inputPath);
-	const name = basename(resolved);
-	return resolved === `/tmp/${name}` && new RegExp(`^pi-claude-review-[A-Za-z0-9._-]+\\${extension}$`).test(name);
-}
-
 function hasShellHazards(command: string): boolean {
 	return /[\r\n;&|`<>]/.test(command) || /\$\(/.test(command) || />>/.test(command);
 }
@@ -592,38 +586,12 @@ function isAllowedPlanReviewCommand(cwd: string, tokens: string[], state: Partia
 	return false;
 }
 
-function isAllowedClaudeReviewLauncherCommand(cwd: string, tokens: string[]): boolean {
-	if (tokens[0] !== "python3") return false;
-	const launcherPaths = new Set([
-		"$HOME/.agents/skills/claude-code-review/scripts/claude_interactive_review.py",
-		resolve(homedir(), ".agents/skills/claude-code-review/scripts/claude_interactive_review.py"),
-	]);
-	if (!launcherPaths.has(tokens[1])) return false;
-	if (tokens[2] === "--smoke") {
-		if (tokens.length !== 9) return false;
-		if (tokens[3] !== "--cwd" || (tokens[4] !== "$PWD" && tokens[4] !== cwd)) return false;
-		if (tokens[5] !== "--review-name" || !/^[A-Za-z0-9._-]+$/.test(tokens[6])) return false;
-		return tokens[7] === "--output" && isClaudeReviewTempPath(tokens[8], ".txt");
-	}
-	if (tokens.length !== 12) return false;
-	const expectedFlags = ["--cwd", "--prompt-file", "--output", "--review-name", "--timeout-seconds"];
-	for (let index = 2; index < tokens.length; index += 2) {
-		if (tokens[index] !== expectedFlags[(index - 2) / 2]) return false;
-	}
-	if (tokens[3] !== "$PWD" && tokens[3] !== cwd) return false;
-	if (!isClaudeReviewTempPath(tokens[5], ".txt")) return false;
-	if (!isClaudeReviewTempPath(tokens[7], ".md")) return false;
-	if (!/^[A-Za-z0-9._-]+$/.test(tokens[9])) return false;
-	return /^\d+$/.test(tokens[11]);
-}
-
 function isSafeCommand(cwd: string, command: string, state: Partial<PlanModeState> = {}): boolean {
 	const normalized = command.trim();
 	if (hasShellHazards(normalized)) return false;
 	const tokens = parseCommandArgs(normalized);
 	if (tokens.length === 0) return false;
 	if (isAllowedPlanReviewCommand(cwd, tokens, state)) return true;
-	if (isAllowedClaudeReviewLauncherCommand(cwd, tokens)) return true;
 	if (isAllowedHealthCommand(tokens)) return true;
 	if (tokens[0] === "curl") return false;
 	if (isAllowedPlanNodeCommand(cwd, tokens)) return true;
@@ -1205,13 +1173,13 @@ export default function planModeExtension(pi: ExtensionAPI): void {
 			text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)
 			|| text.startsWith(`/${STANDARD_PLAN_REVIEW_COMMAND}`)
 			|| text.startsWith(`/${CHANGE_REVIEW_COMMAND}`)
-			|| text.startsWith(`/${CLAUDE_CHANGE_REVIEW_COMMAND}`)
+			|| text.startsWith(`/${LEGACY_GLM_REVIEW_COMMAND}`)
 		) {
 			reviewInFlight = true;
 			if (text.startsWith(`/${ADVERSARIAL_PLAN_REVIEW_COMMAND}`)) {
 				lastReviewCommand = ADVERSARIAL_PLAN_REVIEW_COMMAND;
-			} else if (text.startsWith(`/${CLAUDE_CHANGE_REVIEW_COMMAND}`)) {
-				lastReviewCommand = CLAUDE_CHANGE_REVIEW_COMMAND;
+			} else if (text.startsWith(`/${LEGACY_GLM_REVIEW_COMMAND}`)) {
+				lastReviewCommand = LEGACY_GLM_REVIEW_COMMAND;
 			} else {
 				const standardReviewCommand = text.startsWith(`/${CHANGE_REVIEW_COMMAND}`)
 					? CHANGE_REVIEW_COMMAND
@@ -1253,16 +1221,16 @@ You are in planning mode for this repository.
 
 Constraints:
 - Read the codebase freely.
-- You may write only under ${PLAN_ROOT}/ using edit/write tools, except transient Claude review prompt files matching /tmp/pi-claude-review-*.txt during review commands.
+- You may write only under ${PLAN_ROOT}/ using edit/write tools.
 - Keep plan files in ${PLAN_DIRECTORY}/.
 - Do not make implementation changes outside ${PLAN_ROOT}/.
-- Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/, except the transient Claude review prompt file exception above.
+- Use read-only bash commands for exploration; file mutations must go through edit/write inside ${PLAN_ROOT}/.
 - Load and follow the planning skills needed for deterministic HTML planning: planning-workflow, html-plan-reviewer, reviewed-html-plan, product-principles for workflow-impacting plans, plus relevant domain skills.
 - Plans should align with thoughts/specs/product_intent.md and thoughts/plans/AGENTS.md when relevant.
 - New active plans should be semantic HTML under ${PLAN_DIRECTORY}/<slug>.html unless the user explicitly supplies an existing legacy Markdown plan.
 - Register HTML plans with plan-review using truthful --execution-ready metadata; preserve and display the canonical browser review URL.
 - Use only the queue-backed plan-review agent next flow for browser comments: drain with --no-wait, listen with --wait via the process tool, process one claimed comment, ack/resolve it, then restart the listener. Do not use or recommend the watch subcommand in /plan mode.
-- After creating or materially updating an HTML plan, /dev:reviewed-html-plan <path> is the deterministic registration, browser-feedback, PM-review, and Claude/Codex plan-review path. /review:plan <path> remains available only as an explicit inline review.
+- After creating or materially updating an HTML plan, /dev:reviewed-html-plan <path> is the deterministic registration, browser-feedback, PM-review, and Pi quality-reviewer subagent plan-review path. /review:plan <path> remains available only as an explicit inline review.
 - After a standard inline review completes with comments, /review:change-integrate <path> runs automatically so review feedback is resolved back into the same plan file before any manual execution handoff.
 - After standard inline review integration, you may optionally run /review:plan-adversarial <path> for a second-pass challenge review.
 - Before execution, stop any active plan-review comment listener, then run /cmd:execute-plan <path> --target dev:run or --target skill:adn-dev-wf to start a fresh execution session.
@@ -1306,11 +1274,10 @@ ${currentPlanInstruction}`,
 
 		if (event.toolName === "edit" || event.toolName === "write") {
 			const inputPath = typeof event.input.path === "string" ? event.input.path : "";
-			const allowedClaudeReviewPrompt = reviewInFlight && isClaudeReviewTempPath(inputPath, ".txt");
-			if (!inputPath || (!isThoughtsPath(ctx.cwd, inputPath) && !allowedClaudeReviewPrompt)) {
+			if (!inputPath || !isThoughtsPath(ctx.cwd, inputPath)) {
 				return {
 					block: true,
-					reason: `Plan mode only allows edit/write under ${PLAN_ROOT}/, except transient Claude review prompt files under /tmp.`,
+					reason: `Plan mode only allows edit/write under ${PLAN_ROOT}/.`,
 				};
 			}
 		}

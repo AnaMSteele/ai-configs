@@ -1,11 +1,11 @@
 ---
 name: codex-full-build
-description: Run the full Codex development lifecycle from a Linear issue, existing plan, or plan description through clarification, execution-ready plan creation, Codex and Claude Code plan review, scoped implementation, bounded implementation review, verification, push, and ready-for-review PR creation. Use this whenever the user wants an autonomous end-to-end build from issue or plan input without babysitting.
+description: Run the full Pi development lifecycle from a Linear issue, existing plan, or plan description through clarification, execution-ready plan creation, Pi quality-reviewer subagent plan review, scoped implementation, bounded implementation review, verification, push, and ready-for-review PR creation. Use this whenever the user wants an autonomous end-to-end build from issue or plan input without babysitting.
 ---
 
-# Codex Full Build
+# Pi Full Build
 
-Use this skill when the user wants an end-to-end software change driven from a Linear issue, an existing plan, or a natural-language plan description. This skill is the lifecycle controller. It prepares and validates the plan, gets independent plan review from Codex and Claude Code, then delegates implementation, scoped review, verification, commit, push, and PR creation to `$scoped-plan-run`.
+Use this skill when the user wants an end-to-end software change driven from a Linear issue, an existing plan, or a natural-language plan description. This skill is the lifecycle controller. It prepares and validates the plan, gets independent plan review from GPT-5.5 and GLM-5.2 Pi quality-reviewer subagents, then delegates implementation, scoped review, verification, commit, push, and PR creation to `$scoped-plan-run`.
 
 The goal is autonomous execution with explicit gates. Ask the user only when product intent or scope is genuinely unclear enough that a correct execution-ready plan cannot be written.
 
@@ -26,8 +26,8 @@ Load and follow these skills as needed:
 - `linear` for Linear issue fetching with `ltui`.
 - `planning-workflow` for plan creation and readiness.
 - Repo-recommended planning skills from `AGENTS.md`, usually `product-principles` and `tdd-test-writer` for this repo.
-- `codex-review-partner` for Codex plan review.
-- `claude-code-review` for Claude Code plan review.
+- Pi `quality-reviewer` for GPT-5.5 plan review.
+- Pi `quality-reviewer-glm` with `thinking: "xhigh"` for GLM-5.2 plan review.
 - `scoped-plan-run` for execution, implementation review, verification, commit, push, and PR.
 
 If a required reviewer or `ltui` is unavailable, try the documented remediation in the relevant skill first. Stop only when the required dependency cannot be restored safely.
@@ -36,9 +36,9 @@ If a required reviewer or `ltui` is unavailable, try the documented remediation 
 
 - Stay within repo guidance. In this repo, `AGENTS.md` is authoritative.
 - Use `ltui` for Linear issue retrieval. If a Linear issue cannot be fetched after auth/profile/identifier remediation, stop and report the fetch blocker.
-- Do not start implementation until the plan is execution-ready and both Codex and Claude Code agree by substance.
+- Do not start implementation until the plan is execution-ready and both Pi reviewer subagents agree by substance.
 - Do not create a draft PR unless the user explicitly asked for a draft.
-- Do not let reviewers edit files. All Codex and Claude reviews are read-only.
+- Do not let reviewers edit files. All Pi subagent reviews are read-only.
 - Do not silently choose product behavior when the input is too vague and repo evidence does not resolve it.
 - Do not expand scope because a reviewer found adjacent work.
 - Delegate implementation to `$scoped-plan-run`; do not duplicate its phase execution and PR workflow in this skill.
@@ -88,7 +88,7 @@ When questions are needed:
 
 - Ask the minimum blocking questions.
 - Batch at most three concise questions.
-- Use Codex's question UI when available; otherwise ask directly in chat.
+- Ask directly in chat.
 - Do not ask about details that can be discovered from the repo, Linear issue, or existing plan.
 
 Proceed once the answers are enough to write a plan with concrete acceptance criteria and verification.
@@ -122,13 +122,13 @@ Use `planning-workflow` and the repo's `AGENTS.md` required structure. For this 
 
 If the issue or description is too broad, make the plan scope precise instead of absorbing adjacent cleanup. If important decisions remain unresolved, keep the plan in `research-ready` or `discovery` and ask/perform the next research action rather than starting review.
 
-### 4. Dual Plan Review
+### 4. Dual Pi Subagent Plan Review
 
-Run both reviews read-only.
+Run both reviews read-only. Do not launch Claude Code, Codex CLI, `codex-review-partner`, `claude-code-review`, or any other external reviewer for this gate.
 
-#### Codex Plan Review
+#### GPT-5.5 Plan Review
 
-Use `codex-review-partner` in `plan-review` mode. Provide a bounded prompt with:
+Use the Pi subagent `quality-reviewer`. Provide a bounded prompt with:
 
 - plan path,
 - source input summary,
@@ -138,9 +138,9 @@ Use `codex-review-partner` in `plan-review` mode. Provide a bounded prompt with:
 - readiness rubric,
 - instruction not to propose execution or adjacent implementation work.
 
-#### Claude Code Plan Review
+#### GLM-5.2 Plan Review
 
-Use `claude-code-review` through its canonical private-tmux interactive launcher. Prompt Claude Code to review the plan read-only and return structured output. Do not ask Claude to edit files, and do not use alternate Claude transports.
+Use the Pi subagent `quality-reviewer-glm` with `thinking: "xhigh"` and the same bounded prompt. This replaces the former Claude Code plan-review leg.
 
 #### Plan Review Verdicts
 
@@ -177,7 +177,7 @@ Use these classifications:
 
 Fix `READINESS_BLOCKER` findings in the plan. Ask the user for `PRODUCT_QUESTION`. Record `OUT_OF_SCOPE_FOLLOW_UP` only with evidence and a tracking destination; do not use it for plan-required work, BDD gaps, verification gaps, or acceptance-criteria gaps.
 
-Repeat Codex and Claude plan review until both agree by substance that the plan is execution-ready.
+Repeat both Pi subagent plan reviews until both agree by substance that the plan is execution-ready.
 
 Stop and report a plan convergence blocker if:
 
@@ -188,22 +188,22 @@ Stop and report a plan convergence blocker if:
 
 ### 6. Execute with Scoped Plan Run
 
-Once both plan reviewers agree by substance that the plan is execution-ready, invoke `$scoped-plan-run` with the finalized plan path.
+Once both Pi plan reviewers agree by substance that the plan is execution-ready, invoke `$scoped-plan-run` with the finalized plan path.
 
 The handoff must state:
 
 - plan path,
 - source input or Linear issue,
-- Codex plan review verdict,
-- Claude plan review verdict,
+- GPT-5.5 Pi quality-reviewer plan review verdict,
+- GLM-5.2 Pi quality-reviewer plan review verdict,
 - any documented out-of-scope plan review notes with evidence and tracking destination,
-- instruction to proceed through scoped implementation, bounded Codex and Claude implementation reviews, verification, commit, push, and ready-for-review PR.
+- instruction to proceed through scoped implementation, bounded GPT-5.5 and GLM-5.2 Pi quality-reviewer implementation reviews, verification, commit, push, and ready-for-review PR.
 
 Do not reimplement the scoped runner's workflow here. `$scoped-plan-run` owns:
 
 - scope extraction,
 - phase-by-phase implementation,
-- implementation review with Codex and Claude,
+- implementation review with GPT-5.5 and GLM-5.2 Pi quality-reviewer subagents,
 - in-scope fix loops,
 - final verification,
 - commit,
@@ -213,7 +213,7 @@ Do not reimplement the scoped runner's workflow here. `$scoped-plan-run` owns:
 If `$scoped-plan-run` stops with a blocker, handle only blockers that are part of this lifecycle:
 
 - If the blocker is plan ambiguity, return to plan clarification/review.
-- If the blocker is reviewer/tool unavailability, remediate using the relevant skill.
+- If the blocker is Pi reviewer subagent unavailability, remediate the Pi model/subagent configuration.
 - If the blocker is implementation scope expansion, ask the user before expanding scope.
 - If the blocker is a failing verification outside this plan, report it as residual/pre-existing unless the scoped runner classifies it as a regression from this diff.
 
@@ -224,8 +224,8 @@ Return a concise handoff with:
 - PR URL.
 - Plan path.
 - Source input or Linear issue.
-- Codex and Claude plan review verdicts.
-- Codex and Claude implementation review verdicts from `$scoped-plan-run`.
+- GPT-5.5 and GLM-5.2 Pi quality-reviewer plan review verdicts.
+- GPT-5.5 and GLM-5.2 Pi quality-reviewer implementation review verdicts from `$scoped-plan-run`.
 - Verification commands and results.
 - Changed files at a high level.
 - Documented out-of-scope follow-ups with evidence and tracking destination.
@@ -235,7 +235,7 @@ If no PR was created, say exactly which gate stopped the lifecycle and what is n
 
 ## Plan Review Prompt Template
 
-Use this shape for both Codex and Claude plan reviews:
+Use this shape for both Pi subagent plan reviews:
 
 ```text
 Read-only plan review. Do not edit files.
@@ -279,15 +279,15 @@ Use $scoped-plan-run to execute <plan path>.
 
 Source input: <Linear issue key/path/description summary>
 Plan review status:
-- Codex: <normalized verdict and brief evidence>
-- Claude Code: <normalized verdict and brief evidence>
+- GPT-5.5 quality-reviewer: <normalized verdict and brief evidence>
+- GLM-5.2 quality-reviewer-glm: <normalized verdict and brief evidence>
 
 Both reviewers agree by substance that the plan is execution-ready.
 
 Proceed through the scoped-plan-run workflow:
 - preserve the plan as the scope contract
 - implement phase by phase
-- run bounded Codex and Claude implementation reviews
+- run bounded GPT-5.5 and GLM-5.2 Pi quality-reviewer implementation reviews
 - fix only in-scope findings
 - run final verification
 - commit, push, and open a ready-for-review PR

@@ -66,10 +66,11 @@ For each critical/important issue:
 
 Use `subagent` with `developer` agent for parallel fixes when safe.
 
-If the review findings came from Codex PR feedback after a previous local review passed, treat it as a review escape. After the direct fix, run an adversarial follow-up review before declaring the issue resolved:
+If the review findings came from PR feedback after a previous local review passed, treat it as a review escape. After the direct fix, run an adversarial follow-up review before declaring the issue resolved:
 
 - inspect the full PR diff for sibling instances and related failure modes
-- run `/skill:review-change` in adversarial posture or `codex-review-partner --mode adversarial-implementation-review`
+- run `/skill:review-change` in adversarial posture with Pi `quality-reviewer` and `quality-reviewer-glm` subagents
+- do not use external Codex or Claude review transports for this escalation
 - fix any new in-scope findings, not just the original comment
 - document true out-of-scope findings with evidence and a tracking destination
 

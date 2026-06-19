@@ -130,11 +130,11 @@ This repo now ships a maintained `pi-plan-mode` extension that:
 - defaults active browser-reviewed plans to `thoughts/plans/<slug>.html` while still accepting explicit legacy Markdown plan paths,
 - displays the current registered plan-review URL in the plan-mode widget when available,
 - allows the narrow `plan-review` registration/comment commands and the `process` tool needed for queue-backed browser comment iteration,
-- steers HTML plan edits toward `/dev:reviewed-html-plan` for registration, browser feedback, PM review, and Claude/Codex plan review,
+- steers HTML plan edits toward `/dev:reviewed-html-plan` for registration, browser feedback, PM review, and GPT-5.5/GLM-5.2 Pi subagent plan review,
 - keeps `/review:plan` and `/review:plan-adversarial` available as explicit inline review paths, with HTML plans accepted as first-class inputs,
 - leaves execution handoff manual via `/cmd:execute-plan <plan> --target ...` so Pi can launch from a fresh session without popping a menu,
 - reminds the operator to stop the active plan-review comment listener before execution,
-- keeps alternate review commands such as `/review:change-claude-code` as explicit opt-ins rather than hidden plan-mode fallbacks,
+- keeps legacy external review commands explicit and manual rather than hidden plan-mode fallbacks,
 - disables `/plan` mode before dispatching into execution so implementation is not blocked by planning-only restrictions.
 
 This repo also ships a maintained `pi-prd-mode` extension that:
@@ -237,7 +237,7 @@ Example installed agents:
 
 ### Canonical workflow
 - `adn-dev-wf` — end-to-end reviewed-plan workflow from plan creation through direct execution and PM follow-up
-- `reviewed-html-plan` / `/dev:reviewed-html-plan` — creates/registers HTML plans in plan-review, follows service-returned `agentInstructions`, starts the queue-backed comment monitor, processes browser feedback, runs PM plus Claude/Codex plan reviews, and stops at execution-ready handoff
+- `reviewed-html-plan` / `/dev:reviewed-html-plan` — creates/registers HTML plans in plan-review, follows service-returned `agentInstructions`, starts the queue-backed comment monitor, processes browser feedback, runs PM plus GPT-5.5 and GLM-5.2 Pi quality-reviewer subagent reviews, and stops at execution-ready handoff
 
 ### Dev / execution
 - `dev:run` — direct high-reasoning execution with one `quality-reviewer` pass after each phase
@@ -263,9 +263,10 @@ Example installed agents:
 - `review-plan-adversarial`
 - `review-change`
 - `review-change-integrate`
-- `review-change-kimi`
-- `review-change-opus`
-- `review-change-claude-code` — Claude Code review-only pass through the shared private-tmux interactive launcher
+- `review-change-gpt` — Pi `quality-reviewer` / GPT-5.5 review leg
+- `review-change-kimi` — deprecated alias that now routes to `quality-reviewer-glm`
+- `review-change-opus` — deprecated alias that now routes to `quality-reviewer-glm`
+- `review-change-claude-code` — deprecated alias that now routes to `quality-reviewer-glm`; not part of standard plan, implementation, or PR review gates
 
 ## Usage
 
@@ -283,9 +284,8 @@ Prompt templates:
 /review:plan-adversarial thoughts/plans/my-plan.html
 /review:prd thoughts/plans/prd-my-feature.md
 /review:change thoughts/plans/my-plan.html
-/review:change-kimi thoughts/plans/my-plan.html
-/review:change-opus thoughts/plans/my-plan.html
-/review:change-claude-code thoughts/plans/my-plan.html
+/review:change-gpt thoughts/plans/my-plan.html
+# /review:change-kimi, /review:change-opus, and /review:change-claude-code are deprecated aliases that run quality-reviewer-glm
 /skill:adn-dev-wf thoughts/plans/my-plan.html
 /dev:plan-from-prd thoughts/plans/prd-my-feature.md
 /cmd:send-plan-to-doct thoughts/plans/my-plan.md
@@ -299,7 +299,7 @@ Canonical browser-reviewed HTML plan flow:
 
 ```text
 /dev:plan <plan>
-/dev:reviewed-html-plan <plan>    # register, monitor browser comments, PM-review, and run Claude/Codex plan reviews
+/dev:reviewed-html-plan <plan>    # register, monitor browser comments, PM-review, and run GPT-5.5/GLM-5.2 Pi subagent reviews
 /cmd:execute-plan <plan>
 ```
 
@@ -321,7 +321,7 @@ Use `/dev:pm-review <plan> implementation` after execution when you want a corre
 - In Pi `/plan` mode, the extension offers both execution paths as post-review exit choices and stages this handoff command for the selected target.
 - When that extension path is used, `/plan` mode is disabled before execution so planning-only tool restrictions do not leak into implementation.
 - In Pi, the handoff command starts a fresh session and then launches the selected execution flow from that clean context.
-- `/review:change-claude-code` remains available for an explicit manual review request, but it is not part of the automatic `/plan`-mode review-to-execution path.
+- Standard plan, implementation, and PR review gates use Pi subagents: `quality-reviewer` for the GPT-5.5 leg and `quality-reviewer-glm` with `thinking: xhigh` for the GLM-5.2 leg. External Claude Code/Codex reviewer transports are not part of automatic review-to-execution paths.
 
 Use `/dev:plan-from-prd <prd>` after a reviewed PRD delta is ready to become an execution plan.
 
