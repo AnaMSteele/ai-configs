@@ -97,7 +97,7 @@
         <li>Aaron's repo is an optional upstream reference only: <code>https://github.com/adnichols/ai-configs</code>.</li>
         <li>Plan reviewer source: <code>https://github.com/Nodaste-Lab/plan-reviewer</code>.</li>
         <li>Local repo guidance remains authoritative inside each product repo.</li>
-        <li>Installed local reviewer CLIs discovered so far: Claude CLI and Codex CLI. OMP is not installed.</li>
+        <li>Installed local reviewer CLIs discovered so far: Codex CLI is usable and wired as the working responder; Claude CLI is installed but not currently usable for non-interactive review because auth failed; OMP is not installed.</li>
       </ul>
     </section>
 
@@ -111,8 +111,12 @@
         <li class="warn"><code>~/.agents</code> is root-owned and blocks the canonical central installer path without an interactive sudo password.</li>
         <li class="ok">Claude-compatible repo-owned skills are active via symlinks under <code>~/.claude/skills</code>.</li>
         <li class="ok">The <code>save-ai-configs-skills</code> helper and Claude Stop-hook check are sourced from tracked scripts in this repo.</li>
-        <li class="warn">Claude CLI is installed, but a bounded non-interactive review attempt returned <code>401 Invalid authentication credentials</code>; treat Claude review as unavailable until auth is fixed.</li>
+        <li class="ok">Codex is the working plan-review comment responder, installed as macOS LaunchAgent <code>com.anasteele.plan-review-codex-responder</code>.</li>
+        <li class="warn">Claude CLI is installed, but a bounded non-interactive review attempt returned <code>401 Invalid authentication credentials</code>; treat Claude review as unavailable until auth is fixed. Do not describe Claude as an active responder yet.</li>
         <li class="warn">The installed <code>plan-review</code> CLI does not expose the newer <code>agent next</code> command documented by the skill, so the first responder uses <code>queue list</code>, <code>queue claim</code>, <code>ack</code>, <code>resolve</code>, and <code>release</code>.</li>
+        <li class="ok"><code>ccore</code> CLI is installed at <code>/usr/local/bin/ccore</code>, and <code>ccore health</code> reports a healthy local node for the default <code>http://127.0.0.1:8787</code> target.</li>
+        <li class="ok">The Ana Agent Ops ccore space exists locally as display name <code>Ana Agent Ops</code> with space id <code>6444a494-a7c4-49c2-9ce0-2c6f25764087</code>.</li>
+        <li class="warn">The current installed <code>ccore</code> binary does not expose <code>ccore mcp</code>, even though an older generated skill guide mentions an MCP surface. Treat the CLI as the implemented access path for now.</li>
       </ul>
     </section>
 
@@ -127,7 +131,7 @@
         <li><input type="checkbox" checked disabled> P6 - Repoint remotes so Ana's repo is <code>origin</code> and Aaron's repo is <code>upstream</code>.</li>
         <li><input type="checkbox" checked disabled> P7 - Decided follow-up for root-owned <code>~/.agents</code> central path; ownership repair remains blocked on an interactive sudo/user action.</li>
         <li><input type="checkbox" checked disabled> P8 - Started a durable Codex responder for plan-review comments.</li>
-        <li><input type="checkbox" disabled> P9 - Document and wire the Ana Agent Ops ccore space as a shared agent guidance, runbook, and skill reference.</li>
+        <li><input type="checkbox" disabled> P9 - Document and wire the Ana Agent Ops ccore space as a shared agent guidance, runbook, and skill reference. Discovery is complete; repo guidance wiring is still pending.</li>
       </ul>
     </section>
 
@@ -140,12 +144,12 @@
         <tbody>
           <tr id="ac-plan-reviewer"><td>AC1</td><td>Plan reviewer is installed, running, and can register this plan.</td><td><code>curl /health</code> succeeds and <code>plan-review register</code> returns a review URL.</td></tr>
           <tr id="ac-skills"><td>AC2</td><td>Core skills are active for Claude from the canonical repo.</td><td><code>~/.claude/skills/*/SKILL.md</code> resolves for planning, development workflow, product principles, plan review, review partners, skill creation, and repo bootstrap.</td></tr>
-          <tr id="ac-reviewers"><td>AC3</td><td>Only locally usable review partners are wired.</td><td>Codex is present. Claude CLI is installed but non-interactive auth failed; OMP is absent and not linked as an active reviewer.</td></tr>
+          <tr id="ac-reviewers"><td>AC3</td><td>Only locally usable review partners are wired.</td><td>Codex is present and is the working responder. Claude CLI is installed but non-interactive auth failed with <code>401 Invalid authentication credentials</code>; OMP is absent and not linked as an active reviewer.</td></tr>
           <tr id="ac-push-discipline"><td>AC4</td><td>Local edits are not stranded locally.</td><td>Canonical payloads live in Ana's Git checkout; end-of-task checklist requires clean tree, branch pushed to Ana's origin, PR status when applicable, and deploy path noted or explicitly not applicable.</td></tr>
           <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
           <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script installs a macOS LaunchAgent for the Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, uses <code>http://127.0.0.1:4317</code> for local API calls, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
           <tr id="ac-user-planning-flow"><td>AC7</td><td>A user can ask an agent to open and use the planning tool for new work.</td><td>Pi can use <code>/dev:reviewed-html-plan &lt;task&gt;</code> or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code>. Claude Code, Codex, Hermes, and other non-Pi agents use their installed skill, prompt, command, or adapter for the same repo-owned reviewed-plan payload; the invoked surface loads <code>skills/html-plan-reviewer</code>, calls <code>plan-review register</code>, returns the browser review URL, and monitors browser comments.</td></tr>
-          <tr id="ac-ccore-agent-ops"><td>AC8</td><td>The Ana Agent Ops ccore space is documented as a shared guidance source for Ana's agents.</td><td>Repo guidance identifies what the ccore space is for, how agents should access and use it for guidance/runbooks/skills, what belongs there versus in repo-local <code>AGENTS.md</code> files, and any unresolved user-provided access details.</td></tr>
+          <tr id="ac-ccore-agent-ops"><td>AC8</td><td>The Ana Agent Ops ccore space is documented as a shared guidance source for Ana's agents.</td><td>Not complete yet. Discovery found local CLI access, a healthy node, and the <code>Ana Agent Ops</code> space id; repo guidance still needs to be written and wired into the relevant agent surfaces.</td></tr>
         </tbody>
       </table>
     </section>
@@ -266,13 +270,15 @@
     <section id="phase-p9-ccore-agent-ops">
       <h2>Phase P9 - Ana Agent Ops Ccore Guidance</h2>
       <h3>End State</h3>
-      <p>All supported agents have clear repo-owned guidance for what the Ana Agent Ops ccore space is, when to use it, how to access its guidance/runbooks/skills, and how it relates to repo-local authority files.</p>
+      <p>All supported agents have clear repo-owned guidance for what the Ana Agent Ops ccore space is, when to use it, how to access its guidance/runbooks/skills, and how it relates to repo-local authority files. This has not been implemented yet.</p>
       <h3>Tests first</h3>
-      <p>Before editing guidance, confirm the ccore access path or command surface, identify the target agent surfaces that should consume it, and verify the updated docs mention both shared ccore guidance and repo-local override precedence.</p>
+      <p>Discovery completed: the implemented access path is the <code>ccore</code> CLI against the default local node, not <code>ccore mcp</code>. The target space is <code>Ana Agent Ops</code> / <code>6444a494-a7c4-49c2-9ce0-2c6f25764087</code>. Before marking P9 done, update docs and verify they mention both shared ccore guidance and repo-local override precedence.</p>
       <h3>Work</h3>
       <ul>
         <li>Create or update a repo guidance section that defines the Ana Agent Ops ccore space as a shared place for reusable agent guidance, runbooks, and skill references.</li>
-        <li>Document the expected access path, authentication assumptions, and lookup workflow for Claude, Codex, Pi, Hermes, and other local agents that can use the space.</li>
+        <li>Document the implemented access path: <code>ccore health</code>, <code>ccore space list</code>, then read/query the <code>Ana Agent Ops</code> space by display name or id <code>6444a494-a7c4-49c2-9ce0-2c6f25764087</code>.</li>
+        <li>Document authentication assumptions: <code>ccore health</code> is healthy locally; account discovery currently reports degraded/stale catalog guidance, so agents should avoid sync/hub/credential operations unless explicitly asked.</li>
+        <li>Document the lookup workflow for Claude, Codex, Pi, Hermes, and other local agents that can use the CLI, while noting that <code>ccore mcp</code> is not currently available in the installed binary.</li>
         <li>State precedence rules: ccore guidance is shared baseline context, while each repository's <code>AGENTS.md</code> / <code>CLAUDE.md</code> remains authoritative for project-specific constraints.</li>
         <li>Add examples of content that belongs in ccore, such as cross-repo runbooks, agent operating procedures, reusable skill notes, and local tool usage notes.</li>
         <li>Add references from relevant installer, skill, or prompt documentation so future agents can discover the ccore workflow during setup.</li>
@@ -286,8 +292,8 @@
     <section id="open-questions-for-user">
       <h2>Open Questions for User</h2>
       <ul>
-        <li>What exact ccore URI, workspace name, command, or connector path should agents use for the Ana Agent Ops ccore space?</li>
-        <li>Which agents can currently access that ccore space directly, and which need a repo-local fallback or adapter?</li>
+        <li class="ok">Answered by discovery: use the local <code>ccore</code> CLI against the default node <code>http://127.0.0.1:8787</code>; the target space is <code>Ana Agent Ops</code> with id <code>6444a494-a7c4-49c2-9ce0-2c6f25764087</code>.</li>
+        <li class="ok">Answered by discovery: agents with shell access can use the <code>ccore</code> CLI. Claude has a linked <code>~/.claude/skills/ccore</code> skill, Hermes has local ccore skills, and Codex can use repo guidance plus the CLI. The installed binary does not currently expose <code>ccore mcp</code>.</li>
         <li>Should the ccore space be read-only guidance for agents, or should agents also write new runbooks/skill notes there after completing work?</li>
       </ul>
     </section>
@@ -325,6 +331,7 @@
         <li>2026-06-22: Chose Codex CLI as the first durable plan-review comment responder because it is installed, authenticated, repo-scoped, and supports non-interactive execution; Hermes remains a possible later orchestration layer.</li>
         <li>2026-06-22: Marked P7 complete because the follow-up decision is to leave <code>~/.agents</code> ownership repair as an explicit interactive sudo/user action before rerunning the canonical skills installer.</li>
         <li>2026-06-22: Switched the Codex responder to a macOS LaunchAgent because shell-owned background jobs do not persist reliably after the controlling agent session exits.</li>
+        <li>2026-06-22: Confirmed the implemented ccore access path is the local <code>ccore</code> CLI and the target space is <code>Ana Agent Ops</code> / <code>6444a494-a7c4-49c2-9ce0-2c6f25764087</code>; repo guidance wiring remains P9 work.</li>
       </ul>
     </section>
   </main>
