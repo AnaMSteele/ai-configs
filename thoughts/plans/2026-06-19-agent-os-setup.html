@@ -78,6 +78,18 @@
       <p>Make Ana's <code>ai-configs</code> repo the source of truth for local agent skills, hooks, and plan-review tooling used in future work in <code>heddle</code>, <code>doct</code>, and related repos, while preserving repo-local <code>AGENTS.md</code> / <code>CLAUDE.md</code> authority.</p>
     </section>
 
+    <section id="planner-invocation">
+      <h2>How to Invoke the Planner</h2>
+      <p>For new non-trivial work, ask the active agent to use the reviewed-plan workflow before implementation. In Pi, invoke <code>/dev:reviewed-html-plan &lt;task&gt;</code> for a planning-only browser review gate, or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code> for the full reviewed-plan workflow that can continue into execution after comments are settled.</p>
+      <p>The invoked prompt must load the repo-owned <code>skills/html-plan-reviewer</code> instructions, create or refresh a semantic HTML plan under <code>thoughts/plans/</code>, register it with <code>plan-review</code>, return the browser URL to the user, and monitor the queue-backed comment flow before execution proceeds.</p>
+    </section>
+
+    <section id="non-claude-agents">
+      <h2>Non-Claude Agent Flow</h2>
+      <p>Claude-specific skill paths are only one consumer surface. Codex, Pi, Hermes, and other non-Claude agents should load the same repo-owned planner payload through their supported prompt, skill, command, or adapter mechanism rather than copying or re-deriving the workflow.</p>
+      <p>When a non-Claude agent handles plan-review comments, it should use <code>http://127.0.0.1:4317</code> for local <code>plan-review</code> CLI calls, use <code>http://mbp.braid-python.ts.net:4317</code> for human-facing review links, claim and process exactly one comment at a time, and acknowledge or resolve through <code>plan-review ack</code> / <code>plan-review resolve</code> metadata.</p>
+    </section>
+
     <section id="authority-inputs">
       <h2>Authority and Inputs</h2>
       <ul>
