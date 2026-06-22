@@ -2,6 +2,27 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository Ownership
+
+Ana's repo is the canonical source of truth for this checkout:
+
+```text
+origin   https://github.com/AnaMSteele/ai-configs.git
+upstream https://github.com/adnichols/ai-configs.git
+```
+
+Aaron's repo is an optional upstream reference. Do not open PRs against `adnichols/ai-configs` for Ana-local setup, skills, hooks, or workflow changes unless Ana explicitly requests that.
+
+Local changes here are not done until they are committed and pushed to Ana's `origin`. Use:
+
+```bash
+save-ai-configs-local-changes "message"
+```
+
+Use `save-ai-configs-skills "message"` only when the intended change is limited to `skills/`.
+
+When useful upstream changes appear in Aaron's repo, inspect them from the `upstream` remote and selectively port them into Ana's repo. Do not replace Ana's repo state wholesale from upstream.
+
 ## Repository Structure
 
 This is a Claude Code, Codex, and Gemini CLI configuration repository containing:

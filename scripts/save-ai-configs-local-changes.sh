@@ -3,7 +3,7 @@ set -euo pipefail
 
 repo="${AI_CONFIGS_REPO:-/Users/anasteele/code/ai-configs}"
 expected_origin="${AI_CONFIGS_ORIGIN_URL:-https://github.com/AnaMSteele/ai-configs.git}"
-message="${1:-Save ai-configs skill updates}"
+message="${1:-Save ai-configs local updates}"
 
 cd "$repo"
 
@@ -14,21 +14,21 @@ fi
 
 origin_url="$(git remote get-url origin 2>/dev/null || true)"
 if [ "$origin_url" != "$expected_origin" ]; then
-  echo "origin must point at Ana's repo before saving skill changes." >&2
+  echo "origin must point at Ana's repo before saving changes." >&2
   echo "expected: $expected_origin" >&2
   echo "found: ${origin_url:-<missing>}" >&2
   exit 1
 fi
 
-if git diff --quiet -- skills && git diff --cached --quiet -- skills && [ -z "$(git ls-files --others --exclude-standard skills)" ]; then
-  echo "No skill changes to save."
+if git diff --quiet && git diff --cached --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+  echo "No ai-configs changes to save."
   exit 0
 fi
 
-git add skills
+git add -A
 
-if git diff --cached --quiet -- skills; then
-  echo "No staged skill changes after git add."
+if git diff --cached --quiet; then
+  echo "No staged changes after git add."
   exit 0
 fi
 
@@ -40,4 +40,4 @@ if [ -z "$branch" ]; then
 fi
 
 git push -u origin "$branch"
-echo "Skill changes committed and pushed to origin/$branch."
+echo "ai-configs changes committed and pushed to origin/$branch."

@@ -75,13 +75,14 @@
 
     <section id="goal">
       <h2>Goal</h2>
-      <p>Make the canonical <code>ai-configs</code> skills and local plan-review tooling active for future work in <code>heddle</code>, <code>doct</code>, and related repos, while preserving repo-local <code>AGENTS.md</code> / <code>CLAUDE.md</code> authority.</p>
+      <p>Make Ana's <code>ai-configs</code> repo the source of truth for local agent skills, hooks, and plan-review tooling used in future work in <code>heddle</code>, <code>doct</code>, and related repos, while preserving repo-local <code>AGENTS.md</code> / <code>CLAUDE.md</code> authority.</p>
     </section>
 
     <section id="authority-inputs">
       <h2>Authority and Inputs</h2>
       <ul>
-        <li>Canonical skills repo: <code>https://github.com/adnichols/ai-configs</code>.</li>
+        <li>Ana's canonical origin repo: <code>https://github.com/AnaMSteele/ai-configs</code>.</li>
+        <li>Aaron's repo is an optional upstream reference only: <code>https://github.com/adnichols/ai-configs</code>.</li>
         <li>Plan reviewer source: <code>https://github.com/Nodaste-Lab/plan-reviewer</code>.</li>
         <li>Local repo guidance remains authoritative inside each product repo.</li>
         <li>Installed local reviewer CLIs discovered so far: Claude CLI and Codex CLI. OMP is not installed.</li>
@@ -94,6 +95,7 @@
         <li class="ok">Homebrew, Git, Claude CLI, Codex CLI, and LTUI are installed.</li>
         <li class="ok"><code>plan-reviewer</code> is installed from the public Homebrew tap and healthy on <code>127.0.0.1:4317</code>.</li>
         <li class="ok"><code>ai-configs</code> is cloned at <code>/Users/anasteele/code/ai-configs</code>.</li>
+        <li class="ok">Git remotes are intended to be <code>origin = AnaMSteele/ai-configs</code> and <code>upstream = adnichols/ai-configs</code>.</li>
         <li class="warn"><code>~/.agents</code> is root-owned and blocks the canonical central installer path without an interactive sudo password.</li>
         <li class="ok">Claude-compatible repo-owned skills are active via symlinks under <code>~/.claude/skills</code>.</li>
         <li class="ok">The <code>save-ai-configs-skills</code> helper and Claude Stop-hook check are sourced from tracked scripts in this repo.</li>
@@ -109,7 +111,8 @@
         <li><input type="checkbox" checked disabled> P3 - Clone canonical <code>ai-configs</code>.</li>
         <li><input type="checkbox" checked disabled> P4 - Activate Claude skills from canonical repo.</li>
         <li><input type="checkbox" checked disabled> P5 - Verify plan publication, skill load paths, and review wrappers.</li>
-        <li><input type="checkbox"> P6 - Decide follow-up for root-owned <code>~/.agents</code> central path.</li>
+        <li><input type="checkbox" checked disabled> P6 - Repoint remotes so Ana's repo is <code>origin</code> and Aaron's repo is <code>upstream</code>.</li>
+        <li><input type="checkbox"> P7 - Decide follow-up for root-owned <code>~/.agents</code> central path.</li>
       </ul>
     </section>
 
@@ -123,7 +126,8 @@
           <tr id="ac-plan-reviewer"><td>AC1</td><td>Plan reviewer is installed, running, and can register this plan.</td><td><code>curl /health</code> succeeds and <code>plan-review register</code> returns a review URL.</td></tr>
           <tr id="ac-skills"><td>AC2</td><td>Core skills are active for Claude from the canonical repo.</td><td><code>~/.claude/skills/*/SKILL.md</code> resolves for planning, development workflow, product principles, plan review, review partners, skill creation, and repo bootstrap.</td></tr>
           <tr id="ac-reviewers"><td>AC3</td><td>Only locally usable review partners are wired.</td><td>Codex is present. Claude CLI is installed but non-interactive auth failed; OMP is absent and not linked as an active reviewer.</td></tr>
-          <tr id="ac-push-discipline"><td>AC4</td><td>Skill edits are not stranded locally.</td><td>Canonical skill payloads live in the Git checkout; end-of-task checklist requires clean tree, pushed branch, PR status, and deploy path note.</td></tr>
+          <tr id="ac-push-discipline"><td>AC4</td><td>Local edits are not stranded locally.</td><td>Canonical payloads live in Ana's Git checkout; end-of-task checklist requires clean tree, branch pushed to Ana's origin, PR status when applicable, and deploy path noted or explicitly not applicable.</td></tr>
+          <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
         </tbody>
       </table>
     </section>
@@ -136,7 +140,11 @@
       </article>
       <article id="bdd-skill-load">
         <h3>Skill load</h3>
-        <p>Given Claude looks in <code>~/.claude/skills</code>, when a future agent requests the standard workflow, then it can load the linked canonical skill payload without copying or re-deriving behavior.</p>
+        <p>Given Claude looks in <code>~/.claude/skills</code>, when a future agent requests the standard workflow, then it can load Ana's linked canonical skill payload without copying or re-deriving behavior.</p>
+      </article>
+      <article id="bdd-origin-alignment">
+        <h3>Origin alignment</h3>
+        <p>Given local <code>ai-configs</code> changes exist, when an agent finishes work, then those changes are not done until they are committed and pushed to <code>origin</code> at <code>AnaMSteele/ai-configs</code>.</p>
       </article>
       <article id="bdd-central-blocked">
         <h3>Central path blocked</h3>
@@ -162,8 +170,27 @@
       <p><code>curl -fsS http://127.0.0.1:4317/health</code>, <code>plan-review register ... --json</code>, and targeted <code>test -f</code> checks.</p>
     </section>
 
-    <section id="phase-p6-follow-up">
-      <h2>Phase P6 - Follow-Up</h2>
+    <section id="phase-p6-origin">
+      <h2>Phase P6 - Origin Alignment</h2>
+      <h3>End State</h3>
+      <p>Local Git remotes point at Ana's repo as <code>origin</code> and Aaron's repo as <code>upstream</code>, and Ana-local setup changes are pushed only to Ana's repo.</p>
+      <h3>Tests first</h3>
+      <p>Check <code>git remote -v</code> and confirm accidental upstream PRs are closed.</p>
+      <h3>Work</h3>
+      <ul>
+        <li>Close the accidental PR against <code>adnichols/ai-configs</code>.</li>
+        <li>Set <code>origin</code> to <code>https://github.com/AnaMSteele/ai-configs.git</code>.</li>
+        <li>Set <code>upstream</code> to <code>https://github.com/adnichols/ai-configs.git</code>.</li>
+        <li>Update repo guidance so future local changes are pushed to Ana's origin.</li>
+      </ul>
+      <h3>Expected files</h3>
+      <p><code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>README.md</code>, scripts, and this plan.</p>
+      <h3>Verify</h3>
+      <p><code>git remote -v</code>, <code>git status --short --branch</code>, and <code>git rev-list --left-right --count HEAD...@{u}</code>.</p>
+    </section>
+
+    <section id="phase-p7-follow-up">
+      <h2>Phase P7 - Follow-Up</h2>
       <h3>End State</h3>
       <p>There is a clear owner decision for fixing the root-owned <code>~/.agents</code> directory so the canonical installer can run normally later.</p>
       <h3>Tests first</h3>
@@ -187,7 +214,7 @@
         <li>Plan first; register HTML plans when the work is non-trivial or reviewer-facing.</li>
         <li>Use tests-first delivery for data-write, schema, migration, destructive, or behavior-critical changes.</li>
         <li>Run the repo's validation commands and a second-model review before finalizing.</li>
-        <li>Finish with clean working tree, pushed branch, PR status/link, and deploy path noted or explicitly not applicable.</li>
+        <li>Finish with clean working tree, pushed branch on Ana's <code>origin</code>, PR status/link when applicable, and deploy path noted or explicitly not applicable.</li>
       </ul>
     </section>
 
@@ -208,6 +235,7 @@
         <li>2026-06-19: Skipped OMP reviewer wiring because <code>omp</code> is not installed on this machine.</li>
         <li>2026-06-19: Added tracked skill-save and skill-push-check scripts, then linked them into local Claude tooling.</li>
         <li>2026-06-19: Attempted a bounded Claude CLI second-model review; it failed with <code>401 Invalid authentication credentials</code>.</li>
+        <li>2026-06-22: Closed the accidental PR against Aaron's repo and redefined Ana's repo as canonical <code>origin</code>, with Aaron's repo retained only as <code>upstream</code>.</li>
       </ul>
     </section>
   </main>

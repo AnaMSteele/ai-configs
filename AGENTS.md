@@ -2,6 +2,17 @@
 
 Current roster of bespoke Claude, Codex, and Pi agents defined in this repository.
 
+## Repository Ownership
+
+- This checkout's canonical source of truth is Ana's repo: `https://github.com/AnaMSteele/ai-configs`.
+- Local Git remotes should be:
+  - `origin` -> `https://github.com/AnaMSteele/ai-configs.git`
+  - `upstream` -> `https://github.com/adnichols/ai-configs.git`
+- Aaron's `adnichols/ai-configs` repo is an upstream reference only. Do not open PRs against it for Ana-local setup, skills, hooks, or workflow changes unless Ana explicitly asks.
+- Local changes in this repo are not complete until they are committed and pushed to Ana's `origin` repo. Treat an unpushed local change as unfinished work.
+- Use `save-ai-configs-local-changes "message"` to commit and push all intentional changes in this repo, or `save-ai-configs-skills "message"` when the only intended changes are under `skills/`.
+- If Aaron's repo changes, inspect it through the `upstream` remote and selectively cherry-pick or port useful updates. Never assume upstream should overwrite Ana's local source of truth.
+
 ## Pi Subagents (Implementation)
 Located under `_pi/agents/` and invoked via Pi subagent system:
 

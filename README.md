@@ -11,6 +11,29 @@ Shared configuration repo for:
 
 It packages prompt/command surfaces, agent definitions, shared skills, helper scripts, and install tooling in one place.
 
+## Ownership Model
+
+This checkout is Ana's source of truth for local agent configuration:
+
+```text
+origin   https://github.com/AnaMSteele/ai-configs.git
+upstream https://github.com/adnichols/ai-configs.git
+```
+
+Treat `adnichols/ai-configs` as an optional upstream reference, not the destination for Ana-local setup or workflow changes. If upstream changes are useful, review and selectively port them into this repo.
+
+Local changes are not complete until they are committed and pushed to Ana's `origin` repo. Use:
+
+```bash
+save-ai-configs-local-changes "message"
+```
+
+For skill-only edits, use:
+
+```bash
+save-ai-configs-skills "message"
+```
+
 ## Repository layout
 
 ```text
