@@ -43,6 +43,34 @@ When agents run within Codex, they MUST prioritize native Codex tools over MCP s
 
 **Rationale:** MCP tool wrapping introduces unnecessary latency and may produce inconsistent results. Native Codex tools are optimized for the local filesystem and provide superior performance.
 
+## Ana Agent Ops Ccore Guidance
+
+Ana Agent Ops is Ana's shared ccore space for reusable cross-agent guidance, runbooks, local tool notes, and skill-reference context. Use it when guidance should apply across Claude, Codex, Pi, Hermes, OpenCode, and related agents instead of belonging to one product repo.
+
+Implemented access path on this machine:
+
+```bash
+ccore health
+ccore space list
+ccore query 6444a494-a7c4-49c2-9ce0-2c6f25764087 "reviewed HTML plan workflow"
+ccore doc list 6444a494-a7c4-49c2-9ce0-2c6f25764087
+ccore doc show <document-id>
+```
+
+Target space:
+
+```text
+Display name: Ana Agent Ops
+Space ID: 6444a494-a7c4-49c2-9ce0-2c6f25764087
+Default node: http://127.0.0.1:8787
+```
+
+The installed `ccore` binary currently does not expose `ccore mcp`; use the CLI unless the live binary shows a supported MCP surface. `ccore health` is healthy locally, but account/catalog discovery may be degraded or stale, so avoid sync, hub, credential, invite, delete, archive, restore, or direct SQLite operations unless Ana explicitly asks.
+
+Authority order is: current user instruction, repo-local `AGENTS.md` / `CLAUDE.md` / product safety docs, Ana Agent Ops ccore guidance, then general shared skills or model defaults. If ccore guidance conflicts with repo-local guidance, the repo-local rule wins and the conflict should be surfaced.
+
+Default to read-only. Agents may write new Ana Agent Ops documents only when Ana explicitly asks for ccore writeback or when the active task specifically includes creating or updating ccore guidance. When writing is allowed, read related docs first, make the smallest focused update, verify with `ccore doc show`, and report the document ID.
+
 ## Review & Fidelity Safeguards
 - `quality-reviewer` (sonnet; `_opencode/agents/quality-reviewer.md`) — Reviews code for real issues (security, data loss, performance) with measurable impact focus.
 - `quality-reviewer` (inherits workspace default model; `_claude/agents/quality-reviewer.md`) — Production safety review covering security, data loss, regressions, and performance.

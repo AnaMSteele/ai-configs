@@ -13,6 +13,18 @@
       "notes": "Canonical reviewed-plan development workflow replacing the older prompt-chained handoff and retired quality-gated execution path.",
       "sourceType": "repo"
     },
+    "agent-ops-ccore": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "codex",
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/agent-ops-ccore",
+      "notes": "Repo-owned guidance for using Ana Agent Ops ccore as shared cross-agent runbook, local tool, and skill-reference context.",
+      "sourceType": "repo"
+    },
     "algorithmic-art": {
       "class": "universal-installable",
       "allowedConsumers": [

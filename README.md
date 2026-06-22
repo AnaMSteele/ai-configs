@@ -196,6 +196,31 @@ bash ./install.sh --skills --update
 bash ./install.sh --tools
 ```
 
+### Ana Agent Ops ccore
+
+Ana Agent Ops is the shared ccore space for cross-agent operating guidance, local tool runbooks, and reusable skill notes. It is shared baseline context for agents; repo-local `AGENTS.md` / `CLAUDE.md` files remain authoritative for product-specific architecture, data-safety, and workflow constraints.
+
+Current local access uses the `ccore` CLI:
+
+```bash
+ccore health
+ccore space list
+ccore query 6444a494-a7c4-49c2-9ce0-2c6f25764087 "reviewed HTML plan workflow"
+ccore doc list 6444a494-a7c4-49c2-9ce0-2c6f25764087
+ccore doc show <document-id>
+```
+
+Target space:
+
+```text
+Ana Agent Ops
+6444a494-a7c4-49c2-9ce0-2c6f25764087
+```
+
+The installed `ccore` binary does not currently expose `ccore mcp`, so agents should use the CLI unless the live environment proves otherwise. Default to read-only; write Agent Ops documents only when Ana explicitly asks for ccore writeback or the active task specifically includes updating ccore guidance.
+
+The repo-owned skill for this workflow is `skills/agent-ops-ccore`, indexed in `skills/install-matrix.json`.
+
 ## Working docs
 
 The repo keeps long-lived and working documentation separate:
