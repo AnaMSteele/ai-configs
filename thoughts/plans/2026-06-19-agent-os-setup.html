@@ -130,7 +130,7 @@
           <tr id="ac-reviewers"><td>AC3</td><td>Only locally usable review partners are wired.</td><td>Codex is present. Claude CLI is installed but non-interactive auth failed; OMP is absent and not linked as an active reviewer.</td></tr>
           <tr id="ac-push-discipline"><td>AC4</td><td>Local edits are not stranded locally.</td><td>Canonical payloads live in Ana's Git checkout; end-of-task checklist requires clean tree, branch pushed to Ana's origin, PR status when applicable, and deploy path noted or explicitly not applicable.</td></tr>
           <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
-          <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script starts a background Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
+          <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script starts a background Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, uses <code>http://127.0.0.1:4317</code> for local API calls, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
         </tbody>
       </table>
     </section>
@@ -228,6 +228,7 @@
       <ul>
         <li>Add <code>scripts/plan-review-codex-responder.sh</code> with <code>start</code>, <code>stop</code>, <code>status</code>, <code>once</code>, and <code>loop</code> modes.</li>
         <li>Poll only Ana's repo key: <code>https://github.com/AnaMSteele/ai-configs.git</code>.</li>
+        <li>Use <code>PLAN_REVIEW_SERVICE_URL=http://127.0.0.1:4317</code> for CLI calls and <code>PLAN_REVIEW_BROWSER_URL=http://mbp.braid-python.ts.net:4317</code> for human-facing links.</li>
         <li>Claim one pending comment at a time and write claim state to <code>~/.plan-reviewer/codex-responder</code>.</li>
         <li>Invoke <code>codex exec --full-auto</code> with the claim JSON, repo path, plan-review URL, and ack/resolve instructions.</li>
         <li>Release the claim when Codex fails so another run can retry safely.</li>

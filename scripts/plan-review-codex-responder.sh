@@ -2,7 +2,8 @@
 set -euo pipefail
 
 REPO="${AI_CONFIGS_REPO:-/Users/anasteele/code/ai-configs}"
-PLAN_REVIEW_URL="${PLAN_REVIEW_URL:-http://mbp.braid-python.ts.net:4317}"
+PLAN_REVIEW_SERVICE_URL="${PLAN_REVIEW_SERVICE_URL:-${PLAN_REVIEW_URL:-http://127.0.0.1:4317}}"
+PLAN_REVIEW_BROWSER_URL="${PLAN_REVIEW_BROWSER_URL:-http://mbp.braid-python.ts.net:4317}"
 REPO_KEY="${PLAN_REVIEW_REPO_KEY:-https://github.com/AnaMSteele/ai-configs.git}"
 STATE_DIR="${PLAN_REVIEW_CODEX_STATE_DIR:-$HOME/.plan-reviewer/codex-responder}"
 POLL_SECONDS="${PLAN_REVIEW_CODEX_POLL_SECONDS:-15}"
@@ -18,7 +19,8 @@ Usage: plan-review-codex-responder.sh <start|stop|status|once|loop>
 
 Environment:
   AI_CONFIGS_REPO                 Repo to operate in. Default: /Users/anasteele/code/ai-configs
-  PLAN_REVIEW_URL                 Plan-review service URL. Default: http://mbp.braid-python.ts.net:4317
+  PLAN_REVIEW_SERVICE_URL         Local plan-review API URL. Default: http://127.0.0.1:4317
+  PLAN_REVIEW_BROWSER_URL         Human browser URL. Default: http://mbp.braid-python.ts.net:4317
   PLAN_REVIEW_REPO_KEY            Repo key to poll. Default: https://github.com/AnaMSteele/ai-configs.git
   PLAN_REVIEW_CODEX_STATE_DIR     Runtime logs/state directory. Default: ~/.plan-reviewer/codex-responder
   PLAN_REVIEW_CODEX_POLL_SECONDS  Poll interval for loop/start. Default: 15
@@ -43,10 +45,11 @@ ensure_ready() {
     echo "origin must be $REPO_KEY; found ${origin_url:-<missing>}" >&2
     exit 1
   fi
+  curl -fsS "$PLAN_REVIEW_SERVICE_URL/health" >/dev/null
 }
 
 pending_comment_json() {
-  plan-review queue list --url "$PLAN_REVIEW_URL" --repo-key "$REPO_KEY" --limit 1 --json |
+  plan-review queue list --url "$PLAN_REVIEW_SERVICE_URL" --repo-key "$REPO_KEY" --limit 1 --json |
     jq -c '.items[]? | select(.status == "pending")' |
     head -n 1
 }
@@ -55,7 +58,7 @@ claim_comment() {
   local plan_id="$1"
   local comment_id="$2"
   plan-review queue claim "$plan_id" \
-    --url "$PLAN_REVIEW_URL" \
+    --url "$PLAN_REVIEW_SERVICE_URL" \
     --ids "$comment_id" \
     --lease-seconds "$LEASE_SECONDS" \
     --json
@@ -70,7 +73,8 @@ run_codex_for_claim() {
 You are the Codex responder for a browser comment in the local plan-review tool.
 
 Repository: $REPO
-Plan-review URL: $PLAN_REVIEW_URL
+Plan-review service URL: $PLAN_REVIEW_SERVICE_URL
+Plan-review browser URL: $PLAN_REVIEW_BROWSER_URL
 Repo key: $REPO_KEY
 Claim JSON: $claim_file
 
@@ -83,7 +87,8 @@ Rules:
 - Make the smallest correct plan/documentation change, if a change is needed.
 - If no file change is needed, still acknowledge the comment with a clear note.
 - This installed plan-review CLI may not have a visible reply command, so use ack/resolve metadata.
-- Acknowledge with: plan-review ack <commentId> --url "$PLAN_REVIEW_URL" --claim <claimId> --note ... --summary ... --changed-files ...
+- Use the service URL for CLI calls and the browser URL for human-facing references.
+- Acknowledge with: plan-review ack <commentId> --url "$PLAN_REVIEW_SERVICE_URL" --claim <claimId> --note ... --summary ... --changed-files ...
 - Resolve only when the reviewer-visible issue is actually settled.
 - If you modify the repo, commit and push to Ana's origin before finishing.
 - Leave a concise final summary of what you did.
@@ -101,7 +106,10 @@ process_once() {
   mkdir -p "$STATE_DIR"
 
   local pending
-  pending="$(pending_comment_json || true)"
+  if ! pending="$(pending_comment_json)"; then
+    log "queue list failed for $REPO_KEY at $PLAN_REVIEW_SERVICE_URL"
+    return 1
+  fi
   if [ -z "$pending" ]; then
     log "no pending comments for $REPO_KEY"
     return 0
@@ -135,7 +143,7 @@ process_once() {
 
   log "codex failed for $comment_id; releasing claim $claim_id"
   plan-review release "$comment_id" \
-    --url "$PLAN_REVIEW_URL" \
+    --url "$PLAN_REVIEW_SERVICE_URL" \
     --claim "$claim_id" \
     --reason "Codex responder failed; see $output_file" \
     --json >/dev/null || true
