@@ -8,7 +8,7 @@ REPO_KEY="${PLAN_REVIEW_REPO_KEY:-https://github.com/AnaMSteele/ai-configs.git}"
 STATE_DIR="${PLAN_REVIEW_CODEX_STATE_DIR:-$HOME/.plan-reviewer/codex-responder}"
 POLL_SECONDS="${PLAN_REVIEW_CODEX_POLL_SECONDS:-15}"
 LEASE_SECONDS="${PLAN_REVIEW_CODEX_LEASE_SECONDS:-1800}"
-CODEX_MODEL="${PLAN_REVIEW_CODEX_MODEL:-}"
+CODEX_MODEL="${PLAN_REVIEW_CODEX_MODEL:-gpt-5.5}"
 CODEX_IGNORE_USER_CONFIG="${PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG:-1}"
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 PID_FILE="$STATE_DIR/responder.pid"
@@ -26,7 +26,7 @@ Environment:
   PLAN_REVIEW_CODEX_STATE_DIR     Runtime logs/state directory. Default: ~/.plan-reviewer/codex-responder
   PLAN_REVIEW_CODEX_POLL_SECONDS  Poll interval for loop/start. Default: 15
   PLAN_REVIEW_CODEX_LEASE_SECONDS Claim lease duration. Default: 1800
-  PLAN_REVIEW_CODEX_MODEL         Optional Codex model override.
+  PLAN_REVIEW_CODEX_MODEL         Codex model. Default: gpt-5.5
   PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG
                                   Set to 0 to let Codex load user config. Default: 1
 USAGE
