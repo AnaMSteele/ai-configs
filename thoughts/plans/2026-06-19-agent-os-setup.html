@@ -130,7 +130,7 @@
           <tr id="ac-reviewers"><td>AC3</td><td>Only locally usable review partners are wired.</td><td>Codex is present. Claude CLI is installed but non-interactive auth failed; OMP is absent and not linked as an active reviewer.</td></tr>
           <tr id="ac-push-discipline"><td>AC4</td><td>Local edits are not stranded locally.</td><td>Canonical payloads live in Ana's Git checkout; end-of-task checklist requires clean tree, branch pushed to Ana's origin, PR status when applicable, and deploy path noted or explicitly not applicable.</td></tr>
           <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
-          <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script starts a background Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, uses <code>http://127.0.0.1:4317</code> for local API calls, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
+          <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script installs a macOS LaunchAgent for the Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, uses <code>http://127.0.0.1:4317</code> for local API calls, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
         </tbody>
       </table>
     </section>
@@ -226,18 +226,18 @@
       <p>Verify the local command surface before starting: <code>plan-review queue list --repo-key ... --json</code>, <code>plan-review queue claim --help</code>, <code>codex exec --help</code>, and <code>bash -n scripts/plan-review-codex-responder.sh</code>.</p>
       <h3>Work</h3>
       <ul>
-        <li>Add <code>scripts/plan-review-codex-responder.sh</code> with <code>start</code>, <code>stop</code>, <code>status</code>, <code>once</code>, and <code>loop</code> modes.</li>
+        <li>Add <code>scripts/plan-review-codex-responder.sh</code> with <code>start</code>, <code>stop</code>, <code>status</code>, <code>once</code>, <code>loop</code>, <code>install-service</code>, and <code>uninstall-service</code> modes.</li>
         <li>Poll only Ana's repo key: <code>https://github.com/AnaMSteele/ai-configs.git</code>.</li>
         <li>Use <code>PLAN_REVIEW_SERVICE_URL=http://127.0.0.1:4317</code> for CLI calls and <code>PLAN_REVIEW_BROWSER_URL=http://mbp.braid-python.ts.net:4317</code> for human-facing links.</li>
         <li>Claim one pending comment at a time and write claim state to <code>~/.plan-reviewer/codex-responder</code>.</li>
         <li>Invoke <code>codex exec -m gpt-5.5 --dangerously-bypass-approvals-and-sandbox --ignore-user-config</code> with the claim JSON, repo path, plan-review URL, and ack/resolve instructions, unless <code>PLAN_REVIEW_CODEX_MODEL</code>, <code>PLAN_REVIEW_CODEX_FULL_ACCESS=0</code>, or <code>PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG=0</code> is set.</li>
         <li>Release the claim when Codex fails so another run can retry safely.</li>
-        <li>Start the responder and confirm its status/log output.</li>
+        <li>Install the LaunchAgent responder and confirm its status/log output.</li>
       </ul>
       <h3>Expected files</h3>
       <p><code>scripts/plan-review-codex-responder.sh</code>, this plan, and optionally repo guidance that points to the responder command.</p>
       <h3>Verify</h3>
-      <p><code>scripts/plan-review-codex-responder.sh status</code>, <code>tail ~/.plan-reviewer/codex-responder/responder.log</code>, and <code>plan-review queue list --repo-key https://github.com/AnaMSteele/ai-configs.git --json</code>.</p>
+      <p><code>scripts/plan-review-codex-responder.sh install-service</code>, <code>scripts/plan-review-codex-responder.sh status</code>, <code>tail ~/.plan-reviewer/codex-responder/responder.log</code>, and <code>plan-review queue list --repo-key https://github.com/AnaMSteele/ai-configs.git --json</code>.</p>
     </section>
 
     <section id="end-of-task">
@@ -272,7 +272,7 @@
         <li>2026-06-22: Closed the accidental PR against Aaron's repo and redefined Ana's repo as canonical <code>origin</code>, with Aaron's repo retained only as <code>upstream</code>.</li>
         <li>2026-06-22: Chose Codex CLI as the first durable plan-review comment responder because it is installed, authenticated, repo-scoped, and supports non-interactive execution; Hermes remains a possible later orchestration layer.</li>
         <li>2026-06-22: Marked P7 complete because the follow-up decision is to leave <code>~/.agents</code> ownership repair as an explicit interactive sudo/user action before rerunning the canonical skills installer.</li>
-        <li>2026-06-22: Started the Codex responder daemon and verified it stays running across empty-queue poll cycles.</li>
+        <li>2026-06-22: Switched the Codex responder to a macOS LaunchAgent because shell-owned background jobs do not persist reliably after the controlling agent session exits.</li>
       </ul>
     </section>
   </main>

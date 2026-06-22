@@ -14,10 +14,12 @@ CODEX_FULL_ACCESS="${PLAN_REVIEW_CODEX_FULL_ACCESS:-1}"
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 PID_FILE="$STATE_DIR/responder.pid"
 LOG_FILE="$STATE_DIR/responder.log"
+LAUNCH_AGENT_LABEL="${PLAN_REVIEW_CODEX_LAUNCH_AGENT_LABEL:-com.anasteele.plan-review-codex-responder}"
+LAUNCH_AGENT_PLIST="$HOME/Library/LaunchAgents/$LAUNCH_AGENT_LABEL.plist"
 
 usage() {
   cat <<'USAGE'
-Usage: plan-review-codex-responder.sh <start|stop|status|once|loop>
+Usage: plan-review-codex-responder.sh <start|stop|status|once|loop|install-service|uninstall-service>
 
 Environment:
   AI_CONFIGS_REPO                 Repo to operate in. Default: /Users/anasteele/code/ai-configs
@@ -31,6 +33,8 @@ Environment:
   PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG
                                   Set to 0 to let Codex load user config. Default: 1
   PLAN_REVIEW_CODEX_FULL_ACCESS   Set to 0 to use workspace-write. Default: 1
+  PLAN_REVIEW_CODEX_LAUNCH_AGENT_LABEL
+                                  LaunchAgent label. Default: com.anasteele.plan-review-codex-responder
 USAGE
 }
 
@@ -229,6 +233,51 @@ status_daemon() {
     echo "not running"
   fi
   echo "log $LOG_FILE"
+  launchctl print "gui/$(id -u)/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 &&
+    echo "launchagent loaded $LAUNCH_AGENT_LABEL" || true
+}
+
+install_service() {
+  ensure_ready
+  mkdir -p "$STATE_DIR" "$(dirname "$LAUNCH_AGENT_PLIST")"
+  cat >"$LAUNCH_AGENT_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LAUNCH_AGENT_LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>$SCRIPT_PATH</string>
+    <string>loop</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>$REPO</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$LOG_FILE</string>
+  <key>StandardErrorPath</key>
+  <string>$LOG_FILE</string>
+</dict>
+</plist>
+PLIST
+  launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT_PLIST" >/dev/null 2>&1 || true
+  launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_PLIST"
+  launchctl kickstart -k "gui/$(id -u)/$LAUNCH_AGENT_LABEL"
+  echo "Installed and started LaunchAgent $LAUNCH_AGENT_LABEL"
+  echo "Plist: $LAUNCH_AGENT_PLIST"
+  echo "Log: $LOG_FILE"
+}
+
+uninstall_service() {
+  launchctl bootout "gui/$(id -u)" "$LAUNCH_AGENT_PLIST" >/dev/null 2>&1 || true
+  rm -f "$LAUNCH_AGENT_PLIST"
+  echo "Uninstalled LaunchAgent $LAUNCH_AGENT_LABEL"
 }
 
 case "${1:-}" in
@@ -237,6 +286,8 @@ case "${1:-}" in
   status) status_daemon ;;
   once) process_once ;;
   loop) loop_forever ;;
+  install-service) install_service ;;
+  uninstall-service) uninstall_service ;;
   -h|--help|help|"") usage ;;
   *)
     usage >&2
