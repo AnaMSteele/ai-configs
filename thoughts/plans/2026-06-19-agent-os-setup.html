@@ -131,6 +131,7 @@
           <tr id="ac-push-discipline"><td>AC4</td><td>Local edits are not stranded locally.</td><td>Canonical payloads live in Ana's Git checkout; end-of-task checklist requires clean tree, branch pushed to Ana's origin, PR status when applicable, and deploy path noted or explicitly not applicable.</td></tr>
           <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
           <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script installs a macOS LaunchAgent for the Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, uses <code>http://127.0.0.1:4317</code> for local API calls, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
+          <tr id="ac-user-planning-flow"><td>AC7</td><td>A user can ask an agent to open and use the planning tool for new work.</td><td>In Pi, use <code>/dev:reviewed-html-plan &lt;task&gt;</code> to create/register a browser-reviewed plan, or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code> for the full reviewed-plan workflow; the invoked prompt loads <code>skills/html-plan-reviewer</code>, calls <code>plan-review register</code>, returns the browser review URL, and monitors browser comments.</td></tr>
         </tbody>
       </table>
     </section>
@@ -156,6 +157,10 @@
       <article id="bdd-codex-responder">
         <h3>Codex comment response</h3>
         <p>Given a reviewer leaves a pending browser comment, when <code>plan-review-codex-responder.sh</code> runs, then it claims one comment, gives the claim JSON and repo context to Codex, and expects Codex to update the plan or acknowledge the comment using the active claim.</p>
+      </article>
+      <article id="bdd-user-planning-flow">
+        <h3>User planning flow</h3>
+        <p>Given a user wants an agent to use the planning tool for a new task, when they invoke <code>/dev:reviewed-html-plan &lt;task&gt;</code> or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code> in Pi, then the agent creates or resumes the HTML plan, registers it with <code>plan-review</code>, opens the browser-review URL for feedback, and uses the queue-backed comment flow before execution.</p>
       </article>
       <article id="bdd-responder-failure">
         <h3>Responder failure</h3>
