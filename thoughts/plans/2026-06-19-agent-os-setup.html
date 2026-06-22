@@ -127,6 +127,7 @@
         <li><input type="checkbox" checked disabled> P6 - Repoint remotes so Ana's repo is <code>origin</code> and Aaron's repo is <code>upstream</code>.</li>
         <li><input type="checkbox" checked disabled> P7 - Decided follow-up for root-owned <code>~/.agents</code> central path; ownership repair remains blocked on an interactive sudo/user action.</li>
         <li><input type="checkbox" checked disabled> P8 - Started a durable Codex responder for plan-review comments.</li>
+        <li><input type="checkbox" disabled> P9 - Document and wire the Ana Agent Ops ccore space as a shared agent guidance, runbook, and skill reference.</li>
       </ul>
     </section>
 
@@ -144,6 +145,7 @@
           <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
           <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script installs a macOS LaunchAgent for the Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, uses <code>http://127.0.0.1:4317</code> for local API calls, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
           <tr id="ac-user-planning-flow"><td>AC7</td><td>A user can ask an agent to open and use the planning tool for new work.</td><td>Pi can use <code>/dev:reviewed-html-plan &lt;task&gt;</code> or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code>. Claude Code, Codex, Hermes, and other non-Pi agents use their installed skill, prompt, command, or adapter for the same repo-owned reviewed-plan payload; the invoked surface loads <code>skills/html-plan-reviewer</code>, calls <code>plan-review register</code>, returns the browser review URL, and monitors browser comments.</td></tr>
+          <tr id="ac-ccore-agent-ops"><td>AC8</td><td>The Ana Agent Ops ccore space is documented as a shared guidance source for Ana's agents.</td><td>Repo guidance identifies what the ccore space is for, how agents should access and use it for guidance/runbooks/skills, what belongs there versus in repo-local <code>AGENTS.md</code> files, and any unresolved user-provided access details.</td></tr>
         </tbody>
       </table>
     </section>
@@ -173,6 +175,10 @@
       <article id="bdd-user-planning-flow">
         <h3>User planning flow</h3>
         <p>Given a user wants an agent to use the planning tool for a new task, when they either invoke Pi's <code>/dev:reviewed-html-plan &lt;task&gt;</code> or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code>, ask Claude Code or Codex to use the reviewed HTML plan workflow, or have Hermes route to the same repo-owned reviewed-plan adapter, then the agent creates or resumes the HTML plan, registers it with <code>plan-review</code>, opens the browser-review URL for feedback, and uses the queue-backed comment flow before execution.</p>
+      </article>
+      <article id="bdd-ccore-agent-ops">
+        <h3>Ana Agent Ops ccore guidance</h3>
+        <p>Given Ana has an Agent Ops ccore space for shared agent guidance, runbooks, and skills, when an agent needs cross-agent operating instructions, then it consults the documented ccore access path and usage rules while preserving repo-local <code>AGENTS.md</code> / <code>CLAUDE.md</code> authority for project-specific constraints.</p>
       </article>
       <article id="bdd-responder-failure">
         <h3>Responder failure</h3>
@@ -255,6 +261,35 @@
       <p><code>scripts/plan-review-codex-responder.sh</code>, this plan, and optionally repo guidance that points to the responder command.</p>
       <h3>Verify</h3>
       <p><code>scripts/plan-review-codex-responder.sh install-service</code>, <code>scripts/plan-review-codex-responder.sh status</code>, <code>tail ~/.plan-reviewer/codex-responder/responder.log</code>, and <code>plan-review queue list --repo-key https://github.com/AnaMSteele/ai-configs.git --json</code>.</p>
+    </section>
+
+    <section id="phase-p9-ccore-agent-ops">
+      <h2>Phase P9 - Ana Agent Ops Ccore Guidance</h2>
+      <h3>End State</h3>
+      <p>All supported agents have clear repo-owned guidance for what the Ana Agent Ops ccore space is, when to use it, how to access its guidance/runbooks/skills, and how it relates to repo-local authority files.</p>
+      <h3>Tests first</h3>
+      <p>Before editing guidance, confirm the ccore access path or command surface, identify the target agent surfaces that should consume it, and verify the updated docs mention both shared ccore guidance and repo-local override precedence.</p>
+      <h3>Work</h3>
+      <ul>
+        <li>Create or update a repo guidance section that defines the Ana Agent Ops ccore space as a shared place for reusable agent guidance, runbooks, and skill references.</li>
+        <li>Document the expected access path, authentication assumptions, and lookup workflow for Claude, Codex, Pi, Hermes, and other local agents that can use the space.</li>
+        <li>State precedence rules: ccore guidance is shared baseline context, while each repository's <code>AGENTS.md</code> / <code>CLAUDE.md</code> remains authoritative for project-specific constraints.</li>
+        <li>Add examples of content that belongs in ccore, such as cross-repo runbooks, agent operating procedures, reusable skill notes, and local tool usage notes.</li>
+        <li>Add references from relevant installer, skill, or prompt documentation so future agents can discover the ccore workflow during setup.</li>
+      </ul>
+      <h3>Expected files</h3>
+      <p><code>AGENTS.md</code>, <code>README.md</code>, relevant files under <code>skills/</code> or <code>_pi/</code>, and this plan.</p>
+      <h3>Verify</h3>
+      <p><code>rg -n "Agent Ops|ccore|runbook|repo-local" AGENTS.md README.md skills _pi</code> and any applicable installer or prompt validation command for touched files.</p>
+    </section>
+
+    <section id="open-questions-for-user">
+      <h2>Open Questions for User</h2>
+      <ul>
+        <li>What exact ccore URI, workspace name, command, or connector path should agents use for the Ana Agent Ops ccore space?</li>
+        <li>Which agents can currently access that ccore space directly, and which need a repo-local fallback or adapter?</li>
+        <li>Should the ccore space be read-only guidance for agents, or should agents also write new runbooks/skill notes there after completing work?</li>
+      </ul>
     </section>
 
     <section id="end-of-task">
