@@ -231,12 +231,12 @@ stop_daemon() {
 status_daemon() {
   if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     echo "running pid $(cat "$PID_FILE")"
+  elif launchctl print "gui/$(id -u)/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1; then
+    echo "running via LaunchAgent $LAUNCH_AGENT_LABEL"
   else
     echo "not running"
   fi
   echo "log $LOG_FILE"
-  launchctl print "gui/$(id -u)/$LAUNCH_AGENT_LABEL" >/dev/null 2>&1 &&
-    echo "launchagent loaded $LAUNCH_AGENT_LABEL" || true
 }
 
 install_service() {
