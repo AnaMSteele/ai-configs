@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent Operating System Setup Plan</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111318;
+      --panel: #181c24;
+      --text: #eef2f8;
+      --muted: #a8b0bf;
+      --accent: #7dd3fc;
+      --line: #303746;
+      --warn: #fbbf24;
+      --ok: #86efac;
+    }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    main {
+      width: min(980px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 36px 0 56px;
+    }
+    section, article {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    h1, h2, h3 {
+      line-height: 1.2;
+      margin: 0 0 12px;
+    }
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.25rem; color: var(--accent); }
+    h3 { font-size: 1rem; }
+    p, ul, ol { margin: 0 0 12px; }
+    code {
+      background: #0b0d12;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.1rem 0.25rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { color: var(--accent); }
+    .muted { color: var(--muted); }
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+  </style>
+</head>
+<body>
+  <main>
+    <header id="title">
+      <h1>Agent Operating System Setup Plan</h1>
+      <p class="muted">Status: execution-ready for local tooling and repo-doc setup only. No production data, infrastructure, secrets, deploys, or product code are in scope.</p>
+    </header>
+
+    <section id="goal">
+      <h2>Goal</h2>
+      <p>Make the canonical <code>ai-configs</code> skills and local plan-review tooling active for future work in <code>heddle</code>, <code>doct</code>, and related repos, while preserving repo-local <code>AGENTS.md</code> / <code>CLAUDE.md</code> authority.</p>
+    </section>
+
+    <section id="authority-inputs">
+      <h2>Authority and Inputs</h2>
+      <ul>
+        <li>Canonical skills repo: <code>https://github.com/adnichols/ai-configs</code>.</li>
+        <li>Plan reviewer source: <code>https://github.com/Nodaste-Lab/plan-reviewer</code>.</li>
+        <li>Local repo guidance remains authoritative inside each product repo.</li>
+        <li>Installed local reviewer CLIs discovered so far: Claude CLI and Codex CLI. OMP is not installed.</li>
+      </ul>
+    </section>
+
+    <section id="current-reality">
+      <h2>Current Implementation Reality</h2>
+      <ul>
+        <li class="ok">Homebrew, Git, Claude CLI, Codex CLI, and LTUI are installed.</li>
+        <li class="ok"><code>plan-reviewer</code> is installed from the public Homebrew tap and healthy on <code>127.0.0.1:4317</code>.</li>
+        <li class="ok"><code>ai-configs</code> is cloned at <code>/Users/anasteele/code/ai-configs</code>.</li>
+        <li class="warn"><code>~/.agents</code> is root-owned and blocks the canonical central installer path without an interactive sudo password.</li>
+        <li class="ok">Claude-compatible repo-owned skills are active via symlinks under <code>~/.claude/skills</code>.</li>
+        <li class="ok">The <code>save-ai-configs-skills</code> helper and Claude Stop-hook check are sourced from tracked scripts in this repo.</li>
+        <li class="warn">Claude CLI is installed, but a bounded non-interactive review attempt returned <code>401 Invalid authentication credentials</code>; treat Claude review as unavailable until auth is fixed.</li>
+      </ul>
+    </section>
+
+    <section id="progress">
+      <h2>Progress</h2>
+      <ul>
+        <li><input type="checkbox" checked disabled> P1 - Discover local tooling and repo locations.</li>
+        <li><input type="checkbox" checked disabled> P2 - Install and start <code>plan-reviewer</code>.</li>
+        <li><input type="checkbox" checked disabled> P3 - Clone canonical <code>ai-configs</code>.</li>
+        <li><input type="checkbox" checked disabled> P4 - Activate Claude skills from canonical repo.</li>
+        <li><input type="checkbox" checked disabled> P5 - Verify plan publication, skill load paths, and review wrappers.</li>
+        <li><input type="checkbox"> P6 - Decide follow-up for root-owned <code>~/.agents</code> central path.</li>
+      </ul>
+    </section>
+
+    <section id="acceptance">
+      <h2>Acceptance Criteria</h2>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Criterion</th><th>Evidence</th></tr>
+        </thead>
+        <tbody>
+          <tr id="ac-plan-reviewer"><td>AC1</td><td>Plan reviewer is installed, running, and can register this plan.</td><td><code>curl /health</code> succeeds and <code>plan-review register</code> returns a review URL.</td></tr>
+          <tr id="ac-skills"><td>AC2</td><td>Core skills are active for Claude from the canonical repo.</td><td><code>~/.claude/skills/*/SKILL.md</code> resolves for planning, development workflow, product principles, plan review, review partners, skill creation, and repo bootstrap.</td></tr>
+          <tr id="ac-reviewers"><td>AC3</td><td>Only locally usable review partners are wired.</td><td>Codex is present. Claude CLI is installed but non-interactive auth failed; OMP is absent and not linked as an active reviewer.</td></tr>
+          <tr id="ac-push-discipline"><td>AC4</td><td>Skill edits are not stranded locally.</td><td>Canonical skill payloads live in the Git checkout; end-of-task checklist requires clean tree, pushed branch, PR status, and deploy path note.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="bdd">
+      <h2>BDD Scenarios</h2>
+      <article id="bdd-plan">
+        <h3>Plan publication</h3>
+        <p>Given the local service is running, when this file is registered with <code>plan-review register</code>, then the reviewer returns a browser URL and source sync remains active.</p>
+      </article>
+      <article id="bdd-skill-load">
+        <h3>Skill load</h3>
+        <p>Given Claude looks in <code>~/.claude/skills</code>, when a future agent requests the standard workflow, then it can load the linked canonical skill payload without copying or re-deriving behavior.</p>
+      </article>
+      <article id="bdd-central-blocked">
+        <h3>Central path blocked</h3>
+        <p>Given <code>~/.agents</code> is root-owned, when the canonical installer tries to create <code>~/.agents/skills</code>, then the setup reports the blocker and uses Claude symlinks as a reversible local fallback.</p>
+      </article>
+    </section>
+
+    <section id="phase-p5-verify">
+      <h2>Phase P5 - Verify</h2>
+      <h3>End State</h3>
+      <p>Reviewer registration, skill paths, and installed reviewer wrappers are verified.</p>
+      <h3>Tests first</h3>
+      <p>Run health, path-resolution, and wrapper help commands before calling the setup complete.</p>
+      <h3>Work</h3>
+      <ul>
+        <li>Register this plan with <code>plan-review</code>.</li>
+        <li>Check required <code>SKILL.md</code> files resolve.</li>
+        <li>Run review wrapper <code>--help</code> for installed reviewer skills.</li>
+      </ul>
+      <h3>Expected files</h3>
+      <p><code>thoughts/plans/2026-06-19-agent-os-setup.html</code> only.</p>
+      <h3>Verify</h3>
+      <p><code>curl -fsS http://127.0.0.1:4317/health</code>, <code>plan-review register ... --json</code>, and targeted <code>test -f</code> checks.</p>
+    </section>
+
+    <section id="phase-p6-follow-up">
+      <h2>Phase P6 - Follow-Up</h2>
+      <h3>End State</h3>
+      <p>There is a clear owner decision for fixing the root-owned <code>~/.agents</code> directory so the canonical installer can run normally later.</p>
+      <h3>Tests first</h3>
+      <p>Confirm whether <code>mkdir -p ~/.agents/skills</code> succeeds after ownership is corrected.</p>
+      <h3>Work</h3>
+      <ul>
+        <li>Ask for an interactive sudo session or have the user run <code>sudo chown anasteele:staff ~/.agents</code>.</li>
+        <li>Rerun <code>bash /Users/anasteele/code/ai-configs/install.sh --skills</code>.</li>
+        <li>Replace fallback symlinks with canonical installer output if desired.</li>
+      </ul>
+      <h3>Expected files</h3>
+      <p>No product files.</p>
+      <h3>Verify</h3>
+      <p><code>ls ~/.agents/skills</code> and <code>ls ~/.claude/skills</code>.</p>
+    </section>
+
+    <section id="end-of-task">
+      <h2>Standard End-of-Task Checklist</h2>
+      <ul>
+        <li>Read and follow repo-local <code>AGENTS.md</code> / <code>CLAUDE.md</code>.</li>
+        <li>Plan first; register HTML plans when the work is non-trivial or reviewer-facing.</li>
+        <li>Use tests-first delivery for data-write, schema, migration, destructive, or behavior-critical changes.</li>
+        <li>Run the repo's validation commands and a second-model review before finalizing.</li>
+        <li>Finish with clean working tree, pushed branch, PR status/link, and deploy path noted or explicitly not applicable.</li>
+      </ul>
+    </section>
+
+    <section id="non-goals">
+      <h2>Non-Goals</h2>
+      <ul>
+        <li>No production data or infrastructure access.</li>
+        <li>No deploys or secret changes.</li>
+        <li>No product-code changes in <code>heddle</code>, <code>doct</code>, or other repos.</li>
+        <li>No automatic pushing hook until the approval phrase and preferred behavior are confirmed.</li>
+      </ul>
+    </section>
+
+    <section id="decisions">
+      <h2>Decisions / Deviations Log</h2>
+      <ul>
+        <li>2026-06-19: Used symlink activation under <code>~/.claude/skills</code> because <code>~/.agents</code> is root-owned and cannot be modified without interactive sudo.</li>
+        <li>2026-06-19: Skipped OMP reviewer wiring because <code>omp</code> is not installed on this machine.</li>
+        <li>2026-06-19: Added tracked skill-save and skill-push-check scripts, then linked them into local Claude tooling.</li>
+        <li>2026-06-19: Attempted a bounded Claude CLI second-model review; it failed with <code>401 Invalid authentication credentials</code>.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
