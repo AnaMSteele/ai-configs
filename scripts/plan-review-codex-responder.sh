@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin:$PATH"
+
 REPO="${AI_CONFIGS_REPO:-/Users/anasteele/code/ai-configs}"
 PLAN_REVIEW_SERVICE_URL="${PLAN_REVIEW_SERVICE_URL:-${PLAN_REVIEW_URL:-http://127.0.0.1:4317}}"
 PLAN_REVIEW_BROWSER_URL="${PLAN_REVIEW_BROWSER_URL:-http://mbp.braid-python.ts.net:4317}"
