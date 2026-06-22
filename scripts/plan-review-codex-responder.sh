@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+REPO="${AI_CONFIGS_REPO:-/Users/anasteele/code/ai-configs}"
+PLAN_REVIEW_URL="${PLAN_REVIEW_URL:-http://mbp.braid-python.ts.net:4317}"
+REPO_KEY="${PLAN_REVIEW_REPO_KEY:-https://github.com/AnaMSteele/ai-configs.git}"
+STATE_DIR="${PLAN_REVIEW_CODEX_STATE_DIR:-$HOME/.plan-reviewer/codex-responder}"
+POLL_SECONDS="${PLAN_REVIEW_CODEX_POLL_SECONDS:-15}"
+LEASE_SECONDS="${PLAN_REVIEW_CODEX_LEASE_SECONDS:-1800}"
+CODEX_MODEL="${PLAN_REVIEW_CODEX_MODEL:-}"
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+PID_FILE="$STATE_DIR/responder.pid"
+LOG_FILE="$STATE_DIR/responder.log"
+
+usage() {
+  cat <<'USAGE'
+Usage: plan-review-codex-responder.sh <start|stop|status|once|loop>
+
+Environment:
+  AI_CONFIGS_REPO                 Repo to operate in. Default: /Users/anasteele/code/ai-configs
+  PLAN_REVIEW_URL                 Plan-review service URL. Default: http://mbp.braid-python.ts.net:4317
+  PLAN_REVIEW_REPO_KEY            Repo key to poll. Default: https://github.com/AnaMSteele/ai-configs.git
+  PLAN_REVIEW_CODEX_STATE_DIR     Runtime logs/state directory. Default: ~/.plan-reviewer/codex-responder
+  PLAN_REVIEW_CODEX_POLL_SECONDS  Poll interval for loop/start. Default: 15
+  PLAN_REVIEW_CODEX_LEASE_SECONDS Claim lease duration. Default: 1800
+  PLAN_REVIEW_CODEX_MODEL         Optional Codex model override.
+USAGE
+}
+
+log() {
+  mkdir -p "$STATE_DIR"
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$LOG_FILE" >&2
+}
+
+ensure_ready() {
+  command -v plan-review >/dev/null
+  command -v codex >/dev/null
+  command -v jq >/dev/null
+  cd "$REPO"
+  local origin_url
+  origin_url="$(git remote get-url origin 2>/dev/null || true)"
+  if [ "$origin_url" != "$REPO_KEY" ]; then
+    echo "origin must be $REPO_KEY; found ${origin_url:-<missing>}" >&2
+    exit 1
+  fi
+}
+
+pending_comment_json() {
+  plan-review queue list --url "$PLAN_REVIEW_URL" --repo-key "$REPO_KEY" --limit 1 --json |
+    jq -c '.items[]? | select(.status == "pending")' |
+    head -n 1
+}
+
+claim_comment() {
+  local plan_id="$1"
+  local comment_id="$2"
+  plan-review queue claim "$plan_id" \
+    --url "$PLAN_REVIEW_URL" \
+    --ids "$comment_id" \
+    --lease-seconds "$LEASE_SECONDS" \
+    --json
+}
+
+run_codex_for_claim() {
+  local claim_file="$1"
+  local output_file="$2"
+  local prompt_file="$STATE_DIR/prompt-$(date -u +%Y%m%dT%H%M%SZ).md"
+
+  cat >"$prompt_file" <<PROMPT
+You are the Codex responder for a browser comment in the local plan-review tool.
+
+Repository: $REPO
+Plan-review URL: $PLAN_REVIEW_URL
+Repo key: $REPO_KEY
+Claim JSON: $claim_file
+
+Rules:
+- Read /Users/anasteele/AGENTS.md first, then this repo's AGENTS.md or CLAUDE.md if present.
+- Follow this repo's ownership rules.
+- Read the full plan file before editing it.
+- Process exactly the claimed comment in the claim JSON; do not claim other comments.
+- Use the comment anchor, heading path, quoted text, and body as evidence.
+- Make the smallest correct plan/documentation change, if a change is needed.
+- If no file change is needed, still acknowledge the comment with a clear note.
+- This installed plan-review CLI may not have a visible reply command, so use ack/resolve metadata.
+- Acknowledge with: plan-review ack <commentId> --url "$PLAN_REVIEW_URL" --claim <claimId> --note ... --summary ... --changed-files ...
+- Resolve only when the reviewer-visible issue is actually settled.
+- If you modify the repo, commit and push to Ana's origin before finishing.
+- Leave a concise final summary of what you did.
+PROMPT
+
+  local codex_args=(exec --full-auto -C "$REPO" --add-dir "$STATE_DIR" -o "$output_file")
+  if [ -n "$CODEX_MODEL" ]; then
+    codex_args=(-m "$CODEX_MODEL" "${codex_args[@]}")
+  fi
+  codex "${codex_args[@]}" <"$prompt_file"
+}
+
+process_once() {
+  ensure_ready
+  mkdir -p "$STATE_DIR"
+
+  local pending
+  pending="$(pending_comment_json || true)"
+  if [ -z "$pending" ]; then
+    log "no pending comments for $REPO_KEY"
+    return 0
+  fi
+
+  local plan_id comment_id
+  plan_id="$(jq -r '.planId' <<<"$pending")"
+  comment_id="$(jq -r '.id' <<<"$pending")"
+  log "claiming comment $comment_id on plan $plan_id"
+
+  local claim_file="$STATE_DIR/claim-$comment_id.json"
+  local claim_output
+  if ! claim_output="$(claim_comment "$plan_id" "$comment_id")"; then
+    log "claim failed for $comment_id"
+    return 1
+  fi
+  printf '%s\n' "$claim_output" >"$claim_file"
+
+  local claim_id
+  claim_id="$(jq -r '.claimed[0].claim.id // empty' "$claim_file")"
+  if [ -z "$claim_id" ]; then
+    log "claim response did not include claim id for $comment_id"
+    return 1
+  fi
+
+  local output_file="$STATE_DIR/codex-$comment_id-$(date -u +%Y%m%dT%H%M%SZ).md"
+  if run_codex_for_claim "$claim_file" "$output_file"; then
+    log "codex completed for $comment_id; output: $output_file"
+    return 0
+  fi
+
+  log "codex failed for $comment_id; releasing claim $claim_id"
+  plan-review release "$comment_id" \
+    --url "$PLAN_REVIEW_URL" \
+    --claim "$claim_id" \
+    --reason "Codex responder failed; see $output_file" \
+    --json >/dev/null || true
+  return 1
+}
+
+loop_forever() {
+  ensure_ready
+  log "starting loop for repo $REPO_KEY"
+  while true; do
+    process_once || true
+    sleep "$POLL_SECONDS"
+  done
+}
+
+start_daemon() {
+  mkdir -p "$STATE_DIR"
+  if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    echo "Responder already running with pid $(cat "$PID_FILE")"
+    exit 0
+  fi
+  nohup "$SCRIPT_PATH" loop >>"$LOG_FILE" 2>&1 &
+  echo $! >"$PID_FILE"
+  echo "Started plan-review Codex responder with pid $(cat "$PID_FILE")"
+  echo "Log: $LOG_FILE"
+}
+
+stop_daemon() {
+  if [ ! -f "$PID_FILE" ]; then
+    echo "Responder is not running."
+    return 0
+  fi
+  local pid
+  pid="$(cat "$PID_FILE")"
+  if kill -0 "$pid" 2>/dev/null; then
+    kill "$pid"
+    echo "Stopped responder pid $pid"
+  else
+    echo "Responder pid $pid is not active."
+  fi
+  rm -f "$PID_FILE"
+}
+
+status_daemon() {
+  if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    echo "running pid $(cat "$PID_FILE")"
+  else
+    echo "not running"
+  fi
+  echo "log $LOG_FILE"
+}
+
+case "${1:-}" in
+  start) start_daemon ;;
+  stop) stop_daemon ;;
+  status) status_daemon ;;
+  once) process_once ;;
+  loop) loop_forever ;;
+  -h|--help|help|"") usage ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac

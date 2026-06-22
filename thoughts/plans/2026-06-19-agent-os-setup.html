@@ -100,6 +100,7 @@
         <li class="ok">Claude-compatible repo-owned skills are active via symlinks under <code>~/.claude/skills</code>.</li>
         <li class="ok">The <code>save-ai-configs-skills</code> helper and Claude Stop-hook check are sourced from tracked scripts in this repo.</li>
         <li class="warn">Claude CLI is installed, but a bounded non-interactive review attempt returned <code>401 Invalid authentication credentials</code>; treat Claude review as unavailable until auth is fixed.</li>
+        <li class="warn">The installed <code>plan-review</code> CLI does not expose the newer <code>agent next</code> command documented by the skill, so the first responder uses <code>queue list</code>, <code>queue claim</code>, <code>ack</code>, <code>resolve</code>, and <code>release</code>.</li>
       </ul>
     </section>
 
@@ -113,6 +114,7 @@
         <li><input type="checkbox" checked disabled> P5 - Verify plan publication, skill load paths, and review wrappers.</li>
         <li><input type="checkbox" checked disabled> P6 - Repoint remotes so Ana's repo is <code>origin</code> and Aaron's repo is <code>upstream</code>.</li>
         <li><input type="checkbox"> P7 - Decide follow-up for root-owned <code>~/.agents</code> central path.</li>
+        <li><input type="checkbox"> P8 - Start a durable Codex responder for plan-review comments.</li>
       </ul>
     </section>
 
@@ -128,6 +130,7 @@
           <tr id="ac-reviewers"><td>AC3</td><td>Only locally usable review partners are wired.</td><td>Codex is present. Claude CLI is installed but non-interactive auth failed; OMP is absent and not linked as an active reviewer.</td></tr>
           <tr id="ac-push-discipline"><td>AC4</td><td>Local edits are not stranded locally.</td><td>Canonical payloads live in Ana's Git checkout; end-of-task checklist requires clean tree, branch pushed to Ana's origin, PR status when applicable, and deploy path noted or explicitly not applicable.</td></tr>
           <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
+          <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script starts a background Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
         </tbody>
       </table>
     </section>
@@ -149,6 +152,14 @@
       <article id="bdd-central-blocked">
         <h3>Central path blocked</h3>
         <p>Given <code>~/.agents</code> is root-owned, when the canonical installer tries to create <code>~/.agents/skills</code>, then the setup reports the blocker and uses Claude symlinks as a reversible local fallback.</p>
+      </article>
+      <article id="bdd-codex-responder">
+        <h3>Codex comment response</h3>
+        <p>Given a reviewer leaves a pending browser comment, when <code>plan-review-codex-responder.sh</code> runs, then it claims one comment, gives the claim JSON and repo context to Codex, and expects Codex to update the plan or acknowledge the comment using the active claim.</p>
+      </article>
+      <article id="bdd-responder-failure">
+        <h3>Responder failure</h3>
+        <p>Given Codex fails while handling a claimed comment, when the responder exits that attempt, then it releases the claim so the comment is not stranded.</p>
       </article>
     </section>
 
@@ -207,6 +218,27 @@
       <p><code>ls ~/.agents/skills</code> and <code>ls ~/.claude/skills</code>.</p>
     </section>
 
+    <section id="phase-p8-codex-responder">
+      <h2>Phase P8 - Durable Codex Responder</h2>
+      <h3>End State</h3>
+      <p>A background responder is running for Ana's plan-review queue and can hand pending comments to Codex CLI for repo-grounded edits, acknowledgement, and resolution.</p>
+      <h3>Tests first</h3>
+      <p>Verify the local command surface before starting: <code>plan-review queue list --repo-key ... --json</code>, <code>plan-review queue claim --help</code>, <code>codex exec --help</code>, and <code>bash -n scripts/plan-review-codex-responder.sh</code>.</p>
+      <h3>Work</h3>
+      <ul>
+        <li>Add <code>scripts/plan-review-codex-responder.sh</code> with <code>start</code>, <code>stop</code>, <code>status</code>, <code>once</code>, and <code>loop</code> modes.</li>
+        <li>Poll only Ana's repo key: <code>https://github.com/AnaMSteele/ai-configs.git</code>.</li>
+        <li>Claim one pending comment at a time and write claim state to <code>~/.plan-reviewer/codex-responder</code>.</li>
+        <li>Invoke <code>codex exec --full-auto</code> with the claim JSON, repo path, plan-review URL, and ack/resolve instructions.</li>
+        <li>Release the claim when Codex fails so another run can retry safely.</li>
+        <li>Start the responder and confirm its status/log output.</li>
+      </ul>
+      <h3>Expected files</h3>
+      <p><code>scripts/plan-review-codex-responder.sh</code>, this plan, and optionally repo guidance that points to the responder command.</p>
+      <h3>Verify</h3>
+      <p><code>scripts/plan-review-codex-responder.sh status</code>, <code>tail ~/.plan-reviewer/codex-responder/responder.log</code>, and <code>plan-review queue list --repo-key https://github.com/AnaMSteele/ai-configs.git --json</code>.</p>
+    </section>
+
     <section id="end-of-task">
       <h2>Standard End-of-Task Checklist</h2>
       <ul>
@@ -215,6 +247,7 @@
         <li>Use tests-first delivery for data-write, schema, migration, destructive, or behavior-critical changes.</li>
         <li>Run the repo's validation commands and a second-model review before finalizing.</li>
         <li>Finish with clean working tree, pushed branch on Ana's <code>origin</code>, PR status/link when applicable, and deploy path noted or explicitly not applicable.</li>
+        <li>For plan-review comments, inspect responder status with <code>plan-review-codex-responder.sh status</code> and logs under <code>~/.plan-reviewer/codex-responder</code>.</li>
       </ul>
     </section>
 
@@ -236,6 +269,7 @@
         <li>2026-06-19: Added tracked skill-save and skill-push-check scripts, then linked them into local Claude tooling.</li>
         <li>2026-06-19: Attempted a bounded Claude CLI second-model review; it failed with <code>401 Invalid authentication credentials</code>.</li>
         <li>2026-06-22: Closed the accidental PR against Aaron's repo and redefined Ana's repo as canonical <code>origin</code>, with Aaron's repo retained only as <code>upstream</code>.</li>
+        <li>2026-06-22: Chose Codex CLI as the first durable plan-review comment responder because it is installed, authenticated, repo-scoped, and supports non-interactive execution; Hermes remains a possible later orchestration layer.</li>
       </ul>
     </section>
   </main>
