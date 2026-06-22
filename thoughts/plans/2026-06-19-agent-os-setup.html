@@ -114,7 +114,7 @@
         <li><input type="checkbox" checked disabled> P5 - Verify plan publication, skill load paths, and review wrappers.</li>
         <li><input type="checkbox" checked disabled> P6 - Repoint remotes so Ana's repo is <code>origin</code> and Aaron's repo is <code>upstream</code>.</li>
         <li><input type="checkbox" checked disabled> P7 - Decided follow-up for root-owned <code>~/.agents</code> central path; ownership repair remains blocked on an interactive sudo/user action.</li>
-        <li><input type="checkbox"> P8 - Start a durable Codex responder for plan-review comments.</li>
+        <li><input type="checkbox" checked disabled> P8 - Started a durable Codex responder for plan-review comments.</li>
       </ul>
     </section>
 
@@ -272,6 +272,7 @@
         <li>2026-06-22: Closed the accidental PR against Aaron's repo and redefined Ana's repo as canonical <code>origin</code>, with Aaron's repo retained only as <code>upstream</code>.</li>
         <li>2026-06-22: Chose Codex CLI as the first durable plan-review comment responder because it is installed, authenticated, repo-scoped, and supports non-interactive execution; Hermes remains a possible later orchestration layer.</li>
         <li>2026-06-22: Marked P7 complete because the follow-up decision is to leave <code>~/.agents</code> ownership repair as an explicit interactive sudo/user action before rerunning the canonical skills installer.</li>
+        <li>2026-06-22: Started the Codex responder daemon and verified it stays running across empty-queue poll cycles.</li>
       </ul>
     </section>
   </main>
