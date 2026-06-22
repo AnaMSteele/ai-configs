@@ -144,7 +144,7 @@
       </article>
       <article id="bdd-skill-load">
         <h3>Skill load</h3>
-        <p>Given Claude looks in <code>~/.claude/skills</code>, when a future agent requests the standard workflow, then it can load Ana's linked canonical skill payload without copying or re-deriving behavior.</p>
+        <p>Given Claude currently looks in <code>~/.claude/skills</code> and other agents such as Codex or Hermes need their own supported skill, prompt, or command surfaces, when a future agent requests the standard workflow, then it loads the same repo-owned canonical payload through a consumer-specific symlink or adapter instead of copying or re-deriving behavior.</p>
       </article>
       <article id="bdd-origin-alignment">
         <h3>Origin alignment</h3>
