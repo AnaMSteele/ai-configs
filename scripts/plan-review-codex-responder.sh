@@ -9,6 +9,7 @@ STATE_DIR="${PLAN_REVIEW_CODEX_STATE_DIR:-$HOME/.plan-reviewer/codex-responder}"
 POLL_SECONDS="${PLAN_REVIEW_CODEX_POLL_SECONDS:-15}"
 LEASE_SECONDS="${PLAN_REVIEW_CODEX_LEASE_SECONDS:-1800}"
 CODEX_MODEL="${PLAN_REVIEW_CODEX_MODEL:-}"
+CODEX_IGNORE_USER_CONFIG="${PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG:-1}"
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 PID_FILE="$STATE_DIR/responder.pid"
 LOG_FILE="$STATE_DIR/responder.log"
@@ -26,6 +27,8 @@ Environment:
   PLAN_REVIEW_CODEX_POLL_SECONDS  Poll interval for loop/start. Default: 15
   PLAN_REVIEW_CODEX_LEASE_SECONDS Claim lease duration. Default: 1800
   PLAN_REVIEW_CODEX_MODEL         Optional Codex model override.
+  PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG
+                                  Set to 0 to let Codex load user config. Default: 1
 USAGE
 }
 
@@ -95,9 +98,13 @@ Rules:
 PROMPT
 
   local codex_args=(exec --full-auto -C "$REPO" --add-dir "$STATE_DIR" -o "$output_file")
+  if [ "$CODEX_IGNORE_USER_CONFIG" != "0" ]; then
+    codex_args+=(--ignore-user-config)
+  fi
   if [ -n "$CODEX_MODEL" ]; then
     codex_args=(-m "$CODEX_MODEL" "${codex_args[@]}")
   fi
+  log "starting codex for claim file $claim_file"
   codex "${codex_args[@]}" <"$prompt_file"
 }
 
@@ -136,12 +143,14 @@ process_once() {
   fi
 
   local output_file="$STATE_DIR/codex-$comment_id-$(date -u +%Y%m%dT%H%M%SZ).md"
-  if run_codex_for_claim "$claim_file" "$output_file"; then
+  local codex_status=0
+  run_codex_for_claim "$claim_file" "$output_file" || codex_status=$?
+  if [ "$codex_status" -eq 0 ]; then
     log "codex completed for $comment_id; output: $output_file"
     return 0
   fi
 
-  log "codex failed for $comment_id; releasing claim $claim_id"
+  log "codex failed for $comment_id with status $codex_status; releasing claim $claim_id"
   plan-review release "$comment_id" \
     --url "$PLAN_REVIEW_SERVICE_URL" \
     --claim "$claim_id" \

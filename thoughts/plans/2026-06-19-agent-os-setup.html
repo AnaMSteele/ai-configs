@@ -230,7 +230,7 @@
         <li>Poll only Ana's repo key: <code>https://github.com/AnaMSteele/ai-configs.git</code>.</li>
         <li>Use <code>PLAN_REVIEW_SERVICE_URL=http://127.0.0.1:4317</code> for CLI calls and <code>PLAN_REVIEW_BROWSER_URL=http://mbp.braid-python.ts.net:4317</code> for human-facing links.</li>
         <li>Claim one pending comment at a time and write claim state to <code>~/.plan-reviewer/codex-responder</code>.</li>
-        <li>Invoke <code>codex exec --full-auto</code> with the claim JSON, repo path, plan-review URL, and ack/resolve instructions.</li>
+        <li>Invoke <code>codex exec --full-auto --ignore-user-config</code> with the claim JSON, repo path, plan-review URL, and ack/resolve instructions, unless <code>PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG=0</code> is set.</li>
         <li>Release the claim when Codex fails so another run can retry safely.</li>
         <li>Start the responder and confirm its status/log output.</li>
       </ul>
