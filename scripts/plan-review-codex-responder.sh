@@ -46,9 +46,12 @@ ensure_ready() {
   origin_url="$(git remote get-url origin 2>/dev/null || true)"
   if [ "$origin_url" != "$REPO_KEY" ]; then
     echo "origin must be $REPO_KEY; found ${origin_url:-<missing>}" >&2
-    exit 1
+    return 1
   fi
-  curl -fsS "$PLAN_REVIEW_SERVICE_URL/health" >/dev/null
+  if ! curl -fsS "$PLAN_REVIEW_SERVICE_URL/health" >/dev/null; then
+    echo "plan-review service is not healthy at $PLAN_REVIEW_SERVICE_URL" >&2
+    return 1
+  fi
 }
 
 pending_comment_json() {
@@ -109,7 +112,10 @@ PROMPT
 }
 
 process_once() {
-  ensure_ready
+  if ! ensure_ready; then
+    log "readiness check failed for $REPO_KEY at $PLAN_REVIEW_SERVICE_URL"
+    return 1
+  fi
   mkdir -p "$STATE_DIR"
 
   local pending
