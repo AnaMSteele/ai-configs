@@ -80,8 +80,8 @@
 
     <section id="planner-invocation">
       <h2>How to Invoke the Planner</h2>
-      <p>For new non-trivial work, ask the active agent to use the reviewed-plan workflow before implementation. In Pi, invoke <code>/dev:reviewed-html-plan &lt;task&gt;</code> for a planning-only browser review gate, or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code> for the full reviewed-plan workflow that can continue into execution after comments are settled.</p>
-      <p>The invoked prompt must load the repo-owned <code>skills/html-plan-reviewer</code> instructions, create or refresh a semantic HTML plan under <code>thoughts/plans/</code>, register it with <code>plan-review</code>, return the browser URL to the user, and monitor the queue-backed comment flow before execution proceeds.</p>
+      <p>For new non-trivial work, ask the active agent to use the reviewed-plan workflow before implementation. Pi users can invoke <code>/dev:reviewed-html-plan &lt;task&gt;</code> for a planning-only browser review gate, or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code> for the full reviewed-plan workflow that can continue into execution after comments are settled.</p>
+      <p>Claude Code, Codex, Hermes, and other non-Pi agents do not need Pi slash commands. They should load the same repo-owned <code>skills/reviewed-html-plan</code> and <code>skills/html-plan-reviewer</code> payload through their installed skill, prompt, command, or orchestration adapter; create or refresh a semantic HTML plan under <code>thoughts/plans/</code>; register it with <code>plan-review</code>; return the browser URL to the user; and monitor the queue-backed comment flow before execution proceeds.</p>
     </section>
 
     <section id="non-claude-agents">
@@ -143,7 +143,7 @@
           <tr id="ac-push-discipline"><td>AC4</td><td>Local edits are not stranded locally.</td><td>Canonical payloads live in Ana's Git checkout; end-of-task checklist requires clean tree, branch pushed to Ana's origin, PR status when applicable, and deploy path noted or explicitly not applicable.</td></tr>
           <tr id="ac-upstream"><td>AC5</td><td>Aaron's repo is treated as upstream reference only.</td><td>No PRs are opened against <code>adnichols/ai-configs</code> for Ana-local setup changes unless Ana explicitly asks.</td></tr>
           <tr id="ac-codex-responder"><td>AC6</td><td>A durable comment responder is running.</td><td>A repo-owned script installs a macOS LaunchAgent for the Codex responder, records logs under <code>~/.plan-reviewer/codex-responder</code>, uses <code>http://127.0.0.1:4317</code> for local API calls, claims pending comments, and hands exactly one claim at a time to <code>codex exec</code>.</td></tr>
-          <tr id="ac-user-planning-flow"><td>AC7</td><td>A user can ask an agent to open and use the planning tool for new work.</td><td>In Pi, use <code>/dev:reviewed-html-plan &lt;task&gt;</code> to create/register a browser-reviewed plan, or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code> for the full reviewed-plan workflow; the invoked prompt loads <code>skills/html-plan-reviewer</code>, calls <code>plan-review register</code>, returns the browser review URL, and monitors browser comments.</td></tr>
+          <tr id="ac-user-planning-flow"><td>AC7</td><td>A user can ask an agent to open and use the planning tool for new work.</td><td>Pi can use <code>/dev:reviewed-html-plan &lt;task&gt;</code> or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code>. Claude Code, Codex, Hermes, and other non-Pi agents use their installed skill, prompt, command, or adapter for the same repo-owned reviewed-plan payload; the invoked surface loads <code>skills/html-plan-reviewer</code>, calls <code>plan-review register</code>, returns the browser review URL, and monitors browser comments.</td></tr>
         </tbody>
       </table>
     </section>
@@ -172,7 +172,7 @@
       </article>
       <article id="bdd-user-planning-flow">
         <h3>User planning flow</h3>
-        <p>Given a user wants an agent to use the planning tool for a new task, when they invoke <code>/dev:reviewed-html-plan &lt;task&gt;</code> or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code> in Pi, then the agent creates or resumes the HTML plan, registers it with <code>plan-review</code>, opens the browser-review URL for feedback, and uses the queue-backed comment flow before execution.</p>
+        <p>Given a user wants an agent to use the planning tool for a new task, when they either invoke Pi's <code>/dev:reviewed-html-plan &lt;task&gt;</code> or <code>/skill:adn-dev-wf &lt;task|plan&gt;</code>, ask Claude Code or Codex to use the reviewed HTML plan workflow, or have Hermes route to the same repo-owned reviewed-plan adapter, then the agent creates or resumes the HTML plan, registers it with <code>plan-review</code>, opens the browser-review URL for feedback, and uses the queue-backed comment flow before execution.</p>
       </article>
       <article id="bdd-responder-failure">
         <h3>Responder failure</h3>
