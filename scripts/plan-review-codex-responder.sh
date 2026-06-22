@@ -37,6 +37,15 @@ log() {
   printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*" | tee -a "$LOG_FILE" >&2
 }
 
+on_error() {
+  local status="$1"
+  local line="$2"
+  log "exiting after error at line $line with status $status"
+  exit "$status"
+}
+
+trap 'on_error "$?" "$LINENO"' ERR
+
 ensure_ready() {
   command -v plan-review >/dev/null
   command -v codex >/dev/null
@@ -112,6 +121,7 @@ PROMPT
 }
 
 process_once() {
+  log "polling for comments"
   if ! ensure_ready; then
     log "readiness check failed for $REPO_KEY at $PLAN_REVIEW_SERVICE_URL"
     return 1
