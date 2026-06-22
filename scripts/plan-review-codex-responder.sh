@@ -10,6 +10,7 @@ POLL_SECONDS="${PLAN_REVIEW_CODEX_POLL_SECONDS:-15}"
 LEASE_SECONDS="${PLAN_REVIEW_CODEX_LEASE_SECONDS:-1800}"
 CODEX_MODEL="${PLAN_REVIEW_CODEX_MODEL:-gpt-5.5}"
 CODEX_IGNORE_USER_CONFIG="${PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG:-1}"
+CODEX_FULL_ACCESS="${PLAN_REVIEW_CODEX_FULL_ACCESS:-1}"
 SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 PID_FILE="$STATE_DIR/responder.pid"
 LOG_FILE="$STATE_DIR/responder.log"
@@ -29,6 +30,7 @@ Environment:
   PLAN_REVIEW_CODEX_MODEL         Codex model. Default: gpt-5.5
   PLAN_REVIEW_CODEX_IGNORE_USER_CONFIG
                                   Set to 0 to let Codex load user config. Default: 1
+  PLAN_REVIEW_CODEX_FULL_ACCESS   Set to 0 to use workspace-write. Default: 1
 USAGE
 }
 
@@ -106,10 +108,18 @@ Rules:
 - Acknowledge with: plan-review ack <commentId> --url "$PLAN_REVIEW_SERVICE_URL" --claim <claimId> --note ... --summary ... --changed-files ...
 - Resolve only when the reviewer-visible issue is actually settled.
 - If you modify the repo, commit and push to Ana's origin before finishing.
+- If plan-review ack/resolve fails, release the claim and finish with a failing summary.
+- Do not edit the plan-review SQLite database directly.
+- Do not search package caches or unrelated dependency trees.
 - Leave a concise final summary of what you did.
 PROMPT
 
-  local codex_args=(exec --full-auto -C "$REPO" --add-dir "$STATE_DIR" -o "$output_file")
+  local codex_args=(exec -C "$REPO" --add-dir "$STATE_DIR" -o "$output_file")
+  if [ "$CODEX_FULL_ACCESS" != "0" ]; then
+    codex_args+=(--dangerously-bypass-approvals-and-sandbox)
+  else
+    codex_args+=(--full-auto)
+  fi
   if [ "$CODEX_IGNORE_USER_CONFIG" != "0" ]; then
     codex_args+=(--ignore-user-config)
   fi
