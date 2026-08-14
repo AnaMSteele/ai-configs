@@ -1,21 +1,35 @@
 ---
 name: doct-document-ops
-description: Interact with doct documents via doct-cli, REST, and Hocuspocus/Yjs. Use when asked to open a doct URL, list doct workspaces or documents, view a doct document, edit doct document metadata, edit a doct text document body, add or inspect comments in doct, or publish a coding plan to the user's personal "Coding Plans" document as a child document.
+description: Interact with doct documents and browser-review plans via doct-agent, REST, and Hocuspocus/Yjs. Use when asked to open a doct URL, list doct workspaces or documents, view or edit a doct document, supervise a plan listener, process plan comments, or publish a coding plan to the user's personal "Coding Plans" document as a child document.
 ---
 
 # Doct document operations
 
 Use this skill when the user wants work done **inside doct itself** rather than only in local markdown files.
 
+## CLI freshness
+
+Install and update `doct-agent` through Homebrew only. From the canonical doct checkout:
+
+```bash
+git pull --ff-only
+brew tap local/doct "$(pwd)"
+brew reinstall --build-from-source local/doct/doct-agent
+```
+
+Do not use `~/.cargo/bin/doct-agent`, copy Cargo artifacts into another bin directory, or create wrapper binaries. Compatibility notices from the deployed service are authoritative; source SHAs are diagnostic only.
+
 ## Default approach
 
 1. Resolve the target document or destination.
 2. Resolve auth.
 3. Choose the correct write path:
-   - **View/list/lookup** → doct-cli or REST.
-   - **Metadata-only updates** (title, rename, move, settings) → REST.
-   - **Text body edits** → realtime Hocuspocus/Yjs only.
-   - **Text comments** → realtime Hocuspocus/Yjs only.
+   - **View/list/lookup** → `doct-agent`.
+   - **Metadata-only updates** (title, rename, move, settings) → `doct-agent` when available, otherwise supported REST.
+   - **Full text body replacement** → `doct-agent documents replace-body --file`.
+   - **Append-only text edits** → `doct-agent collab edit --append-markdown`.
+   - **Anchored surgical text edits** → `doct-agent collab anchored <replace|insert-before|insert-after|delete>`.
+   - **Text comments** → `doct-agent collab comments` when available; otherwise realtime Hocuspocus/Yjs.
    - **Publish a coding plan** → use `scripts/publish-coding-plan.sh`.
 
 ## Special default: coding plans
@@ -71,55 +85,63 @@ Prefer existing doct auth first.
 
 ### Fast path
 
-Use the actual `doct-cli` executable:
+Use the actual `doct-agent` executable:
 
 ```bash
-doct-cli auth status
+doct-agent auth status --all --json
 ```
 
-If not logged in, start device auth:
+If not logged in or the selected endpoint token is invalid, start agent auth:
 
 ```bash
-doct-cli auth login --url https://doct.nodaste.com
+doct-agent auth login --base-url https://doct.nodaste.com
 # or develop:
-doct-cli auth login --url https://doct.develop.nodaste.com
+doct-agent auth login --base-url https://doct.develop.nodaste.com
 ```
 
-The CLI stores base URL and PAT in `~/.config/doct-cli/config.json`.
-
-Important: the standard doct-cli device flow currently mints a **read-only** PAT. Read/list/view operations work with that token, but publishing a coding plan requires a **write-scope** PAT (for example via `DOCT_ACCESS_TOKEN`).
+The CLI stores registrations by canonical endpoint under the platform config directory for `doct-agent`. It also stores the endpoint websocket URL after auth, so do not hardcode websocket fallbacks unless the live command output explicitly asks for an override.
 
 ### Environment overrides
 
 Use these when needed:
 - `DOCT_BASE_URL`
-- `DOCT_ACCESS_TOKEN`
+- `DOCT_AGENT_PAT` with an explicit `--base-url` / `DOCT_BASE_URL` for one-off automation
 
 ## Read operations
 
-For common read/list tasks, use the actual `doct-cli` executable:
+For common read/list tasks, use the actual `doct-agent` executable:
 
 ```bash
-doct-cli workspaces list --json
-doct-cli docs list --workspace <workspace-id> --json
-doct-cli docs view --workspace <workspace-id> --path '<doc-path>'
-doct-cli docs view --workspace <workspace-id> --path '<doc-path>' --json
+doct-agent workspaces list --json
+doct-agent documents list --workspace-id <workspace-id> --json
+doct-agent documents get --workspace-id <workspace-id> --path '<doc-path>' --text
+doct-agent documents get --workspace-id <workspace-id> --path '<doc-path>' --json
+doct-agent documents get --id <document-id> --text
+doct-agent documents get --id <document-id> --json
 ```
 
-If the user provides a document id instead of a path, use REST directly:
+If the selected endpoint is not the default, pass it explicitly:
 
 ```bash
-curl -sS "$DOCT_BASE_URL/api/documents?id=<document-id>" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN"
-
-curl -sS "$DOCT_BASE_URL/api/documents?id=<document-id>" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN" \
-  -H 'Accept: text/plain'
+doct-agent documents get --base-url https://doct.develop.nodaste.com --id <document-id> --text
 ```
 
 Read `references/rest-and-cli.md` for exact lookup/read patterns.
+
+## Browser-review plan listeners
+
+After `doct-agent plans register --json`, preserve the complete returned `listenerInstructions` object and use its exact commands. Non-default endpoints may be embedded in those commands.
+
+1. Run the returned lifecycle command and drain already-pending work with the returned `plans agent next --no-wait --json` command.
+2. Choose supervision by host:
+   - **Codex CLI / Pi**: run `listenerInstructions.wakeCommand` as a foreground or yielded exec/Bash call. Its finite completion resumes reasoning. Handle the dispatch, then start the same command again.
+   - **OMP**: run `wakeCommand` as a managed asynchronous Bash job; job completion is the wake signal. Read the result, handle the dispatch, then restart it.
+   - **Claude Code**: run `listenerInstructions.listenerCommand` in the background only with a persistent Monitor for `"type":"plan_comment_dispatch"` plus listener exit/error.
+   - **Other hosts**: use `listenerCommand` only when the host has a proven repeating stdout wake; otherwise use `wakeCommand` as a foreground completion wake.
+3. A `plan_comment_dispatch` is already a claimed item. Read and execute its `replyCommand`, `ackCommand`, `resolveCommand`, and `releaseCommand`; do not call `plans agent next` for the same item.
+4. Re-arm `wakeCommand` after every handled or released dispatch while feedback is expected.
+
+A detached PID, `nohup`, `screen`, or background process without a host wake/monitor is not a working agent listener. `plans agent next --wait --json` is diagnostic or one-shot recovery only, not the default listener.
 
 ## Write operations
 
@@ -135,24 +157,31 @@ Safe over REST:
 
 ### Text body edits
 
-Do **not** send text document content through `POST /api/documents` or `PUT /api/documents/[id]`.
-Those routes intentionally return `410` for text body writes.
+For full text replacement, prefer:
 
-For text body edits, use the realtime path described in `references/text-doc-realtime.md`:
-- connect with PAT over Hocuspocus
-- wait for sync
-- apply markdown into the Yjs doc
-- optionally create a named version after the edit
+```bash
+doct-agent documents replace-body --id <document-id> --file prepared.md --json
+```
+
+Do **not** send text document body updates through raw `POST /api/documents` or `PUT /api/documents/[id]`.
+Those routes intentionally return `410` for unsupported text body writes.
+
+For append-only edits, use `doct-agent collab edit --append-markdown`.
+For anchored surgical edits, use `doct-agent collab anchored ...`.
+Use the realtime path described in `references/text-doc-realtime.md` only when the consolidated CLI does not cover the operation.
 
 ### Text comments
 
 Do **not** use `POST /api/documents/comments` for text documents.
 That route intentionally returns `410` for text docs.
 
-For text comments, use the realtime path in `references/text-doc-realtime.md`:
-- sync the Yjs doc
-- build an anchored quote with `createCommentAnchor` or `createCommentAnchorFromQuote`
-- add the thread to the Yjs comments array
+For initial anchored text comments, prefer:
+
+```bash
+doct-agent collab comments add --document-id <id> --selected-text 'target text' --body 'initial thread body'
+```
+
+Use the realtime path in `references/text-doc-realtime.md` for follow-up comment reply/resolve flows when the CLI does not cover the operation.
 
 ### Existing comments on text docs
 
@@ -166,9 +195,9 @@ If the user wants to inspect existing text comments, prefer:
 
 ## Decision rules
 
-- Use doct-cli for quick listing and path-based viewing.
+- Use `doct-agent` for quick listing, id/path-based viewing, document creation, full text-body replacement, anchored edits, plan registration, and triage.
 - Use REST when the operation is explicitly supported and not a text-body mutation.
-- Use Hocuspocus/Yjs for text edits and text comments.
+- Use Hocuspocus/Yjs directly only for gaps not covered by `doct-agent`.
 - Use `scripts/publish-coding-plan.sh` for the default coding-plan destination.
 - If the user wants visual verification inside doct, use browser automation after approval.
 

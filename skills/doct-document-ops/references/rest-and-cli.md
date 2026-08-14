@@ -4,45 +4,42 @@ Use this reference for auth, workspace discovery, document lookup, listing, read
 
 ## 1. CLI
 
-Use the actual `doct-cli` executable on PATH:
+Use the actual `doct-agent` executable on PATH. The former standalone Node CLI package was removed from the current doct repo; its operational surfaces are consolidated under `doct-agent`.
 
 ```bash
-doct-cli --help
-doct-cli auth status
-doct-cli workspaces list --json
+doct-agent --help
+doct-agent auth status --all --json
+doct-agent workspaces list --json
 ```
 
 Overrides:
 - `DOCT_BASE_URL`
-- `DOCT_ACCESS_TOKEN`
+- `DOCT_AGENT_PAT` with an explicit base URL for one-off automation
 
 ## 2. Auth
 
-### Device login
+### Agent login
 
 ```bash
-doct-cli auth login --url https://doct.nodaste.com
-doct-cli auth login --url https://doct.develop.nodaste.com
+doct-agent auth login --base-url https://doct.nodaste.com
+doct-agent auth login --base-url https://doct.develop.nodaste.com
 ```
 
 ### Validate current auth
 
 ```bash
-doct-cli auth status
+doct-agent auth status --all --json
+doct-agent auth status --base-url https://doct.nodaste.com --json
 ```
 
-Config lives at:
+`doct-agent` stores registrations by canonical endpoint origin under the platform config directory, with endpoint-specific token files. It also discovers and persists the websocket URL after auth.
 
-```text
-~/.config/doct-cli/config.json
-```
-
-Important: the standard doct-cli device flow currently mints a read-only PAT. That is enough for discovery and document reads, but metadata writes like creating a new coding-plan child document require a write-scope PAT supplied separately (for example through `DOCT_ACCESS_TOKEN`).
+Important: if `auth status` reports an invalid or expired token, re-auth that endpoint with `doct-agent auth login --base-url <endpoint>` or import a valid PAT with `doct-agent auth import-pat --base-url <endpoint> --token <token>`.
 
 ## 3. Workspace discovery
 
 ```bash
-doct-cli workspaces list --json
+doct-agent workspaces list --json
 ```
 
 Use this when the user only knows the doc title/path loosely and you need a workspace id first.
@@ -50,7 +47,7 @@ Use this when the user only knows the doc title/path loosely and you need a work
 ## 4. List documents in a workspace
 
 ```bash
-doct-cli docs list --workspace <workspace-id> --json
+doct-agent documents list --workspace-id <workspace-id> --json
 ```
 
 This calls:
@@ -69,13 +66,13 @@ Good for:
 Plain text body for text docs:
 
 ```bash
-doct-cli docs view --workspace <workspace-id> --path '<doc-path>'
+doct-agent documents get --workspace-id <workspace-id> --path '<doc-path>' --text
 ```
 
 Full JSON payload / metadata:
 
 ```bash
-doct-cli docs view --workspace <workspace-id> --path '<doc-path>' --json
+doct-agent documents get --workspace-id <workspace-id> --path '<doc-path>' --json
 ```
 
 ## 6. View a document by id
@@ -83,18 +80,13 @@ doct-cli docs view --workspace <workspace-id> --path '<doc-path>' --json
 JSON:
 
 ```bash
-curl -sS "$DOCT_BASE_URL/api/documents?id=<document-id>" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN"
+doct-agent documents get --id <document-id> --json
 ```
 
 Plain markdown for text docs:
 
 ```bash
-curl -sS "$DOCT_BASE_URL/api/documents?id=<document-id>" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN" \
-  -H 'Accept: text/plain'
+doct-agent documents get --id <document-id> --text
 ```
 
 ## 7. Resolve a doct URL
@@ -109,31 +101,35 @@ https://doct.develop.nodaste.com/d/<workspace-handle>/docs/<document-id>
 Workflow:
 
 1. Parse `<document-id>` from `/docs/<uuid>`.
-2. Fetch `GET /api/documents?id=<document-id>`.
+2. Fetch `doct-agent documents get --id <document-id> --json`.
 3. Use the response to recover title, path, workspaceId, and kind.
-4. For text content, follow up with `Accept: text/plain` if you need the rendered markdown body.
+4. For text content, follow up with `doct-agent documents get --id <document-id> --text` if you need the rendered markdown body.
 
 ## 8. REST-safe metadata operations
 
-These are safe over REST.
+Prefer `doct-agent` where it exposes a command. The raw REST examples below are fallback patterns for supported metadata/comment routes that are not yet exposed through the CLI; they require `DOCT_BASE_URL` and `DOCT_AGENT_PAT`.
 
 ### Create a document
 
 ```bash
-curl -sS -X POST "$DOCT_BASE_URL/api/documents" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "title": "New doc",
-    "kind": "text",
-    "content": "Initial content",
-    "workspaceId": "<workspace-id>",
-    "path": "notes/new-doc"
-  }'
+doct-agent documents create \
+  --workspace-id <workspace-id> \
+  --title "New doc" \
+  --path "notes/new-doc" \
+  --kind text \
+  --content "Initial content" \
+  --json
 ```
 
-Note: creating a new text doc via REST is allowed because doct initializes Yjs state from the initial content.
+Note: creating a new text doc through `doct-agent documents create` is published by default. Use `--status draft` only when the user explicitly wants a hidden draft.
+
+### Replace a full text document body
+
+```bash
+doct-agent documents replace-body --id <document-id> --file prepared.md --json
+```
+
+Use this for whole-body text replacement. It goes through the supported server path and returns verified readback metadata.
 
 ### Update document metadata by id
 
@@ -141,8 +137,8 @@ Use `PUT /api/documents/[id]` for title/status and other metadata that is not a 
 
 ```bash
 curl -sS -X PUT "$DOCT_BASE_URL/api/documents/<document-id>" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN" \
+  -H "Authorization: Bearer $DOCT_AGENT_PAT" \
+  -H "X-Doct-Pat: Bearer $DOCT_AGENT_PAT" \
   -H 'Content-Type: application/json' \
   -d '{
     "title": "Renamed title"
@@ -155,7 +151,7 @@ Use the dedicated rename/move endpoints rather than trying to change `path`, `pa
 Search the doct repo routes if you need the exact variant for the current install:
 
 ```bash
-cd /Users/anichols/code/doct
+cd /Users/anasteele/Documents/GitHub/doct
 rg -n "rename|move" app/\(chat\)/api/documents -g 'route.ts'
 ```
 
@@ -167,8 +163,8 @@ Allowed over REST:
 
 ```bash
 curl -sS -X POST "$DOCT_BASE_URL/api/documents/comments" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN" \
+  -H "Authorization: Bearer $DOCT_AGENT_PAT" \
+  -H "X-Doct-Pat: Bearer $DOCT_AGENT_PAT" \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "artifacts/example",
@@ -192,7 +188,7 @@ Use realtime/Yjs instead. See `text-doc-realtime.md`.
 
 ## 10. Important guardrails
 
-- `POST /api/documents` and `PUT /api/documents/[id]` reject **text body updates** with `410`.
+- Raw `POST /api/documents` and `PUT /api/documents/[id]` reject unsupported **text body updates** with `410`; prefer `doct-agent documents replace-body`.
 - `POST /api/documents/comments` rejects **text doc comments** with `410`.
 - `GET /api/documents/[id]/comments` returns `410` for text docs.
 - `GET /api/documents/with-comments` is fine for metadata/content-source checks, but does not give you usable text-doc comments.
@@ -202,10 +198,9 @@ Use realtime/Yjs instead. See `text-doc-realtime.md`.
 If something is failing, these are the first checks:
 
 ```bash
-doct-cli auth status
-doct-cli workspaces list --json
-doct-cli docs list --workspace <workspace-id> --json
-curl -i "$DOCT_BASE_URL/api/documents?id=<document-id>" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN"
+doct-agent auth status --all --json
+doct-agent workspaces list --json
+doct-agent documents list --workspace-id <workspace-id> --json
+doct-agent documents get --id <document-id> --json
+doct-agent triage run db preview --json
 ```

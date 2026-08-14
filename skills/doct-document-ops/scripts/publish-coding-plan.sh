@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_PATH="${HOME}/.config/doct-cli/config.json"
 DEFAULT_PARENT_TITLE="Coding Plans"
 
 usage() {
@@ -27,34 +25,6 @@ require_cmd() {
     echo "Missing required command: $1" >&2
     exit 1
   fi
-}
-
-json_post() {
-  local endpoint="$1"
-  local payload="$2"
-  local response_file
-  response_file="$(mktemp)"
-
-  local status
-  status=$(curl -sS -o "$response_file" -w '%{http_code}' -X POST "$endpoint" \
-    -H "Authorization: Bearer ${DOCT_ACCESS_TOKEN}" \
-    -H "X-Doct-Pat: Bearer ${DOCT_ACCESS_TOKEN}" \
-    -H 'Content-Type: application/json' \
-    -d "$payload")
-
-  if [[ ! "$status" =~ ^2 ]]; then
-    echo "Request failed: POST $endpoint -> HTTP $status" >&2
-    cat "$response_file" >&2
-    if [[ "$status" == "403" ]] && grep -q 'Required: write' "$response_file"; then
-      echo >&2
-      echo "Hint: doct-cli device login mints a read-only token. Set DOCT_ACCESS_TOKEN to a write-scope PAT (for example a write agent PAT) before publishing plans." >&2
-    fi
-    rm -f "$response_file"
-    exit 1
-  fi
-
-  cat "$response_file"
-  rm -f "$response_file"
 }
 
 FILE_PATH=""
@@ -98,8 +68,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_cmd jq
-require_cmd curl
 require_cmd bash
+require_cmd doct-agent
 
 CONTENT_FILE="$(mktemp)"
 cleanup() {
@@ -139,24 +109,28 @@ if [[ -z "$TITLE" ]]; then
   TITLE="Coding Plan $(date '+%Y-%m-%d %H:%M')"
 fi
 
-if [[ -z "${DOCT_BASE_URL:-}" && -f "$CONFIG_PATH" ]]; then
-  DOCT_BASE_URL="$(jq -r '.baseUrl // empty' "$CONFIG_PATH")"
+BASE_URL_ARGS=()
+AUTH_STATUS_ARGS=(--all)
+if [[ -n "${DOCT_BASE_URL:-}" ]]; then
+  BASE_URL_ARGS=(--base-url "$DOCT_BASE_URL")
+  AUTH_STATUS_ARGS=(--base-url "$DOCT_BASE_URL")
 fi
-if [[ -z "${DOCT_ACCESS_TOKEN:-}" && -f "$CONFIG_PATH" ]]; then
-  DOCT_ACCESS_TOKEN="$(jq -r '.token // empty' "$CONFIG_PATH")"
+
+if ! doct-agent auth status "${AUTH_STATUS_ARGS[@]}" --json >/dev/null; then
+  if [[ -n "${DOCT_BASE_URL:-}" ]]; then
+    echo "Doct auth is not valid for ${DOCT_BASE_URL}. Run: doct-agent auth login --base-url ${DOCT_BASE_URL}" >&2
+  else
+    echo "Doct auth is not valid. Run: doct-agent auth status --all --json, then doct-agent auth login --base-url <endpoint>." >&2
+  fi
+  exit 1
 fi
 
-: "${DOCT_BASE_URL:?Set DOCT_BASE_URL or login with doct-cli first}"
-: "${DOCT_ACCESS_TOKEN:?Set DOCT_ACCESS_TOKEN or login with doct-cli first}"
-
-doct-cli auth status >/dev/null
-
-WORKSPACES_JSON="$(doct-cli workspaces list --json)"
+WORKSPACES_JSON="$(doct-agent workspaces list "${BASE_URL_ARGS[@]}" --json)"
 
 if [[ "$WORKSPACE_SELECTOR" == "personal" ]]; then
-  WORKSPACE_JSON="$(printf '%s' "$WORKSPACES_JSON" | jq -c 'map(select(.isPersonal == true)) | .[0] // empty')"
+  WORKSPACE_JSON="$(printf '%s' "$WORKSPACES_JSON" | jq -c '(.workspaces? // .) | map(select(.isPersonal == true or .is_personal == true)) | .[0] // empty')"
 else
-  WORKSPACE_JSON="$(printf '%s' "$WORKSPACES_JSON" | jq -c --arg selector "$WORKSPACE_SELECTOR" 'map(select(.id == $selector or .slug == $selector or .handle == $selector or .name == $selector)) | .[0] // empty')"
+  WORKSPACE_JSON="$(printf '%s' "$WORKSPACES_JSON" | jq -c --arg selector "$WORKSPACE_SELECTOR" '(.workspaces? // .) | map(select(.id == $selector or .slug == $selector or .handle == $selector or .name == $selector or .title == $selector)) | .[0] // empty')"
 fi
 
 if [[ -z "$WORKSPACE_JSON" ]]; then
@@ -165,35 +139,40 @@ if [[ -z "$WORKSPACE_JSON" ]]; then
 fi
 
 WORKSPACE_ID="$(printf '%s' "$WORKSPACE_JSON" | jq -r '.id')"
-WORKSPACE_HANDLE="$(printf '%s' "$WORKSPACE_JSON" | jq -r '.handle')"
+WORKSPACE_HANDLE="$(printf '%s' "$WORKSPACE_JSON" | jq -r '.handle // .slug // .id')"
 
-DOCS_JSON="$(doct-cli docs list --workspace "$WORKSPACE_ID" --json)"
-PARENT_JSON="$(printf '%s' "$DOCS_JSON" | jq -c --arg title "$PARENT_TITLE" 'map(select(.title == $title and (.parentId == null))) | .[0] // empty')"
+DOCS_JSON="$(doct-agent documents list "${BASE_URL_ARGS[@]}" --workspace-id "$WORKSPACE_ID" --json)"
+PARENT_JSON="$(printf '%s' "$DOCS_JSON" | jq -c --arg title "$PARENT_TITLE" '(.documents? // .) | map(select(.title == $title and (.parentId == null or .parent_id == null))) | .[0] // empty')"
 
 if [[ -z "$PARENT_JSON" ]]; then
-  PARENT_PAYLOAD="$(jq -nc \
-    --arg title "$PARENT_TITLE" \
-    --arg kind "text" \
-    --arg content "" \
-    --arg workspaceId "$WORKSPACE_ID" \
-    '{title: $title, kind: $kind, content: $content, workspaceId: $workspaceId}')"
-  PARENT_JSON="$(json_post "$DOCT_BASE_URL/api/documents" "$PARENT_PAYLOAD")"
+  PARENT_JSON="$(doct-agent documents create "${BASE_URL_ARGS[@]}" \
+    --workspace-id "$WORKSPACE_ID" \
+    --title "$PARENT_TITLE" \
+    --path "$PARENT_TITLE" \
+    --kind text \
+    --content "" \
+    --json)"
 fi
 
 PARENT_ID="$(printf '%s' "$PARENT_JSON" | jq -r '.id')"
+PARENT_PATH="$(printf '%s' "$PARENT_JSON" | jq -r --arg fallback "$PARENT_TITLE" '.path // $fallback')"
+CHILD_PATH="${PARENT_PATH%/}/$TITLE"
 
-CHILD_PAYLOAD="$(jq -nc \
-  --arg title "$TITLE" \
-  --arg kind "text" \
-  --arg workspaceId "$WORKSPACE_ID" \
-  --arg parentId "$PARENT_ID" \
-  --rawfile content "$CONTENT_FILE" \
-  '{title: $title, kind: $kind, content: $content, workspaceId: $workspaceId, parentId: $parentId}')"
-
-CHILD_JSON="$(json_post "$DOCT_BASE_URL/api/documents" "$CHILD_PAYLOAD")"
+CHILD_JSON="$(doct-agent documents create "${BASE_URL_ARGS[@]}" \
+  --workspace-id "$WORKSPACE_ID" \
+  --title "$TITLE" \
+  --path "$CHILD_PATH" \
+  --kind text \
+  --content "" \
+  --parent-id "$PARENT_ID" \
+  --json)"
 CHILD_ID="$(printf '%s' "$CHILD_JSON" | jq -r '.id')"
-CHILD_PATH="$(printf '%s' "$CHILD_JSON" | jq -r '.path')"
-CHILD_URL="$DOCT_BASE_URL/d/$WORKSPACE_HANDLE/docs/$CHILD_ID"
+CHILD_PATH="$(printf '%s' "$CHILD_JSON" | jq -r --arg fallback "$CHILD_PATH" '.path // $fallback')"
+
+doct-agent documents replace-body "${BASE_URL_ARGS[@]}" --id "$CHILD_ID" --file "$CONTENT_FILE" --json >/dev/null
+
+BASE_URL_FOR_RESULT="${DOCT_BASE_URL:-$(doct-agent auth status --json | jq -r '.base_url // .default_base_url // empty')}"
+CHILD_URL="$BASE_URL_FOR_RESULT/d/$WORKSPACE_HANDLE/docs/$CHILD_ID"
 
 RESULT_JSON="$(jq -nc \
   --arg workspaceId "$WORKSPACE_ID" \

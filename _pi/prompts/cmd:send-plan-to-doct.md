@@ -25,13 +25,14 @@ Request: $ARGUMENTS
 1. Verify doct auth:
 
 ```bash
-doct-cli auth status
+doct-agent auth status --all --json
 ```
 
-2. Publish the plan with REST by:
+2. Publish the plan with `doct-agent` by:
 - resolving the personal workspace id
 - ensuring a root document titled `Coding Plans` exists
-- creating a new `text` document with `parentId` set to the `Coding Plans` document id
+- creating a new published `text` document with `parentId` set to the `Coding Plans` document id
+- replacing the body with `doct-agent documents replace-body --file`
 
 Preferred helper when this repo is installed:
 
@@ -54,6 +55,6 @@ printf '%s' "$PLAN_MARKDOWN" | bash "$HOME/.agents/skills/doct-document-ops/scri
 
 - The helper script auto-creates the root `Coding Plans` document if it does not already exist.
 - New plans are created as child documents, not appended into the parent body.
-- Standard doct-cli device login is read-only. For publishing, set `DOCT_ACCESS_TOKEN` to a write-scope PAT if the current token lacks write access.
-- If auth is missing, run `doct-cli auth login --url https://doct.nodaste.com` first.
-- If the helper script is unavailable, perform the same steps manually with `doct-cli workspaces list --json`, `doct-cli docs list --workspace <id> --json`, and `POST /api/documents`.
+- If auth is missing or invalid, run `doct-agent auth login --base-url https://doct.nodaste.com` first.
+- For one-off automation, use `DOCT_AGENT_PAT` only with an explicit endpoint such as `DOCT_BASE_URL`.
+- If the helper script is unavailable, perform the same steps manually with `doct-agent workspaces list --json`, `doct-agent documents list --workspace-id <id> --json`, `doct-agent documents create ... --json`, and `doct-agent documents replace-body --id <id> --file <file> --json`.

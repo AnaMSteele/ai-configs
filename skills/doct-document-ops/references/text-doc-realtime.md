@@ -1,10 +1,19 @@
 # Doct text-document realtime workflow
 
-Use this reference when the user wants to edit the body of a doct text document or add an anchored comment to text.
+Use this reference only when the consolidated `doct-agent` commands do not cover the operation. Prefer:
+
+```bash
+doct-agent documents replace-body --id <document-id> --file prepared.md --json
+doct-agent collab edit --document-id <id> --append-markdown '\n\nAppended by agent'
+doct-agent collab anchored replace --document-id <id> --selected-text 'target text' --text 'replacement text'
+doct-agent collab comments add --document-id <id> --selected-text 'target text' --body 'initial thread body'
+```
+
+Use the direct Hocuspocus/Yjs workflow when a text edit or comment operation is not exposed through `doct-agent`.
 
 ## Core rule
 
-For **text** documents, body edits and anchored comments go through **Hocuspocus/Yjs**, not the generic REST document endpoints.
+For **text** documents, body edits and anchored comments go through the supported `doct-agent` surfaces or **Hocuspocus/Yjs**, not the generic REST document endpoints.
 
 REST writes intentionally return `410` for text body writes and text comment sync.
 
@@ -12,7 +21,7 @@ REST writes intentionally return `410` for text body writes and text comment syn
 
 You need all of these:
 - doct base URL (`DOCT_BASE_URL`)
-- doct PAT (`DOCT_ACCESS_TOKEN`)
+- doct PAT (`DOCT_AGENT_PAT`) when bypassing stored `doct-agent` auth for direct Yjs/REST fallback code
 - document id
 - Hocuspocus websocket URL (`NEXT_PUBLIC_HOCUSPOCUS_URL` equivalent for the target environment)
 
@@ -27,14 +36,14 @@ For hosted environments, it is usually a `wss://...` URL from doct's `NEXT_PUBLI
 ## Minimal workflow
 
 1. Resolve the document id.
-2. Read the current markdown body via `GET /api/documents?id=<id>` with `Accept: text/plain`.
+2. Read the current markdown body via `doct-agent documents get --id <id> --text`.
 3. Connect to Hocuspocus with the raw PAT.
 4. Wait for sync.
 5. Mutate the Yjs document:
    - body edit → `applyMarkdownToYjsDoc`
    - text comment → `createCommentAnchor` or `createCommentAnchorFromQuote`, then `addComment`
 6. Optionally create a named version after the content change.
-7. Re-read the document body over REST to verify the persisted result.
+7. Re-read the document body with `doct-agent documents get --id <id> --text` to verify the persisted result.
 
 ## Canonical code pattern
 
@@ -52,7 +61,7 @@ import {
 import { applyMarkdownToYjsDoc } from "@/packages/hocuspocus-server/src/services/SyncHandler";
 
 const HOCUSPOCUS_URL = process.env.DOCT_HOCUSPOCUS_URL!;
-const TOKEN = process.env.DOCT_ACCESS_TOKEN!;
+const TOKEN = process.env.DOCT_AGENT_PAT!;
 const DOCUMENT_ID = process.env.DOCT_DOCUMENT_ID!;
 const AGENT_ID = process.env.DOCT_ACTOR_ID!; // user_... or agent_...
 const NEXT_MARKDOWN = process.env.DOCT_NEXT_MARKDOWN;
@@ -134,14 +143,14 @@ ydoc.destroy();
 
 ### Edit body text
 
-1. Fetch current markdown.
+1. Fetch current markdown with `doct-agent documents get --id <id> --text`.
 2. Prepare the fully updated markdown.
 3. Run the snippet with `DOCT_NEXT_MARKDOWN` set.
-4. Re-fetch the body with `Accept: text/plain` and confirm the new text is present.
+4. Re-fetch the body with `doct-agent documents get --id <id> --text` and confirm the new text is present.
 
 ### Add a text comment
 
-1. Fetch current markdown.
+1. Fetch current markdown with `doct-agent documents get --id <id> --text`.
 2. Choose a stable quote string from the current content.
 3. Run the snippet with `DOCT_COMMENT_TEXT` and `DOCT_COMMENT_QUOTE` set.
 4. Verify via doct UI or other realtime-aware tooling.
@@ -152,8 +161,8 @@ If the user wants an explicit saved version after a text edit, call:
 
 ```bash
 curl -sS -X POST "$DOCT_BASE_URL/api/documents/$DOCT_DOCUMENT_ID/versions" \
-  -H "Authorization: Bearer $DOCT_ACCESS_TOKEN" \
-  -H "X-Doct-Pat: Bearer $DOCT_ACCESS_TOKEN" \
+  -H "Authorization: Bearer $DOCT_AGENT_PAT" \
+  -H "X-Doct-Pat: Bearer $DOCT_AGENT_PAT" \
   -H 'Content-Type: application/json' \
   -d '{"name":"Agent update"}'
 ```
