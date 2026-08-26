@@ -10,8 +10,7 @@ Usage: publish-coding-plan.sh [--file PATH] [--title TITLE] [--parent-title TITL
 Registers a new HTML plan as a child of Coding Plans in the Shared doct workspace.
 
 Input:
-  --file PATH      Read a complete, standalone HTML document from PATH
-  stdin            If --file is omitted, reads the HTML document from stdin
+  --file PATH      Required durable, standalone HTML source file
 
 Defaults:
   --workspace      shared; any override must resolve to the Shared workspace
@@ -72,46 +71,39 @@ require_cmd bash
 require_cmd doct-agent
 require_cmd perl
 
-CONTENT_FILE="$(mktemp)"
-cleanup() {
-  rm -f "$CONTENT_FILE"
-}
-trap cleanup EXIT
-
-if [[ -n "$FILE_PATH" ]]; then
-  if [[ ! -f "$FILE_PATH" ]]; then
-    echo "File not found: $FILE_PATH" >&2
-    exit 1
-  fi
-  cp "$FILE_PATH" "$CONTENT_FILE"
-else
-  if [[ -t 0 ]]; then
-    echo "No input provided. Pass --file PATH or pipe a complete HTML plan on stdin." >&2
-    exit 1
-  fi
-  cat > "$CONTENT_FILE"
+if [[ -z "$FILE_PATH" ]]; then
+  echo "--file PATH is required. Publish from a durable HTML source file so an asynchronous agent responder can update it after this session ends." >&2
+  exit 1
 fi
 
-if [[ ! -s "$CONTENT_FILE" ]]; then
+if [[ ! -f "$FILE_PATH" ]]; then
+  echo "File not found: $FILE_PATH" >&2
+  exit 1
+fi
+
+SOURCE_DIR="$(cd "$(dirname "$FILE_PATH")" && pwd -P)"
+SOURCE_FILE="$SOURCE_DIR/$(basename "$FILE_PATH")"
+
+if [[ ! -s "$SOURCE_FILE" ]]; then
   echo "Plan content is empty." >&2
   exit 1
 fi
 
-if ! grep -Eiq '<!doctype[[:space:]]+html' "$CONTENT_FILE" || \
-   ! grep -Eiq '<html([[:space:]>])' "$CONTENT_FILE" || \
-   ! grep -Eiq '<head([[:space:]>])' "$CONTENT_FILE" || \
-   ! grep -Eiq '<body([[:space:]>])' "$CONTENT_FILE"; then
+if ! grep -Eiq '<!doctype[[:space:]]+html' "$SOURCE_FILE" || \
+   ! grep -Eiq '<html([[:space:]>])' "$SOURCE_FILE" || \
+   ! grep -Eiq '<head([[:space:]>])' "$SOURCE_FILE" || \
+   ! grep -Eiq '<body([[:space:]>])' "$SOURCE_FILE"; then
   echo "Plan input must be a complete HTML document with <!doctype html>, <html>, <head>, and <body>. Markdown-only plans are not publishable; render the plan as HTML first." >&2
   exit 1
 fi
 
-if grep -Eiq '<script([[:space:]>])' "$CONTENT_FILE"; then
+if grep -Eiq '<script([[:space:]>])' "$SOURCE_FILE"; then
   echo "Plan HTML must not contain scripts." >&2
   exit 1
 fi
 
 if [[ -z "$TITLE" ]]; then
-  TITLE="$(perl -0777 -ne 'if (/<title[^>]*>\s*(.*?)\s*<\/title>/is) { $t=$1; $t=~s/<[^>]+>//g; $t=~s/&amp;/\&/g; $t=~s/&lt;/</g; $t=~s/&gt;/>/g; $t=~s/\s+/ /g; print $t }' "$CONTENT_FILE")"
+  TITLE="$(perl -0777 -ne 'if (/<title[^>]*>\s*(.*?)\s*<\/title>/is) { $t=$1; $t=~s/<[^>]+>//g; $t=~s/&amp;/\&/g; $t=~s/&lt;/</g; $t=~s/&gt;/>/g; $t=~s/\s+/ /g; print $t }' "$SOURCE_FILE")"
 fi
 
 if [[ -z "$TITLE" && -n "$FILE_PATH" ]]; then
@@ -178,7 +170,7 @@ CHILD_PATH="${PARENT_PATH%/}/$TITLE"
 REGISTER_JSON="$(doct-agent plans register ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} \
   --workspace-id "$WORKSPACE_ID" \
   --title "$TITLE" \
-  --file "$CONTENT_FILE" \
+  --file "$SOURCE_FILE" \
   --source-format html \
   --path "$CHILD_PATH" \
   --parent-id "$PARENT_ID" \
