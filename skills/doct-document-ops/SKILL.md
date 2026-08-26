@@ -1,6 +1,6 @@
 ---
 name: doct-document-ops
-description: Interact with doct documents and browser-review plans via doct-agent, REST, and Hocuspocus/Yjs. Use when asked to open a doct URL, list doct workspaces or documents, view or edit a doct document, supervise a plan listener, process plan comments, or publish a coding plan to the user's personal "Coding Plans" document as a child document.
+description: Interact with doct documents and browser-review plans via doct-agent, REST, and Hocuspocus/Yjs. Use when asked to open a doct URL, list doct workspaces or documents, view or edit a doct document, supervise a plan listener, process plan comments, or publish any product, coding, implementation, research, or review plan to the Shared workspace.
 ---
 
 # Doct document operations
@@ -30,16 +30,18 @@ Do not use `~/.cargo/bin/doct-agent`, copy Cargo artifacts into another bin dire
    - **Append-only text edits** → `doct-agent collab edit --append-markdown`.
    - **Anchored surgical text edits** → `doct-agent collab anchored <replace|insert-before|insert-after|delete>`.
    - **Text comments** → `doct-agent collab comments` when available; otherwise realtime Hocuspocus/Yjs.
-   - **Publish a coding plan** → use `scripts/publish-coding-plan.sh`.
+   - **Publish any plan document** → use `scripts/publish-coding-plan.sh`.
 
-## Special default: coding plans
+## Required destination: all plan documents
 
-If the user asks to **send, publish, copy, or save a coding plan to doct**, default to this destination unless they explicitly say otherwise:
+If the user asks to **send, publish, copy, or save any plan document to doct**, always use this destination:
 
-- workspace: the user's **personal** doct workspace
+- workspace: the **Shared** doct workspace
 - parent document title: **Coding Plans**
 - new document type: **text**
 - placement: create the new plan as a **child document** under `Coding Plans`
+
+This applies to product plans, coding plans, implementation plans, execution plans, research plans, review plans, and strategy/roadmap plans. Do not publish a newly created plan document into the Personal workspace. If Shared cannot be resolved, stop with the exact workspace-resolution failure instead of falling back to Personal.
 
 ### Coding-plan workflow
 
@@ -62,7 +64,7 @@ printf '%s' "$PLAN_MARKDOWN" | bash "$SKILL_DIR/scripts/publish-coding-plan.sh" 
 
 The publisher script automatically:
 - validates doct auth
-- finds the personal workspace
+- resolves and verifies the Shared workspace
 - ensures the root document `Coding Plans` exists
 - creates the new child document beneath it
 - surfaces a clear hint when the current token is read-only
@@ -153,7 +155,7 @@ Safe over REST:
 - move document
 - update title/status/settings/theme
 - add comments to **non-text** documents
-- create child documents under `Coding Plans`
+- create child documents under Shared workspace `Coding Plans`
 
 ### Text body edits
 
@@ -198,11 +200,11 @@ If the user wants to inspect existing text comments, prefer:
 - Use `doct-agent` for quick listing, id/path-based viewing, document creation, full text-body replacement, anchored edits, plan registration, and triage.
 - Use REST when the operation is explicitly supported and not a text-body mutation.
 - Use Hocuspocus/Yjs directly only for gaps not covered by `doct-agent`.
-- Use `scripts/publish-coding-plan.sh` for the default coding-plan destination.
+- Use `scripts/publish-coding-plan.sh` for every newly published plan document so the Shared-workspace destination is enforced.
 - If the user wants visual verification inside doct, use browser automation after approval.
 
 ## References
 
 - `references/rest-and-cli.md` — auth, lookup, list, view, metadata-safe REST patterns
 - `references/text-doc-realtime.md` — exact realtime edit/comment workflow for text docs
-- `scripts/publish-coding-plan.sh` — creates a child doc under personal `Coding Plans`
+- `scripts/publish-coding-plan.sh` — creates a plan child document under Shared workspace `Coding Plans` and rejects non-Shared destinations

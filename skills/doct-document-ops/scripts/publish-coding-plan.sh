@@ -5,16 +5,16 @@ DEFAULT_PARENT_TITLE="Coding Plans"
 
 usage() {
   cat <<'EOF'
-Usage: publish-coding-plan.sh [--file PATH] [--title TITLE] [--parent-title TITLE] [--workspace personal|WORKSPACE_ID|slug|handle|name] [--json]
+Usage: publish-coding-plan.sh [--file PATH] [--title TITLE] [--parent-title TITLE] [--workspace shared|SHARED_WORKSPACE_ID|slug|handle|name] [--json]
 
-Creates a new doct text document as a child of the user's Coding Plans document.
+Creates a new doct plan document as a child of Coding Plans in the Shared workspace.
 
 Input:
   --file PATH      Read markdown from PATH
   stdin            If --file is omitted, reads markdown from stdin
 
 Defaults:
-  --workspace      personal
+  --workspace      shared; any override must resolve to the Shared workspace
   --parent-title   Coding Plans
   --title          First H1 in the markdown, else file basename, else timestamp
 EOF
@@ -30,7 +30,7 @@ require_cmd() {
 FILE_PATH=""
 TITLE=""
 PARENT_TITLE="${DOCT_PARENT_TITLE:-$DEFAULT_PARENT_TITLE}"
-WORKSPACE_SELECTOR="${DOCT_WORKSPACE_SELECTOR:-personal}"
+WORKSPACE_SELECTOR="${DOCT_WORKSPACE_SELECTOR:-shared}"
 OUTPUT_JSON=false
 
 while [[ $# -gt 0 ]]; do
@@ -106,7 +106,7 @@ if [[ -z "$TITLE" && -n "$FILE_PATH" ]]; then
 fi
 
 if [[ -z "$TITLE" ]]; then
-  TITLE="Coding Plan $(date '+%Y-%m-%d %H:%M')"
+  TITLE="Plan $(date '+%Y-%m-%d %H:%M')"
 fi
 
 BASE_URL_ARGS=()
@@ -125,27 +125,30 @@ if ! doct-agent auth status "${AUTH_STATUS_ARGS[@]}" --json >/dev/null; then
   exit 1
 fi
 
-WORKSPACES_JSON="$(doct-agent workspaces list "${BASE_URL_ARGS[@]}" --json)"
+WORKSPACES_JSON="$(doct-agent workspaces list ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} --json)"
 
-if [[ "$WORKSPACE_SELECTOR" == "personal" ]]; then
-  WORKSPACE_JSON="$(printf '%s' "$WORKSPACES_JSON" | jq -c '(.workspaces? // .) | map(select(.isPersonal == true or .is_personal == true)) | .[0] // empty')"
-else
-  WORKSPACE_JSON="$(printf '%s' "$WORKSPACES_JSON" | jq -c --arg selector "$WORKSPACE_SELECTOR" '(.workspaces? // .) | map(select(.id == $selector or .slug == $selector or .handle == $selector or .name == $selector or .title == $selector)) | .[0] // empty')"
-fi
+WORKSPACE_JSON="$(printf '%s' "$WORKSPACES_JSON" | jq -c --arg selector "$WORKSPACE_SELECTOR" '(.workspaces? // .) | map(select(.id == $selector or .slug == $selector or .handle == $selector or .name == $selector or .title == $selector)) | .[0] // empty')"
 
 if [[ -z "$WORKSPACE_JSON" ]]; then
-  echo "Could not resolve workspace: $WORKSPACE_SELECTOR" >&2
+  echo "Could not resolve the Shared workspace from selector: $WORKSPACE_SELECTOR. Plan documents must not fall back to Personal." >&2
+  exit 1
+fi
+
+IS_SHARED_WORKSPACE="$(printf '%s' "$WORKSPACE_JSON" | jq -r '((.isPersonal // .is_personal // false) == false) and (((.name // .title // "") | ascii_downcase) == "shared" or ((.slug // "") | ascii_downcase) == "shared" or ((.handle // "") | ascii_downcase | startswith("shared_")))')"
+if [[ "$IS_SHARED_WORKSPACE" != "true" ]]; then
+  RESOLVED_WORKSPACE_NAME="$(printf '%s' "$WORKSPACE_JSON" | jq -r '.name // .title // .slug // .handle // .id')"
+  echo "Refusing to publish plan to non-Shared workspace: $RESOLVED_WORKSPACE_NAME. Use the Shared workspace." >&2
   exit 1
 fi
 
 WORKSPACE_ID="$(printf '%s' "$WORKSPACE_JSON" | jq -r '.id')"
 WORKSPACE_HANDLE="$(printf '%s' "$WORKSPACE_JSON" | jq -r '.handle // .slug // .id')"
 
-DOCS_JSON="$(doct-agent documents list "${BASE_URL_ARGS[@]}" --workspace-id "$WORKSPACE_ID" --json)"
+DOCS_JSON="$(doct-agent documents list ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} --workspace-id "$WORKSPACE_ID" --json)"
 PARENT_JSON="$(printf '%s' "$DOCS_JSON" | jq -c --arg title "$PARENT_TITLE" '(.documents? // .) | map(select(.title == $title and (.parentId == null or .parent_id == null))) | .[0] // empty')"
 
 if [[ -z "$PARENT_JSON" ]]; then
-  PARENT_JSON="$(doct-agent documents create "${BASE_URL_ARGS[@]}" \
+  PARENT_JSON="$(doct-agent documents create ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} \
     --workspace-id "$WORKSPACE_ID" \
     --title "$PARENT_TITLE" \
     --path "$PARENT_TITLE" \
@@ -158,7 +161,7 @@ PARENT_ID="$(printf '%s' "$PARENT_JSON" | jq -r '.id')"
 PARENT_PATH="$(printf '%s' "$PARENT_JSON" | jq -r --arg fallback "$PARENT_TITLE" '.path // $fallback')"
 CHILD_PATH="${PARENT_PATH%/}/$TITLE"
 
-CHILD_JSON="$(doct-agent documents create "${BASE_URL_ARGS[@]}" \
+CHILD_JSON="$(doct-agent documents create ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} \
   --workspace-id "$WORKSPACE_ID" \
   --title "$TITLE" \
   --path "$CHILD_PATH" \
@@ -169,7 +172,7 @@ CHILD_JSON="$(doct-agent documents create "${BASE_URL_ARGS[@]}" \
 CHILD_ID="$(printf '%s' "$CHILD_JSON" | jq -r '.id')"
 CHILD_PATH="$(printf '%s' "$CHILD_JSON" | jq -r --arg fallback "$CHILD_PATH" '.path // $fallback')"
 
-doct-agent documents replace-body "${BASE_URL_ARGS[@]}" --id "$CHILD_ID" --file "$CONTENT_FILE" --json >/dev/null
+doct-agent documents replace-body ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} --id "$CHILD_ID" --file "$CONTENT_FILE" --json >/dev/null
 
 BASE_URL_FOR_RESULT="${DOCT_BASE_URL:-$(doct-agent auth status --json | jq -r '.base_url // .default_base_url // empty')}"
 CHILD_URL="$BASE_URL_FOR_RESULT/d/$WORKSPACE_HANDLE/docs/$CHILD_ID"
@@ -188,7 +191,7 @@ RESULT_JSON="$(jq -nc \
 if [[ "$OUTPUT_JSON" == true ]]; then
   printf '%s\n' "$RESULT_JSON"
 else
-  echo "Created doct coding-plan document"
+  echo "Created doct plan document in Shared"
   echo "title: $TITLE"
   echo "id: $CHILD_ID"
   echo "path: $CHILD_PATH"
