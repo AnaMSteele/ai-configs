@@ -1,6 +1,6 @@
 ---
 name: doct-document-ops
-description: Interact with doct documents and browser-review plans via doct-agent, REST, and Hocuspocus/Yjs. Use when asked to open a doct URL, list doct workspaces or documents, view or edit a doct document, supervise a plan listener, process plan comments, or publish any product, coding, implementation, research, or review plan to the Shared workspace.
+description: Interact with doct documents and browser-review plans via doct-agent, REST, and Hocuspocus/Yjs. Use when asked to open a doct URL, list doct workspaces or documents, view or edit a doct document, supervise a plan listener, process plan comments, or publish any product, coding, implementation, research, or review plan as HTML to the Shared workspace.
 ---
 
 # Doct document operations
@@ -30,7 +30,7 @@ Do not use `~/.cargo/bin/doct-agent`, copy Cargo artifacts into another bin dire
    - **Append-only text edits** → `doct-agent collab edit --append-markdown`.
    - **Anchored surgical text edits** → `doct-agent collab anchored <replace|insert-before|insert-after|delete>`.
    - **Text comments** → `doct-agent collab comments` when available; otherwise realtime Hocuspocus/Yjs.
-   - **Publish any plan document** → use `scripts/publish-coding-plan.sh`.
+   - **Publish any plan document** → author a complete HTML plan, then use `scripts/publish-coding-plan.sh`.
 
 ## Required destination: all plan documents
 
@@ -38,35 +38,48 @@ If the user asks to **send, publish, copy, or save any plan document to doct**, 
 
 - workspace: the **Shared** doct workspace
 - parent document title: **Coding Plans**
-- new document type: **text**
+- new document type: **HTML plan**
 - placement: create the new plan as a **child document** under `Coding Plans`
 
 This applies to product plans, coding plans, implementation plans, execution plans, research plans, review plans, and strategy/roadmap plans. Do not publish a newly created plan document into the Personal workspace. If Shared cannot be resolved, stop with the exact workspace-resolution failure instead of falling back to Personal.
 
+### Required format: HTML by default
+
+Every newly authored plan must default to one complete, standalone HTML document. Do not publish a Markdown-only plan, rename a Markdown file to `.html`, or create a sibling Markdown version as the primary plan artifact.
+
+The HTML plan must:
+- include `<!doctype html>`, `<html>`, `<head>`, `<title>`, and `<body>`
+- use semantic sections and stable `id` attributes so review comments can point to durable anchors
+- include embedded CSS that is readable without external assets, with dark mode as the default presentation
+- contain no scripts
+
+If the source material is Markdown, first render it into a genuine HTML plan that satisfies these requirements. Keep a local `.html` source artifact when the surrounding project has a planning-artifact convention. Repository-local HTML plan contracts and templates take precedence over this generic minimum.
+
 ### Coding-plan workflow
 
 1. If the plan is in a local file, read it fully first.
-2. If the user pasted the plan, preserve the markdown as given.
-3. Derive a title from the first H1 if possible; otherwise use the file basename or ask if the title matters.
+2. Author or render the plan as one complete `.html` document. Preserve the source plan's substance while improving navigation and reviewability.
+3. Derive a title from `<title>` or the first `<h1>`; otherwise use the file basename or ask if the title matters.
 4. Run:
 
 ```bash
-bash "$SKILL_DIR/scripts/publish-coding-plan.sh" --file /absolute/or/relative/path/to/plan.md
+bash "$SKILL_DIR/scripts/publish-coding-plan.sh" --file /absolute/or/relative/path/to/plan.html
 ```
 
 Or, when the content is already in a temp file / stdin pipeline:
 
 ```bash
-printf '%s' "$PLAN_MARKDOWN" | bash "$SKILL_DIR/scripts/publish-coding-plan.sh" --title "Plan Title"
+printf '%s' "$PLAN_HTML" | bash "$SKILL_DIR/scripts/publish-coding-plan.sh" --title "Plan Title"
 ```
 
 5. Return the created doct URL and document id to the user.
 
 The publisher script automatically:
+- rejects Markdown-only or fragmentary input
 - validates doct auth
 - resolves and verifies the Shared workspace
 - ensures the root document `Coding Plans` exists
-- creates the new child document beneath it
+- registers the new HTML plan beneath it through Doct's plan-review workflow
 - surfaces a clear hint when the current token is read-only
 
 ## Resolve the target first
@@ -200,11 +213,11 @@ If the user wants to inspect existing text comments, prefer:
 - Use `doct-agent` for quick listing, id/path-based viewing, document creation, full text-body replacement, anchored edits, plan registration, and triage.
 - Use REST when the operation is explicitly supported and not a text-body mutation.
 - Use Hocuspocus/Yjs directly only for gaps not covered by `doct-agent`.
-- Use `scripts/publish-coding-plan.sh` for every newly published plan document so the Shared-workspace destination is enforced.
+- Use `scripts/publish-coding-plan.sh` for every newly published plan document so the Shared-workspace and HTML-format defaults are enforced.
 - If the user wants visual verification inside doct, use browser automation after approval.
 
 ## References
 
 - `references/rest-and-cli.md` — auth, lookup, list, view, metadata-safe REST patterns
 - `references/text-doc-realtime.md` — exact realtime edit/comment workflow for text docs
-- `scripts/publish-coding-plan.sh` — creates a plan child document under Shared workspace `Coding Plans` and rejects non-Shared destinations
+- `scripts/publish-coding-plan.sh` — registers an HTML plan child under Shared workspace `Coding Plans`; rejects non-Shared destinations and non-HTML input

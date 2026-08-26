@@ -7,16 +7,16 @@ usage() {
   cat <<'EOF'
 Usage: publish-coding-plan.sh [--file PATH] [--title TITLE] [--parent-title TITLE] [--workspace shared|SHARED_WORKSPACE_ID|slug|handle|name] [--json]
 
-Creates a new doct plan document as a child of Coding Plans in the Shared workspace.
+Registers a new HTML plan as a child of Coding Plans in the Shared doct workspace.
 
 Input:
-  --file PATH      Read markdown from PATH
-  stdin            If --file is omitted, reads markdown from stdin
+  --file PATH      Read a complete, standalone HTML document from PATH
+  stdin            If --file is omitted, reads the HTML document from stdin
 
 Defaults:
   --workspace      shared; any override must resolve to the Shared workspace
   --parent-title   Coding Plans
-  --title          First H1 in the markdown, else file basename, else timestamp
+  --title          HTML <title>, else file basename, else timestamp
 EOF
 }
 
@@ -70,6 +70,7 @@ done
 require_cmd jq
 require_cmd bash
 require_cmd doct-agent
+require_cmd perl
 
 CONTENT_FILE="$(mktemp)"
 cleanup() {
@@ -85,7 +86,7 @@ if [[ -n "$FILE_PATH" ]]; then
   cp "$FILE_PATH" "$CONTENT_FILE"
 else
   if [[ -t 0 ]]; then
-    echo "No input provided. Pass --file PATH or pipe markdown on stdin." >&2
+    echo "No input provided. Pass --file PATH or pipe a complete HTML plan on stdin." >&2
     exit 1
   fi
   cat > "$CONTENT_FILE"
@@ -96,8 +97,21 @@ if [[ ! -s "$CONTENT_FILE" ]]; then
   exit 1
 fi
 
+if ! grep -Eiq '<!doctype[[:space:]]+html' "$CONTENT_FILE" || \
+   ! grep -Eiq '<html([[:space:]>])' "$CONTENT_FILE" || \
+   ! grep -Eiq '<head([[:space:]>])' "$CONTENT_FILE" || \
+   ! grep -Eiq '<body([[:space:]>])' "$CONTENT_FILE"; then
+  echo "Plan input must be a complete HTML document with <!doctype html>, <html>, <head>, and <body>. Markdown-only plans are not publishable; render the plan as HTML first." >&2
+  exit 1
+fi
+
+if grep -Eiq '<script([[:space:]>])' "$CONTENT_FILE"; then
+  echo "Plan HTML must not contain scripts." >&2
+  exit 1
+fi
+
 if [[ -z "$TITLE" ]]; then
-  TITLE="$( (grep -m1 -E '^# ' "$CONTENT_FILE" || true) | sed 's/^# //' )"
+  TITLE="$(perl -0777 -ne 'if (/<title[^>]*>\s*(.*?)\s*<\/title>/is) { $t=$1; $t=~s/<[^>]+>//g; $t=~s/&amp;/\&/g; $t=~s/&lt;/</g; $t=~s/&gt;/>/g; $t=~s/\s+/ /g; print $t }' "$CONTENT_FILE")"
 fi
 
 if [[ -z "$TITLE" && -n "$FILE_PATH" ]]; then
@@ -161,39 +175,25 @@ PARENT_ID="$(printf '%s' "$PARENT_JSON" | jq -r '.id')"
 PARENT_PATH="$(printf '%s' "$PARENT_JSON" | jq -r --arg fallback "$PARENT_TITLE" '.path // $fallback')"
 CHILD_PATH="${PARENT_PATH%/}/$TITLE"
 
-CHILD_JSON="$(doct-agent documents create ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} \
+REGISTER_JSON="$(doct-agent plans register ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} \
   --workspace-id "$WORKSPACE_ID" \
   --title "$TITLE" \
+  --file "$CONTENT_FILE" \
+  --source-format html \
   --path "$CHILD_PATH" \
-  --kind text \
-  --content "" \
   --parent-id "$PARENT_ID" \
+  --allow-untemplated \
   --json)"
-CHILD_ID="$(printf '%s' "$CHILD_JSON" | jq -r '.id')"
-CHILD_PATH="$(printf '%s' "$CHILD_JSON" | jq -r --arg fallback "$CHILD_PATH" '.path // $fallback')"
-
-doct-agent documents replace-body ${BASE_URL_ARGS[@]+"${BASE_URL_ARGS[@]}"} --id "$CHILD_ID" --file "$CONTENT_FILE" --json >/dev/null
-
-BASE_URL_FOR_RESULT="${DOCT_BASE_URL:-$(doct-agent auth status --json | jq -r '.base_url // .default_base_url // empty')}"
-CHILD_URL="$BASE_URL_FOR_RESULT/d/$WORKSPACE_HANDLE/docs/$CHILD_ID"
-
-RESULT_JSON="$(jq -nc \
-  --arg workspaceId "$WORKSPACE_ID" \
-  --arg workspaceHandle "$WORKSPACE_HANDLE" \
-  --arg parentId "$PARENT_ID" \
-  --arg parentTitle "$PARENT_TITLE" \
-  --arg id "$CHILD_ID" \
-  --arg title "$TITLE" \
-  --arg path "$CHILD_PATH" \
-  --arg url "$CHILD_URL" \
-  '{workspaceId: $workspaceId, workspaceHandle: $workspaceHandle, parentId: $parentId, parentTitle: $parentTitle, id: $id, title: $title, path: $path, url: $url}')"
 
 if [[ "$OUTPUT_JSON" == true ]]; then
-  printf '%s\n' "$RESULT_JSON"
+  printf '%s\n' "$REGISTER_JSON"
 else
-  echo "Created doct plan document in Shared"
+  CHILD_ID="$(printf '%s' "$REGISTER_JSON" | jq -r '.documentId // .document.id // .id // empty')"
+  CHILD_URL="$(printf '%s' "$REGISTER_JSON" | jq -r '.canonicalUrl // .reviewUrl // .url // .document.url // empty')"
+  echo "Registered doct HTML plan in Shared"
   echo "title: $TITLE"
-  echo "id: $CHILD_ID"
+  [[ -n "$CHILD_ID" ]] && echo "id: $CHILD_ID"
   echo "path: $CHILD_PATH"
-  echo "url: $CHILD_URL"
+  [[ -n "$CHILD_URL" ]] && echo "url: $CHILD_URL"
+  echo "Registration includes plan listener instructions; rerun with --json to preserve them verbatim."
 fi
