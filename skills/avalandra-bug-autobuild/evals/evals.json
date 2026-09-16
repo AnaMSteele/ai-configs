@@ -1,0 +1,23 @@
+{
+  "skill_name": "avalandra-bug-autobuild",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "We found a bug in Avalandra: renaming a space to its existing name clears the title until restart. I can reproduce it every time on build 214. Expected the title to remain unchanged and an inline validation message. File it and send it through autobuild.",
+      "expected_output": "Classifies the report as potentially ready for direct autobuild, routes it to the Avalandra / ava / ccore2 Linear project, drafts a factual self-contained issue with a verification oracle, shows the draft and planned triggers for confirmation, and does not require a full plan merely because the implementation is unknown.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "We found a bug. Avalandra sometimes loses things after sync. Can you open a Linear for it?",
+      "expected_output": "Classifies the report as captured but not ready, names the ambiguous object/data-loss/evidence blockers, asks the smallest useful diagnostic questions, keeps autobuild off, and offers a truthful capture-only draft in Backlog under Avalandra / ava / ccore2 without inventing behavior or a Bug label.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "We found a bug in Avalandra account switching. Fixing it may change how encrypted space keys migrate between hubs and what recovery does when only one device has the new key. Put it into Linear and autobuild.",
+      "expected_output": "Routes to the full reviewed-plan branch because migration, recovery, and security decisions are unresolved; allows early capture in Backlog under Avalandra / ava / ccore2 after confirmation but explicitly leaves Ready to Pull and autobuild off.",
+      "files": []
+    }
+  ]
+}

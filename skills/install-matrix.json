@@ -25,6 +25,18 @@
       "notes": "Repo-owned Ava-first guidance for using Ana's Avalandra Agent Ops space as shared cross-agent runbook, local tool, and skill-reference context, with legacy Heddle fallback.",
       "sourceType": "repo"
     },
+    "avalandra-bug-autobuild": {
+      "class": "universal-installable",
+      "allowedConsumers": [
+        "codex",
+        "claude",
+        "opencode",
+        "pi"
+      ],
+      "canonicalSource": "skills/avalandra-bug-autobuild",
+      "notes": "Canonical Avalandra/ava/ccore2 bug capture and safe Linear autobuild handoff workflow, synchronized with the published Ana Agent Ops runbook.",
+      "sourceType": "repo"
+    },
     "algorithmic-art": {
       "class": "universal-installable",
       "allowedConsumers": [
