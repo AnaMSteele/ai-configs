@@ -196,30 +196,34 @@ bash ./install.sh --skills --update
 bash ./install.sh --tools
 ```
 
-### Ana Agent Ops ccore
+### Ava Agent Ops
 
-Ana Agent Ops is the shared ccore space for cross-agent operating guidance, local tool runbooks, and reusable skill notes. It is shared baseline context for agents; repo-local `AGENTS.md` / `CLAUDE.md` files remain authoritative for product-specific architecture, data-safety, and workflow constraints.
+Agent Ops is the shared Avalandra space for cross-agent operating guidance, local tool runbooks, and reusable skill notes. It is the first-read baseline at the start of every session; repo-local `AGENTS.md` / `CLAUDE.md` files remain authoritative for product-specific architecture, data-safety, and workflow constraints.
 
-Current local access uses the `ccore` CLI:
+Current local access uses the `ava` CLI:
 
 ```bash
-ccore health
-ccore space list
-ccore query 6444a494-a7c4-49c2-9ce0-2c6f25764087 "reviewed HTML plan workflow"
-ccore doc list 6444a494-a7c4-49c2-9ce0-2c6f25764087
-ccore doc show <document-id>
+ava health
+ava auth status --json
+ava --organization org_bc5d7f1e389c48ccb6746b414750a513 \
+  --space spc_ee8732550dd8455e9c16de1bec636975 \
+  document tree --json
+ava --organization org_bc5d7f1e389c48ccb6746b414750a513 \
+  --space spc_ee8732550dd8455e9c16de1bec636975 \
+  document get <document-id> --json
 ```
 
 Target space:
 
 ```text
-Ana Agent Ops
-6444a494-a7c4-49c2-9ce0-2c6f25764087
+Agent Ops (agent-ops)
+spc_ee8732550dd8455e9c16de1bec636975
+https://nodaste.hub.avalandra.com/spaces/agent-ops
 ```
 
-The installed `ccore` binary does not currently expose `ccore mcp`, so agents should use the CLI unless the live environment proves otherwise. Default to read-only; write Agent Ops documents only when Ana explicitly asks for ccore writeback or the active task specifically includes updating ccore guidance.
+Default to read-only. Write Agent Ops documents only when Ana explicitly asks or the active task specifically includes updating shared guidance. The former Heddle `Ana Agent Ops` space (`6444a494-a7c4-49c2-9ce0-2c6f25764087`) is a read-only fallback for migration provenance, superseded history, or temporary Ava outages—not the current authority.
 
-The repo-owned skill for this workflow is `skills/agent-ops-ccore`, indexed in `skills/install-matrix.json`.
+The repo-owned skill for this workflow is `skills/agent-ops-ava`, indexed in `skills/install-matrix.json`.
 
 ## Working docs
 

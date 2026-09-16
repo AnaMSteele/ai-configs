@@ -43,33 +43,33 @@ When agents run within Codex, they MUST prioritize native Codex tools over MCP s
 
 **Rationale:** MCP tool wrapping introduces unnecessary latency and may produce inconsistent results. Native Codex tools are optimized for the local filesystem and provide superior performance.
 
-## Ana Agent Ops Ccore Guidance
+## Ava Agent Ops Guidance
 
-Ana Agent Ops is Ana's shared ccore space for reusable cross-agent guidance, runbooks, local tool notes, and skill-reference context. Use it when guidance should apply across Claude, Codex, Pi, Hermes, OpenCode, and related agents instead of belonging to one product repo.
+At the start of every session, before task work, consult Ana's Avalandra `Agent Ops` space for relevant shared guidance. Use it when guidance should apply across Claude, Codex, Pi, Hermes, OpenCode, and related agents instead of belonging to one product repo.
 
 Implemented access path on this machine:
 
 ```bash
-ccore health
-ccore space list
-ccore query 6444a494-a7c4-49c2-9ce0-2c6f25764087 "reviewed HTML plan workflow"
-ccore doc list 6444a494-a7c4-49c2-9ce0-2c6f25764087
-ccore doc show <document-id>
+ava health
+ava auth status --json
+ava query run --data '{"scope":{"organization_id":"org_bc5d7f1e389c48ccb6746b414750a513","space_ids":["spc_ee8732550dd8455e9c16de1bec636975"]},"from":{"resource_kinds":["entity"]},"text":{"query":"<current task or workflow>","fields":["/title","/body"],"mode":"terms"},"page":{"limit":20}}' --json
 ```
 
 Target space:
 
 ```text
-Display name: Ana Agent Ops
-Space ID: 6444a494-a7c4-49c2-9ce0-2c6f25764087
-Default node: http://127.0.0.1:8787
+Display name: Agent Ops
+Handle: agent-ops
+Organization ID: org_bc5d7f1e389c48ccb6746b414750a513
+Space ID: spc_ee8732550dd8455e9c16de1bec636975
+URL: https://nodaste.hub.avalandra.com/spaces/agent-ops
 ```
 
-The installed `ccore` binary currently does not expose `ccore mcp`; use the CLI unless the live binary shows a supported MCP surface. `ccore health` is healthy locally, but account/catalog discovery may be degraded or stale, so avoid sync, hub, credential, invite, delete, archive, restore, or direct SQLite operations unless Ana explicitly asks.
+Use `ava onboard` or `~/.ava/SKILL.md` for the current command contract. Avoid credential, invite, membership, delete, archive, restore, transfer, or direct-database operations unless Ana explicitly asks.
 
-Authority order is: current user instruction, repo-local `AGENTS.md` / `CLAUDE.md` / product safety docs, Ana Agent Ops ccore guidance, then general shared skills or model defaults. If ccore guidance conflicts with repo-local guidance, the repo-local rule wins and the conflict should be surfaced.
+Authority order is: current user instruction, repo-local `AGENTS.md` / `CLAUDE.md` / product safety docs, Ava Agent Ops guidance, then general shared skills or model defaults. If Agent Ops conflicts with repo-local guidance, the repo-local rule wins and the conflict should be surfaced.
 
-Default to read-only. Agents may write new Ana Agent Ops documents only when Ana explicitly asks for ccore writeback or when the active task specifically includes creating or updating ccore guidance. When writing is allowed, read related docs first, make the smallest focused update, verify with `ccore doc show`, and report the document ID.
+Default to read-only. Agents may write Agent Ops documents only when Ana explicitly asks or when the active task specifically includes creating or updating shared guidance. When writing is allowed, read related live docs first, make the smallest focused update, verify with `ava document get`, and report the document ID. The former Heddle `Ana Agent Ops` space is a read-only fallback for migration provenance, superseded history, or a temporary Ava outage; do not silently treat it as current authority.
 
 ## Review & Fidelity Safeguards
 - `quality-reviewer` (sonnet; `_opencode/agents/quality-reviewer.md`) — Reviews code for real issues (security, data loss, performance) with measurable impact focus.
