@@ -1279,12 +1279,14 @@ sync_shared_skills() {
         install_shared_skill "$skill_name" "$source_rel" "$shared_skills_dir"
     done < <(iterate_repo_installable_skills)
 
+    # Retire renamed repo-managed skills before optional package fetches so a
+    # third-party registry failure cannot leave obsolete guidance active.
+    cleanup_deprecated_shared_skills
+
     echo "  - Fetching external package-managed shared skills via npx skills..."
     while IFS=$'\t' read -r package_source csv_skill_names; do
         install_external_skill_package "$package_source" "$csv_skill_names" "$shared_skills_dir"
     done < <(iterate_external_skill_packages)
-
-    cleanup_deprecated_shared_skills
 
     sync_consumer_skill_links "claude" "$HOME/.claude/skills" "$@"
     sync_consumer_skill_links "opencode" "$HOME/.config/opencode/skills" "$@"
